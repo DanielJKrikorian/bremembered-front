@@ -139,23 +139,44 @@ export const VendorRecommendation: React.FC = () => {
         </div>
 
         {vendors.length === 0 ? (
-          <Card className="p-12 text-center">
-            <ServiceIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No available vendors found
-            </h3>
-            <p className="text-gray-600 mb-6">
-              We couldn't find any {currentService.toLowerCase()} vendors available for your date and preferences. Try adjusting your requirements or contact us for assistance.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline" onClick={() => navigate(-1)}>
-                Change Preferences
-              </Button>
-              <Button variant="primary">
-                Contact Support
-              </Button>
-            </div>
-          </Card>
+          <div className="text-center">
+            <Card className="p-12 bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ServiceIcon className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Unfortunately, We Don't Have Anyone Available
+              </h2>
+              <p className="text-xl text-gray-600 mb-6 max-w-2xl mx-auto">
+                We don't have any {currentService.toLowerCase()} vendors available for your selected date and preferences. Please check back later as our vendor availability changes frequently.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 max-w-md mx-auto">
+                <h4 className="font-semibold text-blue-900 mb-2">What you can do:</h4>
+                <ul className="text-sm text-blue-800 space-y-1 text-left">
+                  <li>• Try a different date if possible</li>
+                  <li>• Adjust your location preferences</li>
+                  <li>• Check back in a few days</li>
+                  <li>• Contact our support team for assistance</li>
+                </ul>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate(-1)}
+                  size="lg"
+                >
+                  Change Preferences
+                </Button>
+                <Button 
+                  variant="primary"
+                  size="lg"
+                  onClick={() => navigate('/support')}
+                >
+                  Contact Support
+                </Button>
+              </div>
+            </Card>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Vendor Card */}

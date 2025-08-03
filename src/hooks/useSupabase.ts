@@ -507,7 +507,23 @@ export const useRecommendedVendors = (filters: {
 
         // Sort by score (highest first)
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
-        setVendors(sortedVendors);
+        
+        // If multiple vendors have the same top score, randomize their order
+        if (sortedVendors.length > 1) {
+          const topScore = sortedVendors[0].score;
+          const topVendors = sortedVendors.filter(v => v.score === topScore);
+          const otherVendors = sortedVendors.filter(v => v.score < topScore);
+          
+          // Shuffle top vendors randomly
+          for (let i = topVendors.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [topVendors[i], topVendors[j]] = [topVendors[j], topVendors[i]];
+          }
+          
+          setVendors([...topVendors, ...otherVendors]);
+        } else {
+          setVendors(sortedVendors);
+        }
       } catch (err) {
         console.error('Error fetching recommended vendors:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
