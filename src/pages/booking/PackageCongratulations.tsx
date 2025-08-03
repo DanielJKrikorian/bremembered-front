@@ -221,7 +221,13 @@ export const PackageCongratulations: React.FC = () => {
                   variant="primary"
                   size="lg"
                   icon={ArrowRight}
-                  onClick={handleContinue}
+                  onClick={() => navigate('/booking/event-details', {
+                    state: {
+                      selectedPackage,
+                      selectedServices,
+                      currentServiceIndex
+                    }
+                  })}
                   className="px-8"
                 >
                   Add Event Details
