@@ -169,8 +169,8 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     dispatch({ type: 'SET_CURRENT_SERVICE_INDEX', payload: index });
   };
 
-  const setServicePackage = (serviceType: string, package: ServicePackage) => {
-    dispatch({ type: 'SET_SERVICE_PACKAGE', payload: { serviceType, servicePackage: package } });
+  const setServicePackage = (serviceType: string, servicePackage: ServicePackage) => {
+    dispatch({ type: 'SET_SERVICE_PACKAGE', payload: { serviceType, servicePackage } });
   };
 
   const setServiceVendor = (serviceType: string, vendor: Vendor) => {
