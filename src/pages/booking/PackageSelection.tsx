@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, Star, Check, Tag, Sparkles, Clock, Users, Shield, Filter, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Star, Check, Tag, Sparkles, Clock, Users, Shield, Filter, SlidersHorizontal, Calendar, MapPin, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -75,6 +75,15 @@ export const PackageSelection: React.FC = () => {
       maxHours: 12,
       coverage: []
     });
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(price / 100);
   };
 
   const getPackageCoverage = (coverage: Record<string, any>) => {
@@ -158,6 +167,58 @@ export const PackageSelection: React.FC = () => {
               <span className="ml-2 text-sm text-gray-500">Checkout</span>
             </div>
           </div>
+
+          {/* Search Details Summary */}
+          <Card className="p-6 mb-8 bg-blue-50 border-blue-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-blue-900">Your Event Details</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Edit}
+                onClick={() => navigate('/booking/event-details')}
+                className="text-blue-600 border-blue-300 hover:bg-blue-100"
+              >
+                Edit
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {state.eventType && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-blue-700 font-medium">Event Type:</span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    {state.eventType}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-700 font-medium">Services:</span>
+                <div className="flex flex-wrap gap-1">
+                  {state.selectedServices.map((service, index) => (
+                    <span key={index} className="px-2 py-1 bg-rose-100 text-rose-800 rounded-full text-sm">
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {state.venue && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  <span className="text-blue-700 font-medium">Venue:</span>
+                  <span className="text-blue-800 text-sm">{state.venue.name}</span>
+                </div>
+              )}
+              {state.eventDate && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <span className="text-blue-700 font-medium">Date:</span>
+                  <span className="text-blue-800 text-sm">
+                    {new Date(state.eventDate).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
@@ -273,7 +334,7 @@ export const PackageSelection: React.FC = () => {
                 </div>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 {packages.map((pkg) => {
                   const isSelected = selectedPackage?.id === pkg.id;
                   const packageCoverage = getPackageCoverage(pkg.coverage || {});
@@ -282,7 +343,7 @@ export const PackageSelection: React.FC = () => {
                     <Card 
                       key={pkg.id} 
                       className={`
-                        relative overflow-hidden cursor-pointer transition-all
+                        relative overflow-hidden cursor-pointer transition-all p-6
                         ${isSelected 
                           ? 'ring-2 ring-rose-500 shadow-xl' 
                           : 'hover:shadow-lg'
@@ -290,86 +351,70 @@ export const PackageSelection: React.FC = () => {
                       `}
                       onClick={() => handlePackageSelect(pkg)}
                     >
-                      {isSelected && (
-                        <div className="absolute top-4 right-4 w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center z-10">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-
-                      <div className="p-6">
-                        <div className="mb-4">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2">{pkg.name}</h3>
-                          <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">{pkg.description}</p>
-                        </div>
-
-                        <div className="mb-6">
-                          <div className="flex items-baseline space-x-2 mb-2">
-                            <span className="text-3xl font-bold text-gray-900">
-                              ${pkg.price.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            {pkg.hour_amount && (
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                <span>{pkg.hour_amount} hours</span>
-                              </div>
-                            )}
-                            <div className="flex items-center">
-                              <Shield className="w-4 h-4 mr-1" />
-                              <span>Insured</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 flex items-center space-x-6">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3 className="text-xl font-semibold text-gray-900">{pkg.name}</h3>
+                              {isSelected && (
+                                <div className="w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
+                                  <Check className="w-4 h-4 text-white" />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </div>
+                            <p className="text-gray-600 text-sm leading-relaxed mb-3 line-clamp-2">{pkg.description}</p>
+                            
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                              {pkg.hour_amount && (
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  <span>{pkg.hour_amount} hours</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Shield className="w-4 h-4 mr-1" />
+                                <span>Insured</span>
+                              </div>
+                            </div>
 
-                        {/* Features */}
-                        {pkg.features && pkg.features.length > 0 && (
-                          <div className="mb-4">
-                            <h4 className="font-medium text-gray-900 mb-2 text-sm">What's Included:</h4>
+                            {/* Features and Coverage in same row */}
                             <div className="flex flex-wrap gap-1">
-                              {pkg.features.slice(0, 3).map((feature, index) => (
+                              {pkg.features && pkg.features.slice(0, 3).map((feature, index) => (
                                 <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                                   {feature}
                                 </span>
                               ))}
-                              {pkg.features.length > 3 && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                  +{pkg.features.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Coverage */}
-                        {packageCoverage.length > 0 && (
-                          <div className="mb-6">
-                            <h4 className="font-medium text-gray-900 mb-2 text-sm">Coverage:</h4>
-                            <div className="flex flex-wrap gap-1">
-                              {packageCoverage.slice(0, 4).map((coverage, index) => (
+                              {packageCoverage.slice(0, 3).map((coverage, index) => (
                                 <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                                   {coverage}
                                 </span>
                               ))}
-                              {packageCoverage.length > 4 && (
+                              {(pkg.features?.length > 3 || packageCoverage.length > 3) && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                  +{packageCoverage.length - 4} more
+                                  +{(pkg.features?.length || 0) + packageCoverage.length - 6} more
                                 </span>
                               )}
                             </div>
                           </div>
-                        )}
-
-                        <Button
-                          variant={isSelected ? "primary" : "outline"}
-                          className="w-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePackageSelect(pkg);
-                          }}
-                        >
-                          {isSelected ? 'Selected' : 'Select Package'}
-                        </Button>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {formatPrice(pkg.price)}
+                            </div>
+                            <div className="text-sm text-gray-500">Starting price</div>
+                          </div>
+                          <Button
+                            variant={isSelected ? "primary" : "outline"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePackageSelect(pkg);
+                            }}
+                          >
+                            {isSelected ? 'Selected' : 'Select Package'}
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   );
@@ -388,7 +433,7 @@ export const PackageSelection: React.FC = () => {
                   {currentService} package selected
                 </p>
                 <p className="text-lg font-semibold text-gray-900">
-                  {selectedPackage.name} - ${selectedPackage.price.toLocaleString()}
+                  {selectedPackage.name} - {formatPrice(selectedPackage.price)}
                 </p>
               </div>
               <Button
