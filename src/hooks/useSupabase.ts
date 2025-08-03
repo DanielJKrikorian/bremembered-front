@@ -46,8 +46,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         }
 
         if (filters?.coverage && filters.coverage.length > 0) {
-          // Filter packages that have any of the selected coverage options
-          const coverageFilters = filters.coverage.map(c => `coverage->>'${c}'.is.true`).join(',');
+          // Filter packages that have any of the selected coverage options in the events array
+          const coverageFilters = filters.coverage.map(c => `coverage->events.cs.["${c}"]`).join(',');
           query = query.or(coverageFilters);
         }
 
