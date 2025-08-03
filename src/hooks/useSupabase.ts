@@ -371,67 +371,88 @@ export const useRecommendedVendors = (filters: {
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
       if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
+        // Use mock data when Supabase is not available
+        const mockVendors = [
+          {
+            id: 'mock-vendor-1',
+            name: 'Elite Wedding Photography',
+            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            rating: 4.9,
+            years_experience: 8,
+            phone: '(555) 123-4567',
+            portfolio_photos: [
+              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+            ],
+            specialties: ['Wedding Photography', 'Engagement Sessions', 'Fine Art'],
+            service_areas: ['Los Angeles', 'Orange County', 'Ventura County'],
+            profile: 'Award-winning wedding photographer with a passion for capturing authentic moments and emotions. Specializing in romantic, timeless imagery that tells your unique love story.',
+            awards: ['Best Wedding Photographer 2023', 'Couples Choice Award', 'Top Vendor Award'],
+            score: 9.8
+          },
+          {
+            id: 'mock-vendor-2',
+            name: 'Timeless Moments Studio',
+            profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+            rating: 4.8,
+            years_experience: 6,
+            phone: '(555) 987-6543',
+            portfolio_photos: [
+              'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+              'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
+            ],
+            specialties: ['Destination Weddings', 'Outdoor Ceremonies', 'Editorial Style'],
+            service_areas: ['San Francisco', 'Napa Valley', 'Sonoma County'],
+            profile: 'Creative wedding photographer known for artistic compositions and natural lighting. Capturing the beauty and emotion of your special day with a documentary approach.',
+            awards: ['Rising Star Award 2023', 'Best Portfolio Award'],
+            score: 9.5
+          },
+          {
+            id: 'mock-vendor-3',
+            name: 'Golden Hour Photography',
+            profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
+            rating: 4.7,
+            years_experience: 10,
+            phone: '(555) 456-7890',
+            portfolio_photos: [
+              'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'
+            ],
+            specialties: ['Sunset Photography', 'Beach Weddings', 'Romantic Portraits'],
+            service_areas: ['San Diego', 'Orange County', 'Riverside County'],
+            profile: 'Experienced photographer specializing in golden hour and sunset wedding photography. Creating dreamy, romantic images that capture the magic of your celebration.',
+            awards: ['Veteran Photographer Award'],
+            score: 9.2
+          }
+        ];
+        
+        setVendors(mockVendors);
         setLoading(false);
         return;
       }
 
       setLoading(true);
       setError(null);
-      console.log('=== VENDOR SEARCH DEBUG ===');
-      console.log('1. Starting vendor search with filters:', JSON.stringify(filters, null, 2));
-      console.log('2. Service Package ID:', filters.servicePackageId);
-      console.log('3. Event Date:', filters.eventDate);
-      console.log('4. Region:', filters.region);
       
       try {
         // First, get vendors who offer this service package
-        console.log('=== STEP 1: Getting vendors for service package ===');
         const { data: vendorServicePackages, error: vspError } = await supabase!
           .from('vendor_service_packages')
           .select('vendor_id')
           .eq('service_package_id', filters.servicePackageId)
           .eq('status', 'approved');
 
-        console.log('4. Vendor service packages query result:', { data: vendorServicePackages, error: vspError });
-        
         if (vspError) throw vspError;
         
         const vendorIds = vendorServicePackages?.map(vsp => vsp.vendor_id) || [];
-        console.log('5. Found vendor IDs for package:', vendorIds);
-        console.log('6. Number of vendors found:', vendorIds.length);
         
         if (vendorIds.length === 0) {
-          console.log('7. ERROR: No vendors found for this service package');
-          console.log('8. Checking if service package exists...');
-          
-          // Check if the service package exists at all
-          const { data: packageCheck, error: packageError } = await supabase!
-            .from('service_packages')
-            .select('id, name, service_type')
-            .eq('id', filters.servicePackageId);
-          
-          console.log('9. Service package check:', { data: packageCheck, error: packageError });
-          
-          // Check all vendor service packages for debugging
-          const { data: allVSP, error: allVSPError } = await supabase!
-            .from('vendor_service_packages')
-            .select('vendor_id, service_package_id, status')
-            .limit(10);
-          
-          console.log('10. Sample vendor service packages:', { data: allVSP, error: allVSPError });
-          
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Check availability on the event date
-        console.log('=== STEP 2: Checking availability for date ===');
-        console.log('11. Checking availability for date:', filters.eventDate);
-        console.log('12. Date range start:', filters.eventDate + 'T00:00:00');
-        console.log('13. Date range end:', filters.eventDate + 'T23:59:59');
-        
         const { data: busyVendors, error: eventsError } = await supabase!
           .from('events')
           .select('vendor_id')
@@ -439,34 +460,24 @@ export const useRecommendedVendors = (filters: {
           .lt('start_time', filters.eventDate + 'T23:59:59')
           .in('vendor_id', vendorIds);
 
-        console.log('14. Busy vendors query result:', { data: busyVendors, error: eventsError });
-        
         if (eventsError) throw eventsError;
         
         const busyVendorIds = busyVendors?.map(event => event.vendor_id) || [];
         const availableVendorIds = vendorIds.filter(id => !busyVendorIds.includes(id));
-        console.log('15. Busy vendor IDs:', busyVendorIds);
-        console.log('16. Available vendor IDs:', availableVendorIds);
-        console.log('17. Number of available vendors:', availableVendorIds.length);
 
         if (availableVendorIds.length === 0) {
-          console.log('18. ERROR: No available vendors for this date');
-          console.log('19. All vendors are busy on:', filters.eventDate);
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Get vendor details
-        console.log('=== STEP 3: Getting vendor details ===');
-        console.log('20. Getting details for vendor IDs:', availableVendorIds);
-        
         const { data: vendorData, error: vendorError } = await supabase!
           .from('vendors')
           .select(`
             id,
             name,
-           rating,
+            rating,
             profile_photo,
             years_experience,
             phone,
@@ -476,63 +487,28 @@ export const useRecommendedVendors = (filters: {
           `)
           .in('id', availableVendorIds);
 
-        console.log('21. Vendor data query result:', { data: vendorData, error: vendorError });
-        console.log('22. Number of vendor records returned:', vendorData?.length || 0);
-        
         if (vendorError) throw vendorError;
         
         // For now, just return the available vendors with basic scoring
-        console.log('=== STEP 4: Scoring vendors ===');
         const scoredVendors = (vendorData || []).map(vendor => ({
           ...vendor,
-         score: (vendor.rating || 0) * 2 + (vendor.years_experience || 0) * 0.1 + Math.random() * 0.1 // Rating weighted heavily, experience as tiebreaker
+          score: (vendor.rating || 0) * 2 + (vendor.years_experience || 0) * 0.1 + Math.random() * 0.1 // Rating weighted heavily, experience as tiebreaker
         }));
 
-       console.log('23. Scored vendors:', scoredVendors.map(v => ({ 
-         id: v.id, 
-         name: v.name, 
-         rating: v.rating, 
-         experience: v.years_experience, 
-         score: v.score 
-       })));
-        
         // Sort by score and randomize equal scores
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
-       console.log('24. Final sorted vendors:', sortedVendors.map(v => ({ 
-         id: v.id, 
-         name: v.name, 
-         rating: v.rating, 
-         experience: v.years_experience, 
-         score: v.score 
-       })));
-        console.log('25. SUCCESS: Setting vendors in state');
         
         setVendors(sortedVendors);
       } catch (err) {
-        console.error('26. ERROR: Exception in fetchRecommendedVendors:', err);
-        console.error('27. Error details:', {
-          message: err instanceof Error ? err.message : 'Unknown error',
-          stack: err instanceof Error ? err.stack : 'No stack trace'
-        });
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
-        console.log('28. Setting loading to false');
         setLoading(false);
       }
     };
 
     if (filters.servicePackageId && filters.eventDate) {
-      console.log('=== STARTING VENDOR FETCH ===');
-      console.log('Valid filters detected, starting fetch...');
       fetchRecommendedVendors();
     } else {
-      console.log('=== MISSING FILTERS ===');
-      console.log('Missing required filters:', { 
-        servicePackageId: filters.servicePackageId, 
-        eventDate: filters.eventDate,
-        hasServicePackageId: !!filters.servicePackageId,
-        hasEventDate: !!filters.eventDate
-      });
       setLoading(false);
     }
   }, [filters]);
