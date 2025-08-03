@@ -378,9 +378,11 @@ export const useRecommendedVendors = (filters: {
 
       setLoading(true);
       setError(null);
+      console.log('Starting vendor search with filters:', filters);
       
       try {
         // First, get vendors who offer this service package
+        console.log('Step 1: Getting vendors for service package:', filters.servicePackageId);
         const { data: vendorServicePackages, error: vspError } = await supabase!
           .from('vendor_service_packages')
           .select('vendor_id')
@@ -390,14 +392,17 @@ export const useRecommendedVendors = (filters: {
         if (vspError) throw vspError;
         
         const vendorIds = vendorServicePackages?.map(vsp => vsp.vendor_id) || [];
+        console.log('Found vendor IDs for package:', vendorIds);
         
         if (vendorIds.length === 0) {
+          console.log('No vendors found for this service package');
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Check availability on the event date
+        console.log('Step 2: Checking availability for date:', filters.eventDate);
         const { data: busyVendors, error: eventsError } = await supabase!
           .from('events')
           .select('vendor_id')
@@ -409,121 +414,34 @@ export const useRecommendedVendors = (filters: {
         
         const busyVendorIds = busyVendors?.map(event => event.vendor_id) || [];
         const availableVendorIds = vendorIds.filter(id => !busyVendorIds.includes(id));
+        console.log('Busy vendors:', busyVendorIds);
+        console.log('Available vendors:', availableVendorIds);
 
         if (availableVendorIds.length === 0) {
+          console.log('No available vendors for this date');
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Get vendor details
+        console.log('Step 3: Getting vendor details');
         const { data: vendorData, error: vendorError } = await supabase!
           .from('vendors')
           .select(`
             id,
-            name,
-            profile,
-            rating,
-            profile_photo,
-            intro_video,
-            years_experience,
-            portfolio_photos,
-            portfolio_videos,
-            specialties,
-            awards
-          `)
-          .in('id', availableVendorIds);
-
-        if (vendorError) throw vendorError;
-
-        // Score vendors based on matching preferences
-        const scoredVendors = await Promise.all((vendorData || []).map(async (vendor) => {
-          let score = 0;
-          
-          try {
-            // Check region match
-            if (filters.region) {
-              const { data: serviceAreaMatch, error: regionError } = await supabase!
-                .from('vendor_service_areas')
-                .select('service_areas!inner(region)')
-                .eq('vendor_id', vendor.id)
-                .eq('service_areas.region', filters.region);
-              
-              if (!regionError && serviceAreaMatch && serviceAreaMatch.length > 0) {
-                score += 10; // High priority for region match
-              }
-            }
-
-            // Check language matches
-            if (filters.languages && filters.languages.length > 0) {
-              const { data: languageMatches, error: langError } = await supabase!
-                .from('vendor_languages')
-                .select('language_id')
-                .eq('vendor_id', vendor.id)
-                .in('language_id', filters.languages);
-              
-              if (!langError) {
-                score += (languageMatches?.length || 0) * 3;
-              }
-            }
-
-            // Check style matches
-            if (filters.styles && filters.styles.length > 0) {
-              const { data: styleMatches, error: styleError } = await supabase!
-                .from('vendor_style_tags')
-                .select('style_id')
-                .eq('vendor_id', vendor.id)
-                .in('style_id', filters.styles);
-              
-              if (!styleError) {
-                score += (styleMatches?.length || 0) * 2;
-              }
-            }
-
-            // Check vibe matches
-            if (filters.vibes && filters.vibes.length > 0) {
-              const { data: vibeMatches, error: vibeError } = await supabase!
-                .from('vendor_vibe_tags')
-                .select('vibe_id')
-                .eq('vendor_id', vendor.id)
-                .in('vibe_id', filters.vibes);
-              
-              if (!vibeError) {
-                score += (vibeMatches?.length || 0) * 2;
-              }
-            }
-          } catch (matchError) {
-            console.warn('Error checking vendor matches:', matchError);
-            // Continue with base score if matching fails
-          }
-
-          // Bonus for rating
-          if (vendor.rating) {
-            score += vendor.rating;
-          }
-
-          return { ...vendor, score };
+        // For now, just return the available vendors with basic scoring
+        console.log('Step 4: Scoring vendors');
+        const scoredVendors = (vendorData || []).map(vendor => ({
+          ...vendor,
+          score: (vendor.rating || 0) + Math.random() // Add randomness for equal ratings
         }));
 
-        // Sort by score (highest first)
+        // Sort by score and randomize equal scores
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
+        console.log('Final sorted vendors:', sortedVendors);
         
-        // If multiple vendors have the same top score, randomize their order
-        if (sortedVendors.length > 1) {
-          const topScore = sortedVendors[0].score;
-          const topVendors = sortedVendors.filter(v => v.score === topScore);
-          const otherVendors = sortedVendors.filter(v => v.score < topScore);
-          
-          // Shuffle top vendors randomly
-          for (let i = topVendors.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [topVendors[i], topVendors[j]] = [topVendors[j], topVendors[i]];
-          }
-          
-          setVendors([...topVendors, ...otherVendors]);
-        } else {
-          setVendors(sortedVendors);
-        }
+        setVendors(sortedVendors);
       } catch (err) {
         console.error('Error fetching recommended vendors:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -533,8 +451,10 @@ export const useRecommendedVendors = (filters: {
     };
 
     if (filters.servicePackageId && filters.eventDate) {
+      console.log('Fetching vendors with valid filters');
       fetchRecommendedVendors();
     } else {
+      console.log('Missing required filters:', { servicePackageId: filters.servicePackageId, eventDate: filters.eventDate });
       setLoading(false);
     }
   }, [filters]);
