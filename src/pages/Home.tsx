@@ -12,12 +12,13 @@ export const Home: React.FC = () => {
 
   const handleSearch = (filters: any) => {
     console.log('Search filters:', filters);
-    // If services are selected, go to booking flow, otherwise go to search results
+    // Always go to booking flow when services are selected
     if (filters.selectedServices && filters.selectedServices.length > 0) {
-      navigate('/booking/packages', { 
+      navigate('/booking/event-details', { 
         state: { 
           selectedServices: filters.selectedServices,
           location: filters.location,
+          selectedVenue: filters.selectedVenue,
           date: filters.date
         } 
       });

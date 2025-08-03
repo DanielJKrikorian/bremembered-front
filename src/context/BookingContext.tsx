@@ -6,6 +6,9 @@ interface BookingState extends BookingFlow {}
 type BookingAction =
   | { type: 'SET_SELECTED_SERVICES'; payload: string[] }
   | { type: 'SET_SELECTED_PACKAGES'; payload: ServicePackage[] }
+  | { type: 'SET_CURRENT_SERVICE_INDEX'; payload: number }
+  | { type: 'SET_SERVICE_PACKAGE'; payload: { serviceType: string; package: ServicePackage } }
+  | { type: 'SET_SERVICE_VENDOR'; payload: { serviceType: string; vendor: Vendor } }
   | { type: 'SET_EVENT_DATE'; payload: string }
   | { type: 'SET_EVENT_TIME'; payload: string }
   | { type: 'SET_VENUE'; payload: Venue }
@@ -20,6 +23,8 @@ type BookingAction =
 const initialState: BookingState = {
   selectedServices: [],
   selectedPackages: [],
+  currentServiceIndex: 0,
+  servicePackages: {},
   selectedVendors: {},
   addOns: {},
   totalCost: 0,
@@ -39,6 +44,28 @@ const bookingReducer = (state: BookingState, action: BookingAction): BookingStat
         selectedPackages: action.payload,
         totalCost,
         depositAmount: Math.round(totalCost * 0.5)
+      };
+    
+    case 'SET_CURRENT_SERVICE_INDEX':
+      return { ...state, currentServiceIndex: action.payload };
+    
+    case 'SET_SERVICE_PACKAGE':
+      return {
+        ...state,
+        servicePackages: {
+          ...state.servicePackages,
+          [action.payload.serviceType]: action.payload.package
+        }
+      };
+    
+    case 'SET_SERVICE_VENDOR':
+      const updatedVendors = {
+        ...state.selectedVendors,
+        [action.payload.serviceType]: action.payload.vendor
+      };
+      return {
+        ...state,
+        selectedVendors: updatedVendors
       };
     
     case 'SET_EVENT_DATE':
@@ -113,6 +140,9 @@ interface BookingContextType {
   dispatch: React.Dispatch<BookingAction>;
   setSelectedServices: (services: string[]) => void;
   setSelectedPackages: (packages: ServicePackage[]) => void;
+  setCurrentServiceIndex: (index: number) => void;
+  setServicePackage: (serviceType: string, package: ServicePackage) => void;
+  setServiceVendor: (serviceType: string, vendor: Vendor) => void;
   setEventDetails: (date: string, time: string, venue: Venue) => void;
   setVendor: (serviceType: string, vendor: Vendor) => void;
   addAddOn: (serviceType: string, addOn: any) => void;
@@ -133,6 +163,18 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const setSelectedPackages = (packages: ServicePackage[]) => {
     dispatch({ type: 'SET_SELECTED_PACKAGES', payload: packages });
+  };
+
+  const setCurrentServiceIndex = (index: number) => {
+    dispatch({ type: 'SET_CURRENT_SERVICE_INDEX', payload: index });
+  };
+
+  const setServicePackage = (serviceType: string, package: ServicePackage) => {
+    dispatch({ type: 'SET_SERVICE_PACKAGE', payload: { serviceType, package } });
+  };
+
+  const setServiceVendor = (serviceType: string, vendor: Vendor) => {
+    dispatch({ type: 'SET_SERVICE_VENDOR', payload: { serviceType, vendor } });
   };
 
   const setEventDetails = (date: string, time: string, venue: Venue) => {
@@ -171,6 +213,9 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
       dispatch,
       setSelectedServices,
       setSelectedPackages,
+      setCurrentServiceIndex,
+      setServicePackage,
+      setServiceVendor,
       setEventDetails,
       setVendor,
       addAddOn,

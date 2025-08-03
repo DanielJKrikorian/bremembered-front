@@ -76,6 +76,8 @@ export interface Venue {
 export interface BookingFlow {
   selectedServices: string[];
   selectedPackages: ServicePackage[];
+  currentServiceIndex: number;
+  servicePackages: Record<string, ServicePackage>;
   eventDate?: string;
   eventTime?: string;
   venue?: Venue;

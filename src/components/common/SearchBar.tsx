@@ -22,8 +22,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     { id: 'Videography', name: 'Videography', icon: Video },
     { id: 'DJ Services', name: 'DJ Services', icon: Music },
     { id: 'Coordination', name: 'Coordination', icon: Users },
-    { id: 'Planning', name: 'Planning', icon: CalendarDays },
-    { id: 'Multiple Services', name: 'Multiple Services', icon: Package }
+    { id: 'Planning', name: 'Planning', icon: CalendarDays }
   ];
 
   const handleServiceToggle = (serviceId: string) => {
@@ -60,8 +59,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
       <div className="space-y-4">
         {/* Service Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">What services do you need?</label>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            What services do you need? <span className="text-gray-500 font-normal">(select all you'd like to book)</span>
+          </label>
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
             {serviceTypes.map((service) => {
               const Icon = service.icon;
               const isSelected = selectedServices.includes(service.id);

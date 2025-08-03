@@ -10,11 +10,14 @@ import { Venue } from '../../types/booking';
 
 export const EventDetails: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, setEventDetails } = useBooking();
-  const [eventDate, setEventDate] = useState(state.eventDate || '');
+  const [eventDate, setEventDate] = useState(state.eventDate || location.state?.date || '');
   const [eventTime, setEventTime] = useState(state.eventTime || '');
   const [venueSearch, setVenueSearch] = useState('');
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(state.venue || null);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(
+    state.venue || location.state?.selectedVenue || null
+  );
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [newVenue, setNewVenue] = useState({
     name: '',
@@ -84,7 +87,8 @@ export const EventDetails: React.FC = () => {
   const handleContinue = () => {
     if (eventDate && eventTime && selectedVenue) {
       setEventDetails(eventDate, eventTime, selectedVenue);
-      navigate('/booking/vendors');
+      // Start the service-by-service flow
+      navigate('/booking/packages');
     }
   };
 
