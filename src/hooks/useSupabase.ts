@@ -92,7 +92,7 @@ export const useVenues = (searchTerm?: string) => {
         let query = supabase.from('venues').select('*');
 
         if (searchTerm) {
-          query = query.or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,region.ilike.%${searchTerm}%`);
+          query = query.or(`name.ilike.%${searchTerm}%,street_address.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,region.ilike.%${searchTerm}%`);
         }
 
         const { data, error } = await query.order('booking_count', { ascending: false }).limit(50);

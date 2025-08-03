@@ -22,10 +22,25 @@ export const EventDetails: React.FC = () => {
     city: '',
     state: '',
     zip: '',
+    region: '',
     contact_name: '',
     phone: '',
     email: ''
   });
+
+  const regions = [
+    'Greater Boston',
+    'Cape Cod & Islands',
+    'Western Massachusetts',
+    'Central Massachusetts',
+    'North Shore',
+    'South Shore',
+    'Rhode Island',
+    'Connecticut',
+    'New Hampshire',
+    'Vermont',
+    'Maine'
+  ];
 
   const { venues, loading: venuesLoading } = useVenues(venueSearch);
 
@@ -46,6 +61,7 @@ export const EventDetails: React.FC = () => {
       contact_name: newVenue.contact_name,
       phone: newVenue.phone,
       email: newVenue.email,
+      region: newVenue.region,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -58,6 +74,7 @@ export const EventDetails: React.FC = () => {
       city: '',
       state: '',
       zip: '',
+      region: '',
       contact_name: '',
       phone: '',
       email: ''
@@ -296,6 +313,22 @@ export const EventDetails: React.FC = () => {
                     onChange={(e) => setNewVenue(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="venue@example.com"
                   />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Region
+                    </label>
+                    <select
+                      value={newVenue.region}
+                      onChange={(e) => setNewVenue(prev => ({ ...prev, region: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      required
+                    >
+                      <option value="">Select a region</option>
+                      {regions.map((region) => (
+                        <option key={region} value={region}>{region}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex space-x-3 mt-6">
                   <Button

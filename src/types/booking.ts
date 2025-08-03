@@ -68,6 +68,7 @@ export interface Venue {
   phone?: string;
   email?: string;
   contact_name?: string;
+  booking_count?: number;
   created_at: string;
   updated_at: string;
 }
