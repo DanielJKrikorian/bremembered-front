@@ -382,10 +382,9 @@ export const useRecommendedVendors = (filters: {
               .from('vendor_service_areas')
               .select('service_areas!inner(region)')
               .eq('vendor_id', vendor.id)
-              .eq('service_areas.region', filters.region)
-              .single();
+              .eq('service_areas.region', filters.region);
             
-            if (serviceAreaMatch) score += 10; // High priority for region match
+            if (serviceAreaMatch && serviceAreaMatch.length > 0) score += 10; // High priority for region match
           }
 
           // Check language matches
