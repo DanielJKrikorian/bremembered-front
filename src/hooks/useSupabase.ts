@@ -498,3 +498,9 @@ export const useVendorReviews = (vendorId: string) => {
 
   return { reviews, loading, error };
 };
+          )
+      }
+    }
+  }
+  )
+}
