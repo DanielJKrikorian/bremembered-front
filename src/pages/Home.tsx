@@ -121,7 +121,7 @@ export const Home: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate('/search', { state: { filters: { serviceType: service.title.toLowerCase() } } })}
+                  onClick={() => navigate('/booking/services')}
                 >
                   Browse <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -157,7 +157,7 @@ export const Home: React.FC = () => {
             <Button 
               variant="primary" 
               size="lg"
-              onClick={() => navigate('/search')}
+              onClick={() => navigate('/booking/services')}
             >
               View All Packages
             </Button>
@@ -313,7 +313,7 @@ export const Home: React.FC = () => {
               variant="secondary" 
               size="lg" 
               className="bg-white border-white text-rose-600 hover:bg-gray-50 hover:text-rose-700"
-              onClick={() => navigate('/search')}
+              onClick={() => navigate('/booking/services')}
             >
               Browse Services
             </Button>
