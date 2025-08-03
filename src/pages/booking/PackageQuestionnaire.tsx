@@ -199,7 +199,7 @@ export const PackageQuestionnaire: React.FC = () => {
                 <Camera className="w-8 h-8 text-rose-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                Which events would you like covered?
+                What moments would you like covered?
               </h2>
               <p className="text-gray-600">
                 Select all the moments you want captured during your {eventType.toLowerCase()}
