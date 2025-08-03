@@ -263,6 +263,13 @@ export const PackageSelection: React.FC = () => {
               </div>
               <Button
                 variant="primary"
+                onClick={handleContinue}
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
