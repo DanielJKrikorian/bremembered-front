@@ -12,7 +12,18 @@ export const Home: React.FC = () => {
 
   const handleSearch = (filters: any) => {
     console.log('Search filters:', filters);
-    navigate('/search', { state: { filters } });
+    // If services are selected, go to booking flow, otherwise go to search results
+    if (filters.selectedServices && filters.selectedServices.length > 0) {
+      navigate('/booking/packages', { 
+        state: { 
+          selectedServices: filters.selectedServices,
+          location: filters.location,
+          date: filters.date
+        } 
+      });
+    } else {
+      navigate('/search', { state: { filters } });
+    }
   };
 
   const featuredBundles = mockBundles.slice(0, 3);
