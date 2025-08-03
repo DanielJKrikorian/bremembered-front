@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage } from '../types/booking';
+import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage, LeadInformation } from '../types/booking';
 
 // Helper function to check if Supabase is available
 const isSupabaseAvailable = () => {
@@ -589,4 +589,104 @@ export const useVendorReviews = (vendorId: string) => {
   }, [vendorId]);
 
   return { reviews, loading, error };
+};
+
+// Generate a unique session ID for anonymous users
+const generateSessionId = () => {
+  return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+};
+
+// Get or create session ID
+const getSessionId = () => {
+  let sessionId = localStorage.getItem('booking_session_id');
+  if (!sessionId) {
+    sessionId = generateSessionId();
+    localStorage.setItem('booking_session_id', sessionId);
+  }
+  return sessionId;
+};
+
+export const useLeadInformation = () => {
+  const [leadInfo, setLeadInfo] = useState<LeadInformation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchOrCreateLeadInfo = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const sessionId = getSessionId();
+        
+        // Try to get existing lead information
+        const { data: existingLead, error: fetchError } = await supabase!
+          .from('leads_information')
+          .select('*')
+          .eq('session_id', sessionId)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          throw fetchError;
+        }
+
+        if (existingLead) {
+          setLeadInfo(existingLead);
+        } else {
+          // Create new lead information record
+          const { data: newLead, error: createError } = await supabase!
+            .from('leads_information')
+            .insert({
+              session_id: sessionId,
+              selected_services: [],
+              languages: [],
+              style_preferences: [],
+              vibe_preferences: [],
+              coverage_preferences: [],
+              selected_packages: {},
+              selected_vendors: {},
+              total_estimated_cost: 0,
+              current_step: 'service_selection',
+              completed_steps: []
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setLeadInfo(newLead);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrCreateLeadInfo();
+  }, []);
+
+  const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
+    if (!isSupabaseAvailable() || !leadInfo) return;
+
+    try {
+      const { data, error } = await supabase!
+        .from('leads_information')
+        .update(updates)
+        .eq('id', leadInfo.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setLeadInfo(data);
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      return null;
+    }
+  };
+
+  return { leadInfo, updateLeadInfo, loading, error };
 };

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { BookingFlow, ServicePackage, Vendor, Venue } from '../types/booking';
+import { BookingFlow, ServicePackage, Vendor, Venue, LeadInformation } from '../types/booking';
+import { useLeadInformation } from '../hooks/useSupabase';
 
 interface BookingState extends BookingFlow {}
 
@@ -161,13 +162,22 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
 export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(bookingReducer, initialState);
+  const { leadInfo, updateLeadInfo } = useLeadInformation();
 
   const setSelectedServices = (services: string[]) => {
     dispatch({ type: 'SET_SELECTED_SERVICES', payload: services });
+    // Persist to database
+    updateLeadInfo({ 
+      selected_services: services,
+      current_step: 'questionnaire',
+      completed_steps: ['service_selection']
+    });
   };
 
   const setEventType = (eventType: string) => {
     dispatch({ type: 'SET_EVENT_TYPE', payload: eventType });
+    // Persist to database
+    updateLeadInfo({ event_type: eventType });
   };
 
   const setSelectedPackages = (packages: ServicePackage[]) => {
@@ -190,6 +200,16 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     dispatch({ type: 'SET_EVENT_DATE', payload: date });
     dispatch({ type: 'SET_EVENT_TIME', payload: time });
     dispatch({ type: 'SET_VENUE', payload: venue });
+    // Persist to database
+    updateLeadInfo({ 
+      event_date: date,
+      event_time: time,
+      venue_id: venue.id,
+      venue_name: venue.name,
+      region: venue.region,
+      current_step: 'vendor_selection',
+      completed_steps: [...(leadInfo?.completed_steps || []), 'event_details']
+    });
   };
 
   const setVendor = (serviceType: string, vendor: Vendor) => {
