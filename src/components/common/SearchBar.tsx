@@ -71,7 +71,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
         {/* Event Type Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            What type of event? <span className="text-gray-500 font-normal">(select one)</span>
+            What type of event are you planning? <span className="text-gray-500 font-normal">(select one)</span>
           </label>
           <div className="flex flex-wrap gap-2">
             {eventTypes.map((type) => (
