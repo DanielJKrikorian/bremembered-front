@@ -17,6 +17,7 @@ import { PackageSelection } from './pages/booking/PackageSelection';
 import { EventDetails } from './pages/booking/EventDetails';
 import { PackageQuestionnaire } from './pages/booking/PackageQuestionnaire';
 import { PackageCongratulations } from './pages/booking/PackageCongratulations';
+import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 
 function App() {
   // Mock authentication state - in a real app, this would come from context/state management
@@ -46,6 +47,7 @@ function App() {
               <Route path="/booking/packages" element={<PackageSelection />} />
               <Route path="/booking/event-details" element={<EventDetails />} />
               <Route path="/booking/congratulations" element={<PackageCongratulations />} />
+              <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
             </Routes>
           </main>
         </div>

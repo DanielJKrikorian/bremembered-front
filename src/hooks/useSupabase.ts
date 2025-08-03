@@ -242,6 +242,211 @@ export const useVibeTags = () => {
   return { vibeTags, loading, error };
 };
 
+export const useServiceAreas = (state?: string) => {
+  const [serviceAreas, setServiceAreas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServiceAreas = async () => {
+      try {
+        let query = supabase
+          .from('service_areas')
+          .select('*');
+
+        if (state) {
+          query = query.eq('state', state);
+        }
+
+        const { data, error } = await query.order('region');
+
+        if (error) throw error;
+        setServiceAreas(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServiceAreas();
+  }, [state]);
+
+  return { serviceAreas, loading, error };
+};
+
+export const useLanguages = () => {
+  const [languages, setLanguages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('languages')
+          .select('id, language')
+          .order('language');
+
+        if (error) throw error;
+        setLanguages(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLanguages();
+  }, []);
+
+  return { languages, loading, error };
+};
+
+export const useRecommendedVendors = (filters: {
+  servicePackageId: string;
+  eventDate: string;
+  region?: string;
+  languages?: string[];
+  styles?: number[];
+  vibes?: number[];
+}) => {
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecommendedVendors = async () => {
+      try {
+        // First, get vendors who offer this service package
+        const { data: vendorServicePackages, error: vspError } = await supabase
+          .from('vendor_service_packages')
+          .select('vendor_id')
+          .eq('service_package_id', filters.servicePackageId)
+          .eq('status', 'approved');
+
+        if (vspError) throw vspError;
+        
+        const vendorIds = vendorServicePackages?.map(vsp => vsp.vendor_id) || [];
+        
+        if (vendorIds.length === 0) {
+          setVendors([]);
+          return;
+        }
+
+        // Check availability on the event date
+        const { data: busyVendors, error: eventsError } = await supabase
+          .from('events')
+          .select('vendor_id')
+          .gte('start_time', filters.eventDate + 'T00:00:00')
+          .lt('start_time', filters.eventDate + 'T23:59:59')
+          .in('vendor_id', vendorIds);
+
+        if (eventsError) throw eventsError;
+        
+        const busyVendorIds = busyVendors?.map(event => event.vendor_id) || [];
+        const availableVendorIds = vendorIds.filter(id => !busyVendorIds.includes(id));
+
+        if (availableVendorIds.length === 0) {
+          setVendors([]);
+          return;
+        }
+
+        // Get vendor details
+        const { data: vendorData, error: vendorError } = await supabase
+          .from('vendors')
+          .select(`
+            id,
+            name,
+            profile,
+            rating,
+            profile_photo,
+            intro_video,
+            years_experience,
+            portfolio_photos,
+            portfolio_videos,
+            specialties,
+            awards
+          `)
+          .in('id', availableVendorIds);
+
+        if (vendorError) throw vendorError;
+
+        // Score vendors based on matching preferences
+        const scoredVendors = await Promise.all((vendorData || []).map(async (vendor) => {
+          let score = 0;
+          
+          // Check region match
+          if (filters.region) {
+            const { data: serviceAreaMatch } = await supabase
+              .from('vendor_service_areas')
+              .select('service_areas!inner(region)')
+              .eq('vendor_id', vendor.id)
+              .eq('service_areas.region', filters.region)
+              .single();
+            
+            if (serviceAreaMatch) score += 10; // High priority for region match
+          }
+
+          // Check language matches
+          if (filters.languages && filters.languages.length > 0) {
+            const { data: languageMatches } = await supabase
+              .from('vendor_languages')
+              .select('language_id')
+              .eq('vendor_id', vendor.id)
+              .in('language_id', filters.languages);
+            
+            score += (languageMatches?.length || 0) * 3;
+          }
+
+          // Check style matches
+          if (filters.styles && filters.styles.length > 0) {
+            const { data: styleMatches } = await supabase
+              .from('vendor_style_tags')
+              .select('style_id')
+              .eq('vendor_id', vendor.id)
+              .in('style_id', filters.styles);
+            
+            score += (styleMatches?.length || 0) * 2;
+          }
+
+          // Check vibe matches
+          if (filters.vibes && filters.vibes.length > 0) {
+            const { data: vibeMatches } = await supabase
+              .from('vendor_vibe_tags')
+              .select('vibe_id')
+              .eq('vendor_id', vendor.id)
+              .in('vibe_id', filters.vibes);
+            
+            score += (vibeMatches?.length || 0) * 2;
+          }
+
+          // Bonus for rating
+          if (vendor.rating) {
+            score += vendor.rating;
+          }
+
+          return { ...vendor, score };
+        }));
+
+        // Sort by score (highest first)
+        const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
+        setVendors(sortedVendors);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (filters.servicePackageId && filters.eventDate) {
+      fetchRecommendedVendors();
+    }
+  }, [filters]);
+
+  return { vendors, loading, error };
+};
+
 export const useVendorReviews = (vendorId: string) => {
   const [reviews, setReviews] = useState<VendorReview[]>([]);
   const [loading, setLoading] = useState(true);
