@@ -370,64 +370,109 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
-      // Use mock data immediately to avoid loading issues
-      const mockVendors = [
-        {
-          id: 'mock-vendor-1',
-          name: 'Elite Wedding Photography',
-          profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-          rating: 4.9,
-          years_experience: 8,
-          phone: '(555) 123-4567',
-          portfolio_photos: [
-            'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-          ],
-          specialties: ['Wedding Photography', 'Engagement Sessions', 'Fine Art'],
-          service_areas: ['Los Angeles', 'Orange County', 'Ventura County'],
-          profile: 'Award-winning wedding photographer with a passion for capturing authentic moments and emotions. Specializing in romantic, timeless imagery that tells your unique love story.',
-          awards: ['Best Wedding Photographer 2023', 'Couples Choice Award', 'Top Vendor Award'],
-          score: 9.8
-        },
-        {
-          id: 'mock-vendor-2',
-          name: 'Timeless Moments Studio',
-          profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
-          rating: 4.8,
-          years_experience: 6,
-          phone: '(555) 987-6543',
-          portfolio_photos: [
-            'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-            'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
-          ],
-          specialties: ['Destination Weddings', 'Outdoor Ceremonies', 'Editorial Style'],
-          service_areas: ['San Francisco', 'Napa Valley', 'Sonoma County'],
-          profile: 'Creative wedding photographer known for artistic compositions and natural lighting. Capturing the beauty and emotion of your special day with a documentary approach.',
-          awards: ['Rising Star Award 2023', 'Best Portfolio Award'],
-          score: 9.5
-        },
-        {
-          id: 'mock-vendor-3',
-          name: 'Golden Hour Photography',
-          profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
-          rating: 4.7,
-          years_experience: 10,
-          phone: '(555) 456-7890',
-          portfolio_photos: [
-            'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'
-          ],
-          specialties: ['Sunset Photography', 'Beach Weddings', 'Romantic Portraits'],
-          service_areas: ['San Diego', 'Orange County', 'Riverside County'],
-          profile: 'Experienced photographer specializing in golden hour and sunset wedding photography. Creating dreamy, romantic images that capture the magic of your celebration.',
-          awards: ['Veteran Photographer Award'],
-          score: 9.2
-        }
-      ];
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
 
-      // Always use mock data for now to avoid loading issues
-      setVendors(mockVendors);
-      setLoading(false);
+      try {
+        // Get vendors who offer the selected service package
+        let query = supabase!
+          .from('vendor_service_packages')
+          .select(`
+            vendor_id,
+            vendors!inner(
+              id,
+              name,
+              profile_photo,
+              rating,
+              years_experience,
+              phone,
+              portfolio_photos,
+              portfolio_videos,
+              intro_video,
+              specialties,
+              awards,
+              service_areas,
+              profile
+            )
+          `)
+          .eq('service_package_id', filters.servicePackageId)
+          .eq('status', 'approved');
+
+        const { data: vendorPackages, error: vendorError } = await query;
+
+        if (vendorError) throw vendorError;
+
+        let vendorData = vendorPackages?.map(item => item.vendors).filter(Boolean) || [];
+
+        // Filter by region if specified
+        if (filters.region && vendorData.length > 0) {
+          vendorData = vendorData.filter(vendor => 
+            vendor.service_areas?.some((area: string) => 
+              area.toLowerCase().includes(filters.region!.toLowerCase())
+            )
+          );
+        }
+
+        // If we have language preferences, filter vendors
+        if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
+          const { data: vendorLanguages } = await supabase!
+            .from('vendor_languages')
+            .select('vendor_id, language_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('language_id', filters.languages);
+
+          if (vendorLanguages && vendorLanguages.length > 0) {
+            const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithLanguages.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have style preferences, filter vendors
+        if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
+          const { data: vendorStyles } = await supabase!
+            .from('vendor_style_tags')
+            .select('vendor_id, style_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('style_id', filters.styles);
+
+          if (vendorStyles && vendorStyles.length > 0) {
+            const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithStyles.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have vibe preferences, filter vendors
+        if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
+          const { data: vendorVibes } = await supabase!
+            .from('vendor_vibe_tags')
+            .select('vendor_id, vibe_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('vibe_id', filters.vibes);
+
+          if (vendorVibes && vendorVibes.length > 0) {
+            const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithVibes.includes(vendor.id)
+            );
+          }
+        }
+
+        // Sort by rating (highest first)
+        vendorData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+        setVendors(vendorData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchRecommendedVendors();
