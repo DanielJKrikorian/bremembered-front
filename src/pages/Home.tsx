@@ -47,58 +47,6 @@ export const Home: React.FC = () => {
             <SearchBar onSearch={handleSearch} />
           </div>
 
-          {/* Service Selection Cards */}
-          <div className="max-w-6xl mx-auto mt-16">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                Or Start Your Booking Journey
-              </h2>
-              <p className="text-gray-600">
-                Choose the services you need and we'll guide you through the perfect booking experience
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {[
-                { id: 'Photography', name: 'Photography', icon: Camera, color: 'from-rose-500 to-pink-500' },
-                { id: 'Videography', name: 'Videography', icon: Video, color: 'from-amber-500 to-orange-500' },
-                { id: 'DJ Services', name: 'DJ Services', icon: Music, color: 'from-emerald-500 to-teal-500' },
-                { id: 'Coordination', name: 'Coordination', icon: Users, color: 'from-purple-500 to-indigo-500' },
-                { id: 'Planning', name: 'Planning', icon: Calendar, color: 'from-blue-500 to-cyan-500' },
-                { id: 'Packages', name: 'Packages', icon: Heart, color: 'from-gray-700 to-gray-900' }
-              ].map((service) => {
-                const Icon = service.icon;
-                return (
-                  <Card 
-                    key={service.id} 
-                    hover 
-                    className="overflow-hidden group cursor-pointer"
-                    onClick={() => navigate('/booking/services')}
-                  >
-                    <div className={`h-24 bg-gradient-to-br ${service.color} relative overflow-hidden flex items-center justify-center`}>
-                      <Icon className="w-8 h-8 text-white group-hover:scale-110 transition-transform duration-300" />
-                    </div>
-                    <div className="p-4 text-center">
-                      <h3 className="font-semibold text-gray-900 text-sm">{service.name}</h3>
-                      <p className="text-xs text-gray-600 mt-1">Browse & Book</p>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-            
-            <div className="text-center mt-8">
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={() => navigate('/booking/services')}
-                className="text-gray-700 border-gray-300 hover:bg-gray-50"
-              >
-                View All Services
-              </Button>
-            </div>
-          </div>
-
           {/* Trust Indicators */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center mt-16">
             <div className="flex flex-col items-center">
