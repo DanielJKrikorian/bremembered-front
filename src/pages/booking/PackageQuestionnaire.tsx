@@ -464,7 +464,13 @@ export const PackageQuestionnaire: React.FC = () => {
                               variant="secondary"
                               size="lg"
                              className="w-full bg-white text-black hover:bg-gray-50"
-                              onClick={handleSelectRecommended}
+                              onClick={() => navigate('/booking/congratulations', {
+                                state: {
+                                  selectedPackage: recommendedPackage,
+                                  selectedServices,
+                                  currentServiceIndex: 0
+                                }
+                              })}
                             >
                               Select This Package
                             </Button>
