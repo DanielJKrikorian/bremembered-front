@@ -125,3 +125,29 @@ export interface VendorReview {
   created_at: string;
   updated_at: string;
 }
+
+export interface LeadInformation {
+  id: string;
+  session_id?: string;
+  user_id?: string;
+  selected_services: string[];
+  event_type?: string;
+  event_date?: string;
+  event_time?: string;
+  venue_id?: string;
+  venue_name?: string;
+  region?: string;
+  languages: string[];
+  style_preferences: number[];
+  vibe_preferences: number[];
+  budget_range?: string;
+  coverage_preferences: string[];
+  hour_preferences?: string;
+  selected_packages: Record<string, ServicePackage>;
+  selected_vendors: Record<string, Vendor>;
+  total_estimated_cost: number;
+  current_step: string;
+  completed_steps: string[];
+  created_at: string;
+  updated_at: string;
+}
