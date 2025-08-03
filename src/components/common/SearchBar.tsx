@@ -23,7 +23,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     { id: 'DJ Services', name: 'DJ Services', icon: Music },
     { id: 'Coordination', name: 'Coordination', icon: Users },
     { id: 'Planning', name: 'Planning', icon: CalendarDays },
-    { id: 'Packages', name: 'Packages', icon: Package }
+    { id: 'Multiple Services', name: 'Multiple Services', icon: Package }
   ];
 
   const handleServiceToggle = (serviceId: string) => {
