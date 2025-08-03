@@ -263,9 +263,11 @@ export const PackageSelection: React.FC = () => {
               </div>
               <Button
                 variant="primary"
+                size="lg"
+                icon={ArrowRight}
                 onClick={handleContinue}
               >
-                Continue
+                Continue to Vendor Selection
               </Button>
             </div>
           </div>
