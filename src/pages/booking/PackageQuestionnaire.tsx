@@ -471,7 +471,7 @@ export const PackageQuestionnaire: React.FC = () => {
                             <Button
                               variant="outline"
                               size="lg"
-                             className="w-full border-white text-black hover:bg-white hover:text-rose-600"
+                             className="w-full border-white text-white hover:bg-white hover:text-rose-600"
                               icon={Eye}
                               onClick={handleViewAllOptions}
                             >
