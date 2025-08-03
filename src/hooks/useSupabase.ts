@@ -614,7 +614,33 @@ export const useLeadInformation = () => {
   useEffect(() => {
     const fetchOrCreateLeadInfo = async () => {
       if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
+        console.log('Supabase not available, using local storage fallback');
+        const defaultLeadInfo: LeadInformation = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          user_id: null,
+          selected_services: [],
+          event_type: null,
+          event_date: null,
+          event_time: null,
+          venue_id: null,
+          venue_name: null,
+          region: null,
+          languages: [],
+          style_preferences: [],
+          vibe_preferences: [],
+          budget_range: null,
+          coverage_preferences: [],
+          hour_preferences: null,
+          selected_packages: {},
+          selected_vendors: {},
+          total_estimated_cost: 0,
+          current_step: 'service_selection',
+          completed_steps: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLeadInfo(defaultLeadInfo);
         setLoading(false);
         return;
       }
@@ -629,46 +655,13 @@ export const useLeadInformation = () => {
           .eq('session_id', sessionId)
           .maybeSingle();
 
-        if (fetchError) {
-          // If table doesn't exist (42P01), create default lead info
-          if (fetchError.code === '42P01') {
-            console.log('leads_information table not found or no data, using local storage fallback');
-            // Create a default lead info object for local use
-            const defaultLeadInfo: LeadInformation = {
-              id: sessionId,
-              session_id: sessionId,
-              user_id: null,
-              selected_services: [],
-              event_type: null,
-              event_date: null,
-              event_time: null,
-              venue_id: null,
-              venue_name: null,
-              region: null,
-              languages: [],
-              style_preferences: [],
-              vibe_preferences: [],
-              budget_range: null,
-              coverage_preferences: [],
-              hour_preferences: null,
-              selected_packages: {},
-              selected_vendors: {},
-              total_estimated_cost: 0,
-              current_step: 'service_selection',
-              completed_steps: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            setLeadInfo(defaultLeadInfo);
-          } else {
-            throw fetchError;
-          }
-        } else if (existingLead) {
+        if (fetchError) throw fetchError;
+        
+        if (existingLead) {
           setLeadInfo(existingLead);
         } else {
-          // Create new lead information record
-          // Create a default lead info object for local use since RLS policies prevent anonymous inserts
-          const defaultLeadInfo: LeadInformation = {
+          // Create new lead information record in database
+          const newLeadInfo = {
             id: sessionId,
             session_id: sessionId,
             user_id: null,
@@ -689,13 +682,47 @@ export const useLeadInformation = () => {
             selected_vendors: {},
             total_estimated_cost: 0,
             current_step: 'service_selection',
-            completed_steps: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            completed_steps: []
           };
-          setLeadInfo(defaultLeadInfo);
+          
+          const { data: createdLead, error: createError } = await supabase!
+            .from('leads_information')
+            .insert(newLeadInfo)
+            .select()
+            .single();
+            
+          if (createError) throw createError;
+          setLeadInfo(createdLead);
         }
       } catch (err) {
+        console.error('Error with leads_information:', err);
+        // Fallback to local state if database operations fail
+        const defaultLeadInfo: LeadInformation = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          user_id: null,
+          selected_services: [],
+          event_type: null,
+          event_date: null,
+          event_time: null,
+          venue_id: null,
+          venue_name: null,
+          region: null,
+          languages: [],
+          style_preferences: [],
+          vibe_preferences: [],
+          budget_range: null,
+          coverage_preferences: [],
+          hour_preferences: null,
+          selected_packages: {},
+          selected_vendors: {},
+          total_estimated_cost: 0,
+          current_step: 'service_selection',
+          completed_steps: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLeadInfo(defaultLeadInfo);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
@@ -706,40 +733,40 @@ export const useLeadInformation = () => {
   }, []);
 
   const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
-    if (!isSupabaseAvailable() || !leadInfo) {
-      // If Supabase isn't available or table doesn't exist, update local state only
-      if (leadInfo) {
-        setLeadInfo({ ...leadInfo, ...updates });
-      }
-      return leadInfo;
+    if (!leadInfo) {
+      console.error('No lead info to update');
+      return null;
+    }
+
+    // Always update local state first
+    const updatedLeadInfo = { ...leadInfo, ...updates, updated_at: new Date().toISOString() };
+    setLeadInfo(updatedLeadInfo);
+
+    // Try to persist to database if available
+    if (!isSupabaseAvailable()) {
+      console.log('Supabase not available, using local state only');
+      return updatedLeadInfo;
     }
 
     try {
       const { data, error } = await supabase!
         .from('leads_information')
-        .update(updates)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', leadInfo.id)
         .select()
         .single();
 
       if (error) {
-        // If table doesn't exist, just update local state
-        if (error.code === '42P01') {
-          console.log('leads_information table not found, updating local state only');
-          const updatedLeadInfo = { ...leadInfo, ...updates };
-          setLeadInfo(updatedLeadInfo);
-          return updatedLeadInfo;
-        }
-        throw error;
+        console.error('Database update failed, using local state:', error);
+        return updatedLeadInfo;
       }
       
+      // Update local state with database response
       setLeadInfo(data);
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      // Fallback to local state update
-      const updatedLeadInfo = { ...leadInfo, ...updates };
-      setLeadInfo(updatedLeadInfo);
+      console.error('Error updating lead info:', err);
+      // Local state is already updated, just return it
       return updatedLeadInfo;
     }
   };
