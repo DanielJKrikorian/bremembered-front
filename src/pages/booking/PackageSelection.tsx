@@ -15,7 +15,9 @@ export const PackageSelection: React.FC = () => {
   const [filters, setFilters] = useState({
     minHours: 1,
     maxHours: 12,
-    coverage: [] as string[]
+    coverage: [] as string[],
+    minPrice: 0,
+    maxPrice: 500000
   });
   
   // Get current service being processed
@@ -26,7 +28,11 @@ export const PackageSelection: React.FC = () => {
   const { packages, loading, error } = useServicePackages(
     currentService, 
     state.eventType, 
-    filters
+    {
+      ...filters,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice
+    }
   );
 
   const coverageOptions = [
@@ -73,7 +79,9 @@ export const PackageSelection: React.FC = () => {
     setFilters({
       minHours: 1,
       maxHours: 12,
-      coverage: []
+      coverage: [],
+      minPrice: 0,
+      maxPrice: 500000
     });
   };
 
@@ -208,6 +216,13 @@ export const PackageSelection: React.FC = () => {
                   <span className="text-blue-800 text-sm">{state.venue.name}</span>
                 </div>
               )}
+              {state.venue && state.venue.city && state.venue.state && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  <span className="text-blue-700 font-medium">Location:</span>
+                  <span className="text-blue-800 text-sm">{state.venue.city}, {state.venue.state}</span>
+                </div>
+              )}
               {state.eventDate && (
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4 text-blue-600" />
@@ -266,6 +281,47 @@ export const PackageSelection: React.FC = () => {
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                         />
                         <div className="text-center text-sm font-medium text-gray-900">{filters.maxHours}h</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Price Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Price Range
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-600">Min Price</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="500000"
+                          step="5000"
+                          value={filters.minPrice}
+                          onChange={(e) => handleFilterChange('minPrice', parseInt(e.target.value))}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="text-center text-sm font-medium text-gray-900">
+                          {formatPrice(filters.minPrice)}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-600">Max Price</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="500000"
+                          step="5000"
+                          value={filters.maxPrice}
+                          onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value))}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="text-center text-sm font-medium text-gray-900">
+                          {formatPrice(filters.maxPrice)}
+                        </div>
                       </div>
                     </div>
                   </div>

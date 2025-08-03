@@ -6,6 +6,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
   minHours?: number;
   maxHours?: number;
   coverage?: string[];
+  minPrice?: number;
+  maxPrice?: number;
 }) => {
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +35,14 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         if (filters?.maxHours) {
           query = query.lte('hour_amount', filters.maxHours);
+        }
+
+        if (filters?.minPrice !== undefined) {
+          query = query.gte('price', filters.minPrice);
+        }
+
+        if (filters?.maxPrice !== undefined) {
+          query = query.lte('price', filters.maxPrice);
         }
 
         if (filters?.coverage && filters.coverage.length > 0) {
