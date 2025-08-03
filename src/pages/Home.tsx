@@ -25,7 +25,7 @@ export const Home: React.FC = () => {
     
     // Always go to booking flow when services are selected
     if (filters.selectedServices && filters.selectedServices.length > 0) {
-      navigate('/booking/event-details', { 
+      navigate('/booking/packages', { 
         state: { 
           selectedServices: filters.selectedServices,
           eventType: filters.eventType,
