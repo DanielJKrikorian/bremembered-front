@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Calendar, Clock, MapPin, Search, Plus, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
