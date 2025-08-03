@@ -414,15 +414,18 @@ export const VendorRecommendation: React.FC = () => {
                                     <div className="flex items-center space-x-3">
                                       <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                                         <span className="text-sm font-medium text-gray-700">
-                                          {review.couple_id ? 'C' : 'A'}
+                                          {review.couples?.name ? review.couples.name.charAt(0).toUpperCase() : 'A'}
                                         </span>
                                       </div>
                                       <div>
                                         <h5 className="font-medium text-gray-900">
-                                          {review.couple_id ? 'Verified Couple' : 'Anonymous'}
+                                          {review.couples?.name || 'Anonymous'}
                                         </h5>
                                         <p className="text-sm text-gray-500">
-                                          {new Date(review.created_at).toLocaleDateString()}
+                                          {review.couples?.wedding_date 
+                                            ? `Wedding: ${new Date(review.couples.wedding_date).toLocaleDateString()}`
+                                            : new Date(review.created_at).toLocaleDateString()
+                                          }
                                         </p>
                                       </div>
                                     </div>
