@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview } from '../types/booking';
+import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage } from '../types/booking';
 
-export const useServicePackages = (serviceTypes?: string[], eventType?: string) => {
+export const useServicePackages = (serviceType?: string, eventType?: string, filters?: {
+  minHours?: number;
+  maxHours?: number;
+  coverage?: string[];
+}) => {
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,15 +16,29 @@ export const useServicePackages = (serviceTypes?: string[], eventType?: string) 
       try {
         let query = supabase
           .from('service_packages')
-          .select('*')
+          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status')
           .eq('status', 'approved');
 
-        if (serviceTypes && serviceTypes.length > 0) {
-          query = query.in('service_type', serviceTypes);
+        if (serviceType) {
+          query = query.eq('service_type', serviceType);
         }
 
         if (eventType) {
           query = query.eq('event_type', eventType);
+        }
+
+        if (filters?.minHours) {
+          query = query.gte('hour_amount', filters.minHours);
+        }
+
+        if (filters?.maxHours) {
+          query = query.lte('hour_amount', filters.maxHours);
+        }
+
+        if (filters?.coverage && filters.coverage.length > 0) {
+          // Filter packages that have any of the selected coverage options
+          const coverageFilters = filters.coverage.map(c => `coverage.${c}.eq.true`).join(',');
+          query = query.or(coverageFilters);
         }
 
         const { data, error } = await query.order('price', { ascending: true });
@@ -35,11 +53,57 @@ export const useServicePackages = (serviceTypes?: string[], eventType?: string) 
     };
 
     fetchPackages();
-  }, [serviceTypes, eventType]);
+  }, [serviceType, eventType, filters]);
 
   return { packages, loading, error };
 };
 
+export const useVendorsByPackage = (servicePackageId: string) => {
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVendorsByPackage = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('vendor_service_packages')
+          .select(`
+            vendor_id,
+            vendors!inner(
+              id,
+              name,
+              profile_photo,
+              rating,
+              years_experience,
+              phone,
+              portfolio_photos,
+              specialties,
+              service_areas
+            )
+          `)
+          .eq('service_package_id', servicePackageId)
+          .eq('status', 'approved');
+
+        if (error) throw error;
+        
+        // Extract vendors from the joined data
+        const vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+        setVendors(vendorData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (servicePackageId) {
+      fetchVendorsByPackage();
+    }
+  }, [servicePackageId]);
+
+  return { vendors, loading, error };
+};
 export const useVendors = (serviceType?: string, location?: string) => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);

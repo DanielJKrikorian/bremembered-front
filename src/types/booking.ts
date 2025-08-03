@@ -42,6 +42,16 @@ export interface VendorService {
   updated_at: string;
 }
 
+export interface VendorServicePackage {
+  id: string;
+  vendor_id: string;
+  service_package_id: string;
+  service_type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
 export interface BookingIntent {
   id: string;
   couple_id: string;
@@ -75,6 +85,7 @@ export interface Venue {
 
 export interface BookingFlow {
   selectedServices: string[];
+  eventType?: string;
   selectedPackages: ServicePackage[];
   currentServiceIndex: number;
   servicePackages: Record<string, ServicePackage>;

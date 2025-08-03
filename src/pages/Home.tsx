@@ -6,17 +6,29 @@ import { Card } from '../components/ui/Card';
 import { SearchBar } from '../components/common/SearchBar';
 import { ServiceCard } from '../components/booking/ServiceCard';
 import { mockBundles } from '../lib/mockData';
+import { useBooking } from '../context/BookingContext';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { setSelectedServices, setEventType } = useBooking();
 
   const handleSearch = (filters: any) => {
     console.log('Search filters:', filters);
+    
+    // Set the booking context with search data
+    if (filters.selectedServices && filters.selectedServices.length > 0) {
+      setSelectedServices(filters.selectedServices);
+    }
+    if (filters.eventType) {
+      setEventType(filters.eventType);
+    }
+    
     // Always go to booking flow when services are selected
     if (filters.selectedServices && filters.selectedServices.length > 0) {
       navigate('/booking/event-details', { 
         state: { 
           selectedServices: filters.selectedServices,
+          eventType: filters.eventType,
           location: filters.location,
           selectedVenue: filters.selectedVenue,
           date: filters.date

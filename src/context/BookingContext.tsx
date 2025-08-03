@@ -5,6 +5,7 @@ interface BookingState extends BookingFlow {}
 
 type BookingAction =
   | { type: 'SET_SELECTED_SERVICES'; payload: string[] }
+  | { type: 'SET_EVENT_TYPE'; payload: string }
   | { type: 'SET_SELECTED_PACKAGES'; payload: ServicePackage[] }
   | { type: 'SET_CURRENT_SERVICE_INDEX'; payload: number }
   | { type: 'SET_SERVICE_PACKAGE'; payload: { serviceType: string; servicePackage: ServicePackage } }
@@ -36,6 +37,9 @@ const bookingReducer = (state: BookingState, action: BookingAction): BookingStat
   switch (action.type) {
     case 'SET_SELECTED_SERVICES':
       return { ...state, selectedServices: action.payload };
+    
+    case 'SET_EVENT_TYPE':
+      return { ...state, eventType: action.payload };
     
     case 'SET_SELECTED_PACKAGES':
       const totalCost = action.payload.reduce((sum, pkg) => sum + pkg.price, 0);
@@ -139,6 +143,7 @@ interface BookingContextType {
   state: BookingState;
   dispatch: React.Dispatch<BookingAction>;
   setSelectedServices: (services: string[]) => void;
+  setEventType: (eventType: string) => void;
   setSelectedPackages: (packages: ServicePackage[]) => void;
   setCurrentServiceIndex: (index: number) => void;
   setServicePackage: (serviceType: string, servicePackage: ServicePackage) => void;
@@ -159,6 +164,10 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const setSelectedServices = (services: string[]) => {
     dispatch({ type: 'SET_SELECTED_SERVICES', payload: services });
+  };
+
+  const setEventType = (eventType: string) => {
+    dispatch({ type: 'SET_EVENT_TYPE', payload: eventType });
   };
 
   const setSelectedPackages = (packages: ServicePackage[]) => {
@@ -212,6 +221,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
       state,
       dispatch,
       setSelectedServices,
+      setEventType,
       setSelectedPackages,
       setCurrentServiceIndex,
       setServicePackage,
