@@ -685,7 +685,37 @@ export const useLeadInformation = () => {
             .select()
             .single();
 
-          if (createError) throw createError;
+          if (createError) {
+            console.log('Failed to create lead info in database, using local fallback:', createError);
+            // Create a default lead info object for local use
+            const defaultLeadInfo: LeadInformation = {
+              id: sessionId,
+              session_id: sessionId,
+              user_id: null,
+              selected_services: [],
+              event_type: null,
+              event_date: null,
+              event_time: null,
+              venue_id: null,
+              venue_name: null,
+              region: null,
+              languages: [],
+              style_preferences: [],
+              vibe_preferences: [],
+              budget_range: null,
+              coverage_preferences: [],
+              hour_preferences: null,
+              selected_packages: {},
+              selected_vendors: {},
+              total_estimated_cost: 0,
+              current_step: 'service_selection',
+              completed_steps: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            setLeadInfo(defaultLeadInfo);
+            return;
+          }
           setLeadInfo(newLead);
         }
       } catch (err) {
