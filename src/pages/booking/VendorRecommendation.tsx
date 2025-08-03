@@ -419,7 +419,11 @@ export const VendorRecommendation: React.FC = () => {
                                       </div>
                                       <div>
                                         <h5 className="font-medium text-gray-900">
-                                          {review.couples?.name || 'Anonymous'}
+                                          {review.couples?.name || 'Anonymous'} 
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 ml-2">
+                                            <Check className="w-3 h-3 mr-1" />
+                                            Verified Couple
+                                          </span>
                                         </h5>
                                         <p className="text-sm text-gray-500">
                                           {review.couples?.wedding_date 
