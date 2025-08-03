@@ -423,12 +423,17 @@ export const PackageQuestionnaire: React.FC = () => {
                           <div>
                             <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
                             <div className="space-y-2">
-                              {getPackageCoverage(recommendedPackage.coverage || {}).slice(0, 4).map((coverageItem, index) => (
+                              {(recommendedPackage.coverage?.events || []).slice(0, 4).map((event: string, index: number) => (
                                 <div key={index} className="flex items-center space-x-2">
                                   <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="text-sm text-gray-700">{coverageItem}</span>
+                                  <span className="text-sm text-gray-700">{event}</span>
                                 </div>
                               ))}
+                              {(recommendedPackage.coverage?.events?.length || 0) > 4 && (
+                                <div className="text-sm text-gray-500">
+                                  +{(recommendedPackage.coverage?.events?.length || 0) - 4} more events
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -467,6 +472,7 @@ export const PackageQuestionnaire: React.FC = () => {
                               variant="outline"
                               size="lg"
                               className="w-full border-white text-white hover:bg-white/20 hover:border-white/50"
+                              className="w-full border-white text-white hover:bg-white hover:text-rose-600"
                               icon={Eye}
                               onClick={handleViewAllOptions}
                             >
