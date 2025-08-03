@@ -430,6 +430,15 @@ export const useRecommendedVendors = (filters: {
           .from('vendors')
           .select(`
             id,
+            name,
+            profile_photo,
+            rating,
+            years_experience,
+            phone,
+            portfolio_photos,
+            specialties,
+            service_areas
+          `)
         // For now, just return the available vendors with basic scoring
         console.log('Step 4: Scoring vendors');
         const scoredVendors = (vendorData || []).map(vendor => ({
