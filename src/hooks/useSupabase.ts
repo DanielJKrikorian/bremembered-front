@@ -667,56 +667,33 @@ export const useLeadInformation = () => {
           setLeadInfo(existingLead);
         } else {
           // Create new lead information record
-          const { data: newLead, error: createError } = await supabase!
-            .from('leads_information')
-            .insert({
-              session_id: sessionId,
-              selected_services: [],
-              languages: [],
-              style_preferences: [],
-              vibe_preferences: [],
-              coverage_preferences: [],
-              selected_packages: {},
-              selected_vendors: {},
-              total_estimated_cost: 0,
-              current_step: 'service_selection',
-              completed_steps: []
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.log('Failed to create lead info in database, using local fallback:', createError);
-            // Create a default lead info object for local use
-            const defaultLeadInfo: LeadInformation = {
-              id: sessionId,
-              session_id: sessionId,
-              user_id: null,
-              selected_services: [],
-              event_type: null,
-              event_date: null,
-              event_time: null,
-              venue_id: null,
-              venue_name: null,
-              region: null,
-              languages: [],
-              style_preferences: [],
-              vibe_preferences: [],
-              budget_range: null,
-              coverage_preferences: [],
-              hour_preferences: null,
-              selected_packages: {},
-              selected_vendors: {},
-              total_estimated_cost: 0,
-              current_step: 'service_selection',
-              completed_steps: [],
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            setLeadInfo(defaultLeadInfo);
-            return;
-          }
-          setLeadInfo(newLead);
+          // Create a default lead info object for local use since RLS policies prevent anonymous inserts
+          const defaultLeadInfo: LeadInformation = {
+            id: sessionId,
+            session_id: sessionId,
+            user_id: null,
+            selected_services: [],
+            event_type: null,
+            event_date: null,
+            event_time: null,
+            venue_id: null,
+            venue_name: null,
+            region: null,
+            languages: [],
+            style_preferences: [],
+            vibe_preferences: [],
+            budget_range: null,
+            coverage_preferences: [],
+            hour_preferences: null,
+            selected_packages: {},
+            selected_vendors: {},
+            total_estimated_cost: 0,
+            current_step: 'service_selection',
+            completed_steps: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setLeadInfo(defaultLeadInfo);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
