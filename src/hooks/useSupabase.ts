@@ -491,7 +491,17 @@ export const useVendorReviews = (vendorId: string) => {
       try {
         const { data, error } = await supabase!
           .from('vendor_reviews')
-          .select('*')
+          .select(`
+            id,
+            communication_rating,
+            experience_rating,
+            quality_rating,
+            overall_rating,
+            feedback,
+            vendor_response,
+            created_at,
+            couple_id
+          `)
           .eq('vendor_id', vendorId)
           .order('created_at', { ascending: false });
 

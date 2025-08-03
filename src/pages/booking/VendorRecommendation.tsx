@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Star, MapPin, Award, Camera, Video, Music, Users
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useRecommendedVendors } from '../../hooks/useSupabase';
+import { useRecommendedVendors, useVendorReviews } from '../../hooks/useSupabase';
 
 export const VendorRecommendation: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +38,9 @@ export const VendorRecommendation: React.FC = () => {
   });
 
   const recommendedVendor = vendors[0]; // Top recommended vendor
+
+  // Get reviews for the recommended vendor
+  const { reviews, loading: reviewsLoading } = useVendorReviews(recommendedVendor?.id || '');
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -359,52 +362,118 @@ export const VendorRecommendation: React.FC = () => {
                             <div className="flex items-center space-x-2">
                               <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                               <span className="text-lg font-semibold">{recommendedVendor.rating}</span>
+                              <span className="text-gray-600">({reviews.length} reviews)</span>
                             </div>
                           )}
                         </div>
 
-                        {/* Mock reviews - in real app, fetch from vendor_reviews table */}
-                        <div className="space-y-6">
-                          {[
-                            {
-                              name: 'Sarah M.',
-                              date: '2 weeks ago',
-                              rating: 5,
-                              review: 'Absolutely incredible work! Professional, creative, and captured our day perfectly.',
-                              helpful: 12
-                            },
-                            {
-                              name: 'Michael R.',
-                              date: '1 month ago',
-                              rating: 5,
-                              review: 'Outstanding service from start to finish. Highly recommend!',
-                              helpful: 8
-                            }
-                          ].map((review, index) => (
-                            <div key={index} className="border-b border-gray-200 pb-6">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                                    <span className="text-sm font-medium text-gray-700">{review.name[0]}</span>
-                                  </div>
-                                  <div>
-                                    <h5 className="font-medium text-gray-900">{review.name}</h5>
-                                    <p className="text-sm text-gray-500">{review.date}</p>
-                                  </div>
+                        {reviewsLoading ? (
+                          <div className="text-center py-8">
+                            <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                            <p className="text-gray-600">Loading reviews...</p>
+                          </div>
+                        ) : reviews.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-500">No reviews yet for this vendor.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Rating Breakdown */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {(reviews.reduce((sum, r) => sum + (r.communication_rating || 0), 0) / reviews.length).toFixed(1)}
                                 </div>
-                                <div className="flex items-center">
-                                  {[...Array(review.rating)].map((_, i) => (
-                                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                  ))}
-                                </div>
+                                <div className="text-sm text-gray-600">Communication</div>
                               </div>
-                              <p className="text-gray-600 mb-3">{review.review}</p>
-                              <button className="text-sm text-gray-500 hover:text-gray-700">
-                                Helpful ({review.helpful})
-                              </button>
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {(reviews.reduce((sum, r) => sum + (r.experience_rating || 0), 0) / reviews.length).toFixed(1)}
+                                </div>
+                                <div className="text-sm text-gray-600">Experience</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {(reviews.reduce((sum, r) => sum + (r.quality_rating || 0), 0) / reviews.length).toFixed(1)}
+                                </div>
+                                <div className="text-sm text-gray-600">Quality</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {(reviews.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / reviews.length).toFixed(1)}
+                                </div>
+                                <div className="text-sm text-gray-600">Overall</div>
+                              </div>
                             </div>
-                          ))}
-                        </div>
+
+                            {/* Individual Reviews */}
+                            <div className="space-y-6">
+                              {reviews.map((review) => (
+                                <div key={review.id} className="border-b border-gray-200 pb-6">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                                        <span className="text-sm font-medium text-gray-700">
+                                          {review.couple_id ? 'C' : 'A'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <h5 className="font-medium text-gray-900">
+                                          {review.couple_id ? 'Verified Couple' : 'Anonymous'}
+                                        </h5>
+                                        <p className="text-sm text-gray-500">
+                                          {new Date(review.created_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center">
+                                      {review.overall_rating && [...Array(review.overall_rating)].map((_, i) => (
+                                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                      ))}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Rating Details */}
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-xs">
+                                    <div className="flex items-center space-x-1">
+                                      <span className="text-gray-500">Communication:</span>
+                                      <span className="font-medium">{review.communication_rating}/5</span>
+                                    </div>
+                                    {review.experience_rating && (
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Experience:</span>
+                                        <span className="font-medium">{review.experience_rating}/5</span>
+                                      </div>
+                                    )}
+                                    {review.quality_rating && (
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Quality:</span>
+                                        <span className="font-medium">{review.quality_rating}/5</span>
+                                      </div>
+                                    )}
+                                    {review.overall_rating && (
+                                      <div className="flex items-center space-x-1">
+                                        <span className="text-gray-500">Overall:</span>
+                                        <span className="font-medium">{review.overall_rating}/5</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {review.feedback && (
+                                    <p className="text-gray-600 mb-3">{review.feedback}</p>
+                                  )}
+                                  
+                                  {review.vendor_response && (
+                                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                                      <h6 className="font-medium text-blue-900 mb-2">Vendor Response:</h6>
+                                      <p className="text-blue-800 text-sm">{review.vendor_response}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
