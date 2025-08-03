@@ -578,6 +578,14 @@ export const EventDetails: React.FC = () => {
               >
                 Continue
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(5)}
+                >
+                  Skip for now
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -643,6 +651,14 @@ export const EventDetails: React.FC = () => {
               >
                 Continue
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(5)}
+                >
+                  Skip for now
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -708,6 +724,14 @@ export const EventDetails: React.FC = () => {
               >
                 Find My Perfect {currentService}
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleContinue}
+                >
+                  Skip for now
+                </Button>
+              </div>
             </div>
           </Card>
         )}
