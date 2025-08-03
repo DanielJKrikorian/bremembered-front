@@ -95,7 +95,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
         {/* Service Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            What services do you need? <span className="text-gray-500 font-normal">(select all you'd like to book)</span>
+            What services are you looking to book? <span className="text-gray-500 font-normal">(select all you'd like to book)</span>
           </label>
           <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
             {serviceTypes.map((service) => {
