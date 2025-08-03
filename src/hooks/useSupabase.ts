@@ -466,8 +466,8 @@ export const useRecommendedVendors = (filters: {
           .select(`
             id,
             name,
+           rating,
             profile_photo,
-            rating,
             years_experience,
             phone,
             portfolio_photos,
@@ -485,14 +485,26 @@ export const useRecommendedVendors = (filters: {
         console.log('=== STEP 4: Scoring vendors ===');
         const scoredVendors = (vendorData || []).map(vendor => ({
           ...vendor,
-          score: (vendor.rating || 0) + Math.random() // Add randomness for equal ratings
+         score: (vendor.rating || 0) * 2 + (vendor.years_experience || 0) * 0.1 + Math.random() * 0.1 // Rating weighted heavily, experience as tiebreaker
         }));
 
-        console.log('23. Scored vendors:', scoredVendors.map(v => ({ id: v.id, name: v.name, score: v.score })));
+       console.log('23. Scored vendors:', scoredVendors.map(v => ({ 
+         id: v.id, 
+         name: v.name, 
+         rating: v.rating, 
+         experience: v.years_experience, 
+         score: v.score 
+       })));
         
         // Sort by score and randomize equal scores
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
-        console.log('24. Final sorted vendors:', sortedVendors.map(v => ({ id: v.id, name: v.name, score: v.score })));
+       console.log('24. Final sorted vendors:', sortedVendors.map(v => ({ 
+         id: v.id, 
+         name: v.name, 
+         rating: v.rating, 
+         experience: v.years_experience, 
+         score: v.score 
+       })));
         console.log('25. SUCCESS: Setting vendors in state');
         
         setVendors(sortedVendors);
