@@ -9,7 +9,6 @@ export const PackageCongratulations: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useBooking();
-  const [showConfetti, setShowConfetti] = useState(true);
 
   // Get package data from navigation state
   const selectedPackage = location.state?.selectedPackage;
@@ -17,15 +16,6 @@ export const PackageCongratulations: React.FC = () => {
   const currentServiceIndex = location.state?.currentServiceIndex || 0;
   const currentService = selectedServices[currentServiceIndex];
   const nextService = selectedServices[currentServiceIndex + 1];
-
-  useEffect(() => {
-    // Hide confetti after 3 seconds
-    const timer = setTimeout(() => {
-      setShowConfetti(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -80,29 +70,7 @@ export const PackageCongratulations: React.FC = () => {
   const NextServiceIcon = nextService ? getServiceIcon(nextService) : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50 relative overflow-hidden">
-      {/* Confetti Animation */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-bounce"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
-              }}
-            >
-              <div className={`w-2 h-2 rounded-full ${
-                ['bg-rose-500', 'bg-amber-500', 'bg-emerald-500', 'bg-purple-500', 'bg-blue-500'][Math.floor(Math.random() * 5)]
-              }`}></div>
-            </div>
-          ))}
-        </div>
-      )}
-
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Congratulations Header */}
         <div className="text-center mb-12">
