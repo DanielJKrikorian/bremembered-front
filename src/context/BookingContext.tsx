@@ -212,6 +212,36 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  const setEventDetailsWithPreferences = (
+    date: string, 
+    time: string, 
+    venue: Venue | null, 
+    region: string, 
+    languages: string[], 
+    styles: number[], 
+    vibes: number[]
+  ) => {
+    if (venue) {
+      dispatch({ type: 'SET_VENUE', payload: venue });
+    }
+    dispatch({ type: 'SET_EVENT_DATE', payload: date });
+    dispatch({ type: 'SET_EVENT_TIME', payload: time });
+    
+    // Persist to database with all preferences
+    updateLeadInfo({ 
+      event_date: date,
+      event_time: time,
+      venue_id: venue?.id || null,
+      venue_name: venue?.name || null,
+      region: venue?.region || region,
+      languages,
+      style_preferences: styles,
+      vibe_preferences: vibes,
+      current_step: 'vendor_selection',
+      completed_steps: [...(leadInfo?.completed_steps || []), 'event_details']
+    });
+  };
+
   const setVendor = (serviceType: string, vendor: Vendor) => {
     dispatch({ type: 'SET_VENDOR', payload: { serviceType, vendor } });
   };
