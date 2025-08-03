@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Clock, DollarSign, Camera, Check, Star, Sparkles, Eye } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useBooking } from '../../context/BookingContext';
@@ -9,6 +9,7 @@ import { useServicePackages } from '../../hooks/useSupabase';
 export const PackageQuestionnaire: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { state } = useBooking();
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState({
@@ -18,9 +19,8 @@ export const PackageQuestionnaire: React.FC = () => {
   });
 
   // Get the search data from navigation state
-  const searchData = location.state || {};
-  const selectedServices = searchData.selectedServices || state.selectedServices || [];
-  const eventType = searchData.eventType || state.eventType || 'Wedding';
+  const selectedServices = searchParams.get('services')?.split(',') || state.selectedServices || [];
+  const eventType = searchParams.get('eventType') || state.eventType || 'Wedding';
   const currentService = selectedServices[0]; // Start with first service
 
   const coverageOptions = [
