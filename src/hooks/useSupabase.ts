@@ -439,6 +439,10 @@ export const useRecommendedVendors = (filters: {
             specialties,
             service_areas
           `)
+          .in('id', availableVendorIds);
+
+        if (vendorError) throw vendorError;
+        
         // For now, just return the available vendors with basic scoring
         console.log('Step 4: Scoring vendors');
         const scoredVendors = (vendorData || []).map(vendor => ({
@@ -507,9 +511,3 @@ export const useVendorReviews = (vendorId: string) => {
 
   return { reviews, loading, error };
 };
-          )
-      }
-    }
-  }
-  )
-}
