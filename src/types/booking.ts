@@ -124,6 +124,10 @@ export interface VendorReview {
   vendor_response?: string;
   created_at: string;
   updated_at: string;
+  couples?: {
+    name: string;
+    wedding_date: string;
+  };
 }
 
 export interface LeadInformation {

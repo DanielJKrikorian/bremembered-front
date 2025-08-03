@@ -443,6 +443,50 @@ export const useVendorReviews = (vendorId: string) => {
 
   useEffect(() => {
     const fetchReviews = async () => {
+      // Check if this is a mock vendor ID
+      if (vendorId && vendorId.startsWith('mock-vendor-')) {
+        // Return mock review data for mock vendors
+        const mockReviews: VendorReview[] = [
+          {
+            id: 'mock-review-1',
+            vendor_id: vendorId,
+            couple_id: 'mock-couple-1',
+            communication_rating: 5,
+            experience_rating: 5,
+            quality_rating: 5,
+            overall_rating: 5,
+            feedback: 'Absolutely amazing photographer! They captured every special moment perfectly and were so professional throughout the entire process.',
+            vendor_response: 'Thank you so much for the kind words! It was an honor to be part of your special day.',
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:00:00Z',
+            couples: {
+              name: 'Sarah & Michael',
+              wedding_date: '2024-01-10'
+            }
+          },
+          {
+            id: 'mock-review-2',
+            vendor_id: vendorId,
+            couple_id: 'mock-couple-2',
+            communication_rating: 5,
+            experience_rating: 4,
+            quality_rating: 5,
+            overall_rating: 5,
+            feedback: 'Incredible work and attention to detail. The photos exceeded our expectations and we couldn\'t be happier!',
+            vendor_response: null,
+            created_at: '2023-12-20T14:30:00Z',
+            updated_at: '2023-12-20T14:30:00Z',
+            couples: {
+              name: 'Jessica & David',
+              wedding_date: '2023-12-15'
+            }
+          }
+        ];
+        setReviews(mockReviews);
+        setLoading(false);
+        return;
+      }
+
       if (!isSupabaseAvailable()) {
         setError('Supabase connection not available. Please check environment variables.');
         setLoading(false);
