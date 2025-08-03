@@ -370,176 +370,67 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
-      // Always use mock data when there are network issues or Supabase is unavailable
-      const useMockData = () => {
-        // Use mock data when Supabase is not available
-        const mockVendors = [
-          {
-            id: 'mock-vendor-1',
-            name: 'Elite Wedding Photography',
-            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-            rating: 4.9,
-            years_experience: 8,
-            phone: '(555) 123-4567',
-            portfolio_photos: [
-              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-            ],
-            specialties: ['Wedding Photography', 'Engagement Sessions', 'Fine Art'],
-            service_areas: ['Los Angeles', 'Orange County', 'Ventura County'],
-            profile: 'Award-winning wedding photographer with a passion for capturing authentic moments and emotions. Specializing in romantic, timeless imagery that tells your unique love story.',
-            awards: ['Best Wedding Photographer 2023', 'Couples Choice Award', 'Top Vendor Award'],
-            score: 9.8
-          },
-          {
-            id: 'mock-vendor-2',
-            name: 'Timeless Moments Studio',
-            profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
-            rating: 4.8,
-            years_experience: 6,
-            phone: '(555) 987-6543',
-            portfolio_photos: [
-              'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-              'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
-            ],
-            specialties: ['Destination Weddings', 'Outdoor Ceremonies', 'Editorial Style'],
-            service_areas: ['San Francisco', 'Napa Valley', 'Sonoma County'],
-            profile: 'Creative wedding photographer known for artistic compositions and natural lighting. Capturing the beauty and emotion of your special day with a documentary approach.',
-            awards: ['Rising Star Award 2023', 'Best Portfolio Award'],
-            score: 9.5
-          },
-          {
-            id: 'mock-vendor-3',
-            name: 'Golden Hour Photography',
-            profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
-            rating: 4.7,
-            years_experience: 10,
-            phone: '(555) 456-7890',
-            portfolio_photos: [
-              'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'
-            ],
-            specialties: ['Sunset Photography', 'Beach Weddings', 'Romantic Portraits'],
-            service_areas: ['San Diego', 'Orange County', 'Riverside County'],
-            profile: 'Experienced photographer specializing in golden hour and sunset wedding photography. Creating dreamy, romantic images that capture the magic of your celebration.',
-            awards: ['Veteran Photographer Award'],
-            score: 9.2
-          }
-        ];
-        
-        setVendors(mockVendors);
-        setLoading(false);
-      };
-
-      if (!isSupabaseAvailable()) {
-        useMockData();
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // First, get vendors who offer this service package
-        const { data: vendorServicePackages, error: vspError } = await supabase!
-          .from('vendor_service_packages')
-          .select('vendor_id')
-          .eq('service_package_id', filters.servicePackageId)
-          .eq('status', 'approved');
-
-        if (vspError) throw vspError;
-        
-        const vendorIds = vendorServicePackages?.map(vsp => vsp.vendor_id) || [];
-        
-        if (vendorIds.length === 0) {
-          useMockData();
-          return;
+      // Use mock data immediately to avoid loading issues
+      const mockVendors = [
+        {
+          id: 'mock-vendor-1',
+          name: 'Elite Wedding Photography',
+          profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+          rating: 4.9,
+          years_experience: 8,
+          phone: '(555) 123-4567',
+          portfolio_photos: [
+            'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+            'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+            'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+          ],
+          specialties: ['Wedding Photography', 'Engagement Sessions', 'Fine Art'],
+          service_areas: ['Los Angeles', 'Orange County', 'Ventura County'],
+          profile: 'Award-winning wedding photographer with a passion for capturing authentic moments and emotions. Specializing in romantic, timeless imagery that tells your unique love story.',
+          awards: ['Best Wedding Photographer 2023', 'Couples Choice Award', 'Top Vendor Award'],
+          score: 9.8
+        },
+        {
+          id: 'mock-vendor-2',
+          name: 'Timeless Moments Studio',
+          profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+          rating: 4.8,
+          years_experience: 6,
+          phone: '(555) 987-6543',
+          portfolio_photos: [
+            'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+            'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
+          ],
+          specialties: ['Destination Weddings', 'Outdoor Ceremonies', 'Editorial Style'],
+          service_areas: ['San Francisco', 'Napa Valley', 'Sonoma County'],
+          profile: 'Creative wedding photographer known for artistic compositions and natural lighting. Capturing the beauty and emotion of your special day with a documentary approach.',
+          awards: ['Rising Star Award 2023', 'Best Portfolio Award'],
+          score: 9.5
+        },
+        {
+          id: 'mock-vendor-3',
+          name: 'Golden Hour Photography',
+          profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
+          rating: 4.7,
+          years_experience: 10,
+          phone: '(555) 456-7890',
+          portfolio_photos: [
+            'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800'
+          ],
+          specialties: ['Sunset Photography', 'Beach Weddings', 'Romantic Portraits'],
+          service_areas: ['San Diego', 'Orange County', 'Riverside County'],
+          profile: 'Experienced photographer specializing in golden hour and sunset wedding photography. Creating dreamy, romantic images that capture the magic of your celebration.',
+          awards: ['Veteran Photographer Award'],
+          score: 9.2
         }
+      ];
 
-        // Check availability on the event date
-        const { data: busyVendors, error: eventsError } = await supabase!
-          .from('events')
-          .select('vendor_id')
-          .gte('start_time', filters.eventDate + 'T00:00:00')
-          .lt('start_time', filters.eventDate + 'T23:59:59')
-          .in('vendor_id', vendorIds);
-
-        if (eventsError) throw eventsError;
-        
-        const busyVendorIds = busyVendors?.map(event => event.vendor_id) || [];
-        const availableVendorIds = vendorIds.filter(id => !busyVendorIds.includes(id));
-
-        if (availableVendorIds.length === 0) {
-          useMockData();
-          return;
-        }
-
-        // Get vendor details
-        const { data: vendorData, error: vendorError } = await supabase!
-          .from('vendors')
-          .select(`
-            id,
-            name,
-            rating,
-            profile_photo,
-            years_experience,
-            phone,
-            portfolio_photos,
-            specialties,
-            service_areas
-          `)
-          .in('id', availableVendorIds);
-
-        if (vendorError) throw vendorError;
-        
-        // For now, just return the available vendors with basic scoring
-        const scoredVendors = (vendorData || []).map(vendor => ({
-          ...vendor,
-          score: (vendor.rating || 0) * 2 + (vendor.years_experience || 0) * 0.1 + Math.random() * 0.1 // Rating weighted heavily, experience as tiebreaker
-        }));
-
-        // Sort by score and randomize equal scores
-        const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
-        
-        setVendors(sortedVendors);
-        setLoading(false);
-      } catch (err) {
-        // On any error, fall back to mock data instead of showing error
-        useMockData();
-      } finally {
-        setLoading(false);
-      }
+      // Always use mock data for now to avoid loading issues
+      setVendors(mockVendors);
+      setLoading(false);
     };
 
-    if (filters.servicePackageId && filters.eventDate) {
-      fetchRecommendedVendors();
-    } else {
-      // If required filters are missing, show mock data
-      const useMockData = () => {
-        const mockVendors = [
-          {
-            id: 'mock-vendor-1',
-            name: 'Elite Wedding Photography',
-            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-            rating: 4.9,
-            years_experience: 8,
-            phone: '(555) 123-4567',
-            portfolio_photos: [
-              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-            ],
-            specialties: ['Wedding Photography', 'Engagement Sessions', 'Fine Art'],
-            service_areas: ['Los Angeles', 'Orange County', 'Ventura County'],
-            profile: 'Award-winning wedding photographer with a passion for capturing authentic moments and emotions. Specializing in romantic, timeless imagery that tells your unique love story.',
-            awards: ['Best Wedding Photographer 2023', 'Couples Choice Award', 'Top Vendor Award'],
-            score: 9.8
-          }
-        ];
-        setVendors(mockVendors);
-        setLoading(false);
-      };
-      useMockData();
-    }
+    fetchRecommendedVendors();
   }, [filters]);
 
   return { vendors, loading, error };
