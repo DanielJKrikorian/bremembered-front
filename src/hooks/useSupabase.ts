@@ -378,31 +378,60 @@ export const useRecommendedVendors = (filters: {
 
       setLoading(true);
       setError(null);
-      console.log('Starting vendor search with filters:', filters);
+      console.log('=== VENDOR SEARCH DEBUG ===');
+      console.log('1. Starting vendor search with filters:', JSON.stringify(filters, null, 2));
+      console.log('2. Service Package ID:', filters.servicePackageId);
+      console.log('3. Event Date:', filters.eventDate);
+      console.log('4. Region:', filters.region);
       
       try {
         // First, get vendors who offer this service package
-        console.log('Step 1: Getting vendors for service package:', filters.servicePackageId);
+        console.log('=== STEP 1: Getting vendors for service package ===');
         const { data: vendorServicePackages, error: vspError } = await supabase!
           .from('vendor_service_packages')
           .select('vendor_id')
           .eq('service_package_id', filters.servicePackageId)
           .eq('status', 'approved');
 
+        console.log('4. Vendor service packages query result:', { data: vendorServicePackages, error: vspError });
+        
         if (vspError) throw vspError;
         
         const vendorIds = vendorServicePackages?.map(vsp => vsp.vendor_id) || [];
-        console.log('Found vendor IDs for package:', vendorIds);
+        console.log('5. Found vendor IDs for package:', vendorIds);
+        console.log('6. Number of vendors found:', vendorIds.length);
         
         if (vendorIds.length === 0) {
-          console.log('No vendors found for this service package');
+          console.log('7. ERROR: No vendors found for this service package');
+          console.log('8. Checking if service package exists...');
+          
+          // Check if the service package exists at all
+          const { data: packageCheck, error: packageError } = await supabase!
+            .from('service_packages')
+            .select('id, name, service_type')
+            .eq('id', filters.servicePackageId);
+          
+          console.log('9. Service package check:', { data: packageCheck, error: packageError });
+          
+          // Check all vendor service packages for debugging
+          const { data: allVSP, error: allVSPError } = await supabase!
+            .from('vendor_service_packages')
+            .select('vendor_id, service_package_id, status')
+            .limit(10);
+          
+          console.log('10. Sample vendor service packages:', { data: allVSP, error: allVSPError });
+          
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Check availability on the event date
-        console.log('Step 2: Checking availability for date:', filters.eventDate);
+        console.log('=== STEP 2: Checking availability for date ===');
+        console.log('11. Checking availability for date:', filters.eventDate);
+        console.log('12. Date range start:', filters.eventDate + 'T00:00:00');
+        console.log('13. Date range end:', filters.eventDate + 'T23:59:59');
+        
         const { data: busyVendors, error: eventsError } = await supabase!
           .from('events')
           .select('vendor_id')
@@ -410,22 +439,28 @@ export const useRecommendedVendors = (filters: {
           .lt('start_time', filters.eventDate + 'T23:59:59')
           .in('vendor_id', vendorIds);
 
+        console.log('14. Busy vendors query result:', { data: busyVendors, error: eventsError });
+        
         if (eventsError) throw eventsError;
         
         const busyVendorIds = busyVendors?.map(event => event.vendor_id) || [];
         const availableVendorIds = vendorIds.filter(id => !busyVendorIds.includes(id));
-        console.log('Busy vendors:', busyVendorIds);
-        console.log('Available vendors:', availableVendorIds);
+        console.log('15. Busy vendor IDs:', busyVendorIds);
+        console.log('16. Available vendor IDs:', availableVendorIds);
+        console.log('17. Number of available vendors:', availableVendorIds.length);
 
         if (availableVendorIds.length === 0) {
-          console.log('No available vendors for this date');
+          console.log('18. ERROR: No available vendors for this date');
+          console.log('19. All vendors are busy on:', filters.eventDate);
           setVendors([]);
           setLoading(false);
           return;
         }
 
         // Get vendor details
-        console.log('Step 3: Getting vendor details');
+        console.log('=== STEP 3: Getting vendor details ===');
+        console.log('20. Getting details for vendor IDs:', availableVendorIds);
+        
         const { data: vendorData, error: vendorError } = await supabase!
           .from('vendors')
           .select(`
@@ -441,33 +476,51 @@ export const useRecommendedVendors = (filters: {
           `)
           .in('id', availableVendorIds);
 
+        console.log('21. Vendor data query result:', { data: vendorData, error: vendorError });
+        console.log('22. Number of vendor records returned:', vendorData?.length || 0);
+        
         if (vendorError) throw vendorError;
         
         // For now, just return the available vendors with basic scoring
-        console.log('Step 4: Scoring vendors');
+        console.log('=== STEP 4: Scoring vendors ===');
         const scoredVendors = (vendorData || []).map(vendor => ({
           ...vendor,
           score: (vendor.rating || 0) + Math.random() // Add randomness for equal ratings
         }));
 
+        console.log('23. Scored vendors:', scoredVendors.map(v => ({ id: v.id, name: v.name, score: v.score })));
+        
         // Sort by score and randomize equal scores
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
-        console.log('Final sorted vendors:', sortedVendors);
+        console.log('24. Final sorted vendors:', sortedVendors.map(v => ({ id: v.id, name: v.name, score: v.score })));
+        console.log('25. SUCCESS: Setting vendors in state');
         
         setVendors(sortedVendors);
       } catch (err) {
-        console.error('Error fetching recommended vendors:', err);
+        console.error('26. ERROR: Exception in fetchRecommendedVendors:', err);
+        console.error('27. Error details:', {
+          message: err instanceof Error ? err.message : 'Unknown error',
+          stack: err instanceof Error ? err.stack : 'No stack trace'
+        });
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
+        console.log('28. Setting loading to false');
         setLoading(false);
       }
     };
 
     if (filters.servicePackageId && filters.eventDate) {
-      console.log('Fetching vendors with valid filters');
+      console.log('=== STARTING VENDOR FETCH ===');
+      console.log('Valid filters detected, starting fetch...');
       fetchRecommendedVendors();
     } else {
-      console.log('Missing required filters:', { servicePackageId: filters.servicePackageId, eventDate: filters.eventDate });
+      console.log('=== MISSING FILTERS ===');
+      console.log('Missing required filters:', { 
+        servicePackageId: filters.servicePackageId, 
+        eventDate: filters.eventDate,
+        hasServicePackageId: !!filters.servicePackageId,
+        hasEventDate: !!filters.eventDate
+      });
       setLoading(false);
     }
   }, [filters]);
@@ -500,7 +553,11 @@ export const useVendorReviews = (vendorId: string) => {
             feedback,
             vendor_response,
             created_at,
-            couple_id
+            couple_id,
+            couples!inner(
+              name,
+              wedding_date
+            )
           `)
           .eq('vendor_id', vendorId)
           .order('created_at', { ascending: false });
