@@ -662,7 +662,6 @@ export const useLeadInformation = () => {
         } else {
           // Create new lead information record in database
           const newLeadInfo = {
-            id: sessionId,
             session_id: sessionId,
             user_id: null,
             selected_services: [],
