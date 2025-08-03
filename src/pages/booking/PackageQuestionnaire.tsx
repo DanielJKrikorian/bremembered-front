@@ -78,6 +78,16 @@ export const PackageQuestionnaire: React.FC = () => {
     }
   };
 
+  const handleUnsure = () => {
+    // Set default answers for 6-hour standard package
+    setAnswers({
+      coverage: ['Ceremony', 'Cocktail Hour', 'Reception'],
+      hours: '6',
+      budget: '150000-300000'
+    });
+    setCurrentStep(4); // Go directly to recommendation
+  };
+
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -233,6 +243,14 @@ export const PackageQuestionnaire: React.FC = () => {
               >
                 Continue
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleUnsure}
+                >
+                  I'm not sure - show me a standard package
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -288,6 +306,14 @@ export const PackageQuestionnaire: React.FC = () => {
               >
                 Continue
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleUnsure}
+                >
+                  I'm not sure - show me a standard package
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -343,6 +369,14 @@ export const PackageQuestionnaire: React.FC = () => {
               >
                 Get My Recommendation
               </Button>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleUnsure}
+                >
+                  I'm not sure - show me a standard package
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -389,10 +423,10 @@ export const PackageQuestionnaire: React.FC = () => {
                           <div>
                             <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
                             <div className="space-y-2">
-                              {getPackageCoverage(recommendedPackage.coverage || {}).slice(0, 4).map((coverage, index) => (
+                              {getPackageCoverage(recommendedPackage.coverage || {}).slice(0, 4).map((coverageItem, index) => (
                                 <div key={index} className="flex items-center space-x-2">
                                   <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="text-sm text-gray-700">{coverage}</span>
+                                  <span className="text-sm text-gray-700">{coverageItem}</span>
                                 </div>
                               ))}
                             </div>
@@ -432,7 +466,7 @@ export const PackageQuestionnaire: React.FC = () => {
                             <Button
                               variant="outline"
                               size="lg"
-                              className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                              className="w-full border-white text-white hover:bg-white/20 hover:border-white/50"
                               icon={Eye}
                               onClick={handleViewAllOptions}
                             >
