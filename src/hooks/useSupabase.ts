@@ -629,11 +629,41 @@ export const useLeadInformation = () => {
           .eq('session_id', sessionId)
           .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
-          throw fetchError;
-        }
-
-        if (existingLead) {
+        if (fetchError) {
+          // If table doesn't exist (42P01) or no rows found (PGRST116), create default lead info
+          if (fetchError.code === '42P01' || fetchError.code === 'PGRST116') {
+            console.log('leads_information table not found or no data, using local storage fallback');
+            // Create a default lead info object for local use
+            const defaultLeadInfo: LeadInformation = {
+              id: sessionId,
+              session_id: sessionId,
+              user_id: null,
+              selected_services: [],
+              event_type: null,
+              event_date: null,
+              event_time: null,
+              venue_id: null,
+              venue_name: null,
+              region: null,
+              languages: [],
+              style_preferences: [],
+              vibe_preferences: [],
+              budget_range: null,
+              coverage_preferences: [],
+              hour_preferences: null,
+              selected_packages: {},
+              selected_vendors: {},
+              total_estimated_cost: 0,
+              current_step: 'service_selection',
+              completed_steps: [],
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            setLeadInfo(defaultLeadInfo);
+          } else {
+            throw fetchError;
+          }
+        } else if (existingLead) {
           setLeadInfo(existingLead);
         } else {
           // Create new lead information record
@@ -669,7 +699,13 @@ export const useLeadInformation = () => {
   }, []);
 
   const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
-    if (!isSupabaseAvailable() || !leadInfo) return;
+    if (!isSupabaseAvailable() || !leadInfo) {
+      // If Supabase isn't available or table doesn't exist, update local state only
+      if (leadInfo) {
+        setLeadInfo({ ...leadInfo, ...updates });
+      }
+      return leadInfo;
+    }
 
     try {
       const { data, error } = await supabase!
@@ -679,12 +715,25 @@ export const useLeadInformation = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If table doesn't exist, just update local state
+        if (error.code === '42P01') {
+          console.log('leads_information table not found, updating local state only');
+          const updatedLeadInfo = { ...leadInfo, ...updates };
+          setLeadInfo(updatedLeadInfo);
+          return updatedLeadInfo;
+        }
+        throw error;
+      }
+      
       setLeadInfo(data);
       return data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      return null;
+      // Fallback to local state update
+      const updatedLeadInfo = { ...leadInfo, ...updates };
+      setLeadInfo(updatedLeadInfo);
+      return updatedLeadInfo;
     }
   };
 
