@@ -558,7 +558,7 @@ export const VendorRecommendation: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="lg"
-                      className="w-full bg-white text-black hover:bg-gray-50"
+                      className="w-full bg-white text-gray-900 hover:bg-gray-50"
                       onClick={() => {
                         setSelectedVendor(recommendedVendor);
                         handleContinue();
