@@ -35,10 +35,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
   };
 
   const handleSearch = () => {
-    onSearch?.({
-      selectedServices,
-      eventType
-    });
+    if (selectedServices.length > 0) {
+      // Navigate to questionnaire instead of directly to packages
+      window.location.href = `/booking/questionnaire?services=${selectedServices.join(',')}&eventType=${eventType}`;
+    }
   };
 
   return (
