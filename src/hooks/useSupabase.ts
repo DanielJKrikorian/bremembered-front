@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage } from '../types/booking';
 
+// Helper function to check if Supabase is available
+const isSupabaseAvailable = () => {
+  return supabase !== null;
+};
+
 export const useServicePackages = (serviceType?: string, eventType?: string, filters?: {
   minHours?: number;
   maxHours?: number;
@@ -15,8 +20,14 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
   useEffect(() => {
     const fetchPackages = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        let query = supabase
+        let query = supabase!
           .from('service_packages')
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status')
           .eq('status', 'approved');
@@ -75,8 +86,14 @@ export const useVendorsByPackage = (servicePackageId: string) => {
 
   useEffect(() => {
     const fetchVendorsByPackage = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase!
           .from('vendor_service_packages')
           .select(`
             vendor_id,
@@ -121,8 +138,14 @@ export const useVendors = (serviceType?: string, location?: string) => {
 
   useEffect(() => {
     const fetchVendors = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        let query = supabase
+        let query = supabase!
           .from('vendors')
           .select(`
             *,
@@ -162,8 +185,14 @@ export const useVenues = (searchTerm?: string) => {
 
   useEffect(() => {
     const fetchVenues = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        let query = supabase.from('venues').select('*');
+        let query = supabase!.from('venues').select('*');
 
         if (searchTerm) {
           query = query.or(`name.ilike.%${searchTerm}%,street_address.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,region.ilike.%${searchTerm}%`);
@@ -193,8 +222,14 @@ export const useStyleTags = () => {
 
   useEffect(() => {
     const fetchStyleTags = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase!
           .from('style_tags')
           .select('*')
           .order('label');
@@ -221,8 +256,14 @@ export const useVibeTags = () => {
 
   useEffect(() => {
     const fetchVibeTags = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase!
           .from('vibe_tags')
           .select('*')
           .order('label');
@@ -249,8 +290,14 @@ export const useServiceAreas = (state?: string) => {
 
   useEffect(() => {
     const fetchServiceAreas = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        let query = supabase
+        let query = supabase!
           .from('service_areas')
           .select('*');
 
@@ -282,8 +329,14 @@ export const useLanguages = () => {
 
   useEffect(() => {
     const fetchLanguages = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase!
           .from('languages')
           .select('id, language')
           .order('language');
@@ -317,12 +370,18 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       
       try {
         // First, get vendors who offer this service package
-        const { data: vendorServicePackages, error: vspError } = await supabase
+        const { data: vendorServicePackages, error: vspError } = await supabase!
           .from('vendor_service_packages')
           .select('vendor_id')
           .eq('service_package_id', filters.servicePackageId)
@@ -339,7 +398,7 @@ export const useRecommendedVendors = (filters: {
         }
 
         // Check availability on the event date
-        const { data: busyVendors, error: eventsError } = await supabase
+        const { data: busyVendors, error: eventsError } = await supabase!
           .from('events')
           .select('vendor_id')
           .gte('start_time', filters.eventDate + 'T00:00:00')
@@ -358,7 +417,7 @@ export const useRecommendedVendors = (filters: {
         }
 
         // Get vendor details
-        const { data: vendorData, error: vendorError } = await supabase
+        const { data: vendorData, error: vendorError } = await supabase!
           .from('vendors')
           .select(`
             id,
@@ -384,7 +443,7 @@ export const useRecommendedVendors = (filters: {
           try {
             // Check region match
             if (filters.region) {
-              const { data: serviceAreaMatch, error: regionError } = await supabase
+              const { data: serviceAreaMatch, error: regionError } = await supabase!
                 .from('vendor_service_areas')
                 .select('service_areas!inner(region)')
                 .eq('vendor_id', vendor.id)
@@ -397,7 +456,7 @@ export const useRecommendedVendors = (filters: {
 
             // Check language matches
             if (filters.languages && filters.languages.length > 0) {
-              const { data: languageMatches, error: langError } = await supabase
+              const { data: languageMatches, error: langError } = await supabase!
                 .from('vendor_languages')
                 .select('language_id')
                 .eq('vendor_id', vendor.id)
@@ -410,7 +469,7 @@ export const useRecommendedVendors = (filters: {
 
             // Check style matches
             if (filters.styles && filters.styles.length > 0) {
-              const { data: styleMatches, error: styleError } = await supabase
+              const { data: styleMatches, error: styleError } = await supabase!
                 .from('vendor_style_tags')
                 .select('style_id')
                 .eq('vendor_id', vendor.id)
@@ -423,7 +482,7 @@ export const useRecommendedVendors = (filters: {
 
             // Check vibe matches
             if (filters.vibes && filters.vibes.length > 0) {
-              const { data: vibeMatches, error: vibeError } = await supabase
+              const { data: vibeMatches, error: vibeError } = await supabase!
                 .from('vendor_vibe_tags')
                 .select('vibe_id')
                 .eq('vendor_id', vendor.id)
@@ -474,8 +533,14 @@ export const useVendorReviews = (vendorId: string) => {
 
   useEffect(() => {
     const fetchReviews = async () => {
+      if (!isSupabaseAvailable()) {
+        setError('Supabase connection not available. Please check environment variables.');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase!
           .from('vendor_reviews')
           .select('*')
           .eq('vendor_id', vendorId)
