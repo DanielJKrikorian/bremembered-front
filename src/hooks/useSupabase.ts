@@ -627,11 +627,11 @@ export const useLeadInformation = () => {
           .from('leads_information')
           .select('*')
           .eq('session_id', sessionId)
-          .single();
+          .maybeSingle();
 
         if (fetchError) {
-          // If table doesn't exist (42P01) or no rows found (PGRST116), create default lead info
-          if (fetchError.code === '42P01' || fetchError.code === 'PGRST116') {
+          // If table doesn't exist (42P01), create default lead info
+          if (fetchError.code === '42P01') {
             console.log('leads_information table not found or no data, using local storage fallback');
             // Create a default lead info object for local use
             const defaultLeadInfo: LeadInformation = {
