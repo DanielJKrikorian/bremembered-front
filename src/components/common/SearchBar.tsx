@@ -22,7 +22,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     { id: 'Photography', name: 'Photography', icon: Camera },
     { id: 'Videography', name: 'Videography', icon: Video },
     { id: 'DJ Services', name: 'DJ Services', icon: Music },
-    { id: 'Coordination', name: 'Coordination', icon: Users },
+    { id: 'Coordination', name: 'Day-of Coordination', icon: Users },
     { id: 'Planning', name: 'Planning', icon: CalendarDays }
   ];
 
