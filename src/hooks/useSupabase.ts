@@ -317,6 +317,9 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
         // First, get vendors who offer this service package
         const { data: vendorServicePackages, error: vspError } = await supabase
@@ -331,6 +334,7 @@ export const useRecommendedVendors = (filters: {
         
         if (vendorIds.length === 0) {
           setVendors([]);
+          setLoading(false);
           return;
         }
 
@@ -349,6 +353,7 @@ export const useRecommendedVendors = (filters: {
 
         if (availableVendorIds.length === 0) {
           setVendors([]);
+          setLoading(false);
           return;
         }
 
@@ -376,48 +381,61 @@ export const useRecommendedVendors = (filters: {
         const scoredVendors = await Promise.all((vendorData || []).map(async (vendor) => {
           let score = 0;
           
-          // Check region match
-          if (filters.region) {
-            const { data: serviceAreaMatch } = await supabase
-              .from('vendor_service_areas')
-              .select('service_areas!inner(region)')
-              .eq('vendor_id', vendor.id)
-              .eq('service_areas.region', filters.region);
-            
-            if (serviceAreaMatch && serviceAreaMatch.length > 0) score += 10; // High priority for region match
-          }
+          try {
+            // Check region match
+            if (filters.region) {
+              const { data: serviceAreaMatch, error: regionError } = await supabase
+                .from('vendor_service_areas')
+                .select('service_areas!inner(region)')
+                .eq('vendor_id', vendor.id)
+                .eq('service_areas.region', filters.region);
+              
+              if (!regionError && serviceAreaMatch && serviceAreaMatch.length > 0) {
+                score += 10; // High priority for region match
+              }
+            }
 
-          // Check language matches
-          if (filters.languages && filters.languages.length > 0) {
-            const { data: languageMatches } = await supabase
-              .from('vendor_languages')
-              .select('language_id')
-              .eq('vendor_id', vendor.id)
-              .in('language_id', filters.languages);
-            
-            score += (languageMatches?.length || 0) * 3;
-          }
+            // Check language matches
+            if (filters.languages && filters.languages.length > 0) {
+              const { data: languageMatches, error: langError } = await supabase
+                .from('vendor_languages')
+                .select('language_id')
+                .eq('vendor_id', vendor.id)
+                .in('language_id', filters.languages);
+              
+              if (!langError) {
+                score += (languageMatches?.length || 0) * 3;
+              }
+            }
 
-          // Check style matches
-          if (filters.styles && filters.styles.length > 0) {
-            const { data: styleMatches } = await supabase
-              .from('vendor_style_tags')
-              .select('style_id')
-              .eq('vendor_id', vendor.id)
-              .in('style_id', filters.styles);
-            
-            score += (styleMatches?.length || 0) * 2;
-          }
+            // Check style matches
+            if (filters.styles && filters.styles.length > 0) {
+              const { data: styleMatches, error: styleError } = await supabase
+                .from('vendor_style_tags')
+                .select('style_id')
+                .eq('vendor_id', vendor.id)
+                .in('style_id', filters.styles);
+              
+              if (!styleError) {
+                score += (styleMatches?.length || 0) * 2;
+              }
+            }
 
-          // Check vibe matches
-          if (filters.vibes && filters.vibes.length > 0) {
-            const { data: vibeMatches } = await supabase
-              .from('vendor_vibe_tags')
-              .select('vibe_id')
-              .eq('vendor_id', vendor.id)
-              .in('vibe_id', filters.vibes);
-            
-            score += (vibeMatches?.length || 0) * 2;
+            // Check vibe matches
+            if (filters.vibes && filters.vibes.length > 0) {
+              const { data: vibeMatches, error: vibeError } = await supabase
+                .from('vendor_vibe_tags')
+                .select('vibe_id')
+                .eq('vendor_id', vendor.id)
+                .in('vibe_id', filters.vibes);
+              
+              if (!vibeError) {
+                score += (vibeMatches?.length || 0) * 2;
+              }
+            }
+          } catch (matchError) {
+            console.warn('Error checking vendor matches:', matchError);
+            // Continue with base score if matching fails
           }
 
           // Bonus for rating
@@ -432,6 +450,7 @@ export const useRecommendedVendors = (filters: {
         const sortedVendors = scoredVendors.sort((a, b) => b.score - a.score);
         setVendors(sortedVendors);
       } catch (err) {
+        console.error('Error fetching recommended vendors:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
@@ -440,6 +459,8 @@ export const useRecommendedVendors = (filters: {
 
     if (filters.servicePackageId && filters.eventDate) {
       fetchRecommendedVendors();
+    } else {
+      setLoading(false);
     }
   }, [filters]);
 
