@@ -43,50 +43,50 @@ export const Home: React.FC = () => {
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8">
         {/* Social Proof Banner */}
-        <div className="text-center mb-4">
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-8 py-4 rounded-full shadow-xl">
-            <Sparkles className="w-6 h-6" />
-            <span className="font-bold text-lg">Over 500 couples found their perfect team this month!</span>
-            <Sparkles className="w-6 h-6" />
+        <div className="text-center mb-4 px-4">
+          <div className="inline-flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-full shadow-xl">
+            <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
+            <span className="font-bold text-sm sm:text-lg">Over 500 couples found their perfect team this month!</span>
+            <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* Hero Content with Photo and Search */}
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Side - Beautiful Wedding Photo */}
             <div className="relative">
               <div className="relative overflow-hidden rounded-3xl shadow-2xl">
                 <img
                   src="https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800"
                   alt="Beautiful wedding ceremony"
-                  className="w-full h-96 lg:h-[500px] object-cover"
+                  className="w-full h-64 sm:h-80 lg:h-[500px] object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <div className="absolute bottom-8 left-8 right-8 text-white">
-                  <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
+                <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 text-white">
+                  <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold mb-2 sm:mb-4 leading-tight">
                     The Smarter Way to
                     <br />
                     <span className="text-rose-300">Book Weddings</span>
                   </h1>
-                  <p className="text-lg text-white/90 max-w-md">
+                  <p className="text-sm sm:text-lg text-white/90 max-w-md">
                     Connect with verified vendors who will make your wedding day absolutely magical ✨
                   </p>
                 </div>
               </div>
               
               {/* Floating elements for visual interest */}
-              <div className="absolute -top-4 -right-4 w-16 h-16 bg-rose-200 rounded-full opacity-60"></div>
-              <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-amber-200 rounded-full opacity-40"></div>
+              <div className="hidden lg:block absolute -top-4 -right-4 w-16 h-16 bg-rose-200 rounded-full opacity-60"></div>
+              <div className="hidden lg:block absolute -bottom-6 -left-6 w-20 h-20 bg-amber-200 rounded-full opacity-40"></div>
             </div>
 
             {/* Right Side - Search Bar */}
-            <div className="space-y-8">
+            <div className="space-y-6 lg:space-y-8">
               <div className="text-center lg:text-left">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-3 lg:mb-4">
                   Ready to find your dream team? 💍
                 </h2>
-                <p className="text-lg text-gray-600 mb-8">
+                <p className="text-base sm:text-lg text-gray-600 mb-6 lg:mb-8">
                   Tell us what you need and we'll find the perfect vendors who will make your day unforgettable!
                 </p>
               </div>
@@ -96,27 +96,27 @@ export const Home: React.FC = () => {
           </div>
 
           {/* Trust Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center mt-20">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center mt-12 sm:mt-16 lg:mt-20">
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
-                <Shield className="w-8 h-8 text-rose-600" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-rose-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-rose-600" />
               </div>
-              <div className="text-3xl font-bold text-rose-500 mb-2">100%</div>
-              <div className="text-gray-600">Verified Vendors</div>
+              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">100%</div>
+              <div className="text-sm sm:text-base text-gray-600">Verified Vendors</div>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <Clock className="w-8 h-8 text-amber-600" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
               </div>
-              <div className="text-3xl font-bold text-rose-500 mb-2">24/7</div>
-              <div className="text-gray-600">Support Team</div>
+              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">24/7</div>
+              <div className="text-sm sm:text-base text-gray-600">Support Team</div>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Award className="w-8 h-8 text-emerald-600" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <Award className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
               </div>
-              <div className="text-3xl font-bold text-rose-500 mb-2">4.9</div>
-              <div className="text-gray-600">Average Rating</div>
+              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">4.9</div>
+              <div className="text-sm sm:text-base text-gray-600">Average Rating</div>
             </div>
           </div>
         </div>
