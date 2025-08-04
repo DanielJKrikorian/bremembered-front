@@ -41,9 +41,9 @@ export const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+      <section className="relative py-8 px-4 sm:px-6 lg:px-8">
         {/* Social Proof Banner */}
-        <div className="text-center mb-4 px-4">
+        <div className="text-center mb-8 px-4">
           <div className="inline-flex items-center space-x-1 sm:space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-full shadow-xl">
             <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />
             <span className="font-bold text-sm sm:text-lg">Over 500 couples found their perfect team this month!</span>
