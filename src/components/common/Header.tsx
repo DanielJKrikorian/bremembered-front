@@ -21,8 +21,11 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated = false, onLogin
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-            <Heart className="w-8 h-8 text-rose-500 mr-2" />
-            <span className="text-xl font-bold text-gray-900">B. Remembered</span>
+            <img 
+              src="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1//2025_IO.png" 
+              alt="B. Remembered" 
+              className="h-8 w-auto"
+            />
           </div>
 
           {/* Navigation */}
