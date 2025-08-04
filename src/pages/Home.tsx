@@ -49,7 +49,7 @@ export const Home: React.FC = () => {
   };
 
   const handleContinue = () => {
-    if (selectedServices.length > 0) {
+    if (selectedServicesLocal.length > 0) {
       setSelectedServices(selectedServicesLocal);
       setEventType(selectedEventType);
       setShowModal(false);
@@ -521,7 +521,7 @@ export const Home: React.FC = () => {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {serviceTypes.map((service) => {
-                      const isSelected = selectedServices.includes(service.id);
+                      const isSelected = selectedServicesLocal.includes(service.id);
                       return (
                         <button
                           key={service.id}
@@ -560,7 +560,7 @@ export const Home: React.FC = () => {
                     <Button
                       variant="primary"
                       onClick={handleContinue}
-                      disabled={selectedServices.length === 0}
+                      disabled={selectedServicesLocal.length === 0}
                       icon={ArrowRight}
                       className="px-8"
                     >
