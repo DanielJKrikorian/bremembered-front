@@ -279,7 +279,7 @@ export const VendorRecommendation: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 text-left">Package Summary</h3>
                   {selectedPackage && (
                     <div className="space-y-3">
-                      <div className="text-left">
+                      <div className="flex justify-between">
                         <span className="text-gray-600">Package:</span>
                         <div className="font-medium text-gray-900">{selectedPackage.name}</div>
                       </div>
