@@ -45,16 +45,55 @@ export const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Your Dream Wedding,
-              <span className="text-rose-500"> Perfectly Planned</span>
+              Find Your Perfect
+              <span className="text-rose-500"> Wedding Dream Team</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Discover and book the perfect wedding services for your special day. From photography to coordination, we've got everything you need to make your moments unforgettable.
+              Connect with amazing vendors who will make your wedding day absolutely magical ✨
             </p>
+          </div>
+
+          {/* Exciting Pre-Search Content */}
+          <div className="max-w-5xl mx-auto mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              <Card className="p-6 text-center bg-gradient-to-br from-rose-100 to-pink-100 border-rose-200">
+                <div className="text-4xl mb-3">💕</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Fall in Love</h3>
+                <p className="text-gray-600 text-sm">with vendors who truly understand your vision</p>
+              </Card>
+              <Card className="p-6 text-center bg-gradient-to-br from-amber-100 to-yellow-100 border-amber-200">
+                <div className="text-4xl mb-3">✨</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Create Magic</h3>
+                <p className="text-gray-600 text-sm">with award-winning professionals</p>
+              </Card>
+              <Card className="p-6 text-center bg-gradient-to-br from-purple-100 to-indigo-100 border-purple-200">
+                <div className="text-4xl mb-3">🎉</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Celebrate</h3>
+                <p className="text-gray-600 text-sm">knowing every detail is perfectly handled</p>
+              </Card>
+            </div>
+
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Ready to find your dream team? 💍
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">
+                Tell us what you need and we'll find the perfect vendors who will make your day unforgettable!
+              </p>
+            </div>
           </div>
 
           <div className="max-w-4xl mx-auto">
             <SearchBar onSearch={handleSearch} />
+          </div>
+
+          {/* Exciting Call-to-Action */}
+          <div className="text-center mt-8">
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 rounded-full shadow-lg">
+              <Sparkles className="w-5 h-5" />
+              <span className="font-semibold">Over 500 couples found their perfect team this month!</span>
+              <Sparkles className="w-5 h-5" />
+            </div>
           </div>
 
           {/* Trust Indicators */}
