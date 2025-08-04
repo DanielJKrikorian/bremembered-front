@@ -108,7 +108,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
             className="px-12"
             disabled={selectedServices.length === 0}
           >
-            Find Packages
+            Start Your Booking Journey
           </Button>
         </div>
       </div>
