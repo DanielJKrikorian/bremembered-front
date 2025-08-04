@@ -301,6 +301,51 @@ export const VendorRecommendation: React.FC = () => {
                   )}
                 </Card>
 
+                {/* Other Suggested Vendors */}
+                {uniqueVendors.length > 1 && (
+                  <Card className="p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Other Great Options</h3>
+                    <div className="space-y-4">
+                      {uniqueVendors.slice(1, 4).map((vendor) => (
+                        <div key={vendor.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <img
+                            src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                            alt={vendor.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{vendor.name}</h4>
+                            <div className="flex items-center text-sm text-gray-600">
+                              {vendor.rating && (
+                                <>
+                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                  <span>{vendor.rating}</span>
+                                  <span className="mx-2">•</span>
+                                </>
+                              )}
+                              <span>{vendor.years_experience} years</span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/vendor/${vendor.id}`, {
+                              state: {
+                                vendor,
+                                selectedPackage,
+                                returnTo: '/booking/vendor-recommendation',
+                                returnState: location.state
+                              }
+                            })}
+                          >
+                            View Profile
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
                 {/* Action Buttons */}
                 <Card className="p-6">
                   <div className="space-y-4">
