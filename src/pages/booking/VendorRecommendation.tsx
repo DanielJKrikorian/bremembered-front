@@ -281,7 +281,10 @@ export const VendorRecommendation: React.FC = () => {
                     <div className="space-y-3">
                       <div>
                         <span className="text-gray-600">Package:</span>
-                        <div className="font-medium text-gray-900 text-right">{selectedPackage.name}</div>
+                        <div className="text-right">
+                          <div className="font-medium text-gray-900">The Basic</div>
+                          <div className="font-medium text-gray-900">Photography Package</div>
+                        </div>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Service:</span>
