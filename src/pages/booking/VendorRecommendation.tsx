@@ -327,8 +327,8 @@ export const VendorRecommendation: React.FC = () => {
                       <div>
                         <span className="text-gray-600">Package:</span>
                         <div className="text-right">
-                          <div className="font-medium text-gray-900">The Basic</div>
-                          <div className="font-medium text-gray-900">Photography Package</div>
+                          <div className="font-medium text-gray-900">{selectedPackage.name}</div>
+                          <div className="font-medium text-gray-900">{selectedPackage.service_type} Package</div>
                         </div>
                       </div>
                       <div className="flex justify-between">
