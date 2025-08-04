@@ -463,7 +463,8 @@ export const PackageQuestionnaire: React.FC = () => {
                             <Button
                               variant="secondary"
                               size="lg"
-                             className="w-full bg-white text-black hover:bg-gray-50 hover:text-black"
+                             className="w-full bg-white text-black hover:bg-gray-50"
+                             style={{ color: 'black' }}
                               onClick={() => navigate('/booking/congratulations', {
                                 state: {
                                   selectedPackage: recommendedPackage,
