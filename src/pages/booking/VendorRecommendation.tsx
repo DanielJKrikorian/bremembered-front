@@ -380,10 +380,10 @@ export const VendorRecommendation: React.FC = () => {
                   <div className="text-center text-xs text-gray-500">
                     Typically responds within 2 hours
                   </div>
-
-                  {/* Other Suggested Vendors */}
-                  {uniqueVendors.length > 1 && (
-                    <div className="mt-8">
+                </Card>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
