@@ -16,7 +16,7 @@ export const Home: React.FC = () => {
   const [selectedServices, setSelectedServicesLocal] = useState<string[]>([]);
 
   const eventTypes = [
-    { id: 'Wedding', name: 'Wedding', emoji: '💒' },
+    { id: 'Wedding', name: 'Wedding', emoji: '🌸' },
     { id: 'Proposal', name: 'Proposal', emoji: '💍' }
   ];
 
