@@ -13,7 +13,7 @@ export const Home: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [selectedEventType, setSelectedEventType] = useState('');
-  const [selectedServices, setSelectedServicesLocal] = useState<string[]>([]);
+  const [localSelectedServices, setLocalSelectedServices] = useState<string[]>([]);
 
   const eventTypes = [
     { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
@@ -32,7 +32,7 @@ export const Home: React.FC = () => {
     setShowModal(true);
     setCurrentQuestion(1);
     setSelectedEventType('');
-    setSelectedServicesLocal([]);
+    setLocalSelectedServices([]);
   };
 
   const handleEventTypeSelect = (eventType: string) => {
@@ -41,7 +41,7 @@ export const Home: React.FC = () => {
   };
 
   const handleServiceToggle = (serviceId: string) => {
-    setSelectedServicesLocal(prev => 
+    setLocalSelectedServices(prev => 
       prev.includes(serviceId)
         ? prev.filter(id => id !== serviceId)
         : [...prev, serviceId]
@@ -49,13 +49,13 @@ export const Home: React.FC = () => {
   };
 
   const handleContinue = () => {
-    if (selectedServicesLocal.length > 0) {
-      setSelectedServices(selectedServicesLocal);
+    if (localSelectedServices.length > 0) {
+      setSelectedServices(localSelectedServices);
       setEventType(selectedEventType);
       setShowModal(false);
       navigate('/booking/questionnaire', {
         state: {
-          selectedServices: selectedServicesLocal,
+          selectedServices: localSelectedServices,
           eventType: selectedEventType
         }
       });
@@ -66,7 +66,7 @@ export const Home: React.FC = () => {
     setShowModal(false);
     setCurrentQuestion(1);
     setSelectedEventType('');
-    setSelectedServicesLocal([]);
+    setLocalSelectedServices([]);
   };
 
   const handleSearch = (filters: any) => {
@@ -521,7 +521,7 @@ export const Home: React.FC = () => {
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {serviceTypes.map((service) => {
-                      const isSelected = selectedServicesLocal.includes(service.id);
+                      const isSelected = localSelectedServices.includes(service.id);
                       return (
                         <button
                           key={service.id}
@@ -560,7 +560,7 @@ export const Home: React.FC = () => {
                     <Button
                       variant="primary"
                       onClick={handleContinue}
-                      disabled={selectedServicesLocal.length === 0}
+                     disabled={localSelectedServices.length === 0}
                       icon={ArrowRight}
                       className="px-8"
                     >
