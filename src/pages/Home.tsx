@@ -42,62 +42,61 @@ export const Home: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+        {/* Social Proof Banner */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-8 py-4 rounded-full shadow-xl">
+            <Sparkles className="w-6 h-6" />
+            <span className="font-bold text-lg">Over 500 couples found their perfect team this month!</span>
+            <Sparkles className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Hero Content with Photo and Search */}
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Find Your Perfect
-              <span className="text-rose-500"> Wedding Dream Team</span>
-            </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Connect with amazing vendors who will make your wedding day absolutely magical ✨
-            </p>
-          </div>
-
-          {/* Exciting Pre-Search Content */}
-          <div className="max-w-5xl mx-auto mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              <Card className="p-6 text-center bg-gradient-to-br from-rose-100 to-pink-100 border-rose-200">
-                <div className="text-4xl mb-3">💕</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Fall in Love</h3>
-                <p className="text-gray-600 text-sm">with vendors who truly understand your vision</p>
-              </Card>
-              <Card className="p-6 text-center bg-gradient-to-br from-amber-100 to-yellow-100 border-amber-200">
-                <div className="text-4xl mb-3">✨</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Create Magic</h3>
-                <p className="text-gray-600 text-sm">with award-winning professionals</p>
-              </Card>
-              <Card className="p-6 text-center bg-gradient-to-br from-purple-100 to-indigo-100 border-purple-200">
-                <div className="text-4xl mb-3">🎉</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Celebrate</h3>
-                <p className="text-gray-600 text-sm">knowing every detail is perfectly handled</p>
-              </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Side - Beautiful Wedding Photo */}
+            <div className="relative">
+              <div className="relative overflow-hidden rounded-3xl shadow-2xl">
+                <img
+                  src="https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Beautiful wedding ceremony"
+                  className="w-full h-96 lg:h-[500px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                <div className="absolute bottom-8 left-8 right-8 text-white">
+                  <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">
+                    The Smarter Way to
+                    <br />
+                    <span className="text-rose-300">Book Weddings</span>
+                  </h1>
+                  <p className="text-lg text-white/90 max-w-md">
+                    Connect with verified vendors who will make your wedding day absolutely magical ✨
+                  </p>
+                </div>
+              </div>
+              
+              {/* Floating elements for visual interest */}
+              <div className="absolute -top-4 -right-4 w-16 h-16 bg-rose-200 rounded-full opacity-60"></div>
+              <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-amber-200 rounded-full opacity-40"></div>
             </div>
 
-            <div className="text-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-                Ready to find your dream team? 💍
-              </h2>
-              <p className="text-lg text-gray-600 mb-6">
-                Tell us what you need and we'll find the perfect vendors who will make your day unforgettable!
-              </p>
-            </div>
-          </div>
-
-          <div className="max-w-4xl mx-auto">
-            <SearchBar onSearch={handleSearch} />
-          </div>
-
-          {/* Exciting Call-to-Action */}
-          <div className="text-center mt-8">
-            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 rounded-full shadow-lg">
-              <Sparkles className="w-5 h-5" />
-              <span className="font-semibold">Over 500 couples found their perfect team this month!</span>
-              <Sparkles className="w-5 h-5" />
+            {/* Right Side - Search Bar */}
+            <div className="space-y-8">
+              <div className="text-center lg:text-left">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                  Ready to find your dream team? 💍
+                </h2>
+                <p className="text-lg text-gray-600 mb-8">
+                  Tell us what you need and we'll find the perfect vendors who will make your day unforgettable!
+                </p>
+              </div>
+              
+              <SearchBar onSearch={handleSearch} />
             </div>
           </div>
 
           {/* Trust Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center mt-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center mt-20">
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
                 <Shield className="w-8 h-8 text-rose-600" />
