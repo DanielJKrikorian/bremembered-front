@@ -279,9 +279,9 @@ export const VendorRecommendation: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 text-left">Package Summary</h3>
                   {selectedPackage && (
                     <div className="space-y-3">
-                      <div className="flex justify-between">
+                      <div>
                         <span className="text-gray-600">Package:</span>
-                        <span className="font-medium text-gray-900">{selectedPackage.name}</span>
+                        <div className="font-medium text-gray-900 text-right">{selectedPackage.name}</div>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Service:</span>
@@ -380,10 +380,10 @@ export const VendorRecommendation: React.FC = () => {
                   <div className="text-center text-xs text-gray-500">
                     Typically responds within 2 hours
                   </div>
-                </Card>
-              </div>
-            </div>
-          </div>
+
+                  {/* Other Suggested Vendors */}
+                  {uniqueVendors.length > 1 && (
+                    <div className="mt-8">
         )}
       </div>
     </div>
