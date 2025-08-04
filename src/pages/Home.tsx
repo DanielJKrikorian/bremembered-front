@@ -1,9 +1,8 @@
 import React from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { SearchBar } from '../components/common/SearchBar';
 import { ServiceCard } from '../components/booking/ServiceCard';
 import { mockBundles } from '../lib/mockData';
 import { useBooking } from '../context/BookingContext';
@@ -11,6 +10,64 @@ import { useBooking } from '../context/BookingContext';
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { setSelectedServices, setEventType } = useBooking();
+  const [showModal, setShowModal] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [selectedEventType, setSelectedEventType] = useState('');
+  const [selectedServices, setSelectedServicesLocal] = useState<string[]>([]);
+
+  const eventTypes = [
+    { id: 'Wedding', name: 'Wedding', emoji: '💒' },
+    { id: 'Proposal', name: 'Proposal', emoji: '💍' }
+  ];
+
+  const serviceTypes = [
+    { id: 'Photography', name: 'Photography', icon: Camera, emoji: '📸' },
+    { id: 'Videography', name: 'Videography', icon: Video, emoji: '🎥' },
+    { id: 'DJ Services', name: 'DJ Services', icon: Music, emoji: '🎵' },
+    { id: 'Coordination', name: 'Day-of Coordination', icon: Users, emoji: '👰' },
+    { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
+  ];
+
+  const handleStartBooking = () => {
+    setShowModal(true);
+    setCurrentQuestion(1);
+    setSelectedEventType('');
+    setSelectedServicesLocal([]);
+  };
+
+  const handleEventTypeSelect = (eventType: string) => {
+    setSelectedEventType(eventType);
+    setCurrentQuestion(2);
+  };
+
+  const handleServiceToggle = (serviceId: string) => {
+    setSelectedServicesLocal(prev => 
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const handleContinue = () => {
+    if (selectedServices.length > 0) {
+      setSelectedServices(selectedServicesLocal);
+      setEventType(selectedEventType);
+      setShowModal(false);
+      navigate('/booking/questionnaire', {
+        state: {
+          selectedServices: selectedServicesLocal,
+          eventType: selectedEventType
+        }
+      });
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setCurrentQuestion(1);
+    setSelectedEventType('');
+    setSelectedServicesLocal([]);
+  };
 
   const handleSearch = (filters: any) => {
     console.log('Search filters:', filters);
@@ -91,7 +148,19 @@ export const Home: React.FC = () => {
                 </p>
               </div>
               
-              <SearchBar onSearch={handleSearch} />
+              <div className="text-center">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleStartBooking}
+                  className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                >
+                  Start Your Booking Journey ✨
+                </Button>
+                <p className="text-sm text-gray-500 mt-3">
+                  Just 2 quick questions to get started
+                </p>
+              </div>
             </div>
           </div>
 
@@ -386,6 +455,124 @@ export const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {currentQuestion === 1 ? 'What type of event?' : 'What services do you need?'}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Question {currentQuestion} of 2
+                </p>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {currentQuestion === 1 && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      What type of event are you planning?
+                    </h4>
+                    <p className="text-gray-600">
+                      Choose the type of celebration you're planning
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {eventTypes.map((type) => (
+                      <button
+                        key={type.id}
+                        onClick={() => handleEventTypeSelect(type.id)}
+                        className="p-6 rounded-xl border-2 border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
+                      >
+                        <div className="text-4xl mb-3">{type.emoji}</div>
+                        <h5 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600">
+                          {type.name}
+                        </h5>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentQuestion === 2 && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      What services do you need?
+                    </h4>
+                    <p className="text-gray-600">
+                      Select all the services you'd like to book (you can choose multiple)
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {serviceTypes.map((service) => {
+                      const isSelected = selectedServices.includes(service.id);
+                      return (
+                        <button
+                          key={service.id}
+                          onClick={() => handleServiceToggle(service.id)}
+                          className={`
+                            relative p-4 rounded-xl border-2 transition-all text-left
+                            ${isSelected 
+                              ? 'border-rose-500 bg-rose-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl">{service.emoji}</div>
+                            <div>
+                              <h5 className="font-semibold text-gray-900">{service.name}</h5>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentQuestion(1)}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleContinue}
+                      disabled={selectedServices.length === 0}
+                      icon={ArrowRight}
+                      className="px-8"
+                    >
+                      Continue to Packages
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
