@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
