@@ -680,10 +680,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                 </p>
               </div>
               <button
-                onClick={handleCloseModal}
+                How would you like to choose your package?
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-6 h-6" />
+                Select your preferred way to narrow down the perfect package
               </button>
             </div>
 
@@ -1130,43 +1130,28 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                               filters: { eventType },
                               availablePackages: [],
                               recommendedPackage: null,
-                              loading: false,
-                              error: null
-                            });
-                            const nextService = selectedServices[currentServiceIndex + 1];
-                            setServiceType(nextService);
-                          } else {
-                            handleCloseModal();
-                            window.location.href = '/booking/event-details';
-                          }
-                        }}
-                      >
-                        {currentServiceIndex < selectedServices.length - 1 
-                          ? `Skip to ${selectedServices[currentServiceIndex + 1]}`
-                          : 'Continue to Event Details'
-                        }
-                      </Button>
-                    </Card>
-                  )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div
+                onClick={() => setPreferenceType('hours')}
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-8 h-8 text-amber-600" />
                 </div>
-              )}
-
-              {/* Debug Info */}
-              {process.env.NODE_ENV === 'development' && (
-                <Card className="p-4 mt-8 bg-gray-100">
-                  <h4 className="font-semibold mb-2">Debug Info:</h4>
-                  <div className="text-sm space-y-1">
-                    <div>Current Service: {getCurrentService()} ({currentServiceIndex + 1}/{selectedServices.length})</div>
-                    <div>Completed Services: {completedServices.join(', ')}</div>
-                    <div>Step: {matchingState.step}</div>
-                    <div>Event Type: {matchingState.filters.eventType}</div>
-                    <div>Service Type: {matchingState.filters.serviceType}</div>
-                    <div>Preference Type: {matchingState.filters.preferenceType}</div>
-                    <div>Available Packages: {matchingState.availablePackages.length}</div>
-                    <div>Recommended Package: {matchingState.recommendedPackage?.name || 'None'}</div>
-                  </div>
-                </Card>
-              )}
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
+                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
+              </div>
+              
+              <div
+                onClick={() => setPreferenceType('coverage')}
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <List className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
+                <p className="text-gray-600">Choose based on specific moments you want captured</p>
+              </div>
             </div>
           </div>
         </div>
