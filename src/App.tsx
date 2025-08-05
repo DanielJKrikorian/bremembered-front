@@ -43,7 +43,6 @@ function App() {
               {/* New Booking Flow Routes */}
               <Route path="/booking/services" element={<ServiceSelection />} />
               <Route path="/booking/packages" element={<PackageSelection />} />
-              <Route path="/booking/event-details" element={<EventDetails />} />
               <Route path="/booking/congratulations" element={<PackageCongratulations />} />
               <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
             </Routes>
