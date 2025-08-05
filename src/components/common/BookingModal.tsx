@@ -85,7 +85,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       undefined
     ) : undefined,
     budgetRange: shouldMatch ? convertBudgetRange(selectedBudget) : undefined
-  );
+  });
 
   // Set recommended package when packages are loaded
   useEffect(() => {
@@ -243,12 +243,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
         }
       });
     }
-  };
-
-  // Handle modal close
-  const handleCloseModal = () => {
-    onClose();
-    resetModal();
   };
 
   // Handle X button click
