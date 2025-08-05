@@ -209,8 +209,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     } else if (currentStep === 6) {
-      // Start matching process
-      setCurrentStep(6); // Stay on step 6 for loading animation
+      // Start matching process - stay on step 6 for loading animation
       setLoadingStep(0);
       
       // Update lead as starting matching process
@@ -218,14 +217,57 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
         current_step: 6
       });
       
-      // Animate through loading steps with dramatic timing
+      // Animate through loading steps with more dramatic timing
       const animateLoading = () => {
-        setLoadingStep(1);
-        setTimeout(() => setLoadingStep(2), 1000);
-        setTimeout(() => setLoadingStep(3), 2000);
+        // Step 1: Analyzing (after 800ms)
+        setTimeout(() => {
+          console.log('Animation step 1: Analyzing');
+          setLoadingStep(1);
+        }, 800);
+        
+        // Step 2: Matching (after 1.8s total)
+        setTimeout(() => {
+          console.log('Animation step 2: Matching');
+          setLoadingStep(2);
+        }, 1800);
+        
+        // Step 3: Calculating (after 2.8s total)
+        setTimeout(() => {
+          console.log('Animation step 3: Calculating');
+          setLoadingStep(3);
+        }, 2800);
+        
+        // Move to results (after 4s total)
         setTimeout(() => {
           console.log('Animation complete, moving to step 8');
-          console.log('Current recommendedPackage state:', recommendedPackage);
+          console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage);
+          console.log('matchedPackages from hook:', matchedPackages);
+          
+          // Force set the recommended package
+          if (matchedRecommendedPackage) {
+            console.log('Setting recommended package from hook:', matchedRecommendedPackage.name);
+            setRecommendedPackage(matchedRecommendedPackage);
+          } else if (matchedPackages && matchedPackages.length > 0) {
+            console.log('Setting recommended package from first match:', matchedPackages[0].name);
+            setRecommendedPackage(matchedPackages[0]);
+          } else {
+            console.log('No packages found to recommend');
+          }
+          
+          console.log('Moving to step 8');
+          setCurrentStep(8);
+          
+          // Update lead with completion
+          updateLead({
+            current_step: 8,
+            completed_at: new Date().toISOString()
+          });
+        }, 4000);
+      };
+      
+      animateLoading();
+    }
+  };
           console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage);
           
           // Force set the recommended package if we have one
@@ -807,30 +849,36 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 
                 <div className="space-y-4 max-w-sm mx-auto">
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 1 ? 'text-rose-600 font-medium' : 'text-gray-400'
+                    loadingStep >= 1 ? 'text-rose-600' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full ${
-                      loadingStep >= 1 ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
+                      loadingStep >= 1 ? 'bg-rose-500' : 'bg-gray-300'
                     }`}></div>
-                    <span>Analyzing your preferences...</span>
+                    <span className={`transition-all duration-500 ${loadingStep >= 1 ? 'font-medium' : ''}`}>
+                      Analyzing your preferences...
+                    </span>
                     {loadingStep >= 1 && <Check className="w-4 h-4 text-rose-500" />}
                   </div>
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 2 ? 'text-amber-600 font-medium' : 'text-gray-400'
+                    loadingStep >= 2 ? 'text-amber-600' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full ${
-                      loadingStep >= 2 ? 'bg-amber-500 animate-pulse' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
+                      loadingStep >= 2 ? 'bg-amber-500' : 'bg-gray-300'
                     }`}></div>
-                    <span>Matching with verified vendors...</span>
+                    <span className={`transition-all duration-500 ${loadingStep >= 2 ? 'font-medium' : ''}`}>
+                      Matching with verified vendors...
+                    </span>
                     {loadingStep >= 2 && <Check className="w-4 h-4 text-amber-500" />}
                   </div>
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 3 ? 'text-emerald-600 font-medium' : 'text-gray-400'
+                    loadingStep >= 3 ? 'text-emerald-600' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full ${
-                      loadingStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
+                      loadingStep >= 3 ? 'bg-emerald-500' : 'bg-gray-300'
                     }`}></div>
-                    <span>Calculating best value...</span>
+                    <span className={`transition-all duration-500 ${loadingStep >= 3 ? 'font-medium' : ''}`}>
+                      Calculating best value...
+                    </span>
                     {loadingStep >= 3 && <Check className="w-4 h-4 text-emerald-500" />}
                   </div>
                 </div>
@@ -845,7 +893,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 {console.log('recommendedPackage state:', recommendedPackage)}
                 {console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage)}
                 {console.log('matchedPackages from hook:', matchedPackages)}
-                {console.log('packagesLoading:', packagesLoading)}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
