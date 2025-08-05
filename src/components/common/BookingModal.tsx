@@ -870,6 +870,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 {console.log('recommendedPackage state:', recommendedPackage)}
                 {console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage)}
                 {console.log('matchedPackages from hook:', matchedPackages)}
+                {console.log('packagesLoading:', packagesLoading)}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
