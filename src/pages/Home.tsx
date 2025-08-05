@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Loader, Eye, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ServiceCard } from '../components/booking/ServiceCard';
 import { mockBundles } from '../lib/mockData';
 import { useBooking } from '../context/BookingContext';
+import { useServicePackages } from '../hooks/useSupabase';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { setSelectedServices, setEventType } = useBooking();
   const [showModal, setShowModal] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedEventType, setSelectedEventType] = useState('');
   const [localSelectedServices, setLocalSelectedServices] = useState<string[]>([]);
   const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
   const [selectedHours, setSelectedHours] = useState('');
   const [selectedBudget, setSelectedBudget] = useState('');
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchedPackage, setMatchedPackage] = useState<any>(null);
 
   const eventTypes = [
     { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
@@ -62,17 +65,19 @@ export const Home: React.FC = () => {
 
   const handleStartBooking = () => {
     setShowModal(true);
-    setCurrentQuestion(1);
+    setCurrentStep(1);
     setSelectedEventType('');
     setLocalSelectedServices([]);
     setSelectedCoverage([]);
     setSelectedHours('');
     setSelectedBudget('');
+    setIsMatching(false);
+    setMatchedPackage(null);
   };
 
   const handleEventTypeSelect = (eventType: string) => {
     setSelectedEventType(eventType);
-    setCurrentQuestion(2);
+    setCurrentStep(2);
   };
 
   const handleServiceToggle = (serviceId: string) => {
@@ -92,19 +97,89 @@ export const Home: React.FC = () => {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < 5) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    } else if (currentStep === 5) {
+      // Start matching process
+      setIsMatching(true);
+      setCurrentStep(6);
+      
+      // Simulate matching delay
+      setTimeout(() => {
+        // Mock package matching logic
+        const mockPackage = {
+          id: 'recommended-1',
+          name: 'Perfect Wedding Photography',
+          description: 'Our most popular photography package, perfectly tailored to your preferences and budget.',
+          price: selectedBudget === '0-150000' ? 120000 : 
+                 selectedBudget === '150000-300000' ? 220000 :
+                 selectedBudget === '300000-500000' ? 380000 : 480000,
+          service_type: localSelectedServices[0],
+          hour_amount: parseInt(selectedHours),
+          features: [
+            'Professional photographer',
+            'High-resolution digital gallery',
+            'Online sharing platform',
+            'Print release included',
+            selectedHours === '8' || selectedHours === '10' || selectedHours === '12' ? 'Engagement session' : null,
+            selectedCoverage.includes('Getting Ready') ? 'Getting ready coverage' : null,
+            selectedCoverage.includes('Reception') ? 'Reception coverage' : null
+          ].filter(Boolean),
+          coverage: {
+            events: selectedCoverage
+          },
+          vendor: {
+            name: 'Elegant Moments Photography',
+            rating: 4.9,
+            reviewCount: 127,
+            experience: 8,
+            avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            portfolio: [
+              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
+              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
+              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400'
+            ]
+          }
+        };
+        
+        setMatchedPackage(mockPackage);
+        setIsMatching(false);
+        setCurrentStep(7);
+      }, 2000);
     }
   };
 
   const handlePrevQuestion = () => {
-    if (currentQuestion > 1) {
-      setCurrentQuestion(currentQuestion - 1);
+    if (currentStep > 1 && currentStep <= 5) {
+      setCurrentStep(currentStep - 1);
+    } else if (currentStep === 7) {
+      // Go back to budget question
+      setCurrentStep(5);
+      setMatchedPackage(null);
     }
   };
 
-  const handleContinue = () => {
-    // Final step - navigate to packages with all collected data
+  const handleBookPackage = () => {
+    // Book the matched package
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    setShowModal(false);
+    navigate('/booking/event-details', {
+      state: {
+        selectedPackage: matchedPackage,
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType,
+        preferences: {
+          coverage: selectedCoverage,
+          hours: selectedHours,
+          budget: selectedBudget
+        }
+      }
+    });
+  };
+
+  const handleViewAllPackages = () => {
+    // View all packages instead of the recommended one
     setSelectedServices(localSelectedServices);
     setEventType(selectedEventType);
     setShowModal(false);
@@ -138,7 +213,7 @@ export const Home: React.FC = () => {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setCurrentQuestion(1);
+    setCurrentStep(1);
     setSelectedEventType('');
     setLocalSelectedServices([]);
     setSelectedCoverage([]);
@@ -147,7 +222,7 @@ export const Home: React.FC = () => {
   };
 
   const canProceedQuestion = () => {
-    switch (currentQuestion) {
+    switch (currentStep) {
       case 1: return selectedEventType !== '';
       case 2: return localSelectedServices.length > 0;
       case 3: return selectedCoverage.length > 0;
@@ -158,14 +233,25 @@ export const Home: React.FC = () => {
   };
 
   const getQuestionTitle = () => {
-    switch (currentQuestion) {
+    switch (currentStep) {
       case 1: return 'What type of event?';
       case 2: return 'What services do you need?';
       case 3: return 'What moments to capture?';
       case 4: return 'How many hours?';
       case 5: return 'What\'s your budget?';
+      case 6: return 'Finding your perfect match...';
+      case 7: return 'Your perfect match!';
       default: return '';
     }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
   };
 
   const handleSearch = (filters: any) => {
@@ -557,17 +643,19 @@ export const Home: React.FC = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleCloseModal()}>
+          <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 ? 'max-w-4xl' : 'max-w-2xl'}`}>
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
                   {getQuestionTitle()}
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Question {currentQuestion} of 5
-                </p>
+                {currentStep <= 5 && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Question {currentStep} of 5
+                  </p>
+                )}
               </div>
               <button
                 onClick={handleCloseModal}
@@ -579,7 +667,7 @@ export const Home: React.FC = () => {
 
             {/* Modal Content */}
             <div className="p-6">
-              {currentQuestion === 1 && (
+              {currentStep === 1 && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -607,7 +695,7 @@ export const Home: React.FC = () => {
                 </div>
               )}
 
-              {currentQuestion === 2 && (
+              {currentStep === 2 && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -679,7 +767,7 @@ export const Home: React.FC = () => {
                 </div>
               )}
 
-              {currentQuestion === 3 && (
+              {currentStep === 3 && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -736,7 +824,7 @@ export const Home: React.FC = () => {
                 </div>
               )}
 
-              {currentQuestion === 4 && (
+              {currentStep === 4 && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -793,7 +881,7 @@ export const Home: React.FC = () => {
                 </div>
               )}
 
-              {currentQuestion === 5 && (
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <div className="text-center">
                     <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -840,13 +928,229 @@ export const Home: React.FC = () => {
                     </Button>
                     <Button
                       variant="primary"
-                      onClick={handleContinue}
+                      onClick={handleNextQuestion}
                       disabled={!canProceedQuestion()}
                       icon={ArrowRight}
                       className="px-8"
                     >
                       Find My Perfect Packages
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 6: Matching/Loading */}
+              {currentStep === 6 && (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                    <Sparkles className="w-12 h-12 text-white" />
+                  </div>
+                  <h4 className="text-3xl font-bold text-gray-900 mb-4">
+                    Finding Your Perfect Match...
+                  </h4>
+                  <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
+                    We're analyzing hundreds of {localSelectedServices[0]?.toLowerCase()} packages to find your ideal match
+                  </p>
+                  
+                  <div className="space-y-4 max-w-sm mx-auto">
+                    <div className="flex items-center space-x-3 text-gray-600">
+                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                      <span>Analyzing your preferences...</span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-gray-600">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <span>Matching with verified vendors...</span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-gray-600">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <span>Calculating best value...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 7: Perfect Match Result */}
+              {currentStep === 7 && matchedPackage && (
+                <div className="space-y-8">
+                  {/* Celebration Header */}
+                  <div className="text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                      <Heart className="w-10 h-10 text-white" />
+                    </div>
+                    <h4 className="text-3xl font-bold text-gray-900 mb-4">
+                      🎉 Perfect Match Found!
+                    </h4>
+                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                      We found the ideal {localSelectedServices[0]?.toLowerCase()} package that matches your preferences and budget perfectly.
+                    </p>
+                  </div>
+
+                  {/* Package Card */}
+                  <div className="bg-gradient-to-br from-rose-50 to-amber-50 rounded-2xl p-6 border-2 border-rose-200">
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Package Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <h3 className="text-2xl font-bold text-gray-900">{matchedPackage.name}</h3>
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Perfect Match
+                          </span>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-6 leading-relaxed">{matchedPackage.description}</p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-3">What's Included</h4>
+                            <div className="space-y-2">
+                              {matchedPackage.features.slice(0, 4).map((feature: string, index: number) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <span className="text-sm text-gray-700">{feature}</span>
+                                </div>
+                              ))}
+                              {matchedPackage.features.length > 4 && (
+                                <div className="text-sm text-gray-500">
+                                  +{matchedPackage.features.length - 4} more features
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
+                            <div className="space-y-2">
+                              {selectedCoverage.slice(0, 4).map((coverage, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  <span className="text-sm text-gray-700">{coverage}</span>
+                                </div>
+                              ))}
+                              {selectedCoverage.length > 4 && (
+                                <div className="text-sm text-gray-500">
+                                  +{selectedCoverage.length - 4} more events
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-6 text-sm text-gray-600 mt-6">
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-1" />
+                            <span>{matchedPackage.hour_amount} hours coverage</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Shield className="w-4 h-4 mr-1" />
+                            <span>Fully insured</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Award className="w-4 h-4 mr-1" />
+                            <span>Top rated</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Vendor & Pricing */}
+                      <div className="lg:w-1/3">
+                        {/* Vendor Info */}
+                        <div className="bg-white rounded-xl p-4 mb-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <img
+                              src={matchedPackage.vendor.avatar}
+                              alt={matchedPackage.vendor.name}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{matchedPackage.vendor.name}</h4>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                <span>{matchedPackage.vendor.rating}</span>
+                                <span className="mx-1">•</span>
+                                <span>{matchedPackage.vendor.experience}y exp</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Portfolio Preview */}
+                          <div className="grid grid-cols-3 gap-2">
+                            {matchedPackage.vendor.portfolio.map((photo: string, index: number) => (
+                              <img
+                                key={index}
+                                src={photo}
+                                alt={`Portfolio ${index + 1}`}
+                                className="aspect-square object-cover rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Pricing */}
+                        <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-xl p-6 text-white text-center">
+                          <div className="text-3xl font-bold mb-2">
+                            {formatPrice(matchedPackage.price)}
+                          </div>
+                          <div className="text-rose-100 mb-6">Perfect for your budget</div>
+                          
+                          <div className="space-y-3">
+                            <Button
+                              variant="secondary"
+                              size="lg"
+                              className="w-full bg-white text-rose-600 hover:bg-gray-50"
+                              onClick={handleBookPackage}
+                            >
+                              Book This Package
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                              icon={Eye}
+                              onClick={handleViewAllPackages}
+                            >
+                              View Other Options
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Why This Package */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <h4 className="font-semibold text-blue-900 mb-4 text-center">
+                      Why this is perfect for you:
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Check className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-blue-900">Perfect Coverage</div>
+                          <div className="text-sm text-blue-700">Matches your selected events</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-blue-900">Right Duration</div>
+                          <div className="text-sm text-blue-700">{selectedHours} hours as requested</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Award className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-blue-900">Within Budget</div>
+                          <div className="text-sm text-blue-700">Fits your price range</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
