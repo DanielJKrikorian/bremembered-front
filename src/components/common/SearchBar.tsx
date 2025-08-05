@@ -36,14 +36,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
 
   const handleSearch = () => {
     if (selectedServices.length > 0) {
-      // Open the questionnaire modal instead of navigating
-      if (onSearch) {
-        onSearch({
-          selectedServices,
-          eventType,
-          showQuestionnaire: true
-        });
-      }
+      // Navigate to questionnaire instead of directly to packages
+      window.location.href = `/booking/questionnaire?services=${selectedServices.join(',')}&eventType=${eventType}`;
     }
   };
 

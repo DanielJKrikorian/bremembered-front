@@ -17,14 +17,6 @@ export const PackageQuestionnaire: React.FC = () => {
     recommendedPackage,
     loading,
     error,
-    selectedServices: matchingSelectedServices,
-    currentServiceIndex,
-    selectedPackages,
-    completedServices,
-    initializeServices,
-    getCurrentService,
-    areAllServicesCompleted,
-    moveToNextService,
     setEventType,
     setServiceType,
     setPreferenceType,
@@ -37,16 +29,7 @@ export const PackageQuestionnaire: React.FC = () => {
   // Get the search data from navigation state
   const selectedServices = searchParams.get('services')?.split(',') || [];
   const eventTypeFromUrl = searchParams.get('eventType') || 'Wedding';
-  
-  // Initialize services when component mounts
-  React.useEffect(() => {
-    if (selectedServices.length > 0 && matchingSelectedServices.length === 0) {
-      initializeServices(selectedServices);
-    }
-  }, [selectedServices, matchingSelectedServices.length, initializeServices]);
-
-  const currentService = getCurrentService() || selectedServices[0];
-  const isMultipleServices = selectedServices.length > 1;
+  const currentService = selectedServices[0]; // Start with first service
 
   const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
   const [selectedHours, setSelectedHours] = useState<number | null>(null);
@@ -123,39 +106,16 @@ export const PackageQuestionnaire: React.FC = () => {
     setPriceRange(priceRange.min, priceRange.max);
   };
 
-  // Helper function to get service icon
-  const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': return Camera;
-      case 'Videography': return Video;
-      case 'DJ Services': return Music;
-      case 'Coordination': 
-      case 'Day-of Coordination': return Users;
-      case 'Planning': return Calendar;
-      default: return Sparkles;
-    }
-  };
-
   const handleSelectRecommended = () => {
     if (recommendedPackage) {
       selectRecommendedPackage(recommendedPackage.id);
-      
-      // Check if there are more services to process
-      const isCompleted = moveToNextService();
-      
-      if (isCompleted || areAllServicesCompleted()) {
-        // All services completed - go to vendor selection
-        navigate('/booking/event-details', {
-          state: {
-            selectedPackages,
-            selectedServices,
-            allServicesCompleted: true
-          }
-        });
-      } else {
-        // More services to process - stay on questionnaire but reset for next service
-        // The state will automatically update to show the next service
-      }
+      navigate('/booking/congratulations', {
+        state: {
+          selectedPackage: recommendedPackage,
+          selectedServices,
+          currentServiceIndex: 0
+        }
+      });
     }
   };
 
@@ -230,11 +190,6 @@ export const PackageQuestionnaire: React.FC = () => {
               </h2>
               <p className="text-gray-600">
                 We'll find {currentService} packages for your {filters.eventType?.toLowerCase()}
-                {isMultipleServices && (
-                  <span className="block mt-2 text-sm">
-                    Service {currentServiceIndex + 1} of {selectedServices.length}
-                  </span>
-                )}
               </p>
             </div>
 
@@ -245,11 +200,6 @@ export const PackageQuestionnaire: React.FC = () => {
                   <div className="font-semibold text-gray-900">Event Type: {filters.eventType}</div>
                   <div className="text-gray-600">Service: {currentService}</div>
                   <div className="text-sm text-gray-500">{availablePackages.length} packages available</div>
-                  {isMultipleServices && (
-                    <div className="text-sm text-blue-600 mt-1">
-                      Progress: {completedServices.length}/{selectedServices.length} services completed
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -272,55 +222,38 @@ export const PackageQuestionnaire: React.FC = () => {
           <Card className="p-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-amber-600" />
+                <Grid className="w-8 h-8 text-amber-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                Would you like to be matched based on the number of hours on site or coverage of events on the day?
+                How would you like to choose your package?
               </h2>
               <p className="text-gray-600">
-                Choose how you'd like to find your perfect {currentService} package
-                {isMultipleServices && (
-                  <span className="block mt-2 text-sm">
-                    Step {currentServiceIndex + 1} of {selectedServices.length}: {currentService}
-                  </span>
-                )}
+                Select your preferred way to narrow down the perfect package
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
               <div
                 onClick={() => setPreferenceType('hours')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center group"
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
               >
-                <div className="w-16 h-16 bg-amber-100 group-hover:bg-amber-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Clock className="w-8 h-8 text-amber-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Hours</h3>
-                <p className="text-gray-600 mb-4">I know how many hours of coverage I need</p>
-                <div className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
-                  <strong>Best for:</strong> Couples who have a specific timeline in mind
-                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
+                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
               </div>
               
               <div
                 onClick={() => setPreferenceType('coverage')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all text-center group"
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
               >
-                <div className="w-16 h-16 bg-purple-100 group-hover:bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
-                  <List className="w-8 h-8 text-purple-600" />
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <List className="w-8 h-8 text-amber-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Coverage</h3>
-                <p className="text-gray-600 mb-4">I want to choose by specific moments/events</p>
-                <div className="text-sm text-purple-700 bg-purple-50 rounded-lg p-3">
-                  <strong>Best for:</strong> Couples who want to focus on specific events during the day
-                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
+                <p className="text-gray-600">Choose based on specific moments you want captured</p>
               </div>
-            </div>
-            
-            <div className="text-center mt-8">
-              <p className="text-sm text-gray-500">
-                💡 Don't worry - you can always discuss adjustments with your vendor later
-              </p>
             </div>
           </Card>
         )}
@@ -335,7 +268,7 @@ export const PackageQuestionnaire: React.FC = () => {
                 How many hours of coverage do you need?
               </h2>
               <p className="text-gray-600">
-                Select the coverage duration that matches your {filters.eventType?.toLowerCase()} schedule
+                Choose the duration that best fits your {filters.eventType?.toLowerCase()} timeline
               </p>
             </div>
 
@@ -365,12 +298,6 @@ export const PackageQuestionnaire: React.FC = () => {
                 );
               })}
             </div>
-            
-            <div className="text-center mt-8">
-              <p className="text-sm text-gray-500">
-                💡 We'll find packages with coverage close to your selected hours
-              </p>
-            </div>
           </Card>
         )}
 
@@ -384,7 +311,7 @@ export const PackageQuestionnaire: React.FC = () => {
                 What moments would you like covered?
               </h2>
               <p className="text-gray-600">
-                Choose the specific moments that are most important to you
+                Select all the moments you want captured during your {filters.eventType?.toLowerCase()}
               </p>
             </div>
 
@@ -425,11 +352,6 @@ export const PackageQuestionnaire: React.FC = () => {
               >
                 Continue
               </Button>
-              <div className="mt-4">
-                <p className="text-sm text-gray-500">
-                  💡 We'll find packages that include all your selected moments
-                </p>
-              </div>
             </div>
           </Card>
         )}
@@ -563,10 +485,7 @@ export const PackageQuestionnaire: React.FC = () => {
                               style={{ color: 'black' }}
                               onClick={handleSelectRecommended}
                             >
-                              {isMultipleServices && !areAllServicesCompleted() 
-                                ? `Select & Continue to ${selectedServices[currentServiceIndex + 1] || 'Next Service'}`
-                                : 'Select This Package'
-                              }
+                              Select This Package
                             </Button>
                             <Button
                               variant="outline"
@@ -577,9 +496,7 @@ export const PackageQuestionnaire: React.FC = () => {
                                 state: {
                                   selectedServices,
                                   eventType: filters.eventType,
-                                  availablePackages,
-                                  currentServiceIndex,
-                                  selectedPackages
+                                  availablePackages
                                 }
                               })}
                             >
@@ -592,60 +509,10 @@ export const PackageQuestionnaire: React.FC = () => {
                   </div>
                 </Card>
 
-                {/* Progress Indicator for Multiple Services */}
-                {isMultipleServices && (
-                  <Card className="p-6 bg-blue-50 border-blue-200">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                      Your Wedding Services Progress
-                    </h3>
-                    <div className="flex items-center justify-center space-x-4">
-                      {selectedServices.map((service, index) => {
-                        const isCompleted = completedServices.includes(service);
-                        const isCurrent = index === currentServiceIndex;
-                        const ServiceIcon = getServiceIcon(service);
-                        
-                        return (
-                          <div key={service} className="flex items-center">
-                            <div className={`
-                              w-10 h-10 rounded-full flex items-center justify-center transition-all
-                              ${isCompleted 
-                                ? 'bg-green-500 text-white' 
-                                : isCurrent 
-                                  ? 'bg-rose-500 text-white' 
-                                  : 'bg-gray-200 text-gray-600'
-                              }
-                            `}>
-                              {isCompleted ? <Check className="w-5 h-5" /> : <ServiceIcon className="w-5 h-5" />}
-                            </div>
-                            <span className={`ml-2 text-sm font-medium ${
-                              isCompleted ? 'text-green-600' : isCurrent ? 'text-rose-600' : 'text-gray-500'
-                            }`}>
-                              {service}
-                            </span>
-                            {index < selectedServices.length - 1 && (
-                              <div className={`w-8 h-1 mx-4 rounded-full ${
-                                isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                              }`} />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {completedServices.length > 0 && (
-                      <div className="mt-4 text-center">
-                        <p className="text-sm text-blue-800">
-                          ✅ Completed: {completedServices.join(', ')}
-                        </p>
-                      </div>
-                    )}
-                  </Card>
-                )}
-
                 {/* Why This Package */}
                 <Card className="p-6 bg-blue-50 border-blue-200">
                   <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                    Why we recommend this {currentService} package for you:
+                    Why we recommend this package for you:
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center space-x-3">
