@@ -215,38 +215,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       const nextStep = currentStep + 1;
       console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
+    } else if (currentStep === 5) {
+      // After budget question, go to matching step
+      setCurrentStep(6);
+      
+      // Simulate matching process
+      setTimeout(() => {
+        setCurrentStep(8); // Go directly to results
+      }, 2000);
     }
-                  </h2>
-                  <p className="text-gray-600 text-lg mb-8">
-                    We're analyzing hundreds of {localSelectedServices[0]} packages to find the one that's perfect for your {selectedEventType.toLowerCase()}
-                  </p>
-                  
-                  {/* Animated progress indicators */}
-                  <div className="space-y-4 mb-8">
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      Matching your preferences with available packages...
-                    </p>
-                  </div>
-
-                  {/* Manual reveal button */}
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => setCurrentStep(8)}
-                    icon={Heart}
-                    className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
-                  >
-                    Click here to reveal your perfect match! ✨
-                  </Button>
-                </div>
-              </div>
-            )}
-
   };
 
   const handlePrevQuestion = () => {
@@ -812,6 +789,44 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     }
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Step 6: Matching */}
+            {currentStep === 6 && (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Finding Your Perfect Match...
+                </h2>
+                <p className="text-gray-600 text-lg mb-8">
+                  We're analyzing hundreds of {localSelectedServices[0]} packages to find the one that's perfect for your {selectedEventType.toLowerCase()}
+                </p>
+                
+                {/* Animated progress indicators */}
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Matching your preferences with available packages...
+                  </p>
+                </div>
+
+                {/* Manual reveal button */}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => setCurrentStep(8)}
+                  icon={Heart}
+                  className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                >
+                  Click here to reveal your perfect match! ✨
+                </Button>
               </div>
             )}
 
