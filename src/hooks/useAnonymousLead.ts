@@ -58,9 +58,6 @@ export const useAnonymousLead = () => {
         const sessionId = getSessionId();
         const ipAddress = await getUserIP();
 
-        // Set session ID in headers for RLS policy
-        supabase.rest.headers['x-session-id'] = sessionId;
-
         // Try to fetch existing lead
         const { data: existingLead, error: fetchError } = await supabase
           .from('anonymous_leads')
@@ -114,10 +111,6 @@ export const useAnonymousLead = () => {
 
 
     try {
-      // Ensure session ID is in headers
-      const sessionId = getSessionId();
-      supabase.rest.headers['x-session-id'] = sessionId;
-
       const updatedData = {
         ...updates,
         updated_at: new Date().toISOString()
