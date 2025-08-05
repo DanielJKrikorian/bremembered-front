@@ -98,7 +98,13 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         
         // Debug: Log all returned packages
         console.log('All returned packages:', data);
-        console.log('Packages by service_type:', data?.map(p => ({ name: p.name, service_type: p.service_type, lookup_key: p.lookup_key })));
+        console.log('Detailed package breakdown:', data?.map(p => ({ 
+          id: p.id,
+          name: p.name, 
+          service_type: p.service_type, 
+          lookup_key: p.lookup_key,
+          status: p.status
+        })));
         
         setPackages(data || []);
       } catch (err) {
