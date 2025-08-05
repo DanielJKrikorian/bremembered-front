@@ -103,7 +103,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Set recommended package when packages are loaded
   useEffect(() => {
-    if (matchedPackages && matchedPackages.length > 0 && currentStep >= 6) {
+    if (matchedRecommendedPackage && currentStep >= 8) {
+      console.log('Setting recommended package from hook:', matchedRecommendedPackage);
+      setRecommendedPackage(matchedRecommendedPackage);
+    } else if (matchedPackages && matchedPackages.length > 0 && currentStep >= 8) {
       // Find the best matching package based on user preferences
       let bestPackage = matchedPackages[0];
       
@@ -133,8 +136,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       }
       
       setRecommendedPackage(bestPackage);
+      console.log('Setting recommended package from local logic:', bestPackage);
     }
-  }, [matchedPackages, currentStep, preferenceType, selectedHours, selectedCoverage]);
+  }, [matchedPackages, matchedRecommendedPackage, currentStep, preferenceType, selectedHours, selectedCoverage]);
 
   // Update lead data when answers change
   useEffect(() => {
@@ -213,13 +217,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setTimeout(() => {
         setIsMatching(false);
         setCurrentStep(8);
+        console.log('Moving to step 8, packages available:', matchedPackages?.length || 0);
         
         // Update lead with completion
         updateLead({
           current_step: 8,
           completed_at: new Date().toISOString()
         });
-      }, 2000);
+      }, 1500);
     }
   };
 
@@ -828,6 +833,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             {/* Step 8: Perfect Match Result */}
             {currentStep === 8 && (
               <div className="space-y-6">
+                {console.log('Rendering step 8, recommendedPackage:', recommendedPackage)}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
