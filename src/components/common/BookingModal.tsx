@@ -508,6 +508,82 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               <div className="space-y-6">
                 <div className="text-center">
                   <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    How would you like to choose your package?
+                  </h4>
+                  <p className="text-gray-600">
+                    Choose how you'd like to find your perfect {localSelectedServices[0]?.toLowerCase()} package
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <button
+                    onClick={() => setPreferenceType('hours')}
+                    className={`
+                      relative p-6 rounded-xl border-2 transition-all text-center
+                      ${preferenceType === 'hours'
+                        ? 'border-amber-500 bg-amber-50' 
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    {preferenceType === 'hours' && (
+                      <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <div className="text-4xl mb-4">⏰</div>
+                    <h5 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h5>
+                    <p className="text-sm text-gray-600">
+                      Choose based on how many hours of coverage you need
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={() => setPreferenceType('coverage')}
+                    className={`
+                      relative p-6 rounded-xl border-2 transition-all text-center
+                      ${preferenceType === 'coverage'
+                        ? 'border-rose-500 bg-rose-50' 
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    {preferenceType === 'coverage' && (
+                      <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <div className="text-4xl mb-4">📸</div>
+                    <h5 className="text-lg font-semibold text-gray-900 mb-2">By Moments</h5>
+                    <p className="text-sm text-gray-600">
+                      Choose based on specific moments you want captured
+                    </p>
+                  </button>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevQuestion}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleNextQuestion}
+                    disabled={!canProceedQuestion()}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 4 && preferenceType === 'coverage' && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
                     What moments would you like covered?
                   </h4>
                   <p className="text-gray-600">
@@ -561,7 +637,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 4 && preferenceType === 'hours' && (
               <div className="space-y-6">
                 <div className="text-center">
                   <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -870,7 +946,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   /* No Package Found */
                   <div className="text-center">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      How would you like to choose your package?
+                      <X className="w-10 h-10 text-gray-500" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
                       No Perfect Match Found
@@ -891,90 +967,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                       >
                         View All Packages
                       </Button>
-                    Question {currentStep} of 6
+                    </div>
                   </div>
                 )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <button
-                      onClick={() => setPreferenceType('hours')}
-                      className={`
-                        relative p-6 rounded-xl border-2 transition-all text-center
-                        ${preferenceType === 'hours'
-                          ? 'border-amber-500 bg-amber-50' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {preferenceType === 'hours' && (
-                        <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      <div className="text-4xl mb-4">⏰</div>
-                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h5>
-                      <p className="text-sm text-gray-600">
-                        Choose based on how many hours of coverage you need
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setPreferenceType('coverage')}
-                      className={`
-                        relative p-6 rounded-xl border-2 transition-all text-center
-                        ${preferenceType === 'coverage'
-                          ? 'border-rose-500 bg-rose-50' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {preferenceType === 'coverage' && (
-                        <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      <div className="text-4xl mb-4">📸</div>
-                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Moments</h5>
-                      <p className="text-sm text-gray-600">
-                        Choose based on specific moments you want captured
-                      </p>
-                    </button>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handlePrevQuestion}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleNextQuestion}
-                      disabled={!canProceedQuestion()}
-                      icon={ArrowRight}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </div>
-              )}
+              </div>
+            )}
+          </div>
         </div>
-              {/* Step 8: Perfect Match Result */}
-              {currentStep === 8 && (
-              {currentStep === 4 && preferenceType === 'coverage' && (
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                      What moments would you like covered?
-                    </h4>
-                    <p className="text-gray-600">
-                      Select all the moments you want captured during your {selectedEventType.toLowerCase()}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
-                    {coverageOptions.map((option) => {
-                      const isSelected = selectedCoverage.includes(option.id);
+      </div>
+
       {/* Email Capture Modal */}
       <EmailCaptureModal
         isOpen={showEmailCapture}
