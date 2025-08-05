@@ -76,7 +76,7 @@ export const Home: React.FC = () => {
                   Start Your Booking Journey ✨
                 </Button>
                 <p className="text-sm text-gray-500 mt-3">
-                  Just 2 quick questions to get started
+                  Just a few simple questions to help recommend the perfect package
                 </p>
               </div>
             </div>

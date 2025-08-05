@@ -74,14 +74,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   // Get service packages based on answers
-  const shouldFetchPackages = currentStep === 6 && localSelectedServices.length > 0;
+  const shouldFetchPackages = currentStep >= 5 && localSelectedServices.length > 0;
   const { packages, loading: packagesLoading } = useServicePackages(
     shouldFetchPackages ? localSelectedServices[0] : undefined,
     shouldFetchPackages ? selectedEventType : undefined,
     shouldFetchPackages ? {
-      coverage: selectedCoverage,
-      minHours: selectedHours ? parseInt(selectedHours) - 1 : undefined,
-      maxHours: selectedHours ? parseInt(selectedHours) + 1 : undefined,
+      coverage: preferenceType === 'coverage' ? selectedCoverage : [],
+      minHours: preferenceType === 'hours' && selectedHours ? Math.max(1, parseInt(selectedHours) - 2) : undefined,
+      maxHours: preferenceType === 'hours' && selectedHours ? parseInt(selectedHours) + 2 : undefined,
       minPrice: selectedBudget ? parseInt(selectedBudget.split('-')[0]) : undefined,
       maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined,
       selectedServices: localSelectedServices
@@ -90,10 +90,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Set recommended package when packages are loaded
   useEffect(() => {
-    if (packages && packages.length > 0 && !recommendedPackage) {
-      setRecommendedPackage(packages[0]);
+    if (packages && packages.length > 0 && currentStep >= 6) {
+      // Find the best matching package based on user preferences
+      let bestPackage = packages[0];
+      
+      if (preferenceType === 'hours' && selectedHours) {
+        const targetHours = parseInt(selectedHours);
+        // Find package with hour_amount closest to target
+        bestPackage = packages.reduce((best, current) => {
+          const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
+          const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
+          return currentDiff < bestDiff ? current : best;
+        });
+      } else if (preferenceType === 'coverage' && selectedCoverage.length > 0) {
+        // Find package that covers the most selected events
+        bestPackage = packages.reduce((best, current) => {
+          const bestCoverage = getPackageCoverage(best.coverage || {});
+          const currentCoverage = getPackageCoverage(current.coverage || {});
+          
+          const bestMatches = selectedCoverage.filter(event => 
+            bestCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
+          ).length;
+          const currentMatches = selectedCoverage.filter(event => 
+            currentCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
+          ).length;
+          
+          return currentMatches > bestMatches ? current : best;
+        });
+      }
+      
+      setRecommendedPackage(bestPackage);
     }
-  }, [packages, recommendedPackage]);
+  }, [packages, currentStep, preferenceType, selectedHours, selectedCoverage]);
 
   // Update lead data when answers change
   useEffect(() => {
@@ -170,44 +198,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       
       // Simulate matching delay
       setTimeout(() => {
-        // Mock package matching logic
-        const mockPackage = {
-          id: 'recommended-1',
-          name: 'Perfect Wedding Photography',
-          description: 'Our most popular photography package, perfectly tailored to your preferences and budget.',
-          price: selectedBudget === '0-150000' ? 120000 : 
-                 selectedBudget === '150000-300000' ? 220000 :
-                 selectedBudget === '300000-500000' ? 380000 : 480000,
-          service_type: localSelectedServices[0],
-          hour_amount: parseInt(selectedHours),
-          features: [
-            'High-resolution digital gallery',
-            'Online sharing platform',
-            'Print release included',
-            selectedHours === '8' || selectedHours === '10' || selectedHours === '12' ? 'Engagement session' : null,
-            selectedCoverage.includes('Getting Ready') ? 'Getting ready coverage' : null,
-            selectedCoverage.includes('Reception') ? 'Reception coverage' : null
-          ].filter(Boolean),
-          coverage: {
-            events: selectedCoverage
-          },
-          vendor: {
-            name: 'Elegant Moments Photography',
-            rating: 4.9,
-            reviewCount: 127,
-            experience: 8,
-            avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-            portfolio: [
-              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
-              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
-              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400'
-            ]
-          }
-        };
-        
-        const topPackage = packages?.[0];
-        setRecommendedPackage(topPackage);
-        setMatchedPackage(mockPackage);
         setIsMatching(false);
         setCurrentStep(8);
         
@@ -226,7 +216,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     } else if (currentStep === 8) {
       // Go back to budget question
       setCurrentStep(6);
-      setMatchedPackage(null);
     }
   };
 
@@ -388,9 +377,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               <h3 className="text-xl font-semibold text-gray-900">
                 {getQuestionTitle()}
               </h3>
-              {currentStep <= 5 && (
+              {currentStep <= 6 && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Question {currentStep} of 5
+                  Question {currentStep} of 6
                 </p>
               )}
             </div>
@@ -784,6 +773,36 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
             {/* Step 7: Perfect Match Result */}
             {currentStep === 7 && (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                  <Sparkles className="w-12 h-12 text-white" />
+                </div>
+                <h4 className="text-3xl font-bold text-gray-900 mb-4">
+                  Finding Your Perfect Match...
+                </h4>
+                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
+                  We're analyzing hundreds of {localSelectedServices[0]?.toLowerCase()} packages to find your ideal match
+                </p>
+                
+                <div className="space-y-4 max-w-sm mx-auto">
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                    <span>Analyzing your preferences...</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <span>Matching with verified vendors...</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    <span>Calculating best value...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 8: Perfect Match Result */}
+            {currentStep === 8 && (
               <div className="space-y-6">
                 {recommendedPackage ? (
                   <>
@@ -946,13 +965,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   /* No Package Found */
                   <div className="text-center">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <X className="w-10 h-10 text-gray-500" />
+                      <Sparkles className="w-10 h-10 text-gray-400" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
                       No Perfect Match Found
                     </h2>
                     <p className="text-gray-600 mb-6">
-                      Choose how you'd like to find your perfect {localSelectedServices[0]?.toLowerCase()} package
+                      We couldn't find a package that exactly matches your preferences, but we have other great options available.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                       <Button
