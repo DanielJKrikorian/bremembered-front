@@ -189,8 +189,7 @@ export const Home: React.FC = () => {
                  selectedBudget === '300000-500000' ? 380000 : 480000,
           service_type: localSelectedServices[0],
           hour_amount: parseInt(selectedHours),
-        .ilike('service_type', `%${primaryService}%`)
-        .ilike('event_type', `%${answers.eventType}%`)
+          features: [
             'High-resolution digital gallery',
             'Online sharing platform',
             'Print release included',
