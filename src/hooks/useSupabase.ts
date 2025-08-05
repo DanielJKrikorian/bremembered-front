@@ -95,6 +95,11 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         const { data, error } = await query.order('price', { ascending: true });
 
         if (error) throw error;
+        
+        // Debug: Log all returned packages
+        console.log('All returned packages:', data);
+        console.log('Packages by service_type:', data?.map(p => ({ name: p.name, service_type: p.service_type, lookup_key: p.lookup_key })));
+        
         setPackages(data || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
