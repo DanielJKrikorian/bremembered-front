@@ -714,6 +714,9 @@ export const Home: React.FC = () => {
                           <p className="text-xs text-gray-600">{option.description}</p>
                         </button>
                       );
+                    })}
+                  </div>
+                  
                   <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                     <Button
                       variant="outline"
@@ -770,7 +773,7 @@ export const Home: React.FC = () => {
                       );
                     })}
                   </div>
-                    })}
+                  
                   <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                     <Button
                       variant="outline"
@@ -827,7 +830,7 @@ export const Home: React.FC = () => {
                       );
                     })}
                   </div>
-                  </div>
+                  
                   <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                     <Button
                       variant="outline"
