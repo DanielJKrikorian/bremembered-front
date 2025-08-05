@@ -96,9 +96,16 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         if (error) throw error;
         
-        // Debug: Log all returned packages
+        // Filter out packages with multiple service types (containing commas)
+        const singleServicePackages = (data || []).filter(pkg => {
+          const hasMultipleServices = pkg.service_type && pkg.service_type.includes(',');
+          return !hasMultipleServices;
+        });
+        
+        // Debug: Log filtered packages
         console.log('All returned packages:', data);
-        console.log('Detailed package breakdown:', data?.map(p => ({ 
+        console.log('Filtered single-service packages:', singleServicePackages);
+        console.log('Detailed package breakdown:', singleServicePackages?.map(p => ({ 
           id: p.id,
           name: p.name, 
           service_type: p.service_type, 
@@ -106,7 +113,7 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           status: p.status
         })));
         
-        setPackages(data || []);
+        setPackages(singleServicePackages);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
