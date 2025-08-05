@@ -74,14 +74,16 @@ export const Home: React.FC = () => {
   // Get service packages based on answers
   const shouldFetchPackages = currentStep === 6 && localSelectedServices.length > 0;
   const { packages, loading: packagesLoading } = useServicePackages(
-    undefined, // Don't use single service type
+    shouldFetchPackages ? localSelectedServices[0] : undefined, // Use first selected service as primary filter
     shouldFetchPackages ? selectedEventType : undefined,
     shouldFetchPackages ? {
       coverage: selectedCoverage,
       minHours: selectedHours ? parseInt(selectedHours) - 1 : undefined,
       maxHours: selectedHours ? parseInt(selectedHours) + 1 : undefined,
       minPrice: selectedBudget ? parseInt(selectedBudget.split('-')[0]) : undefined,
-      maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined
+      maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined,
+      selectedServices: localSelectedServices,
+      exactMatch: true // Flag to use exact matching
     } : undefined
   );
 

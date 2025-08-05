@@ -35,13 +35,25 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Create OR conditions for each selected service
-          const serviceConditions = filters.selectedServices
-            .map(service => `service_type.ilike.%${service}%`)
-            .join(',');
-          query = query.or(serviceConditions);
+          if (filters.exactMatch) {
+            // Use exact matching for service types
+            const serviceConditions = filters.selectedServices
+              .map(service => `service_type.eq.${service}`)
+              .join(',');
+            query = query.or(serviceConditions);
+          } else {
+            // Use partial matching (original behavior)
+            const serviceConditions = filters.selectedServices
+              .map(service => `service_type.ilike.%${service}%`)
+              .join(',');
+            query = query.or(serviceConditions);
+          }
         } else if (serviceType) {
-          query = query.ilike('service_type', `%${serviceType}%`);
+          if (filters?.exactMatch) {
+            query = query.eq('service_type', serviceType);
+          } else {
+            query = query.ilike('service_type', `%${serviceType}%`);
+          }
         }
 
         if (eventType) {
