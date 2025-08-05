@@ -48,34 +48,22 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          if (filters.exactMatch) {
-            // Create OR conditions for each service using both service_type and lookup_key
-            const serviceConditions = filters.selectedServices.flatMap(service => {
-              const lookupKey = transformToLookupKey(service);
-              console.log(`Service: ${service} -> lookup_key: ${lookupKey}`);
-              return [
-                `service_type.eq.${service}`,
-                `lookup_key.eq.${lookupKey}`
-              ];
-            }).join(',');
-            console.log('Service conditions:', serviceConditions);
-            query = query.or(serviceConditions);
-          } else {
-            // Use partial matching (original behavior)
-            const serviceConditions = filters.selectedServices
-              .map(service => `service_type.ilike.%${service}%`)
-              .join(',');
-            query = query.or(serviceConditions);
-          }
+          // Create OR conditions for each service using both service_type and lookup_key
+          const serviceConditions = filters.selectedServices.flatMap(service => {
+            const lookupKey = transformToLookupKey(service);
+            console.log(`Service: ${service} -> lookup_key: ${lookupKey}`);
+            return [
+              `service_type.eq.${service}`,
+              `lookup_key.eq.${lookupKey}`
+            ];
+          }).join(',');
+          console.log('Service conditions:', serviceConditions);
+          query = query.or(serviceConditions);
         } else if (serviceType) {
-          if (filters?.exactMatch) {
-            // Try both service_type and lookup_key with proper transformation
-            const lookupKey = transformToLookupKey(serviceType);
-            console.log(`Single service: ${serviceType} -> lookup_key: ${lookupKey}`);
-            query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
-          } else {
-            query = query.ilike('service_type', `%${serviceType}%`);
-          }
+          // Try both service_type and lookup_key with proper transformation
+          const lookupKey = transformToLookupKey(serviceType);
+          console.log(`Single service: ${serviceType} -> lookup_key: ${lookupKey}`);
+          query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
         }
 
         if (eventType) {
