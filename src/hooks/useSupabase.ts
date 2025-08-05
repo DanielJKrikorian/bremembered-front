@@ -531,6 +531,7 @@ export const useVendorReviews = (vendorId: string) => {
       }
 
       if (!isSupabaseAvailable()) {
+      }
 
       try {
         const { data, error } = await supabase
@@ -708,6 +709,13 @@ export const useLeadInformation = () => {
       return data;
     } catch (err) {
       console.error('Error updating lead info:', err);
+      // Local state is already updated, just return it
+      return updatedLeadInfo;
+    }
+  };
+
+  return { leadInfo, updateLeadInfo, loading, error };
+};ror updating lead info:', err);
       // Local state is already updated, just return it
       return updatedLeadInfo;
     }
