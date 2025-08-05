@@ -17,6 +17,14 @@ export const PackageQuestionnaire: React.FC = () => {
     recommendedPackage,
     loading,
     error,
+    selectedServices: matchingSelectedServices,
+    currentServiceIndex,
+    selectedPackages,
+    completedServices,
+    initializeServices,
+    getCurrentService,
+    areAllServicesCompleted,
+    moveToNextService,
     setEventType,
     setServiceType,
     setPreferenceType,
@@ -29,7 +37,16 @@ export const PackageQuestionnaire: React.FC = () => {
   // Get the search data from navigation state
   const selectedServices = searchParams.get('services')?.split(',') || [];
   const eventTypeFromUrl = searchParams.get('eventType') || 'Wedding';
-  const currentService = selectedServices[0]; // Start with first service
+  
+  // Initialize services when component mounts
+  React.useEffect(() => {
+    if (selectedServices.length > 0 && matchingSelectedServices.length === 0) {
+      initializeServices(selectedServices);
+    }
+  }, [selectedServices, matchingSelectedServices.length, initializeServices]);
+
+  const currentService = getCurrentService() || selectedServices[0];
+  const isMultipleServices = selectedServices.length > 1;
 
   const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
   const [selectedHours, setSelectedHours] = useState<number | null>(null);
@@ -106,16 +123,39 @@ export const PackageQuestionnaire: React.FC = () => {
     setPriceRange(priceRange.min, priceRange.max);
   };
 
+  // Helper function to get service icon
+  const getServiceIcon = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': return Camera;
+      case 'Videography': return Video;
+      case 'DJ Services': return Music;
+      case 'Coordination': 
+      case 'Day-of Coordination': return Users;
+      case 'Planning': return Calendar;
+      default: return Sparkles;
+    }
+  };
+
   const handleSelectRecommended = () => {
     if (recommendedPackage) {
       selectRecommendedPackage(recommendedPackage.id);
-      navigate('/booking/congratulations', {
-        state: {
-          selectedPackage: recommendedPackage,
-          selectedServices,
-          currentServiceIndex: 0
-        }
-      });
+      
+      // Check if there are more services to process
+      const isCompleted = moveToNextService();
+      
+      if (isCompleted || areAllServicesCompleted()) {
+        // All services completed - go to vendor selection
+        navigate('/booking/event-details', {
+          state: {
+            selectedPackages,
+            selectedServices,
+            allServicesCompleted: true
+          }
+        });
+      } else {
+        // More services to process - stay on questionnaire but reset for next service
+        // The state will automatically update to show the next service
+      }
     }
   };
 
@@ -190,6 +230,11 @@ export const PackageQuestionnaire: React.FC = () => {
               </h2>
               <p className="text-gray-600">
                 We'll find {currentService} packages for your {filters.eventType?.toLowerCase()}
+                {isMultipleServices && (
+                  <span className="block mt-2 text-sm">
+                    Service {currentServiceIndex + 1} of {selectedServices.length}
+                  </span>
+                )}
               </p>
             </div>
 
@@ -200,6 +245,11 @@ export const PackageQuestionnaire: React.FC = () => {
                   <div className="font-semibold text-gray-900">Event Type: {filters.eventType}</div>
                   <div className="text-gray-600">Service: {currentService}</div>
                   <div className="text-sm text-gray-500">{availablePackages.length} packages available</div>
+                  {isMultipleServices && (
+                    <div className="text-sm text-blue-600 mt-1">
+                      Progress: {completedServices.length}/{selectedServices.length} services completed
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -225,10 +275,15 @@ export const PackageQuestionnaire: React.FC = () => {
                 <Grid className="w-8 h-8 text-amber-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                How would you like to choose your package?
+                How would you like to choose your {currentService} package?
               </h2>
               <p className="text-gray-600">
                 Select your preferred way to narrow down the perfect package
+                {isMultipleServices && (
+                  <span className="block mt-2 text-sm">
+                    Step {currentServiceIndex + 1} of {selectedServices.length}: {currentService}
+                  </span>
+                )}
               </p>
             </div>
 
@@ -485,7 +540,10 @@ export const PackageQuestionnaire: React.FC = () => {
                               style={{ color: 'black' }}
                               onClick={handleSelectRecommended}
                             >
-                              Select This Package
+                              {isMultipleServices && !areAllServicesCompleted() 
+                                ? `Select & Continue to ${selectedServices[currentServiceIndex + 1] || 'Next Service'}`
+                                : 'Select This Package'
+                              }
                             </Button>
                             <Button
                               variant="outline"
@@ -496,7 +554,9 @@ export const PackageQuestionnaire: React.FC = () => {
                                 state: {
                                   selectedServices,
                                   eventType: filters.eventType,
-                                  availablePackages
+                                  availablePackages,
+                                  currentServiceIndex,
+                                  selectedPackages
                                 }
                               })}
                             >
@@ -509,10 +569,60 @@ export const PackageQuestionnaire: React.FC = () => {
                   </div>
                 </Card>
 
+                {/* Progress Indicator for Multiple Services */}
+                {isMultipleServices && (
+                  <Card className="p-6 bg-blue-50 border-blue-200">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                      Your Wedding Services Progress
+                    </h3>
+                    <div className="flex items-center justify-center space-x-4">
+                      {selectedServices.map((service, index) => {
+                        const isCompleted = completedServices.includes(service);
+                        const isCurrent = index === currentServiceIndex;
+                        const ServiceIcon = getServiceIcon(service);
+                        
+                        return (
+                          <div key={service} className="flex items-center">
+                            <div className={`
+                              w-10 h-10 rounded-full flex items-center justify-center transition-all
+                              ${isCompleted 
+                                ? 'bg-green-500 text-white' 
+                                : isCurrent 
+                                  ? 'bg-rose-500 text-white' 
+                                  : 'bg-gray-200 text-gray-600'
+                              }
+                            `}>
+                              {isCompleted ? <Check className="w-5 h-5" /> : <ServiceIcon className="w-5 h-5" />}
+                            </div>
+                            <span className={`ml-2 text-sm font-medium ${
+                              isCompleted ? 'text-green-600' : isCurrent ? 'text-rose-600' : 'text-gray-500'
+                            }`}>
+                              {service}
+                            </span>
+                            {index < selectedServices.length - 1 && (
+                              <div className={`w-8 h-1 mx-4 rounded-full ${
+                                isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                              }`} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {completedServices.length > 0 && (
+                      <div className="mt-4 text-center">
+                        <p className="text-sm text-blue-800">
+                          ✅ Completed: {completedServices.join(', ')}
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
                 {/* Why This Package */}
                 <Card className="p-6 bg-blue-50 border-blue-200">
                   <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                    Why we recommend this package for you:
+                    Why we recommend this {currentService} package for you:
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-center space-x-3">

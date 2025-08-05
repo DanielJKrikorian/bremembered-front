@@ -21,6 +21,10 @@ interface PackageMatchingState {
   recommendedPackage: ServicePackage | null;
   loading: boolean;
   error: string | null;
+  selectedServices: string[];
+  currentServiceIndex: number;
+  selectedPackages: Record<string, ServicePackage>;
+  completedServices: string[];
 }
 
 export const usePackageMatching = () => {
@@ -30,9 +34,63 @@ export const usePackageMatching = () => {
     availablePackages: [],
     recommendedPackage: null,
     loading: false,
-    error: null
+    error: null,
+    selectedServices: [],
+    currentServiceIndex: 0,
+    selectedPackages: {},
+    completedServices: []
   });
 
+  // Initialize with selected services
+  const initializeServices = (services: string[]) => {
+    setState(prev => ({
+      ...prev,
+      selectedServices: services,
+      currentServiceIndex: 0,
+      selectedPackages: {},
+      completedServices: []
+    }));
+  };
+
+  // Get current service being processed
+  const getCurrentService = () => {
+    return state.selectedServices[state.currentServiceIndex];
+  };
+
+  // Check if all services are completed
+  const areAllServicesCompleted = () => {
+    return state.completedServices.length === state.selectedServices.length;
+  };
+
+  // Move to next service or complete flow
+  const moveToNextService = () => {
+    const nextIndex = state.currentServiceIndex + 1;
+    
+    if (nextIndex < state.selectedServices.length) {
+      // Move to next service - reset to step 3 (preference type selection)
+      setState(prev => ({
+        ...prev,
+        currentServiceIndex: nextIndex,
+        step: 3,
+        filters: {
+          ...prev.filters,
+          serviceType: prev.selectedServices[nextIndex],
+          preferenceType: undefined,
+          hours: undefined,
+          coverage: undefined,
+          priceRange: undefined
+        },
+        availablePackages: [],
+        recommendedPackage: null
+      }));
+      
+      // Filter packages for the new service
+      return false; // Not completed yet
+    } else {
+      // All services completed
+      return true;
+    }
+  };
   // Step 1: Filter by event type
   const setEventType = async (eventType: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -117,8 +175,9 @@ export const usePackageMatching = () => {
         loading: false
       }));
 
-      // Record this answer
-      await recordAnswer('selected_services', [serviceType]);
+      // Record this answer - for multiple services, update the array
+      const currentServices = state.selectedServices.length > 0 ? state.selectedServices : [serviceType];
+      await recordAnswer('selected_services', currentServices);
 
     } catch (err) {
       setState(prev => ({
@@ -347,15 +406,21 @@ export const usePackageMatching = () => {
 
     try {
       const sessionId = getSessionId();
+      const currentService = getCurrentService();
       
-      // Update with both recommended and selected for comparison
+      // Update the selected_packages object with the current service
+      const updatedSelectedPackages = {
+        ...state.selectedPackages,
+        [currentService]: {
+          recommended: state.recommendedPackage?.id,
+          selected: packageId
+        }
+      };
+
       const { error } = await supabase
         .from('leads_information')
         .update({
-          selected_packages: { 
-            recommended: state.recommendedPackage?.id,
-            selected: packageId 
-          },
+          selected_packages: updatedSelectedPackages,
           updated_at: new Date().toISOString()
         })
         .eq('session_id', sessionId);
@@ -363,7 +428,14 @@ export const usePackageMatching = () => {
       if (error) {
         console.error('Failed to record selected package:', error);
       } else {
-        console.log('Recorded selected package:', packageId);
+        console.log(`Recorded selected package for ${currentService}:`, packageId);
+        
+        // Update local state
+        setState(prev => ({
+          ...prev,
+          selectedPackages: updatedSelectedPackages,
+          completedServices: [...prev.completedServices, currentService]
+        }));
       }
     } catch (err) {
       console.error('Error recording selected package:', err);
@@ -378,12 +450,20 @@ export const usePackageMatching = () => {
       availablePackages: [],
       recommendedPackage: null,
       loading: false,
-      error: null
+      error: null,
+      selectedServices: [],
+      currentServiceIndex: 0,
+      selectedPackages: {},
+      completedServices: []
     });
   };
 
   return {
     ...state,
+    initializeServices,
+    getCurrentService,
+    areAllServicesCompleted,
+    moveToNextService,
     setEventType,
     setServiceType,
     setPreferenceType,
