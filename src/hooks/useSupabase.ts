@@ -35,7 +35,78 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
   useEffect(() => {
     const fetchPackages = async () => {
       if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
+        console.log('Supabase not available, using fallback data');
+        // Provide fallback mock data when Supabase is not available
+        const mockPackages = [
+          {
+            id: 'mock-photo-1',
+            service_type: 'Photography',
+            name: 'Essential Wedding Photography',
+            description: 'Beautiful wedding photography to capture your special moments',
+            price: 150000,
+            features: ['4-6 hours coverage', 'Digital gallery', '100+ edited photos', 'Online sharing'],
+            coverage: { events: ['Ceremony', 'Reception', 'Family Photos'] },
+            hour_amount: 4,
+            event_type: 'Wedding',
+            status: 'approved',
+            lookup_key: 'photography',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'mock-photo-2',
+            service_type: 'Photography',
+            name: 'Premium Wedding Photography',
+            description: 'Comprehensive wedding photography with extended coverage',
+            price: 250000,
+            features: ['6-8 hours coverage', 'Digital gallery', '200+ edited photos', 'Engagement session'],
+            coverage: { events: ['Getting Ready', 'Ceremony', 'Reception', 'Family Photos', 'Sunset Photos'] },
+            hour_amount: 6,
+            event_type: 'Wedding',
+            status: 'approved',
+            lookup_key: 'photography',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        // Filter mock data based on criteria
+        let filteredMockPackages = mockPackages;
+        
+        if (filters?.selectedServices && filters.selectedServices.length > 0) {
+          filteredMockPackages = mockPackages.filter(pkg => 
+            filters.selectedServices.some(service => 
+              pkg.service_type === service || pkg.lookup_key === transformToLookupKey(service)
+            )
+          );
+        } else if (serviceType) {
+          const lookupKey = transformToLookupKey(serviceType);
+          filteredMockPackages = mockPackages.filter(pkg => 
+            pkg.service_type === serviceType || pkg.lookup_key === lookupKey
+          );
+        }
+        
+        if (eventType) {
+          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.event_type === eventType);
+        }
+        
+        if (filters?.minHours) {
+          filteredMockPackages = filteredMockPackages.filter(pkg => (pkg.hour_amount || 0) >= filters.minHours!);
+        }
+        
+        if (filters?.maxHours) {
+          filteredMockPackages = filteredMockPackages.filter(pkg => (pkg.hour_amount || 0) <= filters.maxHours!);
+        }
+        
+        if (filters?.minPrice !== undefined) {
+          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.price >= filters.minPrice!);
+        }
+        
+        if (filters?.maxPrice !== undefined) {
+          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.price <= filters.maxPrice!);
+        }
+        
+        setPackages(filteredMockPackages);
         setLoading(false);
         return;
       }

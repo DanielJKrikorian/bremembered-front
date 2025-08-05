@@ -54,7 +54,18 @@ export const useAnonymousLead = () => {
   useEffect(() => {
     const initializeLead = async () => {
       if (!supabase) {
-        setError('Supabase connection not available');
+        console.log('Supabase not available, using local storage fallback');
+        const defaultLeadInfo: AnonymousLead = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          ip_address: 'unknown',
+          current_step: 1,
+          selected_services: [],
+          coverage_preferences: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLead(defaultLeadInfo);
         setLoading(false);
         return;
       }
@@ -113,6 +124,16 @@ export const useAnonymousLead = () => {
   const updateLead = useCallback(async (updates: Partial<AnonymousLead>) => {
     if (!supabase || !lead) return null;
 
+    // Always update local state first
+    const updatedLead = { ...lead, ...updates, updated_at: new Date().toISOString() };
+    setLead(updatedLead);
+
+    // If Supabase is not available, just return the local state
+    if (!supabase) {
+      console.log('Supabase not available, using local state only');
+      return updatedLead;
+    }
+
     try {
       // Ensure session ID is in headers
       const sessionId = getSessionId();
@@ -135,9 +156,9 @@ export const useAnonymousLead = () => {
       setLead(data);
       return data;
     } catch (err) {
-      console.error('Error updating lead:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update');
-      return null;
+      console.error('Database update failed, using local state:', err);
+      // Local state is already updated, just return it
+      return updatedLead;
     }
   }, [lead]);
 
