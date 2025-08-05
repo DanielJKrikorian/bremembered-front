@@ -402,105 +402,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
-    handleCloseModal();
-  };
-
-  const resetModal = () => {
-    setCurrentStep(1);
-    setSelectedEventType('');
-    setLocalSelectedServices([]);
-    setPreferenceType('');
-    setSelectedCoverage([]);
-    setSelectedHours('');
-    setSelectedBudget('');
-    setIsMatching(false);
-    setMatchedPackage(null);
-    setRecommendedPackage(null);
-  };
-
-  // Handle modal close - always allow closing
-  const handleModalClose = () => {
-    onClose();
-    resetModal();
-  };
-
-  const canProceedQuestion = () => {
-    switch (currentStep) {
-      case 1: return selectedEventType !== '';
-      case 2: return localSelectedServices.length > 0;
-      case 3: return preferenceType !== '';
-      case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
-      case 5: return selectedBudget !== '';
-      default: return false;
-    }
-  };
-
-  const getQuestionTitle = () => {
-    switch (currentStep) {
-      case 1: return 'What type of event?';
-      case 2: return 'What services do you need?';
-      case 3: return 'How would you like to choose?';
-      case 4: return preferenceType === 'coverage' ? 'What moments to capture?' : 'How many hours?';
-      case 5: return 'What\'s your budget?';
-      case 6: return 'Finding your perfect match...';
-      case 7: return 'Your perfect match!';
-      default: return '';
-    }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
-  };
-
-  const getPackageCoverage = (coverage: Record<string, any>) => {
-    if (!coverage || typeof coverage !== 'object') return [];
-    
-    const events = [];
-    if (coverage.events && Array.isArray(coverage.events)) {
-      events.push(...coverage.events);
-    }
-    
-    // Add other coverage properties if they exist
-    Object.keys(coverage).forEach(key => {
-      if (key !== 'events' && coverage[key] === true) {
-        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
-      }
-    });
-    
-    return events;
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      {/* Modal */}
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleModalClose()}>
-        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 ? 'max-w-4xl' : 'max-w-2xl'}`}>
-          {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {getQuestionTitle()}
-              </h3>
-              {currentStep <= 6 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Question {currentStep} of 6
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleModalClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
 
           {/* Modal Content */}
           <div className="p-6">
@@ -879,15 +780,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <span>Calculating best value...</span>
                   </div>
                 </div>
-                
-                <div className="mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={handleCloseModal}
-                  >
-                    Continue Without Saving
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -917,15 +809,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     <span>Calculating best value...</span>
                   </div>
-                </div>
-                
-                <div className="mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={handleCloseModal}
-                  >
-                    Continue Without Saving
-                  </Button>
                 </div>
               </div>
             )}
@@ -1122,16 +1005,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 <div className="mt-8">
                   <Button
                     variant="outline"
-                    onClick={handleCloseModal}
-                  >
-                    Continue Without Saving
-                  </Button>
-                </div>
-                
-                <div className="mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={handleCloseModal}
+                    onClick={handleModalClose}
                   >
                     Continue Without Saving
                   </Button>
