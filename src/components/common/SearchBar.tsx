@@ -18,6 +18,16 @@ interface ServicePackage {
   lookup_key?: string;
 }
 
+interface LeadData {
+  session_id: string;
+  event_type?: string;
+  selected_services: string[];
+  hour_preferences?: string;
+  coverage_preferences: string[];
+  budget_range?: string;
+  selected_packages: Record<string, any>;
+}
+
 export const SearchBar: React.FC = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,9 +47,11 @@ export const SearchBar: React.FC = () => {
   // Data from database
   const [availablePackages, setAvailablePackages] = useState<ServicePackage[]>([]);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
+  const [selectedPackages, setSelectedPackages] = useState<Record<string, ServicePackage>>({});
   
   // Lead tracking
   const [sessionId, setSessionId] = useState<string>('');
+  const [leadData, setLeadData] = useState<LeadData | null>(null);
 
   // Generate session ID on mount
   useEffect(() => {
@@ -55,9 +67,9 @@ export const SearchBar: React.FC = () => {
     setSessionId(id);
   }, []);
 
-  // Initialize lead data when modal opens
+  // Initialize or fetch lead data
   useEffect(() => {
-    if (!isModalOpen || !sessionId || !supabase) return;
+    if (!sessionId || !supabase) return;
 
     const initializeLead = async () => {
       try {
@@ -72,25 +84,28 @@ export const SearchBar: React.FC = () => {
           throw fetchError;
         }
 
-        if (!existingLead) {
+        if (existingLead) {
+          setLeadData(existingLead);
+          // Restore form state from database
+          if (existingLead.event_type) setEventType(existingLead.event_type);
+          if (existingLead.selected_services) setSelectedServices(existingLead.selected_services);
+        } else {
           // Create new lead
           const newLead = {
             session_id: sessionId,
             selected_services: [],
             coverage_preferences: [],
-            selected_packages: {},
-            current_step: 'service_selection',
-            completed_steps: []
+            selected_packages: {}
           };
 
-          const { error: createError } = await supabase
+          const { data: createdLead, error: createError } = await supabase
             .from('leads_information')
-            .insert(newLead);
+            .insert(newLead)
+            .select()
+            .single();
 
           if (createError) throw createError;
-          console.log('Created new lead for session:', sessionId);
-        } else {
-          console.log('Found existing lead for session:', sessionId);
+          setLeadData(createdLead);
         }
       } catch (err) {
         console.error('Error initializing lead:', err);
@@ -99,7 +114,7 @@ export const SearchBar: React.FC = () => {
     };
 
     initializeLead();
-  }, [isModalOpen, sessionId]);
+  }, [sessionId]);
 
   // Record answer in database
   const recordAnswer = async (field: string, value: any) => {
@@ -126,7 +141,6 @@ export const SearchBar: React.FC = () => {
   // Step 1: Handle event type selection
   const handleEventTypeSelect = async (type: string) => {
     setEventType(type);
-    setLoading(true);
     await recordAnswer('event_type', type);
     
     // Filter packages by event type
@@ -136,25 +150,22 @@ export const SearchBar: React.FC = () => {
           .from('service_packages')
           .select('*')
           .eq('status', 'approved')
-          .ilike('event_type', `%${type}%`);
+          .eq('event_type', type);
 
         if (error) throw error;
         setAvailablePackages(data || []);
         console.log(`Found ${data?.length || 0} packages for event type: ${type}`);
       } catch (err) {
         console.error('Error filtering by event type:', err);
-        setError('Failed to load packages');
       }
     }
     
-    setLoading(false);
     setCurrentStep(2);
   };
 
   // Step 2: Handle service selection
   const handleServiceSelect = async (services: string[]) => {
     setSelectedServices(services);
-    setLoading(true);
     await recordAnswer('selected_services', services);
     
     // Filter packages by service lookup_key
@@ -182,12 +193,10 @@ export const SearchBar: React.FC = () => {
         console.log(`Filtered to ${filteredPackages.length} packages for services:`, services);
       } catch (err) {
         console.error('Error filtering by service:', err);
-        setError('Failed to filter packages');
       }
     }
     
     setCurrentServiceIndex(0);
-    setLoading(false);
     setCurrentStep(3);
   };
 
@@ -200,7 +209,6 @@ export const SearchBar: React.FC = () => {
   // Step 4a: Handle hours selection
   const handleHoursSelect = async (hours: number) => {
     setSelectedHours(hours);
-    setLoading(true);
     await recordAnswer('hour_preferences', hours.toString());
     
     // Filter packages by hour_amount (±1 range)
@@ -219,14 +227,12 @@ export const SearchBar: React.FC = () => {
 
     setAvailablePackages(filteredPackages);
     console.log(`Found ${filteredPackages.length} packages near ${hours} hours`);
-    setLoading(false);
     setCurrentStep(5);
   };
 
   // Step 4b: Handle coverage selection
   const handleCoverageSelect = async (coverage: string[]) => {
     setSelectedCoverage(coverage);
-    setLoading(true);
     await recordAnswer('coverage_preferences', coverage);
     
     // Filter packages by coverage.events
@@ -245,14 +251,12 @@ export const SearchBar: React.FC = () => {
 
     setAvailablePackages(filteredPackages);
     console.log(`Found ${filteredPackages.length} packages with required coverage`);
-    setLoading(false);
     setCurrentStep(5);
   };
 
   // Step 5: Handle price range and select highest priced package
   const handlePriceRangeSelect = async (minPrice: number, maxPrice: number) => {
     setPriceRange({min: minPrice, max: maxPrice});
-    setLoading(true);
     await recordAnswer('budget_range', `${minPrice}-${maxPrice}`);
     
     // Filter packages within price range and select highest priced
@@ -272,6 +276,7 @@ export const SearchBar: React.FC = () => {
     if (highestPricedPackage) {
       const currentService = selectedServices[currentServiceIndex];
       const updatedPackages = {
+        ...leadData?.selected_packages,
         [currentService]: {
           recommended: highestPricedPackage.id
         }
@@ -280,7 +285,6 @@ export const SearchBar: React.FC = () => {
     }
 
     console.log('Recommended package:', highestPricedPackage?.name, 'at', highestPricedPackage?.price);
-    setLoading(false);
     setCurrentStep(6);
   };
 
@@ -288,17 +292,23 @@ export const SearchBar: React.FC = () => {
   const handlePackageSelect = async (packageId: string) => {
     if (!recommendedPackage) return;
     
-    setLoading(true);
     const currentService = selectedServices[currentServiceIndex];
     
     // Record selected package
     const updatedPackages = {
+      ...leadData?.selected_packages,
       [currentService]: {
         recommended: recommendedPackage.id,
         selected: packageId
       }
     };
     await recordAnswer('selected_packages', updatedPackages);
+    
+    // Store selected package
+    setSelectedPackages(prev => ({
+      ...prev,
+      [currentService]: recommendedPackage
+    }));
 
     // Check if more services to process
     if (currentServiceIndex < selectedServices.length - 1) {
@@ -327,7 +337,7 @@ export const SearchBar: React.FC = () => {
             .from('service_packages')
             .select('*')
             .eq('status', 'approved')
-            .ilike('event_type', `%${eventType}%`)
+            .eq('event_type', eventType)
             .or(`lookup_key.eq.${lookupKey},service_type.eq.${nextService}`);
 
           if (error) throw error;
@@ -337,7 +347,6 @@ export const SearchBar: React.FC = () => {
         }
       }
       
-      setRecommendedPackage(null);
       setCurrentStep(3); // Back to preference type selection
     } else {
       // All services completed
@@ -345,13 +354,11 @@ export const SearchBar: React.FC = () => {
       navigate('/booking/event-details', {
         state: {
           selectedServices,
-          eventType,
-          completedQuestionnaire: true
+          selectedPackages,
+          eventType
         }
       });
     }
-    
-    setLoading(false);
   };
 
   const resetModal = () => {
@@ -365,7 +372,7 @@ export const SearchBar: React.FC = () => {
     setPriceRange({min: 0, max: 10000});
     setAvailablePackages([]);
     setRecommendedPackage(null);
-    setError(null);
+    setSelectedPackages({});
   };
 
   const openModal = () => {
@@ -388,6 +395,18 @@ export const SearchBar: React.FC = () => {
   };
 
   const getCurrentService = () => selectedServices[currentServiceIndex];
+
+  const getServiceIcon = (service: string) => {
+    switch (service) {
+      case 'Photography': return Camera;
+      case 'Videography': return Video;
+      case 'DJ Services': return Music;
+      case 'Day-of Coordination': 
+      case 'Coordination': return Users;
+      case 'Planning': return Calendar;
+      default: return Package;
+    }
+  };
 
   const services = [
     { id: 'Photography', name: 'Photography', icon: Camera },
@@ -442,7 +461,7 @@ export const SearchBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Package Recommendation Modal */}
+      {/* Booking Journey Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -494,7 +513,6 @@ export const SearchBar: React.FC = () => {
                         key={type}
                         onClick={() => handleEventTypeSelect(type)}
                         className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
-                        disabled={loading}
                       >
                         <div className="text-4xl mb-3">
                           {type === 'Wedding' ? '💒' : '💍'}
@@ -532,7 +550,6 @@ export const SearchBar: React.FC = () => {
                               ? 'border-rose-500 bg-rose-50'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
-                          disabled={loading}
                         >
                           <div className="flex items-center space-x-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -554,8 +571,7 @@ export const SearchBar: React.FC = () => {
                   <Button
                     variant="primary"
                     onClick={() => handleServiceSelect(selectedServices)}
-                    disabled={selectedServices.length === 0 || loading}
-                    loading={loading}
+                    disabled={selectedServices.length === 0}
                     icon={ArrowRight}
                   >
                     Continue
@@ -563,7 +579,7 @@ export const SearchBar: React.FC = () => {
                 </div>
               )}
 
-              {/* Step 3: Hours vs Coverage Preference */}
+              {/* Step 3: Preference Type Selection */}
               {currentStep === 3 && (
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-900 mb-6">
@@ -600,13 +616,12 @@ export const SearchBar: React.FC = () => {
                   <h3 className="text-xl font-semibold text-gray-900 mb-6">
                     How many hours of {getCurrentService().toLowerCase()} do you need?
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[2, 4, 6, 8, 10, 12].map((hours) => (
                       <button
                         key={hours}
                         onClick={() => handleHoursSelect(hours)}
                         className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
-                        disabled={loading}
                       >
                         <div className="text-2xl font-bold text-gray-900 mb-1">{hours}</div>
                         <div className="text-sm text-gray-600">hours</div>
@@ -639,7 +654,6 @@ export const SearchBar: React.FC = () => {
                               ? 'border-rose-500 bg-rose-50'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
-                          disabled={loading}
                         >
                           <div className="flex items-center space-x-3">
                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
@@ -656,8 +670,7 @@ export const SearchBar: React.FC = () => {
                   <Button
                     variant="primary"
                     onClick={() => handleCoverageSelect(selectedCoverage)}
-                    disabled={selectedCoverage.length === 0 || loading}
-                    loading={loading}
+                    disabled={selectedCoverage.length === 0}
                     icon={ArrowRight}
                   >
                     Continue
@@ -677,7 +690,6 @@ export const SearchBar: React.FC = () => {
                         key={range.label}
                         onClick={() => handlePriceRangeSelect(range.min, range.max)}
                         className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
-                        disabled={loading}
                       >
                         <div className="text-lg font-semibold text-gray-900">{range.label}</div>
                       </button>
@@ -744,7 +756,6 @@ export const SearchBar: React.FC = () => {
                           variant="primary"
                           size="lg"
                           onClick={() => handlePackageSelect(recommendedPackage.id)}
-                          loading={loading}
                           icon={ArrowRight}
                           className="w-full"
                         >
@@ -787,17 +798,9 @@ export const SearchBar: React.FC = () => {
 
               {/* Loading State */}
               {loading && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                    <p className="text-gray-600">
-                      {currentStep === 1 ? 'Loading packages...' :
-                       currentStep === 2 ? 'Filtering services...' :
-                       currentStep === 4 ? 'Finding matching packages...' :
-                       currentStep === 5 ? 'Analyzing your budget...' :
-                       'Processing...'}
-                    </p>
-                  </div>
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-600">Finding your perfect packages...</p>
                 </div>
               )}
 
