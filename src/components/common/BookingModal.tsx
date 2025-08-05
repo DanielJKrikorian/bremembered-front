@@ -89,10 +89,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Set recommended package when packages are loaded
   useEffect(() => {
-    if (matchedRecommendedPackage && currentStep >= 6) {
-      setRecommendedPackage(matchedRecommendedPackage);
+    if (matchedPackages && matchedPackages.length > 0 && currentStep >= 6) {
+      // Find the best matching package based on user preferences
+      let bestPackage = matchedPackages[0];
+      
+      if (preferenceType === 'hours' && selectedHours) {
+        const targetHours = parseInt(selectedHours);
+        // Find package with hour_amount closest to target
+        bestPackage = matchedPackages.reduce((best, current) => {
+          const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
+          const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
+          return currentDiff < bestDiff ? current : best;
+        });
+      } else if (preferenceType === 'coverage' && selectedCoverage.length > 0) {
+        // Find package that covers the most selected events
+        bestPackage = matchedPackages.reduce((best, current) => {
+          const bestCoverage = getPackageCoverage(best.coverage || {});
+          const currentCoverage = getPackageCoverage(current.coverage || {});
+          
+          const bestMatches = selectedCoverage.filter(event => 
+            bestCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
+          ).length;
+          const currentMatches = selectedCoverage.filter(event => 
+            currentCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
+          ).length;
+          
+          return currentMatches > bestMatches ? current : best;
+        });
+      }
+      
+      setRecommendedPackage(bestPackage);
     }
-  }, [matchedRecommendedPackage, currentStep]);
+  }, [matchedPackages, currentStep, preferenceType, selectedHours, selectedCoverage]);
 
   // Update lead data when answers change
   useEffect(() => {
