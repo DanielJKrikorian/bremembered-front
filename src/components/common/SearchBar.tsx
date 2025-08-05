@@ -2,12 +2,33 @@ import React, { useState } from 'react';
 import { Search, MapPin, Calendar, Camera, Video, Music, Users, CalendarDays, Package, ChevronDown, X, Clock, DollarSign, Check, Star, Sparkles, Eye, Grid, List, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { useVenues } from '../../hooks/useSupabase';
-import { usePackageMatching } from '../../hooks/usePackageMatching';
+import { supabase } from '../../lib/supabase';
+import { ServicePackage } from '../../types/booking';
 
 interface SearchBarProps {
   onSearch?: (filters: any) => void;
   className?: string;
+}
+
+interface MatchingFilters {
+  eventType?: string;
+  serviceType?: string;
+  preferenceType?: 'hours' | 'coverage';
+  hours?: number;
+  coverage?: string[];
+  priceRange?: {
+    min: number;
+    max: number;
+  };
+}
+
+interface PackageMatchingState {
+  step: number;
+  filters: MatchingFilters;
+  availablePackages: ServicePackage[];
+  recommendedPackage: ServicePackage | null;
+  loading: boolean;
+  error: string | null;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }) => {
@@ -17,23 +38,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
   const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
   const [completedServices, setCompletedServices] = useState<string[]>([]);
   
-  // Use the package matching hook
-  const {
-    step,
-    filters,
-    availablePackages,
-    recommendedPackage,
-    loading,
-    error,
-    setEventType: setMatchingEventType,
-    setServiceType,
-    setPreferenceType,
-    setHours,
-    setCoverage,
-    setPriceRange,
-    selectRecommendedPackage,
-    reset
-  } = usePackageMatching();
+  // Package matching state
+  const [matchingState, setMatchingState] = useState<PackageMatchingState>({
+    step: 1,
+    filters: {},
+    availablePackages: [],
+    recommendedPackage: null,
+    loading: false,
+    error: null
+  });
 
   const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
   const [selectedHours, setSelectedHours] = useState<number | null>(null);
@@ -87,6 +100,370 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     { min: 500000, max: 1000000, label: '$5,000+', description: 'Luxury experiences' }
   ];
 
+  // Helper function to get session ID
+  const getSessionId = () => {
+    let sessionId = localStorage.getItem('booking_session_id');
+    if (!sessionId) {
+      sessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      localStorage.setItem('booking_session_id', sessionId);
+    }
+    return sessionId;
+  };
+
+  // Helper function to record answers in leads_information
+  const recordAnswer = async (field: string, value: any) => {
+    if (!supabase) return;
+
+    try {
+      const sessionId = getSessionId();
+      
+      const updateData: Record<string, any> = {
+        [field]: value,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('leads_information')
+        .upsert({
+          session_id: sessionId,
+          ...updateData
+        }, {
+          onConflict: 'session_id'
+        });
+
+      if (error) {
+        console.error('Failed to record answer:', error);
+      } else {
+        console.log(`Recorded ${field}:`, value);
+      }
+    } catch (err) {
+      console.error('Error recording answer:', err);
+    }
+  };
+
+  // Step 1: Filter by event type
+  const setMatchingEventType = async (eventTypeValue: string) => {
+    setMatchingState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      if (!supabase) {
+        throw new Error('Supabase connection not available');
+      }
+
+      console.log('Step 1: Filtering by event type:', eventTypeValue);
+
+      const { data, error } = await supabase
+        .from('service_packages')
+        .select('*')
+        .eq('status', 'approved')
+        .eq('event_type', eventTypeValue);
+
+      if (error) throw error;
+
+      console.log(`Found ${data.length} packages for event type: ${eventTypeValue}`);
+      
+      setMatchingState(prev => ({
+        ...prev,
+        step: 2,
+        filters: { ...prev.filters, eventType: eventTypeValue },
+        availablePackages: data || [],
+        loading: false
+      }));
+
+      // Record this answer in leads_information
+      await recordAnswer('event_type', eventTypeValue);
+
+    } catch (err) {
+      setMatchingState(prev => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to filter by event type',
+        loading: false
+      }));
+    }
+  };
+
+  // Step 2: Filter by service type using lookup_key
+  const setServiceType = async (serviceType: string) => {
+    setMatchingState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      if (!supabase) {
+        throw new Error('Supabase connection not available');
+      }
+
+      // Map service types to lookup keys
+      const lookupKeyMap: Record<string, string> = {
+        'Photography': 'photography',
+        'Engagement Photography': 'engagement',
+        'Videography': 'videography',
+        'DJ Services': 'dj',
+        'Day-of Coordination': 'coordination',
+        'Coordination': 'coordination',
+        'Planning': 'planning',
+        'Editing': 'editing'
+      };
+
+      const lookupKey = lookupKeyMap[serviceType] || serviceType.toLowerCase();
+      console.log('Step 2: Filtering by service type:', serviceType, '-> lookup_key:', lookupKey);
+
+      // Filter from existing available packages by lookup_key only
+      const filteredPackages = matchingState.availablePackages.filter(pkg => {
+        // Only match single-service packages and exact lookup_key match
+        const hasMultipleServices = pkg.service_type && pkg.service_type.includes(',');
+        const matchesLookupKey = pkg.lookup_key === lookupKey;
+        
+        console.log(`Package ${pkg.name}: service_type="${pkg.service_type}", lookup_key="${pkg.lookup_key}", hasMultiple=${hasMultipleServices}, matches=${matchesLookupKey}`);
+        
+        return !hasMultipleServices && matchesLookupKey;
+      });
+
+      console.log(`Filtered to ${filteredPackages.length} packages for service: ${serviceType}`);
+
+      setMatchingState(prev => ({
+        ...prev,
+        step: 3,
+        filters: { ...prev.filters, serviceType },
+        availablePackages: filteredPackages,
+        loading: false
+      }));
+
+      // Record this answer
+      await recordAnswer('selected_services', [serviceType]);
+
+    } catch (err) {
+      setMatchingState(prev => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to filter by service type',
+        loading: false
+      }));
+    }
+  };
+
+  // Step 3: Set preference type (hours or coverage)
+  const setPreferenceType = (preferenceType: 'hours' | 'coverage') => {
+    setMatchingState(prev => ({
+      ...prev,
+      step: 4,
+      filters: { ...prev.filters, preferenceType }
+    }));
+  };
+
+  // Step 4a: Filter by hours (±1 range)
+  const setHours = async (targetHours: number) => {
+    setMatchingState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('Step 4a: Filtering by hours around:', targetHours);
+
+      // Find packages with hour_amount within ±1 of target
+      const filteredPackages = matchingState.availablePackages.filter(pkg => {
+        if (!pkg.hour_amount) return false;
+        const hourDiff = Math.abs(pkg.hour_amount - targetHours);
+        return hourDiff <= 1; // Within 1 hour of target
+      });
+
+      // Sort by how close they are to the target hours
+      filteredPackages.sort((a, b) => {
+        const diffA = Math.abs((a.hour_amount || 0) - targetHours);
+        const diffB = Math.abs((b.hour_amount || 0) - targetHours);
+        return diffA - diffB;
+      });
+
+      console.log(`Found ${filteredPackages.length} packages near ${targetHours} hours`);
+
+      setMatchingState(prev => ({
+        ...prev,
+        step: 5,
+        filters: { ...prev.filters, hours: targetHours },
+        availablePackages: filteredPackages,
+        loading: false
+      }));
+
+      // Record this answer
+      await recordAnswer('hour_preferences', targetHours.toString());
+
+    } catch (err) {
+      setMatchingState(prev => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to filter by hours',
+        loading: false
+      }));
+    }
+  };
+
+  // Step 4b: Filter by coverage
+  const setCoverage = async (selectedCoverageItems: string[]) => {
+    setMatchingState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('Step 4b: Filtering by coverage:', selectedCoverageItems);
+
+      // Filter packages that have all selected coverage items in their coverage.events array
+      const filteredPackages = matchingState.availablePackages.filter(pkg => {
+        if (!pkg.coverage || !pkg.coverage.events) return false;
+        
+        const packageEvents = pkg.coverage.events as string[];
+        // Check if package includes all selected coverage items
+        return selectedCoverageItems.every(item => 
+          packageEvents.includes(item)
+        );
+      });
+
+      console.log(`Found ${filteredPackages.length} packages with required coverage`);
+
+      setMatchingState(prev => ({
+        ...prev,
+        step: 5,
+        filters: { ...prev.filters, coverage: selectedCoverageItems },
+        availablePackages: filteredPackages,
+        loading: false
+      }));
+
+      // Record this answer
+      await recordAnswer('coverage_preferences', selectedCoverageItems);
+
+    } catch (err) {
+      setMatchingState(prev => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to filter by coverage',
+        loading: false
+      }));
+    }
+  };
+
+  // Step 5: Filter by price and select highest within range
+  const setPriceRange = async (minPrice: number, maxPrice: number) => {
+    setMatchingState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      console.log('Step 5: Filtering by price range:', minPrice, 'to', maxPrice);
+
+      // Filter packages within price range
+      const filteredPackages = matchingState.availablePackages.filter(pkg => 
+        pkg.price >= minPrice && pkg.price <= maxPrice
+      );
+
+      // Select the HIGHEST priced package within the range
+      const recommendedPackage = filteredPackages.length > 0 
+        ? filteredPackages.reduce((highest, current) => 
+            current.price > highest.price ? current : highest
+          )
+        : null;
+
+      console.log(`Found ${filteredPackages.length} packages in price range`);
+      console.log('Recommended package (highest priced):', recommendedPackage?.name, 'at', recommendedPackage?.price);
+
+      setMatchingState(prev => ({
+        ...prev,
+        step: 6,
+        filters: { ...prev.filters, priceRange: { min: minPrice, max: maxPrice } },
+        availablePackages: filteredPackages,
+        recommendedPackage,
+        loading: false
+      }));
+
+      // Record the price range and recommended package
+      await recordAnswer('budget_range', `${minPrice}-${maxPrice}`);
+      if (recommendedPackage) {
+        await recordRecommendedPackage(recommendedPackage.id);
+      }
+
+    } catch (err) {
+      setMatchingState(prev => ({
+        ...prev,
+        error: err instanceof Error ? err.message : 'Failed to filter by price',
+        loading: false
+      }));
+    }
+  };
+
+  // Record the recommended package ID
+  const recordRecommendedPackage = async (packageId: string) => {
+    if (!supabase) return;
+
+    try {
+      const sessionId = getSessionId();
+      
+      // Get current selected_packages or initialize empty object
+      const { data: currentLead } = await supabase
+        .from('leads_information')
+        .select('selected_packages')
+        .eq('session_id', sessionId)
+        .single();
+
+      const currentPackages = currentLead?.selected_packages || {};
+      const currentService = getCurrentService();
+      
+      // Update the selected_packages with the recommended package for this service
+      const updatedPackages = {
+        ...currentPackages,
+        [currentService]: {
+          recommended: packageId
+        }
+      };
+
+      const { error } = await supabase
+        .from('leads_information')
+        .update({
+          selected_packages: updatedPackages,
+          updated_at: new Date().toISOString()
+        })
+        .eq('session_id', sessionId);
+
+      if (error) {
+        console.error('Failed to record recommended package:', error);
+      } else {
+        console.log('Recorded recommended package for', currentService, ':', packageId);
+      }
+    } catch (err) {
+      console.error('Error recording recommended package:', err);
+    }
+  };
+
+  // Record when user selects the recommended package
+  const recordSelectedPackage = async (packageId: string) => {
+    if (!supabase) return;
+
+    try {
+      const sessionId = getSessionId();
+      const currentService = getCurrentService();
+      
+      // Get current selected_packages
+      const { data: currentLead } = await supabase
+        .from('leads_information')
+        .select('selected_packages')
+        .eq('session_id', sessionId)
+        .single();
+
+      const currentPackages = currentLead?.selected_packages || {};
+      
+      // Update with both recommended and selected for comparison
+      const updatedPackages = {
+        ...currentPackages,
+        [currentService]: {
+          ...currentPackages[currentService],
+          selected: packageId
+        }
+      };
+
+      const { error } = await supabase
+        .from('leads_information')
+        .update({
+          selected_packages: updatedPackages,
+          updated_at: new Date().toISOString()
+        })
+        .eq('session_id', sessionId);
+
+      if (error) {
+        console.error('Failed to record selected package:', error);
+      } else {
+        console.log('Recorded selected package for', currentService, ':', packageId);
+      }
+    } catch (err) {
+      console.error('Error recording selected package:', err);
+    }
+  };
+
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServices(prev => 
       prev.includes(serviceId)
@@ -100,7 +477,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
       setShowModal(true);
       setCurrentServiceIndex(0);
       setCompletedServices([]);
-      // Start with event type
+      // Reset matching state and start with event type
+      setMatchingState({
+        step: 1,
+        filters: {},
+        availablePackages: [],
+        recommendedPackage: null,
+        loading: false,
+        error: null
+      });
       setMatchingEventType(eventType);
     }
   };
@@ -140,9 +525,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     setPriceRange(priceRange.min, priceRange.max);
   };
 
-  const handleSelectRecommended = () => {
-    if (recommendedPackage) {
-      selectRecommendedPackage(recommendedPackage.id);
+  const handleSelectRecommended = async () => {
+    if (matchingState.recommendedPackage) {
+      await recordSelectedPackage(matchingState.recommendedPackage.id);
       
       // Mark current service as completed
       const currentService = getCurrentService();
@@ -155,9 +540,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
         setSelectedCoverage([]);
         setSelectedHours(null);
         setSelectedPriceRange(null);
+        
         // Reset the matching process for next service but keep event type
-        reset();
-        setMatchingEventType(eventType);
+        setMatchingState({
+          step: 3, // Start at preference type for next service
+          filters: { eventType }, // Keep event type
+          availablePackages: [], // Will be populated when we call setServiceType
+          recommendedPackage: null,
+          loading: false,
+          error: null
+        });
+        
+        // Automatically filter by the next service
+        const nextService = selectedServices[currentServiceIndex + 1];
+        setServiceType(nextService);
       } else {
         // All services completed, close modal and go to vendor selection
         setShowModal(false);
@@ -168,7 +564,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
 
   const handleCloseModal = () => {
     setShowModal(false);
-    reset();
+    setMatchingState({
+      step: 1,
+      filters: {},
+      availablePackages: [],
+      recommendedPackage: null,
+      loading: false,
+      error: null
+    });
     setCurrentServiceIndex(0);
     setCompletedServices([]);
     setSelectedCoverage([]);
@@ -330,16 +733,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                   <div key={stepNum} className="flex items-center">
                     <div className={`
                       w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                      ${step >= stepNum 
+                      ${matchingState.step >= stepNum 
                         ? 'bg-rose-500 text-white shadow-lg' 
                         : 'bg-gray-200 text-gray-600'
                       }
                     `}>
-                      {step > stepNum ? <Check className="w-5 h-5" /> : stepNum}
+                      {matchingState.step > stepNum ? <Check className="w-5 h-5" /> : stepNum}
                     </div>
                     {stepNum < 5 && (
                       <div className={`w-20 h-1 mx-2 rounded-full transition-all ${
-                        step > stepNum ? 'bg-rose-500' : 'bg-gray-200'
+                        matchingState.step > stepNum ? 'bg-rose-500' : 'bg-gray-200'
                       }`} />
                     )}
                   </div>
@@ -347,7 +750,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
               </div>
 
               {/* Question Steps */}
-              {step === 2 && (
+              {matchingState.step === 2 && (
                 <Card className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -357,7 +760,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                       Confirm Your Service Selection
                     </h2>
                     <p className="text-gray-600">
-                      We'll find {getCurrentService()} packages for your {filters.eventType?.toLowerCase()}
+                      We'll find {getCurrentService()} packages for your {matchingState.filters.eventType?.toLowerCase()}
                     </p>
                   </div>
 
@@ -365,9 +768,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                     <div className="inline-flex items-center space-x-4 p-6 bg-white rounded-xl border-2 border-rose-200">
                       <div className="text-2xl">📅</div>
                       <div>
-                        <div className="font-semibold text-gray-900">Event Type: {filters.eventType}</div>
+                        <div className="font-semibold text-gray-900">Event Type: {matchingState.filters.eventType}</div>
                         <div className="text-gray-600">Service: {getCurrentService()}</div>
-                        <div className="text-sm text-gray-500">{availablePackages.length} packages available</div>
+                        <div className="text-sm text-gray-500">{matchingState.availablePackages.length} packages available</div>
                       </div>
                     </div>
                   </div>
@@ -377,16 +780,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                       variant="primary"
                       size="lg"
                       onClick={handleServiceTypeSelect}
-                      disabled={loading}
+                      disabled={matchingState.loading}
                       icon={ArrowRight}
                     >
-                      {loading ? 'Loading...' : 'Continue'}
+                      {matchingState.loading ? 'Loading...' : 'Continue'}
                     </Button>
                   </div>
                 </Card>
               )}
 
-              {step === 3 && (
+              {matchingState.step === 3 && (
                 <Card className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -426,7 +829,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                 </Card>
               )}
 
-              {step === 4 && filters.preferenceType === 'hours' && (
+              {matchingState.step === 4 && matchingState.filters.preferenceType === 'hours' && (
                 <Card className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -436,7 +839,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                       How many hours of {getCurrentService().toLowerCase()} do you need?
                     </h2>
                     <p className="text-gray-600">
-                      Choose the duration that best fits your {filters.eventType?.toLowerCase()} timeline
+                      Choose the duration that best fits your {matchingState.filters.eventType?.toLowerCase()} timeline
                     </p>
                   </div>
 
@@ -469,7 +872,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                 </Card>
               )}
 
-              {step === 4 && filters.preferenceType === 'coverage' && (
+              {matchingState.step === 4 && matchingState.filters.preferenceType === 'coverage' && (
                 <Card className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -479,7 +882,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                       What moments would you like covered?
                     </h2>
                     <p className="text-gray-600">
-                      Select all the moments you want captured during your {filters.eventType?.toLowerCase()}
+                      Select all the moments you want captured during your {matchingState.filters.eventType?.toLowerCase()}
                     </p>
                   </div>
 
@@ -524,7 +927,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                 </Card>
               )}
 
-              {step === 5 && (
+              {matchingState.step === 5 && (
                 <Card className="p-8">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -568,9 +971,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
               )}
 
               {/* Recommendation Step */}
-              {step === 6 && (
+              {matchingState.step === 6 && (
                 <div className="space-y-8">
-                  {recommendedPackage ? (
+                  {matchingState.recommendedPackage ? (
                     <>
                       {/* Recommended Package */}
                       <Card className="overflow-hidden relative">
@@ -585,22 +988,22 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                         <div className="p-8 pt-16">
                           <div className="flex flex-col lg:flex-row gap-8">
                             <div className="flex-1">
-                              <h3 className="text-3xl font-bold text-gray-900 mb-4">{recommendedPackage.name}</h3>
-                              <p className="text-gray-600 text-lg leading-relaxed mb-6">{recommendedPackage.description}</p>
+                              <h3 className="text-3xl font-bold text-gray-900 mb-4">{matchingState.recommendedPackage.name}</h3>
+                              <p className="text-gray-600 text-lg leading-relaxed mb-6">{matchingState.recommendedPackage.description}</p>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                 <div>
                                   <h4 className="font-semibold text-gray-900 mb-3">What's Included</h4>
                                   <div className="space-y-2">
-                                    {recommendedPackage.features?.slice(0, 4).map((feature, index) => (
+                                    {matchingState.recommendedPackage.features?.slice(0, 4).map((feature, index) => (
                                       <div key={index} className="flex items-center space-x-2">
                                         <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                                         <span className="text-sm text-gray-700">{feature}</span>
                                       </div>
                                     ))}
-                                    {(recommendedPackage.features?.length || 0) > 4 && (
+                                    {(matchingState.recommendedPackage.features?.length || 0) > 4 && (
                                       <div className="text-sm text-gray-500">
-                                        +{(recommendedPackage.features?.length || 0) - 4} more features
+                                        +{(matchingState.recommendedPackage.features?.length || 0) - 4} more features
                                       </div>
                                     )}
                                   </div>
@@ -609,15 +1012,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                                 <div>
                                   <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
                                   <div className="space-y-2">
-                                    {(recommendedPackage.coverage?.events || []).slice(0, 4).map((event: string, index: number) => (
+                                    {(matchingState.recommendedPackage.coverage?.events || []).slice(0, 4).map((event: string, index: number) => (
                                       <div key={index} className="flex items-center space-x-2">
                                         <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                                         <span className="text-sm text-gray-700">{event}</span>
                                       </div>
                                     ))}
-                                    {(recommendedPackage.coverage?.events?.length || 0) > 4 && (
+                                    {(matchingState.recommendedPackage.coverage?.events?.length || 0) > 4 && (
                                       <div className="text-sm text-gray-500">
-                                        +{(recommendedPackage.coverage?.events?.length || 0) - 4} more events
+                                        +{(matchingState.recommendedPackage.coverage?.events?.length || 0) - 4} more events
                                       </div>
                                     )}
                                   </div>
@@ -625,10 +1028,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                               </div>
 
                               <div className="flex items-center space-x-6 text-sm text-gray-600">
-                                {recommendedPackage.hour_amount && (
+                                {matchingState.recommendedPackage.hour_amount && (
                                   <div className="flex items-center">
                                     <Clock className="w-4 h-4 mr-1" />
-                                    <span>{recommendedPackage.hour_amount} hours</span>
+                                    <span>{matchingState.recommendedPackage.hour_amount} hours</span>
                                   </div>
                                 )}
                                 <div className="flex items-center">
@@ -641,7 +1044,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                             <div className="lg:w-1/3">
                               <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-2xl p-6 text-white text-center">
                                 <div className="text-4xl font-bold mb-2">
-                                  {formatPrice(recommendedPackage.price)}
+                                  {formatPrice(matchingState.recommendedPackage.price)}
                                 </div>
                                 <div className="text-rose-100 mb-6">Perfect match for your needs</div>
                                 
@@ -724,10 +1127,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                           // Skip this service and move to next
                           if (currentServiceIndex < selectedServices.length - 1) {
                             setCurrentServiceIndex(prev => prev + 1);
-                            reset();
-                            setMatchingEventType(eventType);
+                            setMatchingState({
+                              step: 3,
+                              filters: { eventType },
+                              availablePackages: [],
+                              recommendedPackage: null,
+                              loading: false,
+                              error: null
+                            });
+                            const nextService = selectedServices[currentServiceIndex + 1];
+                            setServiceType(nextService);
                           } else {
                             handleCloseModal();
+                            window.location.href = '/booking/event-details';
                           }
                         }}
                       >
@@ -748,12 +1160,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                   <div className="text-sm space-y-1">
                     <div>Current Service: {getCurrentService()} ({currentServiceIndex + 1}/{selectedServices.length})</div>
                     <div>Completed Services: {completedServices.join(', ')}</div>
-                    <div>Step: {step}</div>
-                    <div>Event Type: {filters.eventType}</div>
-                    <div>Service Type: {filters.serviceType}</div>
-                    <div>Preference Type: {filters.preferenceType}</div>
-                    <div>Available Packages: {availablePackages.length}</div>
-                    <div>Recommended: {recommendedPackage?.name || 'None'}</div>
+                    <div>Step: {matchingState.step}</div>
+                    <div>Event Type: {matchingState.filters.eventType}</div>
+                    <div>Service Type: {matchingState.filters.serviceType}</div>
+                    <div>Preference Type: {matchingState.filters.preferenceType}</div>
+                    <div>Available Packages: {matchingState.availablePackages.length}</div>
+                    <div>Recommended: {matchingState.recommendedPackage?.name || 'None'}</div>
                   </div>
                 </Card>
               )}
