@@ -604,10 +604,10 @@ export const useLeadInformation = () => {
           .eq('session_id', sessionId)
           .maybeSingle();
 
-        if (fetchError) throw fetchError;
+        if (createError) throw createError;
         
-        if (existingLead) {
-          setLeadInfo(existingLead);
+        if (createdLead) {
+          setLeadInfo(createdLead);
         } else {
           // Create new lead information record in database
           const newLeadInfo = {
