@@ -680,10 +680,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                 </p>
               </div>
               <button
-                How would you like to choose your package?
+                onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Select your preferred way to narrow down the perfect package
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -1130,28 +1130,23 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                               filters: { eventType },
                               availablePackages: [],
                               recommendedPackage: null,
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-              <div
-                onClick={() => setPreferenceType('hours')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
-              >
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-amber-600" />
+                              loading: false,
+                              error: null
+                            });
+                            const nextService = selectedServices[currentServiceIndex + 1];
+                            setServiceType(nextService);
+                          } else {
+                            setShowModal(false);
+                            window.location.href = '/booking/event-details';
+                          }
+                        }}
+                      >
+                        {currentServiceIndex < selectedServices.length - 1 ? 'Skip to Next Service' : 'Continue Anyway'}
+                      </Button>
+                    </Card>
+                  )}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
-                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
-              </div>
-              
-              <div
-                onClick={() => setPreferenceType('coverage')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
-              >
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <List className="w-8 h-8 text-amber-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
-                <p className="text-gray-600">Choose based on specific moments you want captured</p>
-              </div>
+              )}
             </div>
           </div>
         </div>
