@@ -780,6 +780,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <span>Calculating best value...</span>
                   </div>
                 </div>
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Continue Without Saving
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -809,6 +818,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     <span>Calculating best value...</span>
                   </div>
+                </div>
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Continue Without Saving
+                  </Button>
                 </div>
               </div>
             )}
@@ -1005,7 +1023,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 <div className="mt-8">
                   <Button
                     variant="outline"
-                    onClick={handleModalClose}
+                    onClick={handleCloseModal}
                   >
                     Continue Without Saving
                   </Button>
