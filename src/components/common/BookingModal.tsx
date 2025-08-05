@@ -866,11 +866,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             {/* Step 8: Perfect Match Result */}
             {currentStep === 8 && (
               <div className="space-y-6">
-                {console.log('=== RENDERING STEP 8 ===')}
-                {console.log('recommendedPackage state:', recommendedPackage)}
-                {console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage)}
-                {console.log('matchedPackages from hook:', matchedPackages)}
-                {console.log('packagesLoading:', packagesLoading)}
+                {console.log('=== RENDERING STEP 8 ===', { recommendedPackage, currentStep })}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
