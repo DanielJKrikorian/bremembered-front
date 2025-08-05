@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { EmailCaptureModal } from './EmailCaptureModal';
 import { useBooking } from '../../context/BookingContext';
 import { useAnonymousLead } from '../../hooks/useAnonymousLead';
-import { useServicePackages } from '../../hooks/useSupabase';
+import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
 import { ServicePackage } from '../../types/booking';
 
 interface BookingModalProps {
@@ -74,54 +74,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   // Get service packages based on answers
-  const shouldFetchPackages = currentStep >= 5 && localSelectedServices.length > 0;
-  const { packages, loading: packagesLoading } = useServicePackages(
-    shouldFetchPackages ? localSelectedServices[0] : undefined,
-    shouldFetchPackages ? selectedEventType : undefined,
-    shouldFetchPackages ? {
-      coverage: preferenceType === 'coverage' ? selectedCoverage : [],
-      minHours: preferenceType === 'hours' && selectedHours ? Math.max(1, parseInt(selectedHours) - 2) : undefined,
-      maxHours: preferenceType === 'hours' && selectedHours ? parseInt(selectedHours) + 2 : undefined,
-      minPrice: selectedBudget ? parseInt(selectedBudget.split('-')[0]) : undefined,
-      maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined,
-      selectedServices: localSelectedServices
-    } : undefined
+  const shouldMatch = currentStep >= 5 && localSelectedServices.length > 0 && selectedBudget;
+  const { matchedPackages, recommendedPackage: matchedRecommendedPackage, loading: packagesLoading } = usePackageMatching({
+    serviceType: shouldMatch ? localSelectedServices[0] : '',
+    eventType: shouldMatch ? selectedEventType : undefined,
+    preferenceType: shouldMatch ? preferenceType : undefined,
+    preferenceValue: shouldMatch ? (
+      preferenceType === 'hours' ? selectedHours : 
+      preferenceType === 'coverage' ? convertCoverageToString(selectedCoverage) : 
+      undefined
+    ) : undefined,
+    budgetRange: shouldMatch ? convertBudgetRange(selectedBudget) : undefined
   );
 
   // Set recommended package when packages are loaded
   useEffect(() => {
-    if (packages && packages.length > 0 && currentStep >= 6) {
-      // Find the best matching package based on user preferences
-      let bestPackage = packages[0];
-      
-      if (preferenceType === 'hours' && selectedHours) {
-        const targetHours = parseInt(selectedHours);
-        // Find package with hour_amount closest to target
-        bestPackage = packages.reduce((best, current) => {
-          const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
-          const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
-          return currentDiff < bestDiff ? current : best;
-        });
-      } else if (preferenceType === 'coverage' && selectedCoverage.length > 0) {
-        // Find package that covers the most selected events
-        bestPackage = packages.reduce((best, current) => {
-          const bestCoverage = getPackageCoverage(best.coverage || {});
-          const currentCoverage = getPackageCoverage(current.coverage || {});
-          
-          const bestMatches = selectedCoverage.filter(event => 
-            bestCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
-          ).length;
-          const currentMatches = selectedCoverage.filter(event => 
-            currentCoverage.some(c => c.toLowerCase().includes(event.toLowerCase()))
-          ).length;
-          
-          return currentMatches > bestMatches ? current : best;
-        });
-      }
-      
-      setRecommendedPackage(bestPackage);
+    if (matchedRecommendedPackage && currentStep >= 6) {
+      setRecommendedPackage(matchedRecommendedPackage);
     }
-  }, [packages, currentStep, preferenceType, selectedHours, selectedCoverage]);
+  }, [matchedRecommendedPackage, currentStep]);
 
   // Update lead data when answers change
   useEffect(() => {
@@ -282,11 +253,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Handle X button click
   const handleXButtonClick = () => {
-    if (currentStep > 1 && !lead?.email) {
+    if (currentStep > 1 && !lead?.email && currentStep !== 6 && currentStep !== 7) {
       setShowEmailCapture(true);
+    } else if (currentStep === 6 || currentStep === 7) {
+      // During matching process, show email capture if no email
+      if (!lead?.email) {
+        setShowEmailCapture(true);
+      } else {
+        handleCloseModal();
+      }
     } else {
-      onClose();
-      resetModal();
+      handleCloseModal();
     }
   };
 
@@ -294,20 +271,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const handleEmailSave = async (email: string) => {
     await saveEmail(email);
     setShowEmailCapture(false);
-    onClose();
-    resetModal();
+    handleCloseModal();
   };
 
   // Handle email skip
   const handleEmailSkip = async () => {
     await abandonLead();
     setShowEmailCapture(false);
-    onClose();
-    resetModal();
+    handleCloseModal();
   };
 
-  // Handle modal close - always allow closing
-  const handleModalClose = () => {
+  // Handle modal close - always allow closing both modals
+  const handleCloseModal = () => {
+    setShowEmailCapture(false);
     onClose();
     resetModal();
   };
@@ -780,6 +756,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <span>Calculating best value...</span>
                   </div>
                 </div>
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Continue Without Saving
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -809,6 +794,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     <span>Calculating best value...</span>
                   </div>
+                </div>
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Continue Without Saving
+                  </Button>
                 </div>
               </div>
             )}
