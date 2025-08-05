@@ -856,8 +856,6 @@ export const Home: React.FC = () => {
                             <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
                               <Check className="w-4 h-4 text-white" />
                             </div>
-                          {/* Debug: Show what we're searching for */}
-                          <span className="text-xs text-gray-400 mt-1">({service.id})</span>
                           )}
                           <div className="flex items-center space-x-3">
                             <div className="text-2xl">{service.emoji}</div>
