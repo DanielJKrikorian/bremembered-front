@@ -122,7 +122,7 @@ export const useAnonymousLead = () => {
 
   // Update lead data
   const updateLead = useCallback(async (updates: Partial<AnonymousLead>) => {
-    if (!supabase || !lead) return null;
+    if (!lead) return null;
 
     // Always update local state first
     const updatedLead = { ...lead, ...updates, updated_at: new Date().toISOString() };
@@ -156,7 +156,7 @@ export const useAnonymousLead = () => {
       setLead(data);
       return data;
     } catch (err) {
-      console.error('Database update failed, using local state:', err);
+      console.log('Database update failed, using local state:', err instanceof Error ? err.message : 'Unknown error');
       // Local state is already updated, just return it
       return updatedLead;
     }
@@ -164,6 +164,7 @@ export const useAnonymousLead = () => {
 
   // Mark as completed
   const completeLead = useCallback(async () => {
+    if (!lead) return null;
     return updateLead({
       completed_at: new Date().toISOString(),
       current_step: 7
@@ -172,6 +173,7 @@ export const useAnonymousLead = () => {
 
   // Mark as abandoned and save email
   const abandonLead = useCallback(async (email?: string) => {
+    if (!lead) return null;
     const updates: Partial<AnonymousLead> = {
       abandoned_at: new Date().toISOString()
     };
@@ -185,6 +187,7 @@ export const useAnonymousLead = () => {
 
   // Save email
   const saveEmail = useCallback(async (email: string) => {
+    if (!lead) return null;
     return updateLead({ email });
   }, [updateLead]);
 
