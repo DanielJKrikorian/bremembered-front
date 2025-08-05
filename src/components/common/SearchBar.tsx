@@ -1,556 +1,388 @@
-import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Camera, Video, Music, Users, CalendarDays, Package, ChevronDown, X, Clock, DollarSign, Check, Star, Sparkles, Eye, Grid, List, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Calendar, Camera, Video, Music, Users, Package, ArrowRight, Check, Clock, Star, X, MapPin, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { supabase } from '../../lib/supabase';
-import { ServicePackage } from '../../types/booking';
 
-interface SearchBarProps {
-  onSearch?: (filters: any) => void;
-  className?: string;
+interface ServicePackage {
+  id: string;
+  service_type: string;
+  name: string;
+  description: string;
+  price: number;
+  features: string[];
+  coverage: any;
+  hour_amount?: number;
+  event_type?: string;
+  lookup_key?: string;
 }
 
-interface PackageMatchingState {
-  step: number;
-  eventType: string;
-  serviceType: string;
-  preferenceType: 'hours' | 'coverage' | null;
-  selectedHours: number | null;
-  selectedCoverage: string[];
-  priceRange: { min: number; max: number } | null;
-  availablePackages: ServicePackage[];
-  recommendedPackage: ServicePackage | null;
-  loading: boolean;
-  error: string | null;
+interface LeadData {
+  session_id: string;
+  event_type?: string;
+  selected_services: string[];
+  hour_preferences?: string;
+  coverage_preferences: string[];
+  budget_range?: string;
+  selected_packages: Record<string, any>;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }) => {
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [eventType, setEventType] = useState('');
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
-  const [completedServices, setCompletedServices] = useState<string[]>([]);
+export const SearchBar: React.FC = () => {
+  const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Package matching state for current service
-  const [matchingState, setMatchingState] = useState<PackageMatchingState>({
-    step: 1,
-    eventType: '',
-    serviceType: '',
-    preferenceType: null,
-    selectedHours: null,
-    selectedCoverage: [],
-    priceRange: null,
-    availablePackages: [],
-    recommendedPackage: null,
-    loading: false,
-    error: null
-  });
+  // Form data
+  const [eventType, setEventType] = useState<string>('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
+  const [preferenceType, setPreferenceType] = useState<'hours' | 'coverage' | ''>('');
+  const [selectedHours, setSelectedHours] = useState<number>(0);
+  const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<{min: number, max: number}>({min: 0, max: 10000});
+  
+  // Data from database
+  const [availablePackages, setAvailablePackages] = useState<ServicePackage[]>([]);
+  const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
+  const [selectedPackages, setSelectedPackages] = useState<Record<string, ServicePackage>>({});
+  
+  // Lead tracking
+  const [sessionId, setSessionId] = useState<string>('');
+  const [leadData, setLeadData] = useState<LeadData | null>(null);
 
-  const serviceTypes = [
-    { id: 'Photography', name: 'Photography', icon: Camera, lookupKey: 'photography' },
-    { id: 'Engagement Photography', name: 'Engagement Photography', icon: Camera, lookupKey: 'engagement' },
-    { id: 'Videography', name: 'Videography', icon: Video, lookupKey: 'videography' },
-    { id: 'DJ Services', name: 'DJ Services', icon: Music, lookupKey: 'dj' },
-    { id: 'Day-of Coordination', name: 'Day-of Coordination', icon: Users, lookupKey: 'coordination' },
-    { id: 'Planning', name: 'Planning', icon: CalendarDays, lookupKey: 'planning' }
-  ];
-
-  const eventTypes = [
-    'Wedding',
-    'Proposal'
-  ];
-
-  const coverageOptions = [
-    { id: 'Full Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
-    { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
-    { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
-    { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
-    { id: 'Introduction', name: 'Introduction', description: 'Grand entrance' },
-    { id: 'First Dance', name: 'First Dance', description: 'Your special first dance' },
-    { id: 'Speeches', name: 'Speeches', description: 'Toasts and speeches' },
-    { id: 'Parent Dances', name: 'Parent Dances', description: 'Father-daughter, mother-son dances' },
-    { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
-    { id: 'Dance Floor', name: 'Dance Floor', description: 'Reception dancing and celebration' },
-    { id: 'Last Dance', name: 'Last Dance', description: 'Final dance of the evening' }
-  ];
-
-  const hourOptions = [
-    { value: 3, label: '3 hours', description: 'Perfect for intimate ceremonies' },
-    { value: 4, label: '4 hours', description: 'Ceremony + cocktail hour' },
-    { value: 5, label: '5 hours', description: 'Ceremony + reception start' },
-    { value: 6, label: '6 hours', description: 'Ceremony + reception coverage' },
-    { value: 7, label: '7 hours', description: 'Extended ceremony coverage' },
-    { value: 8, label: '8 hours', description: 'Full day coverage' },
-    { value: 9, label: '9 hours', description: 'Extended day coverage' },
-    { value: 10, label: '10 hours', description: 'Nearly full day' },
-    { value: 11, label: '11 hours', description: 'Extended celebration' },
-    { value: 12, label: '12+ hours', description: 'Complete day documentation' }
-  ];
-
-  const budgetOptions = [
-    { min: 0, max: 150000, label: 'Under $1,500', description: 'Budget-friendly options' },
-    { min: 150000, max: 300000, label: '$1,500 - $3,000', description: 'Mid-range packages' },
-    { min: 300000, max: 500000, label: '$3,000 - $5,000', description: 'Premium services' },
-    { min: 500000, max: 1000000, label: '$5,000+', description: 'Luxury experiences' }
-  ];
-
-  // Helper function to get session ID
-  const getSessionId = () => {
-    let sessionId = localStorage.getItem('booking_session_id');
-    if (!sessionId) {
-      sessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-      localStorage.setItem('booking_session_id', sessionId);
+  // Generate session ID on mount
+  useEffect(() => {
+    const generateSessionId = () => {
+      return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    };
+    
+    let id = localStorage.getItem('booking_session_id');
+    if (!id) {
+      id = generateSessionId();
+      localStorage.setItem('booking_session_id', id);
     }
-    return sessionId;
-  };
+    setSessionId(id);
+  }, []);
 
-  // Helper function to record answers in leads_information
+  // Initialize or fetch lead data
+  useEffect(() => {
+    if (!sessionId || !supabase) return;
+
+    const initializeLead = async () => {
+      try {
+        // Try to get existing lead
+        const { data: existingLead, error: fetchError } = await supabase
+          .from('leads_information')
+          .select('*')
+          .eq('session_id', sessionId)
+          .maybeSingle();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          throw fetchError;
+        }
+
+        if (existingLead) {
+          setLeadData(existingLead);
+          // Restore form state from database
+          if (existingLead.event_type) setEventType(existingLead.event_type);
+          if (existingLead.selected_services) setSelectedServices(existingLead.selected_services);
+        } else {
+          // Create new lead
+          const newLead = {
+            session_id: sessionId,
+            selected_services: [],
+            coverage_preferences: [],
+            selected_packages: {}
+          };
+
+          const { data: createdLead, error: createError } = await supabase
+            .from('leads_information')
+            .insert(newLead)
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setLeadData(createdLead);
+        }
+      } catch (err) {
+        console.error('Error initializing lead:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize');
+      }
+    };
+
+    initializeLead();
+  }, [sessionId]);
+
+  // Record answer in database
   const recordAnswer = async (field: string, value: any) => {
-    if (!supabase) return;
+    if (!supabase || !sessionId) return;
 
     try {
-      const sessionId = getSessionId();
-      
-      const updateData: Record<string, any> = {
+      const updateData = {
         [field]: value,
         updated_at: new Date().toISOString()
       };
 
       const { error } = await supabase
         .from('leads_information')
-        .upsert({
-          session_id: sessionId,
-          ...updateData
-        }, {
-          onConflict: 'session_id'
-        });
+        .update(updateData)
+        .eq('session_id', sessionId);
 
-      if (error) {
-        console.error('Failed to record answer:', error);
-      } else {
-        console.log(`Recorded ${field}:`, value);
-      }
+      if (error) throw error;
+      console.log(`Recorded ${field}:`, value);
     } catch (err) {
       console.error('Error recording answer:', err);
     }
   };
 
-  // Question 1: Filter by event type
-  const handleEventTypeSelect = async (eventTypeValue: string) => {
-    setMatchingState(prev => ({ ...prev, loading: true, error: null, eventType: eventTypeValue }));
+  // Step 1: Handle event type selection
+  const handleEventTypeSelect = async (type: string) => {
+    setEventType(type);
+    await recordAnswer('event_type', type);
     
-    try {
-      if (!supabase) {
-        throw new Error('Supabase connection not available');
+    // Filter packages by event type
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('service_packages')
+          .select('*')
+          .eq('status', 'approved')
+          .eq('event_type', type);
+
+        if (error) throw error;
+        setAvailablePackages(data || []);
+        console.log(`Found ${data?.length || 0} packages for event type: ${type}`);
+      } catch (err) {
+        console.error('Error filtering by event type:', err);
       }
-
-      console.log('Question 1: Event type selected:', eventTypeValue);
-
-      // Record answer in leads_information
-      await recordAnswer('event_type', eventTypeValue);
-
-      // Filter service_packages by event_type
-      const { data, error } = await supabase
-        .from('service_packages')
-        .select('*')
-        .eq('status', 'approved')
-        .eq('event_type', eventTypeValue);
-
-      if (error) throw error;
-
-      console.log(`Found ${data.length} packages for event type: ${eventTypeValue}`);
-      
-      setMatchingState(prev => ({
-        ...prev,
-        step: 2,
-        availablePackages: data || [],
-        loading: false
-      }));
-
-    } catch (err) {
-      setMatchingState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to filter by event type',
-        loading: false
-      }));
     }
-  };
-
-  // Question 2: Filter by service type using lookup_key
-  const handleServiceTypeSelect = async (serviceType: string) => {
-    setMatchingState(prev => ({ ...prev, loading: true, error: null, serviceType }));
     
-    try {
-      if (!supabase) {
-        throw new Error('Supabase connection not available');
-      }
-
-      // Get lookup key for the service
-      const serviceConfig = serviceTypes.find(s => s.id === serviceType);
-      const lookupKey = serviceConfig?.lookupKey || serviceType.toLowerCase();
-      
-      console.log('Question 2: Service type selected:', serviceType, '-> lookup_key:', lookupKey);
-
-      // Record answer in leads_information
-      await recordAnswer('selected_services', [serviceType]);
-
-      // Filter from existing available packages by lookup_key
-      const filteredPackages = matchingState.availablePackages.filter(pkg => {
-        const hasMultipleServices = pkg.service_type && pkg.service_type.includes(',');
-        const matchesLookupKey = pkg.lookup_key === lookupKey;
-        
-        console.log(`Package ${pkg.name}: service_type="${pkg.service_type}", lookup_key="${pkg.lookup_key}", hasMultiple=${hasMultipleServices}, matches=${matchesLookupKey}`);
-        
-        return !hasMultipleServices && matchesLookupKey;
-      });
-
-      console.log(`Filtered to ${filteredPackages.length} packages for service: ${serviceType}`);
-
-      setMatchingState(prev => ({
-        ...prev,
-        step: 3,
-        availablePackages: filteredPackages,
-        loading: false
-      }));
-
-    } catch (err) {
-      setMatchingState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to filter by service type',
-        loading: false
-      }));
-    }
+    setCurrentStep(2);
   };
 
-  // Question 3: Choose preference type (hours or coverage)
-  const handlePreferenceTypeSelect = (preferenceType: 'hours' | 'coverage') => {
-    setMatchingState(prev => ({
-      ...prev,
-      step: 4,
-      preferenceType
-    }));
-  };
-
-  // Question 4a: Filter by hours (±1 range)
-  const handleHoursSelect = async (targetHours: number) => {
-    setMatchingState(prev => ({ ...prev, loading: true, error: null, selectedHours: targetHours }));
+  // Step 2: Handle service selection
+  const handleServiceSelect = async (services: string[]) => {
+    setSelectedServices(services);
+    await recordAnswer('selected_services', services);
     
-    try {
-      console.log('Question 4a: Hours selected:', targetHours);
+    // Filter packages by service lookup_key
+    if (supabase && services.length > 0) {
+      try {
+        // Map service names to lookup keys
+        const lookupKeyMap: Record<string, string> = {
+          'Photography': 'photography',
+          'Videography': 'videography',
+          'DJ Services': 'dj',
+          'Day-of Coordination': 'coordination',
+          'Coordination': 'coordination',
+          'Planning': 'planning'
+        };
 
-      // Record answer in leads_information
-      await recordAnswer('hour_preferences', targetHours.toString());
-
-      // Find packages with hour_amount within ±1 of target
-      const filteredPackages = matchingState.availablePackages.filter(pkg => {
-        if (!pkg.hour_amount) return false;
-        const hourDiff = Math.abs(pkg.hour_amount - targetHours);
-        return hourDiff <= 1; // Within 1 hour of target
-      });
-
-      // Sort by how close they are to the target hours
-      filteredPackages.sort((a, b) => {
-        const diffA = Math.abs((a.hour_amount || 0) - targetHours);
-        const diffB = Math.abs((b.hour_amount || 0) - targetHours);
-        return diffA - diffB;
-      });
-
-      console.log(`Found ${filteredPackages.length} packages near ${targetHours} hours`);
-
-      setMatchingState(prev => ({
-        ...prev,
-        step: 5,
-        availablePackages: filteredPackages,
-        loading: false
-      }));
-
-    } catch (err) {
-      setMatchingState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to filter by hours',
-        loading: false
-      }));
-    }
-  };
-
-  // Question 4b: Filter by coverage
-  const handleCoverageSelect = async (selectedCoverageItems: string[]) => {
-    setMatchingState(prev => ({ ...prev, loading: true, error: null, selectedCoverage: selectedCoverageItems }));
-    
-    try {
-      console.log('Question 4b: Coverage selected:', selectedCoverageItems);
-
-      // Record answer in leads_information
-      await recordAnswer('coverage_preferences', selectedCoverageItems);
-
-      // Filter packages that have all selected coverage items in their coverage.events array
-      const filteredPackages = matchingState.availablePackages.filter(pkg => {
-        if (!pkg.coverage || !pkg.coverage.events) return false;
+        const lookupKeys = services.map(service => lookupKeyMap[service] || service.toLowerCase());
         
-        const packageEvents = pkg.coverage.events as string[];
-        // Check if package includes all selected coverage items
-        return selectedCoverageItems.every(item => 
-          packageEvents.includes(item)
+        // Filter from existing packages
+        const filteredPackages = availablePackages.filter(pkg => 
+          lookupKeys.includes(pkg.lookup_key || '') || 
+          services.includes(pkg.service_type)
         );
-      });
 
-      console.log(`Found ${filteredPackages.length} packages with required coverage`);
-
-      setMatchingState(prev => ({
-        ...prev,
-        step: 5,
-        availablePackages: filteredPackages,
-        loading: false
-      }));
-
-    } catch (err) {
-      setMatchingState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to filter by coverage',
-        loading: false
-      }));
+        setAvailablePackages(filteredPackages);
+        console.log(`Filtered to ${filteredPackages.length} packages for services:`, services);
+      } catch (err) {
+        console.error('Error filtering by service:', err);
+      }
     }
-  };
-
-  // Question 5: Filter by price and select highest within range
-  const handlePriceRangeSelect = async (minPrice: number, maxPrice: number) => {
-    setMatchingState(prev => ({ ...prev, loading: true, error: null, priceRange: { min: minPrice, max: maxPrice } }));
     
-    try {
-      console.log('Question 5: Price range selected:', minPrice, 'to', maxPrice);
-
-      // Record answer in leads_information
-      await recordAnswer('budget_range', `${minPrice}-${maxPrice}`);
-
-      // Filter packages within price range
-      const filteredPackages = matchingState.availablePackages.filter(pkg => 
-        pkg.price >= minPrice && pkg.price <= maxPrice
-      );
-
-      // Select the HIGHEST priced package within the range
-      const recommendedPackage = filteredPackages.length > 0 
-        ? filteredPackages.reduce((highest, current) => 
-            current.price > highest.price ? current : highest
-          )
-        : null;
-
-      console.log(`Found ${filteredPackages.length} packages in price range`);
-      console.log('Recommended package (highest priced):', recommendedPackage?.name, 'at', recommendedPackage?.price);
-
-      setMatchingState(prev => ({
-        ...prev,
-        step: 6,
-        availablePackages: filteredPackages,
-        recommendedPackage,
-        loading: false
-      }));
-
-      // Record the recommended package
-      if (recommendedPackage) {
-        await recordRecommendedPackage(recommendedPackage.id);
-      }
-
-    } catch (err) {
-      setMatchingState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Failed to filter by price',
-        loading: false
-      }));
-    }
-  };
-
-  // Record the recommended package ID in leads_information
-  const recordRecommendedPackage = async (packageId: string) => {
-    if (!supabase) return;
-
-    try {
-      const sessionId = getSessionId();
-      const currentService = getCurrentService();
-      
-      // Get current selected_packages or initialize empty object
-      const { data: currentLead } = await supabase
-        .from('leads_information')
-        .select('selected_packages')
-        .eq('session_id', sessionId)
-        .single();
-
-      const currentPackages = currentLead?.selected_packages || {};
-      
-      // Update the selected_packages with the recommended package for this service
-      const updatedPackages = {
-        ...currentPackages,
-        [currentService]: {
-          recommended: packageId
-        }
-      };
-
-      const { error } = await supabase
-        .from('leads_information')
-        .update({
-          selected_packages: updatedPackages,
-          updated_at: new Date().toISOString()
-        })
-        .eq('session_id', sessionId);
-
-      if (error) {
-        console.error('Failed to record recommended package:', error);
-      } else {
-        console.log('Recorded recommended package for', currentService, ':', packageId);
-      }
-    } catch (err) {
-      console.error('Error recording recommended package:', err);
-    }
-  };
-
-  // Record when user selects the recommended package
-  const recordSelectedPackage = async (packageId: string) => {
-    if (!supabase) return;
-
-    try {
-      const sessionId = getSessionId();
-      const currentService = getCurrentService();
-      
-      // Get current selected_packages
-      const { data: currentLead } = await supabase
-        .from('leads_information')
-        .select('selected_packages')
-        .eq('session_id', sessionId)
-        .single();
-
-      const currentPackages = currentLead?.selected_packages || {};
-      
-      // Update with both recommended and selected for comparison
-      const updatedPackages = {
-        ...currentPackages,
-        [currentService]: {
-          ...currentPackages[currentService],
-          selected: packageId
-        }
-      };
-
-      const { error } = await supabase
-        .from('leads_information')
-        .update({
-          selected_packages: updatedPackages,
-          updated_at: new Date().toISOString()
-        })
-        .eq('session_id', sessionId);
-
-      if (error) {
-        console.error('Failed to record selected package:', error);
-      } else {
-        console.log('Recorded selected package for', currentService, ':', packageId);
-      }
-    } catch (err) {
-      console.error('Error recording selected package:', err);
-    }
-  };
-
-  const handleServiceToggle = (serviceId: string) => {
-    setSelectedServices(prev => 
-      prev.includes(serviceId)
-        ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
-  };
-
-  const handleStartBookingJourney = () => {
-    if (selectedServices.length > 0 && eventType) {
-      setShowBookingModal(true);
-      setCurrentServiceIndex(0);
-      setCompletedServices([]);
-      // Reset matching state and start with event type
-      setMatchingState({
-        step: 1,
-        eventType: '',
-        serviceType: '',
-        preferenceType: null,
-        selectedHours: null,
-        selectedCoverage: [],
-        priceRange: null,
-        availablePackages: [],
-        recommendedPackage: null,
-        loading: false,
-        error: null
-      });
-      handleEventTypeSelect(eventType);
-    }
-  };
-
-  const getCurrentService = () => {
-    return selectedServices[currentServiceIndex];
-  };
-
-  const handleCoverageToggle = (coverageId: string) => {
-    const newCoverage = matchingState.selectedCoverage.includes(coverageId)
-      ? matchingState.selectedCoverage.filter(id => id !== coverageId)
-      : [...matchingState.selectedCoverage, coverageId];
-    
-    setMatchingState(prev => ({ ...prev, selectedCoverage: newCoverage }));
-  };
-
-  const handleCoverageSubmit = () => {
-    if (matchingState.selectedCoverage.length > 0) {
-      handleCoverageSelect(matchingState.selectedCoverage);
-    }
-  };
-
-  const handleSelectRecommended = async () => {
-    if (matchingState.recommendedPackage) {
-      await recordSelectedPackage(matchingState.recommendedPackage.id);
-      
-      // Mark current service as completed
-      const currentService = getCurrentService();
-      setCompletedServices(prev => [...prev, currentService]);
-      
-      // Check if there are more services
-      if (currentServiceIndex < selectedServices.length - 1) {
-        // Move to next service - reset to step 3 (preference type selection)
-        setCurrentServiceIndex(prev => prev + 1);
-        
-        // Reset the matching process for next service but keep event type
-        setMatchingState({
-          step: 2, // Start at service confirmation for next service
-          eventType: matchingState.eventType,
-          serviceType: '',
-          preferenceType: null,
-          selectedHours: null,
-          selectedCoverage: [],
-          priceRange: null,
-          availablePackages: matchingState.availablePackages, // Keep the packages from event type filter
-          recommendedPackage: null,
-          loading: false,
-          error: null
-        });
-        
-        // Automatically move to service type selection for next service
-        const nextService = selectedServices[currentServiceIndex + 1];
-        handleServiceTypeSelect(nextService);
-      } else {
-        // All services completed, close modal and go to event details
-        setShowBookingModal(false);
-        window.location.href = '/booking/event-details';
-      }
-    }
-  };
-
-  const handleCloseModal = () => {
-    setShowBookingModal(false);
-    setMatchingState({
-      step: 1,
-      eventType: '',
-      serviceType: '',
-      preferenceType: null,
-      selectedHours: null,
-      selectedCoverage: [],
-      priceRange: null,
-      availablePackages: [],
-      recommendedPackage: null,
-      loading: false,
-      error: null
-    });
     setCurrentServiceIndex(0);
-    setCompletedServices([]);
+    setCurrentStep(3);
+  };
+
+  // Step 3: Handle preference type selection (hours vs coverage)
+  const handlePreferenceTypeSelect = (type: 'hours' | 'coverage') => {
+    setPreferenceType(type);
+    setCurrentStep(4);
+  };
+
+  // Step 4a: Handle hours selection
+  const handleHoursSelect = async (hours: number) => {
+    setSelectedHours(hours);
+    await recordAnswer('hour_preferences', hours.toString());
+    
+    // Filter packages by hour_amount (±1 range)
+    const filteredPackages = availablePackages.filter(pkg => {
+      if (!pkg.hour_amount) return false;
+      const hourDiff = Math.abs(pkg.hour_amount - hours);
+      return hourDiff <= 1;
+    });
+
+    // Sort by closest to target hours
+    filteredPackages.sort((a, b) => {
+      const diffA = Math.abs((a.hour_amount || 0) - hours);
+      const diffB = Math.abs((b.hour_amount || 0) - hours);
+      return diffA - diffB;
+    });
+
+    setAvailablePackages(filteredPackages);
+    console.log(`Found ${filteredPackages.length} packages near ${hours} hours`);
+    setCurrentStep(5);
+  };
+
+  // Step 4b: Handle coverage selection
+  const handleCoverageSelect = async (coverage: string[]) => {
+    setSelectedCoverage(coverage);
+    await recordAnswer('coverage_preferences', coverage);
+    
+    // Filter packages by coverage.events
+    const filteredPackages = availablePackages.filter(pkg => {
+      if (!pkg.coverage || !pkg.coverage.events) return false;
+      
+      const packageEvents = pkg.coverage.events as string[];
+      // Check if package includes all selected coverage items
+      return coverage.every(item => 
+        packageEvents.some(event => 
+          event.toLowerCase().includes(item.toLowerCase()) ||
+          item.toLowerCase().includes(event.toLowerCase())
+        )
+      );
+    });
+
+    setAvailablePackages(filteredPackages);
+    console.log(`Found ${filteredPackages.length} packages with required coverage`);
+    setCurrentStep(5);
+  };
+
+  // Step 5: Handle price range and select highest priced package
+  const handlePriceRangeSelect = async (minPrice: number, maxPrice: number) => {
+    setPriceRange({min: minPrice, max: maxPrice});
+    await recordAnswer('budget_range', `${minPrice}-${maxPrice}`);
+    
+    // Filter packages within price range and select highest priced
+    const filteredPackages = availablePackages.filter(pkg => 
+      pkg.price >= minPrice && pkg.price <= maxPrice
+    );
+
+    const highestPricedPackage = filteredPackages.length > 0 
+      ? filteredPackages.reduce((highest, current) => 
+          current.price > highest.price ? current : highest
+        )
+      : null;
+
+    setRecommendedPackage(highestPricedPackage);
+    
+    // Record recommended package
+    if (highestPricedPackage) {
+      const currentService = selectedServices[currentServiceIndex];
+      const updatedPackages = {
+        ...leadData?.selected_packages,
+        [currentService]: {
+          recommended: highestPricedPackage.id
+        }
+      };
+      await recordAnswer('selected_packages', updatedPackages);
+    }
+
+    console.log('Recommended package:', highestPricedPackage?.name, 'at', highestPricedPackage?.price);
+    setCurrentStep(6);
+  };
+
+  // Step 6: Handle package selection
+  const handlePackageSelect = async (packageId: string) => {
+    if (!recommendedPackage) return;
+    
+    const currentService = selectedServices[currentServiceIndex];
+    
+    // Record selected package
+    const updatedPackages = {
+      ...leadData?.selected_packages,
+      [currentService]: {
+        recommended: recommendedPackage.id,
+        selected: packageId
+      }
+    };
+    await recordAnswer('selected_packages', updatedPackages);
+    
+    // Store selected package
+    setSelectedPackages(prev => ({
+      ...prev,
+      [currentService]: recommendedPackage
+    }));
+
+    // Check if more services to process
+    if (currentServiceIndex < selectedServices.length - 1) {
+      // Move to next service
+      setCurrentServiceIndex(currentServiceIndex + 1);
+      setPreferenceType('');
+      setSelectedHours(0);
+      setSelectedCoverage([]);
+      
+      // Reset available packages to original filtered set for next service
+      if (supabase) {
+        try {
+          const lookupKeyMap: Record<string, string> = {
+            'Photography': 'photography',
+            'Videography': 'videography',
+            'DJ Services': 'dj',
+            'Day-of Coordination': 'coordination',
+            'Coordination': 'coordination',
+            'Planning': 'planning'
+          };
+
+          const nextService = selectedServices[currentServiceIndex + 1];
+          const lookupKey = lookupKeyMap[nextService] || nextService.toLowerCase();
+          
+          const { data, error } = await supabase
+            .from('service_packages')
+            .select('*')
+            .eq('status', 'approved')
+            .eq('event_type', eventType)
+            .or(`lookup_key.eq.${lookupKey},service_type.eq.${nextService}`);
+
+          if (error) throw error;
+          setAvailablePackages(data || []);
+        } catch (err) {
+          console.error('Error loading packages for next service:', err);
+        }
+      }
+      
+      setCurrentStep(3); // Back to preference type selection
+    } else {
+      // All services completed
+      setIsModalOpen(false);
+      navigate('/booking/event-details', {
+        state: {
+          selectedServices,
+          selectedPackages,
+          eventType
+        }
+      });
+    }
+  };
+
+  const resetModal = () => {
+    setCurrentStep(1);
+    setEventType('');
+    setSelectedServices([]);
+    setCurrentServiceIndex(0);
+    setPreferenceType('');
+    setSelectedHours(0);
+    setSelectedCoverage([]);
+    setPriceRange({min: 0, max: 10000});
+    setAvailablePackages([]);
+    setRecommendedPackage(null);
+    setSelectedPackages({});
+  };
+
+  const openModal = () => {
+    resetModal();
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    resetModal();
   };
 
   const formatPrice = (price: number) => {
@@ -562,596 +394,410 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
     }).format(price / 100);
   };
 
-  const getServiceIcon = (serviceType: string) => {
-    const service = serviceTypes.find(s => s.id === serviceType);
-    return service?.icon || Camera;
+  const getCurrentService = () => selectedServices[currentServiceIndex];
+
+  const getServiceIcon = (service: string) => {
+    switch (service) {
+      case 'Photography': return Camera;
+      case 'Videography': return Video;
+      case 'DJ Services': return Music;
+      case 'Day-of Coordination': 
+      case 'Coordination': return Users;
+      case 'Planning': return Calendar;
+      default: return Package;
+    }
   };
+
+  const services = [
+    { id: 'Photography', name: 'Photography', icon: Camera },
+    { id: 'Videography', name: 'Videography', icon: Video },
+    { id: 'DJ Services', name: 'DJ Services', icon: Music },
+    { id: 'Day-of Coordination', name: 'Day-of Coordination', icon: Users },
+    { id: 'Planning', name: 'Planning', icon: Calendar }
+  ];
+
+  const coverageOptions = [
+    'Full Getting Ready',
+    'First Look', 
+    'Ceremony',
+    'Cocktail Hour',
+    'Introduction',
+    'First Dance',
+    'Speeches',
+    'Parent Dances',
+    'Cake Cutting',
+    'Dance Floor',
+    'Last Dance'
+  ];
+
+  const priceRanges = [
+    { label: 'Under $1,000', min: 0, max: 100000 },
+    { label: '$1,000 - $2,500', min: 100000, max: 250000 },
+    { label: '$2,500 - $5,000', min: 250000, max: 500000 },
+    { label: '$5,000 - $10,000', min: 500000, max: 1000000 },
+    { label: 'Over $10,000', min: 1000000, max: 5000000 }
+  ];
 
   return (
     <>
-      <div className={`bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 ${className}`}>
-        <div className="space-y-4 sm:space-y-6">
-          {/* Event Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              What type of event are you planning? <span className="text-gray-500 font-normal">(select one)</span>
-            </label>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {eventTypes.map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setEventType(eventType === type ? '' : type)}
-                  className={`
-                    px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all border
-                    ${eventType === type
-                      ? 'bg-rose-500 text-white border-rose-500 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Service Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              What services are you looking to book? <span className="text-gray-500 font-normal">(select all you'd like to book)</span>
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-              {serviceTypes.map((service) => {
-                const Icon = service.icon;
-                const isSelected = selectedServices.includes(service.id);
-                
-                return (
-                  <button
-                    key={service.id}
-                    onClick={() => handleServiceToggle(service.id)}
-                    className={`
-                      flex flex-col items-center p-2 sm:p-3 rounded-lg border-2 transition-all
-                      ${isSelected 
-                        ? 'border-rose-500 bg-rose-50 text-rose-700' 
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600 hover:text-gray-700'
-                      }
-                    `}
-                  >
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 sm:mb-2" />
-                    <span className="text-xs font-medium text-center leading-tight">{service.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Search Button */}
-          <div className="flex justify-center">
-            <Button
-              variant="primary"
-              icon={Search}
-              size={window.innerWidth < 640 ? "md" : "lg"}
-              onClick={handleStartBookingJourney}
-              className="px-6 sm:px-12"
-              disabled={selectedServices.length === 0 || !eventType}
-            >
-              Start Your Booking Journey
-            </Button>
-          </div>
+      {/* Search Bar */}
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search wedding services..."
+            className="w-full pl-12 pr-32 py-4 rounded-2xl border border-gray-200 focus:outline-none focus:ring-4 focus:ring-rose-500/20 focus:border-rose-500 text-lg bg-white shadow-lg"
+            onFocus={() => navigate('/search')}
+          />
+          <Button
+            variant="primary"
+            size="lg"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-xl"
+            onClick={openModal}
+          >
+            Start Your Booking Journey
+          </Button>
         </div>
       </div>
 
       {/* Booking Journey Modal */}
-      {showBookingModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Find Your Perfect {getCurrentService()} Package
-                </h2>
-                <p className="text-gray-600 mt-1">
-                  Service {currentServiceIndex + 1} of {selectedServices.length}: {getCurrentService()}
-                </p>
-              </div>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Progress for Multiple Services */}
-              {selectedServices.length > 1 && (
-                <div className="mb-8">
-                  <div className="flex items-center justify-center space-x-2 mb-4">
-                    {selectedServices.map((service, index) => {
-                      const ServiceIcon = getServiceIcon(service);
-                      const isCompleted = completedServices.includes(service);
-                      const isCurrent = index === currentServiceIndex;
-                      
-                      return (
-                        <div key={service} className="flex items-center">
-                          <div className={`
-                            w-10 h-10 rounded-full flex items-center justify-center transition-all
-                            ${isCompleted 
-                              ? 'bg-green-500 text-white' 
-                              : isCurrent 
-                                ? 'bg-rose-500 text-white' 
-                                : 'bg-gray-200 text-gray-600'
-                            }
-                          `}>
-                            {isCompleted ? <Check className="w-5 h-5" /> : <ServiceIcon className="w-5 h-5" />}
-                          </div>
-                          {index < selectedServices.length - 1 && (
-                            <div className={`w-8 h-1 mx-2 rounded-full ${
-                              isCompleted ? 'bg-green-500' : 'bg-gray-200'
-                            }`} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="text-center text-sm text-gray-600">
-                    {completedServices.length} of {selectedServices.length} services completed
-                  </p>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedServices.length > 1 && currentServiceIndex > 0 
+                      ? `${getCurrentService()} Package Selection`
+                      : 'Find Your Perfect Wedding Package'
+                    }
+                  </h2>
+                  {selectedServices.length > 1 && (
+                    <p className="text-gray-600 mt-1">
+                      Service {currentServiceIndex + 1} of {selectedServices.length}: {getCurrentService()}
+                    </p>
+                  )}
                 </div>
-              )}
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
-              {/* Progress Steps for Current Service */}
-              <div className="flex items-center justify-center space-x-4 mb-8">
-                {[1, 2, 3, 4, 5].map((stepNum) => (
-                  <div key={stepNum} className="flex items-center">
-                    <div className={`
-                      w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                      ${matchingState.step >= stepNum 
-                        ? 'bg-rose-500 text-white shadow-lg' 
-                        : 'bg-gray-200 text-gray-600'
-                      }
-                    `}>
-                      {matchingState.step > stepNum ? <Check className="w-5 h-5" /> : stepNum}
-                    </div>
-                    {stepNum < 5 && (
-                      <div className={`w-20 h-1 mx-2 rounded-full transition-all ${
-                        matchingState.step > stepNum ? 'bg-rose-500' : 'bg-gray-200'
-                      }`} />
-                    )}
-                  </div>
+              {/* Progress Indicator */}
+              <div className="flex items-center justify-center space-x-2 mb-8">
+                {[1, 2, 3, 4, 5, 6].map((step) => (
+                  <div
+                    key={step}
+                    className={`w-3 h-3 rounded-full transition-all ${
+                      currentStep >= step ? 'bg-rose-500' : 'bg-gray-200'
+                    }`}
+                  />
                 ))}
               </div>
 
-              {/* Question 1: Event Type (auto-handled) */}
-              {matchingState.step === 1 && (
-                <Card className="p-8">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Calendar className="w-8 h-8 text-rose-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      Setting up for your {eventType}
-                    </h2>
-                    <p className="text-gray-600">
-                      Finding all available packages for your {eventType.toLowerCase()}...
-                    </p>
-                    <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mt-6"></div>
+              {/* Step 1: Event Type */}
+              {currentStep === 1 && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    What type of event are you planning?
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {['Wedding', 'Proposal'].map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => handleEventTypeSelect(type)}
+                        className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
+                      >
+                        <div className="text-4xl mb-3">
+                          {type === 'Wedding' ? '💒' : '💍'}
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600">
+                          {type}
+                        </h4>
+                      </button>
+                    ))}
                   </div>
-                </Card>
+                </div>
               )}
 
-              {/* Question 2: Service Type Confirmation */}
-              {matchingState.step === 2 && (
-                <Card className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      {React.createElement(getServiceIcon(getCurrentService()), { className: "w-8 h-8 text-amber-600" })}
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      Let's find your perfect {getCurrentService()} package
-                    </h2>
-                    <p className="text-gray-600">
-                      We'll help you find the ideal {getCurrentService().toLowerCase()} package for your {matchingState.eventType?.toLowerCase()}
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="inline-flex items-center space-x-4 p-6 bg-white rounded-xl border-2 border-amber-200">
-                      <div className="text-2xl">📅</div>
-                      <div>
-                        <div className="font-semibold text-gray-900">Event Type: {matchingState.eventType}</div>
-                        <div className="text-gray-600">Service: {getCurrentService()}</div>
-                        <div className="text-sm text-gray-500">{matchingState.availablePackages.length} packages available</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-center mt-8">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() => handleServiceTypeSelect(getCurrentService())}
-                      disabled={matchingState.loading}
-                      icon={ArrowRight}
-                    >
-                      {matchingState.loading ? 'Loading...' : 'Continue'}
-                    </Button>
-                  </div>
-                </Card>
-              )}
-
-              {/* Question 3: Hours vs Coverage Preference */}
-              {matchingState.step === 3 && (
-                <Card className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Grid className="w-8 h-8 text-purple-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      How would you like to choose your {getCurrentService()} package?
-                    </h2>
-                    <p className="text-gray-600">
-                      Select your preferred way to narrow down the perfect package
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                    <div
-                      onClick={() => handlePreferenceTypeSelect('hours')}
-                      className="p-8 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all text-center"
-                    >
-                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Clock className="w-8 h-8 text-purple-600" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
-                      <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
-                    </div>
-                    
-                    <div
-                      onClick={() => handlePreferenceTypeSelect('coverage')}
-                      className="p-8 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all text-center"
-                    >
-                      <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <List className="w-8 h-8 text-purple-600" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
-                      <p className="text-gray-600">Choose based on specific moments you want captured</p>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {/* Question 4a: Hours Selection */}
-              {matchingState.step === 4 && matchingState.preferenceType === 'hours' && (
-                <Card className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Clock className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      How many hours of {getCurrentService().toLowerCase()} do you need?
-                    </h2>
-                    <p className="text-gray-600">
-                      Choose the duration that best fits your {matchingState.eventType?.toLowerCase()} timeline
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                    {hourOptions.map((option) => {
-                      const isSelected = matchingState.selectedHours === option.value;
+              {/* Step 2: Service Selection */}
+              {currentStep === 2 && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    What services do you need?
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    {services.map((service) => {
+                      const Icon = service.icon;
+                      const isSelected = selectedServices.includes(service.id);
                       return (
-                        <div
-                          key={option.value}
-                          onClick={() => handleHoursSelect(option.value)}
-                          className={`
-                            relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
-                            ${isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                            }
-                          `}
+                        <button
+                          key={service.id}
+                          onClick={() => {
+                            const newServices = isSelected
+                              ? selectedServices.filter(s => s !== service.id)
+                              : [...selectedServices, service.id];
+                            setSelectedServices(newServices);
+                          }}
+                          className={`p-4 border-2 rounded-xl transition-all text-left ${
+                            isSelected
+                              ? 'border-rose-500 bg-rose-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
                         >
-                          {isSelected && (
-                            <div className="absolute top-3 right-3 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              isSelected ? 'bg-rose-500' : 'bg-gray-100'
+                            }`}>
+                              <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-600'}`} />
                             </div>
-                          )}
-                          <div className="text-2xl font-bold text-gray-900 mb-2">{option.label}</div>
-                          <p className="text-sm text-gray-600">{option.description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
-
-              {/* Question 4b: Coverage Selection */}
-              {matchingState.step === 4 && matchingState.preferenceType === 'coverage' && (
-                <Card className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <List className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      What moments would you like covered?
-                    </h2>
-                    <p className="text-gray-600">
-                      Select all the moments you want captured during your {matchingState.eventType?.toLowerCase()}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                    {coverageOptions.map((option) => {
-                      const isSelected = matchingState.selectedCoverage.includes(option.id);
-                      return (
-                        <div
-                          key={option.id}
-                          onClick={() => handleCoverageToggle(option.id)}
-                          className={`
-                            relative p-4 rounded-lg border-2 cursor-pointer transition-all
-                            ${isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                            }
-                          `}
-                        >
-                          {isSelected && (
-                            <div className="absolute top-3 right-3 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                          <h3 className="font-medium text-gray-900 mb-1">{option.name}</h3>
-                          <p className="text-sm text-gray-600">{option.description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="text-center mt-8">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={handleCoverageSubmit}
-                      disabled={matchingState.selectedCoverage.length === 0}
-                      icon={ArrowRight}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </Card>
-              )}
-
-              {/* Question 5: Price Range Selection */}
-              {matchingState.step === 5 && (
-                <Card className="p-8">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <DollarSign className="w-8 h-8 text-emerald-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                      What's your budget for {getCurrentService()?.toLowerCase()}?
-                    </h2>
-                    <p className="text-gray-600">
-                      Select a budget range that works for you
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                    {budgetOptions.map((option) => {
-                      const isSelected = matchingState.priceRange?.min === option.min && matchingState.priceRange?.max === option.max;
-                      return (
-                        <div
-                          key={`${option.min}-${option.max}`}
-                          onClick={() => handlePriceRangeSelect(option.min, option.max)}
-                          className={`
-                            relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
-                            ${isSelected 
-                              ? 'border-emerald-500 bg-emerald-50' 
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                            }
-                          `}
-                        >
-                          {isSelected && (
-                            <div className="absolute top-3 right-3 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                          <div className="text-xl font-bold text-gray-900 mb-2">{option.label}</div>
-                          <p className="text-sm text-gray-600">{option.description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
-
-              {/* Question 6: Package Recommendation */}
-              {matchingState.step === 6 && (
-                <div className="space-y-8">
-                  {matchingState.recommendedPackage ? (
-                    <>
-                      {/* Recommended Package */}
-                      <Card className="overflow-hidden relative">
-                        {/* Recommended Badge */}
-                        <div className="absolute top-4 left-4 z-10">
-                          <div className="flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-4 py-2 rounded-full shadow-lg">
-                            <Sparkles className="w-4 h-4" />
-                            <span className="font-semibold text-sm">Recommended for You</span>
-                          </div>
-                        </div>
-
-                        <div className="p-8 pt-16">
-                          <div className="flex flex-col lg:flex-row gap-8">
                             <div className="flex-1">
-                              <h3 className="text-3xl font-bold text-gray-900 mb-4">{matchingState.recommendedPackage.name}</h3>
-                              <p className="text-gray-600 text-lg leading-relaxed mb-6">{matchingState.recommendedPackage.description}</p>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-3">What's Included</h4>
-                                  <div className="space-y-2">
-                                    {matchingState.recommendedPackage.features?.slice(0, 4).map((feature, index) => (
-                                      <div key={index} className="flex items-center space-x-2">
-                                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                        <span className="text-sm text-gray-700">{feature}</span>
-                                      </div>
-                                    ))}
-                                    {(matchingState.recommendedPackage.features?.length || 0) > 4 && (
-                                      <div className="text-sm text-gray-500">
-                                        +{(matchingState.recommendedPackage.features?.length || 0) - 4} more features
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                <div>
-                                  <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
-                                  <div className="space-y-2">
-                                    {(matchingState.recommendedPackage.coverage?.events || []).slice(0, 4).map((event: string, index: number) => (
-                                      <div key={index} className="flex items-center space-x-2">
-                                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                        <span className="text-sm text-gray-700">{event}</span>
-                                      </div>
-                                    ))}
-                                    {(matchingState.recommendedPackage.coverage?.events?.length || 0) > 4 && (
-                                      <div className="text-sm text-gray-500">
-                                        +{(matchingState.recommendedPackage.coverage?.events?.length || 0) - 4} more events
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center space-x-6 text-sm text-gray-600">
-                                {matchingState.recommendedPackage.hour_amount && (
-                                  <div className="flex items-center">
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    <span>{matchingState.recommendedPackage.hour_amount} hours</span>
-                                  </div>
-                                )}
-                                <div className="flex items-center">
-                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                  <span>Top rated package</span>
-                                </div>
-                              </div>
+                              <h4 className="font-medium text-gray-900">{service.name}</h4>
                             </div>
+                            {isSelected && (
+                              <Check className="w-5 h-5 text-rose-600" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => handleServiceSelect(selectedServices)}
+                    disabled={selectedServices.length === 0}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
 
-                            <div className="lg:w-1/3">
-                              <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-2xl p-6 text-white text-center">
-                                <div className="text-4xl font-bold mb-2">
-                                  {formatPrice(matchingState.recommendedPackage.price)}
-                                </div>
-                                <div className="text-rose-100 mb-6">Perfect match for your needs</div>
-                                
-                                <div className="space-y-3">
-                                  <Button
-                                    variant="secondary"
-                                    size="lg"
-                                    className="w-full bg-white text-black hover:bg-gray-50"
-                                    style={{ color: 'black' }}
-                                    onClick={handleSelectRecommended}
-                                  >
-                                    {currentServiceIndex < selectedServices.length - 1 
-                                      ? `Select & Continue to ${selectedServices[currentServiceIndex + 1]}`
-                                      : 'Select This Package'
-                                    }
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="lg"
-                                    className="w-full border-white text-white hover:bg-white hover:text-rose-600"
-                                    icon={Eye}
-                                  >
-                                    View Other Options
-                                  </Button>
-                                </div>
+              {/* Step 3: Preference Type Selection */}
+              {currentStep === 3 && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    How would you like to choose your {getCurrentService()} package?
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <button
+                      onClick={() => handlePreferenceTypeSelect('hours')}
+                      className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
+                    >
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200">
+                        <Clock className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h4>
+                      <p className="text-gray-600 text-sm">Choose based on coverage duration</p>
+                    </button>
+                    <button
+                      onClick={() => handlePreferenceTypeSelect('coverage')}
+                      className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
+                    >
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200">
+                        <Heart className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">By Coverage</h4>
+                      <p className="text-gray-600 text-sm">Choose based on specific moments</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4a: Hours Selection */}
+              {currentStep === 4 && preferenceType === 'hours' && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    How many hours of {getCurrentService().toLowerCase()} do you need?
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[2, 4, 6, 8, 10, 12].map((hours) => (
+                      <button
+                        key={hours}
+                        onClick={() => handleHoursSelect(hours)}
+                        className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
+                      >
+                        <div className="text-2xl font-bold text-gray-900 mb-1">{hours}</div>
+                        <div className="text-sm text-gray-600">hours</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4b: Coverage Selection */}
+              {currentStep === 4 && preferenceType === 'coverage' && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    What moments would you like covered?
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+                    {coverageOptions.map((coverage) => {
+                      const isSelected = selectedCoverage.includes(coverage);
+                      return (
+                        <button
+                          key={coverage}
+                          onClick={() => {
+                            const newCoverage = isSelected
+                              ? selectedCoverage.filter(c => c !== coverage)
+                              : [...selectedCoverage, coverage];
+                            setSelectedCoverage(newCoverage);
+                          }}
+                          className={`p-3 border-2 rounded-lg transition-all text-left ${
+                            isSelected
+                              ? 'border-rose-500 bg-rose-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              isSelected ? 'border-rose-500 bg-rose-500' : 'border-gray-300'
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="text-sm font-medium text-gray-900">{coverage}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => handleCoverageSelect(selectedCoverage)}
+                    disabled={selectedCoverage.length === 0}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
+
+              {/* Step 5: Price Range */}
+              {currentStep === 5 && (
+                <div className="text-center">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    What's your budget for {getCurrentService().toLowerCase()}?
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {priceRanges.map((range) => (
+                      <button
+                        key={range.label}
+                        onClick={() => handlePriceRangeSelect(range.min, range.max)}
+                        className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
+                      >
+                        <div className="text-lg font-semibold text-gray-900">{range.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 6: Package Recommendation */}
+              {currentStep === 6 && (
+                <div className="text-center">
+                  {recommendedPackage ? (
+                    <>
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Star className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                        Perfect! We found your ideal {getCurrentService()} package
+                      </h3>
+                      
+                      <Card className="p-6 mb-8 text-left bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h4 className="text-xl font-bold text-gray-900 mb-2">{recommendedPackage.name}</h4>
+                            <p className="text-gray-600 mb-4">{recommendedPackage.description}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Service:</span>
+                                <div className="font-medium">{recommendedPackage.service_type}</div>
                               </div>
+                              {recommendedPackage.hour_amount && (
+                                <div>
+                                  <span className="text-gray-600">Duration:</span>
+                                  <div className="font-medium">{recommendedPackage.hour_amount} hours</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {formatPrice(recommendedPackage.price)}
                             </div>
                           </div>
                         </div>
+                        
+                        {recommendedPackage.features && recommendedPackage.features.length > 0 && (
+                          <div>
+                            <h5 className="font-medium text-gray-900 mb-2">Includes:</h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                              {recommendedPackage.features.slice(0, 6).map((feature, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                  <span className="text-sm text-gray-700">{feature}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </Card>
 
-                      {/* Why This Package */}
-                      <Card className="p-6 bg-blue-50 border-blue-200">
-                        <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                          Why we recommend this {getCurrentService().toLowerCase()} package for you:
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Check className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-blue-900">Perfect Match</div>
-                              <div className="text-sm text-blue-700">Matches your preferences</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Clock className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-blue-900">Best Value</div>
-                              <div className="text-sm text-blue-700">Highest quality in your budget</div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <DollarSign className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-blue-900">Within Budget</div>
-                              <div className="text-sm text-blue-700">Matches your price range</div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
+                      <div className="space-y-4">
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          onClick={() => handlePackageSelect(recommendedPackage.id)}
+                          icon={ArrowRight}
+                          className="w-full"
+                        >
+                          {selectedServices.length > 1 && currentServiceIndex < selectedServices.length - 1
+                            ? `Select This Package & Continue to ${selectedServices[currentServiceIndex + 1]}`
+                            : 'Select This Package'
+                          }
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-full"
+                          onClick={() => setCurrentStep(5)}
+                        >
+                          See Other Options
+                        </Button>
+                      </div>
                     </>
                   ) : (
-                    <Card className="p-12 text-center">
-                      <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        No {getCurrentService().toLowerCase()} packages match your criteria
+                    <>
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <X className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">
+                        No packages found
                       </h3>
-                      <p className="text-gray-600 mb-6">
-                        Try adjusting your preferences or contact us for custom options.
+                      <p className="text-gray-600 mb-8">
+                        We couldn't find any {getCurrentService().toLowerCase()} packages matching your criteria. Try adjusting your preferences.
                       </p>
                       <Button
-                        variant="primary"
-                        onClick={() => {
-                          // Skip this service and move to next
-                          if (currentServiceIndex < selectedServices.length - 1) {
-                            setCurrentServiceIndex(prev => prev + 1);
-                            setMatchingState({
-                              step: 2,
-                              eventType: matchingState.eventType,
-                              serviceType: '',
-                              preferenceType: null,
-                              selectedHours: null,
-                              selectedCoverage: [],
-                              priceRange: null,
-                              availablePackages: matchingState.availablePackages,
-                              recommendedPackage: null,
-                              loading: false,
-                              error: null
-                            });
-                            const nextService = selectedServices[currentServiceIndex + 1];
-                            handleServiceTypeSelect(nextService);
-                          } else {
-                            setShowBookingModal(false);
-                            window.location.href = '/booking/event-details';
-                          }
-                        }}
+                        variant="outline"
+                        onClick={() => setCurrentStep(3)}
                       >
-                        {currentServiceIndex < selectedServices.length - 1 ? 'Skip to Next Service' : 'Continue Anyway'}
+                        Try Different Preferences
                       </Button>
-                    </Card>
+                    </>
                   )}
                 </div>
               )}
 
               {/* Loading State */}
-              {matchingState.loading && (
+              {loading && (
                 <div className="text-center py-8">
                   <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                   <p className="text-gray-600">Finding your perfect packages...</p>
@@ -1159,13 +805,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
               )}
 
               {/* Error State */}
-              {matchingState.error && (
-                <Card className="p-6 bg-red-50 border-red-200">
-                  <p className="text-red-600 text-center">{matchingState.error}</p>
-                </Card>
+              {error && (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <X className="w-8 h-8 text-red-600" />
+                  </div>
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button variant="outline" onClick={() => setError(null)}>
+                    Try Again
+                  </Button>
+                </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </>
