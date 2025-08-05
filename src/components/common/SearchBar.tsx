@@ -664,17 +664,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
               Start Your Booking Journey
             </Button>
           </div>
-        </div>
+                How would you like to choose your package?
       </div>
 
-      {/* Questionnaire Modal */}
+                Select your preferred way to narrow down the perfect package
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 sm:p-8">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
                   <h2 className="text-2xl font-bold text-gray-900">
                     Find Your Perfect {getCurrentService()} Package
                   </h2>
@@ -1164,12 +1160,71 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, className = '' }
                     <div>Event Type: {matchingState.filters.eventType}</div>
                     <div>Service Type: {matchingState.filters.serviceType}</div>
                     <div>Preference Type: {matchingState.filters.preferenceType}</div>
-                    <div>Available Packages: {matchingState.availablePackages.length}</div>
-                    <div>Recommended: {matchingState.recommendedPackage?.name || 'None'}</div>
-                  </div>
-                </Card>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div
+                onClick={() => setPreferenceType('hours')}
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
+                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
+              </div>
+        {step === 4 && filters.preferenceType === 'coverage' && (
+        {/* Step 4: Hours vs Coverage Selection */}
+        {step === 4 && filters.preferenceType === 'hours' && (
+          <div className="space-y-6">
+                <List className="w-8 h-8 text-purple-600" />
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-purple-600" />
+                What moments would you like covered?
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                How many hours of coverage do you need?
+                Select all the moments you want captured during your {filters.eventType?.toLowerCase()}
+              <p className="text-gray-600">
+                Choose the duration that best fits your {filters.eventType?.toLowerCase()} timeline
+              </p>
             </div>
+              {coverageOptions.map((option) => {
+                const isSelected = selectedCoverage.includes(option.id);
+              {hourOptions.map((option) => {
+                const isSelected = selectedHours === option.value;
+                    key={option.id}
+                    onClick={() => handleCoverageToggle(option.id)}
+                    key={option.value}
+                      relative p-4 rounded-lg border-2 cursor-pointer transition-all
+                    className={`
+                      relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
+                      ${isSelected 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                    <h3 className="font-medium text-gray-900 mb-1">{option.name}</h3>
+                    )}
+                    <div className="text-2xl font-bold text-gray-900 mb-2">{option.label}</div>
+                    <p className="text-sm text-gray-600">{option.description}</p>
+                  </div>
+                );
+
+            <div className="text-center mt-8">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleCoverageSubmit}
+                disabled={selectedCoverage.length === 0}
+                icon={ArrowRight}
+              >
+                Continue
+              </Button>
+            </div>
+              })}
+        )}
           </div>
         </div>
       )}
