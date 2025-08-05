@@ -1,126 +1,122 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Clock, DollarSign, Camera, Check, Star, Sparkles, Eye } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Clock, DollarSign, Camera, Check, Star, Sparkles, Eye, Grid, List } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useBooking } from '../../context/BookingContext';
-import { useServicePackages } from '../../hooks/useSupabase';
+import { usePackageMatching } from '../../hooks/usePackageMatching';
 
 export const PackageQuestionnaire: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { state } = useBooking();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [answers, setAnswers] = useState({
-    coverage: [] as string[],
-    hours: '',
-    budget: ''
-  });
+  
+  const {
+    step,
+    filters,
+    availablePackages,
+    recommendedPackage,
+    loading,
+    error,
+    setEventType,
+    setServiceType,
+    setPreferenceType,
+    setHours,
+    setCoverage,
+    setPriceRange,
+    selectRecommendedPackage
+  } = usePackageMatching();
 
   // Get the search data from navigation state
-  const selectedServices = searchParams.get('services')?.split(',') || state.selectedServices || [];
-  const eventType = searchParams.get('eventType') || state.eventType || 'Wedding';
+  const selectedServices = searchParams.get('services')?.split(',') || [];
+  const eventTypeFromUrl = searchParams.get('eventType') || 'Wedding';
   const currentService = selectedServices[0]; // Start with first service
 
+  const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
+  const [selectedHours, setSelectedHours] = useState<number | null>(null);
+  const [selectedPriceRange, setSelectedPriceRange] = useState<{min: number, max: number} | null>(null);
+
   const coverageOptions = [
-    { id: 'Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
+    { id: 'Full Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
     { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
     { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
     { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
-    { id: 'Reception', name: 'Reception', description: 'Dinner, dancing, and festivities' },
-    { id: 'Bridal Party', name: 'Bridal Party', description: 'Group photos with wedding party' },
-    { id: 'Family Photos', name: 'Family Photos', description: 'Formal family portraits' },
-    { id: 'Sunset Photos', name: 'Sunset Photos', description: 'Golden hour couple portraits' },
-    { id: 'Dancing', name: 'Dancing', description: 'Reception dancing and celebration' },
+    { id: 'Introduction', name: 'Introduction', description: 'Grand entrance' },
+    { id: 'First Dance', name: 'First Dance', description: 'Your special first dance' },
+    { id: 'Speeches', name: 'Speeches', description: 'Toasts and speeches' },
+    { id: 'Parent Dances', name: 'Parent Dances', description: 'Father-daughter, mother-son dances' },
     { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
-    { id: 'Send Off', name: 'Send Off', description: 'Grand exit celebration' }
+    { id: 'Dance Floor', name: 'Dance Floor', description: 'Reception dancing and celebration' },
+    { id: 'Last Dance', name: 'Last Dance', description: 'Final dance of the evening' }
   ];
 
   const hourOptions = [
-    { value: '4', label: '4 hours', description: 'Perfect for intimate ceremonies' },
-    { value: '6', label: '6 hours', description: 'Ceremony + reception coverage' },
-    { value: '8', label: '8 hours', description: 'Full day coverage' },
-    { value: '10', label: '10 hours', description: 'Extended celebration coverage' },
-    { value: '12', label: '12+ hours', description: 'Complete day documentation' }
+    { value: 3, label: '3 hours', description: 'Perfect for intimate ceremonies' },
+    { value: 4, label: '4 hours', description: 'Perfect for intimate ceremonies' },
+    { value: 5, label: '5 hours', description: 'Ceremony + cocktail hour' },
+    { value: 6, label: '6 hours', description: 'Ceremony + reception coverage' },
+    { value: 7, label: '7 hours', description: 'Extended ceremony coverage' },
+    { value: 8, label: '8 hours', description: 'Full day coverage' },
+    { value: 9, label: '9 hours', description: 'Extended day coverage' },
+    { value: 10, label: '10 hours', description: 'Extended celebration coverage' },
+    { value: 11, label: '11 hours', description: 'Nearly full day' },
+    { value: 12, label: '12+ hours', description: 'Complete day documentation' }
   ];
 
   const budgetOptions = [
-    { value: '0-150000', label: 'Under $1,500', description: 'Budget-friendly options' },
-    { value: '150000-300000', label: '$1,500 - $3,000', description: 'Mid-range packages' },
-    { value: '300000-500000', label: '$3,000 - $5,000', description: 'Premium services' },
-    { value: '500000-1000000', label: '$5,000+', description: 'Luxury experiences' }
+    { min: 0, max: 150000, label: 'Under $1,500', description: 'Budget-friendly options' },
+    { min: 150000, max: 300000, label: '$1,500 - $3,000', description: 'Mid-range packages' },
+    { min: 300000, max: 500000, label: '$3,000 - $5,000', description: 'Premium services' },
+    { min: 500000, max: 1000000, label: '$5,000+', description: 'Luxury experiences' }
   ];
 
-  // Get recommended package based on answers
-  const { packages } = useServicePackages(currentService, eventType, {
-    coverage: answers.coverage,
-    minHours: answers.hours ? parseInt(answers.hours) - 1 : undefined,
-    maxHours: answers.hours ? parseInt(answers.hours) + 1 : undefined,
-    minPrice: answers.budget ? parseInt(answers.budget.split('-')[0]) : undefined,
-    maxPrice: answers.budget ? parseInt(answers.budget.split('-')[1]) : undefined
-  });
-
-  const recommendedPackage = packages[0]; // First package is the recommended one
+  // Initialize with event type if we haven't started yet
+  React.useEffect(() => {
+    if (step === 1 && eventTypeFromUrl && !filters.eventType) {
+      setEventType(eventTypeFromUrl);
+    }
+  }, [step, eventTypeFromUrl, filters.eventType, setEventType]);
 
   const handleCoverageToggle = (coverageId: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      coverage: prev.coverage.includes(coverageId)
-        ? prev.coverage.filter(id => id !== coverageId)
-        : [...prev.coverage, coverageId]
-    }));
+    setSelectedCoverage(prev => 
+      prev.includes(coverageId)
+        ? prev.filter(id => id !== coverageId)
+        : [...prev, coverageId]
+    );
   };
 
-  const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+  const handleServiceTypeSelect = () => {
+    if (currentService) {
+      setServiceType(currentService);
     }
   };
 
-  const handleUnsure = () => {
-    // Set default answers for 6-hour standard package
-    setAnswers({
-      coverage: ['Ceremony', 'Cocktail Hour', 'Reception'],
-      hours: '6',
-      budget: '150000-300000'
-    });
-    setCurrentStep(4); // Go directly to recommendation
+  const handleHoursSelect = (hours: number) => {
+    setSelectedHours(hours);
+    setHours(hours);
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    } else {
-      navigate(-1);
+  const handleCoverageSubmit = () => {
+    if (selectedCoverage.length > 0) {
+      setCoverage(selectedCoverage);
     }
+  };
+
+  const handlePriceSelect = (priceRange: {min: number, max: number}) => {
+    setSelectedPriceRange(priceRange);
+    setPriceRange(priceRange.min, priceRange.max);
   };
 
   const handleSelectRecommended = () => {
     if (recommendedPackage) {
-      navigate('/booking/packages', {
+      selectRecommendedPackage(recommendedPackage.id);
+      navigate('/booking/congratulations', {
         state: {
+          selectedPackage: recommendedPackage,
           selectedServices,
-          eventType,
-          preselectedPackage: recommendedPackage,
-          fromQuestionnaire: true
+          currentServiceIndex: 0
         }
       });
     }
-  };
-
-  const handleViewAllOptions = () => {
-    navigate('/booking/packages', {
-      state: {
-        selectedServices,
-        eventType,
-        filters: {
-          coverage: answers.coverage,
-          hours: answers.hours,
-          budget: answers.budget
-        }
-      }
-    });
   };
 
   const formatPrice = (price: number) => {
@@ -132,17 +128,8 @@ export const PackageQuestionnaire: React.FC = () => {
     }).format(price / 100);
   };
 
-  const getPackageCoverage = (coverage: Record<string, any>) => {
-    return Object.keys(coverage).filter(key => coverage[key] === true);
-  };
-
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1: return answers.coverage.length > 0;
-      case 2: return answers.hours !== '';
-      case 3: return answers.budget !== '';
-      default: return false;
-    }
+  const handleBack = () => {
+    navigate(-1);
   };
 
   return (
@@ -160,7 +147,7 @@ export const PackageQuestionnaire: React.FC = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Let's Find Your Perfect {currentService} Package
+                Let's Find Your Perfect {currentService || 'Wedding'} Package
               </h1>
               <p className="text-gray-600 mt-1">
                 Answer a few quick questions to get personalized recommendations
@@ -170,20 +157,20 @@ export const PackageQuestionnaire: React.FC = () => {
 
           {/* Progress Steps */}
           <div className="flex items-center justify-center space-x-4 mb-8">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center">
+            {[1, 2, 3, 4, 5].map((stepNum) => (
+              <div key={stepNum} className="flex items-center">
                 <div className={`
                   w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                  ${currentStep >= step 
+                  ${step >= stepNum 
                     ? 'bg-rose-500 text-white shadow-lg' 
                     : 'bg-gray-200 text-gray-600'
                   }
                 `}>
-                  {currentStep > step ? <Check className="w-5 h-5" /> : step}
+                  {step > stepNum ? <Check className="w-5 h-5" /> : stepNum}
                 </div>
-                {step < 3 && (
+                {stepNum < 5 && (
                   <div className={`w-20 h-1 mx-2 rounded-full transition-all ${
-                    currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
+                    step > stepNum ? 'bg-rose-500' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
@@ -192,23 +179,145 @@ export const PackageQuestionnaire: React.FC = () => {
         </div>
 
         {/* Question Steps */}
-        {currentStep === 1 && (
+        {step === 2 && (
           <Card className="p-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Camera className="w-8 h-8 text-rose-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+                Confirm Your Service Selection
+              </h2>
+              <p className="text-gray-600">
+                We'll find {currentService} packages for your {filters.eventType?.toLowerCase()}
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center space-x-4 p-6 bg-white rounded-xl border-2 border-rose-200">
+                <div className="text-2xl">📅</div>
+                <div>
+                  <div className="font-semibold text-gray-900">Event Type: {filters.eventType}</div>
+                  <div className="text-gray-600">Service: {currentService}</div>
+                  <div className="text-sm text-gray-500">{availablePackages.length} packages available</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mt-8">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleServiceTypeSelect}
+                disabled={loading}
+                icon={ArrowRight}
+              >
+                {loading ? 'Loading...' : 'Continue'}
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {step === 3 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Grid className="w-8 h-8 text-amber-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+                How would you like to choose your package?
+              </h2>
+              <p className="text-gray-600">
+                Select your preferred way to narrow down the perfect package
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              <div
+                onClick={() => setPreferenceType('hours')}
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
+                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
+              </div>
+              
+              <div
+                onClick={() => setPreferenceType('coverage')}
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <List className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
+                <p className="text-gray-600">Choose based on specific moments you want captured</p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {step === 4 && filters.preferenceType === 'hours' && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-purple-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+                How many hours of coverage do you need?
+              </h2>
+              <p className="text-gray-600">
+                Choose the duration that best fits your {filters.eventType?.toLowerCase()} timeline
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {hourOptions.map((option) => {
+                const isSelected = selectedHours === option.value;
+                return (
+                  <div
+                    key={option.value}
+                    onClick={() => handleHoursSelect(option.value)}
+                    className={`
+                      relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
+                      ${isSelected 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                    <div className="text-2xl font-bold text-gray-900 mb-2">{option.label}</div>
+                    <p className="text-sm text-gray-600">{option.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {step === 4 && filters.preferenceType === 'coverage' && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <List className="w-8 h-8 text-purple-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 What moments would you like covered?
               </h2>
               <p className="text-gray-600">
-                Select all the moments you want captured during your {eventType.toLowerCase()}
+                Select all the moments you want captured during your {filters.eventType?.toLowerCase()}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
               {coverageOptions.map((option) => {
-                const isSelected = answers.coverage.includes(option.id);
+                const isSelected = selectedCoverage.includes(option.id);
                 return (
                   <div
                     key={option.id}
@@ -216,13 +325,13 @@ export const PackageQuestionnaire: React.FC = () => {
                     className={`
                       relative p-4 rounded-lg border-2 cursor-pointer transition-all
                       ${isSelected 
-                        ? 'border-rose-500 bg-rose-50' 
+                        ? 'border-purple-500 bg-purple-50' 
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                       }
                     `}
                   >
                     {isSelected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
                         <Check className="w-3 h-3 text-white" />
                       </div>
                     )}
@@ -237,95 +346,24 @@ export const PackageQuestionnaire: React.FC = () => {
               <Button
                 variant="primary"
                 size="lg"
-                onClick={handleNext}
-                disabled={!canProceed()}
+                onClick={handleCoverageSubmit}
+                disabled={selectedCoverage.length === 0}
                 icon={ArrowRight}
               >
                 Continue
               </Button>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleUnsure}
-                >
-                  I'm not sure - show me a standard package
-                </Button>
-              </div>
             </div>
           </Card>
         )}
 
-        {currentStep === 2 && (
-          <Card className="p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-amber-600" />
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                How many hours of coverage do you need?
-              </h2>
-              <p className="text-gray-600">
-                Choose the duration that best fits your {eventType.toLowerCase()} timeline
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
-              {hourOptions.map((option) => {
-                const isSelected = answers.hours === option.value;
-                return (
-                  <div
-                    key={option.value}
-                    onClick={() => setAnswers(prev => ({ ...prev, hours: option.value }))}
-                    className={`
-                      relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
-                      ${isSelected 
-                        ? 'border-amber-500 bg-amber-50' 
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }
-                    `}
-                  >
-                    {isSelected && (
-                      <div className="absolute top-3 right-3 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-                    )}
-                    <div className="text-2xl font-bold text-gray-900 mb-2">{option.label}</div>
-                    <p className="text-sm text-gray-600">{option.description}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="text-center mt-8">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleNext}
-                disabled={!canProceed()}
-                icon={ArrowRight}
-              >
-                Continue
-              </Button>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleUnsure}
-                >
-                  I'm not sure - show me a standard package
-                </Button>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {currentStep === 3 && (
+        {step === 5 && (
           <Card className="p-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                What's your budget for {currentService.toLowerCase()}?
+                What's your budget for {currentService?.toLowerCase()}?
               </h2>
               <p className="text-gray-600">
                 Select a budget range that works for you
@@ -334,11 +372,11 @@ export const PackageQuestionnaire: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {budgetOptions.map((option) => {
-                const isSelected = answers.budget === option.value;
+                const isSelected = selectedPriceRange?.min === option.min && selectedPriceRange?.max === option.max;
                 return (
                   <div
-                    key={option.value}
-                    onClick={() => setAnswers(prev => ({ ...prev, budget: option.value }))}
+                    key={`${option.min}-${option.max}`}
+                    onClick={() => handlePriceSelect({ min: option.min, max: option.max })}
                     className={`
                       relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
                       ${isSelected 
@@ -358,31 +396,11 @@ export const PackageQuestionnaire: React.FC = () => {
                 );
               })}
             </div>
-
-            <div className="text-center mt-8">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => setCurrentStep(4)}
-                disabled={!canProceed()}
-                icon={ArrowRight}
-              >
-                Get My Recommendation
-              </Button>
-              <div className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleUnsure}
-                >
-                  I'm not sure - show me a standard package
-                </Button>
-              </div>
-            </div>
           </Card>
         )}
 
         {/* Recommendation Step */}
-        {currentStep === 4 && (
+        {step === 6 && (
           <div className="space-y-8">
             {recommendedPackage ? (
               <>
@@ -457,30 +475,30 @@ export const PackageQuestionnaire: React.FC = () => {
                           <div className="text-4xl font-bold mb-2">
                             {formatPrice(recommendedPackage.price)}
                           </div>
-                          <div className="text-rose-100 mb-6">Perfect for your needs</div>
+                          <div className="text-rose-100 mb-6">Perfect match for your needs</div>
                           
                           <div className="space-y-3">
                             <Button
                               variant="secondary"
                               size="lg"
-                             className="w-full bg-white text-black hover:bg-gray-50"
-                             style={{ color: 'black' }}
-                              onClick={() => navigate('/booking/congratulations', {
-                                state: {
-                                  selectedPackage: recommendedPackage,
-                                  selectedServices,
-                                  currentServiceIndex: 0
-                                }
-                              })}
+                              className="w-full bg-white text-black hover:bg-gray-50"
+                              style={{ color: 'black' }}
+                              onClick={handleSelectRecommended}
                             >
                               Select This Package
                             </Button>
                             <Button
                               variant="outline"
                               size="lg"
-                             className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                              className="w-full border-white text-white hover:bg-white hover:text-rose-600"
                               icon={Eye}
-                              onClick={handleViewAllOptions}
+                              onClick={() => navigate('/booking/packages', {
+                                state: {
+                                  selectedServices,
+                                  eventType: filters.eventType,
+                                  availablePackages
+                                }
+                              })}
                             >
                               View Other Options
                             </Button>
@@ -502,8 +520,8 @@ export const PackageQuestionnaire: React.FC = () => {
                         <Check className="w-4 h-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="font-medium text-blue-900">Perfect Coverage</div>
-                        <div className="text-sm text-blue-700">Matches your selected events</div>
+                        <div className="font-medium text-blue-900">Perfect Match</div>
+                        <div className="text-sm text-blue-700">Matches your preferences</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -511,8 +529,8 @@ export const PackageQuestionnaire: React.FC = () => {
                         <Clock className="w-4 h-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="font-medium text-blue-900">Right Duration</div>
-                        <div className="text-sm text-blue-700">Fits your timeline needs</div>
+                        <div className="font-medium text-blue-900">Best Value</div>
+                        <div className="text-sm text-blue-700">Highest quality in your budget</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -531,20 +549,41 @@ export const PackageQuestionnaire: React.FC = () => {
               <Card className="p-12 text-center">
                 <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Finding your perfect package...
+                  No packages match your criteria
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  We're searching for packages that match your preferences.
+                  Try adjusting your preferences or contact us for custom options.
                 </p>
                 <Button
                   variant="primary"
-                  onClick={handleViewAllOptions}
+                  onClick={() => navigate('/booking/packages', {
+                    state: {
+                      selectedServices,
+                      eventType: filters.eventType,
+                      availablePackages
+                    }
+                  })}
                 >
                   View All Available Packages
                 </Button>
               </Card>
             )}
           </div>
+        )}
+
+        {/* Debug Info */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="p-4 mt-8 bg-gray-100">
+            <h4 className="font-semibold mb-2">Debug Info:</h4>
+            <div className="text-sm space-y-1">
+              <div>Step: {step}</div>
+              <div>Event Type: {filters.eventType}</div>
+              <div>Service Type: {filters.serviceType}</div>
+              <div>Preference Type: {filters.preferenceType}</div>
+              <div>Available Packages: {availablePackages.length}</div>
+              <div>Recommended: {recommendedPackage?.name || 'None'}</div>
+            </div>
+          </Card>
         )}
       </div>
     </div>
