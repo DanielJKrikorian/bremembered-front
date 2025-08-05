@@ -53,22 +53,6 @@ export const useAnonymousLead = () => {
   // Initialize or fetch existing lead
   useEffect(() => {
     const initializeLead = async () => {
-      if (!supabase) {
-        console.log('Supabase not available, using local storage fallback');
-        const defaultLeadInfo: AnonymousLead = {
-          id: getSessionId(),
-          session_id: getSessionId(),
-          ip_address: 'unknown',
-          current_step: 1,
-          selected_services: [],
-          coverage_preferences: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setLead(defaultLeadInfo);
-        setLoading(false);
-        return;
-      }
 
       try {
         const sessionId = getSessionId();
@@ -128,11 +112,6 @@ export const useAnonymousLead = () => {
     const updatedLead = { ...lead, ...updates, updated_at: new Date().toISOString() };
     setLead(updatedLead);
 
-    // If Supabase is not available, just return the local state
-    if (!supabase) {
-      console.log('Supabase not available, using local state only');
-      return updatedLead;
-    }
 
     try {
       // Ensure session ID is in headers

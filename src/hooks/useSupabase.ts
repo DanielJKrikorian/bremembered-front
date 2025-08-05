@@ -2,11 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage, LeadInformation } from '../types/booking';
 
-// Helper function to check if Supabase is available
-const isSupabaseAvailable = () => {
-  return supabase !== null;
-};
-
 const transformToLookupKey = (serviceName: string): string => {
   // Transform service names to simple lowercase lookup keys
   const lookupMap: Record<string, string> = {
@@ -34,85 +29,9 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
   useEffect(() => {
     const fetchPackages = async () => {
-      if (!isSupabaseAvailable()) {
-        console.log('Supabase not available, using fallback data');
-        // Provide fallback mock data when Supabase is not available
-        const mockPackages = [
-          {
-            id: 'mock-photo-1',
-            service_type: 'Photography',
-            name: 'Essential Wedding Photography',
-            description: 'Beautiful wedding photography to capture your special moments',
-            price: 150000,
-            features: ['4-6 hours coverage', 'Digital gallery', '100+ edited photos', 'Online sharing'],
-            coverage: { events: ['Ceremony', 'Reception', 'Family Photos'] },
-            hour_amount: 4,
-            event_type: 'Wedding',
-            status: 'approved',
-            lookup_key: 'photography',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          },
-          {
-            id: 'mock-photo-2',
-            service_type: 'Photography',
-            name: 'Premium Wedding Photography',
-            description: 'Comprehensive wedding photography with extended coverage',
-            price: 250000,
-            features: ['6-8 hours coverage', 'Digital gallery', '200+ edited photos', 'Engagement session'],
-            coverage: { events: ['Getting Ready', 'Ceremony', 'Reception', 'Family Photos', 'Sunset Photos'] },
-            hour_amount: 6,
-            event_type: 'Wedding',
-            status: 'approved',
-            lookup_key: 'photography',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ];
-        
-        // Filter mock data based on criteria
-        let filteredMockPackages = mockPackages;
-        
-        if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          filteredMockPackages = mockPackages.filter(pkg => 
-            filters.selectedServices.some(service => 
-              pkg.service_type === service || pkg.lookup_key === transformToLookupKey(service)
-            )
-          );
-        } else if (serviceType) {
-          const lookupKey = transformToLookupKey(serviceType);
-          filteredMockPackages = mockPackages.filter(pkg => 
-            pkg.service_type === serviceType || pkg.lookup_key === lookupKey
-          );
-        }
-        
-        if (eventType) {
-          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.event_type === eventType);
-        }
-        
-        if (filters?.minHours) {
-          filteredMockPackages = filteredMockPackages.filter(pkg => (pkg.hour_amount || 0) >= filters.minHours!);
-        }
-        
-        if (filters?.maxHours) {
-          filteredMockPackages = filteredMockPackages.filter(pkg => (pkg.hour_amount || 0) <= filters.maxHours!);
-        }
-        
-        if (filters?.minPrice !== undefined) {
-          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.price >= filters.minPrice!);
-        }
-        
-        if (filters?.maxPrice !== undefined) {
-          filteredMockPackages = filteredMockPackages.filter(pkg => pkg.price <= filters.maxPrice!);
-        }
-        
-        setPackages(filteredMockPackages);
-        setLoading(false);
-        return;
-      }
 
       try {
-        let query = supabase!
+        let query = supabase
           .from('service_packages')
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key')
           .eq('status', 'approved');
@@ -205,14 +124,9 @@ export const useVendorsByPackage = (servicePackageId: string) => {
 
   useEffect(() => {
     const fetchVendorsByPackage = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        const { data, error } = await supabase!
+        const { data, error } = await supabase
           .from('vendor_service_packages')
           .select(`
             vendor_id,
@@ -257,14 +171,9 @@ export const useVendors = (serviceType?: string, location?: string) => {
 
   useEffect(() => {
     const fetchVendors = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        let query = supabase!
+        let query = supabase
           .from('vendors')
           .select(`
             *,
@@ -304,14 +213,9 @@ export const useVenues = (searchTerm?: string) => {
 
   useEffect(() => {
     const fetchVenues = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        let query = supabase!.from('venues').select('*');
+        let query = supabase.from('venues').select('*');
 
         if (searchTerm) {
           query = query.or(`name.ilike.%${searchTerm}%,street_address.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,region.ilike.%${searchTerm}%`);
@@ -341,14 +245,9 @@ export const useStyleTags = () => {
 
   useEffect(() => {
     const fetchStyleTags = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        const { data, error } = await supabase!
+        const { data, error } = await supabase
           .from('style_tags')
           .select('*')
           .order('label');
@@ -375,14 +274,9 @@ export const useVibeTags = () => {
 
   useEffect(() => {
     const fetchVibeTags = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        const { data, error } = await supabase!
+        const { data, error } = await supabase
           .from('vibe_tags')
           .select('*')
           .order('label');
@@ -409,14 +303,9 @@ export const useServiceAreas = (state?: string) => {
 
   useEffect(() => {
     const fetchServiceAreas = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        let query = supabase!
+        let query = supabase
           .from('service_areas')
           .select('*');
 
@@ -448,14 +337,9 @@ export const useLanguages = () => {
 
   useEffect(() => {
     const fetchLanguages = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        const { data, error } = await supabase!
+        const { data, error } = await supabase
           .from('languages')
           .select('id, language')
           .order('language');
@@ -489,15 +373,10 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
-      if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
         // Get vendors who offer the selected service package
-        let query = supabase!
+        let query = supabase
           .from('vendor_service_packages')
           .select(`
             vendor_id,
@@ -537,7 +416,7 @@ export const useRecommendedVendors = (filters: {
 
         // If we have language preferences, filter vendors
         if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
-          const { data: vendorLanguages } = await supabase!
+          const { data: vendorLanguages } = await supabase
             .from('vendor_languages')
             .select('vendor_id, language_id')
             .in('vendor_id', vendorData.map(v => v.id))
@@ -553,7 +432,7 @@ export const useRecommendedVendors = (filters: {
 
         // If we have style preferences, filter vendors
         if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
-          const { data: vendorStyles } = await supabase!
+          const { data: vendorStyles } = await supabase
             .from('vendor_style_tags')
             .select('vendor_id, style_id')
             .in('vendor_id', vendorData.map(v => v.id))
@@ -569,7 +448,7 @@ export const useRecommendedVendors = (filters: {
 
         // If we have vibe preferences, filter vendors
         if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
-          const { data: vendorVibes } = await supabase!
+          const { data: vendorVibes } = await supabase
             .from('vendor_vibe_tags')
             .select('vendor_id, vibe_id')
             .in('vendor_id', vendorData.map(v => v.id))
@@ -652,13 +531,9 @@ export const useVendorReviews = (vendorId: string) => {
       }
 
       if (!isSupabaseAvailable()) {
-        setError('Supabase connection not available. Please check environment variables.');
-        setLoading(false);
-        return;
-      }
 
       try {
-        const { data, error } = await supabase!
+        const { data, error } = await supabase
           .from('vendor_reviews')
           .select(`
             id,
@@ -717,43 +592,12 @@ export const useLeadInformation = () => {
 
   useEffect(() => {
     const fetchOrCreateLeadInfo = async () => {
-      if (!isSupabaseAvailable()) {
-        console.log('Supabase not available, using local storage fallback');
-        const defaultLeadInfo: LeadInformation = {
-          id: getSessionId(),
-          session_id: getSessionId(),
-          user_id: null,
-          selected_services: [],
-          event_type: null,
-          event_date: null,
-          event_time: null,
-          venue_id: null,
-          venue_name: null,
-          region: null,
-          languages: [],
-          style_preferences: [],
-          vibe_preferences: [],
-          budget_range: null,
-          coverage_preferences: [],
-          hour_preferences: null,
-          selected_packages: {},
-          selected_vendors: {},
-          total_estimated_cost: 0,
-          current_step: 'service_selection',
-          completed_steps: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setLeadInfo(defaultLeadInfo);
-        setLoading(false);
-        return;
-      }
 
       try {
         const sessionId = getSessionId();
         
         // Try to get existing lead information
-        const { data: existingLead, error: fetchError } = await supabase!
+        const { data: createdLead, error: createError } = await supabase
           .from('leads_information')
           .select('*')
           .eq('session_id', sessionId)
@@ -845,14 +689,9 @@ export const useLeadInformation = () => {
     const updatedLeadInfo = { ...leadInfo, ...updates, updated_at: new Date().toISOString() };
     setLeadInfo(updatedLeadInfo);
 
-    // Try to persist to database if available
-    if (!isSupabaseAvailable()) {
-      console.log('Supabase not available, using local state only');
-      return updatedLeadInfo;
-    }
 
     try {
-      const { data, error } = await supabase!
+      const { data, error } = await supabase
         .from('leads_information')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', leadInfo.id)
