@@ -30,16 +30,17 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       try {
         let query = supabase!
           .from('service_packages')
-          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status')
+          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key')
           .eq('status', 'approved');
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
           if (filters.exactMatch) {
-            // Use exact matching for service types
-            const serviceConditions = filters.selectedServices
-              .map(service => `service_type.eq.${service}`)
-              .join(',');
+            // Try both service_type and lookup_key for exact matching
+            const serviceConditions = filters.selectedServices.flatMap(service => [
+              `service_type.eq.${service}`,
+              `lookup_key.eq.${service.toLowerCase().replace(/\s+/g, '_')}`
+            ]).join(',');
             query = query.or(serviceConditions);
           } else {
             // Use partial matching (original behavior)
@@ -50,7 +51,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           }
         } else if (serviceType) {
           if (filters?.exactMatch) {
-            query = query.eq('service_type', serviceType);
+            // Try both service_type and lookup_key
+            query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${serviceType.toLowerCase().replace(/\s+/g, '_')}`);
           } else {
             query = query.ilike('service_type', `%${serviceType}%`);
           }
