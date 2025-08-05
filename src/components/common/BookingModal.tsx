@@ -212,9 +212,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     console.log('Recommended package exists:', !!recommendedPackage);
     
     if (currentStep < 5) {
-      console.log('Moving to next step:', currentStep + 1);
-      setCurrentStep(currentStep + 1);
-      setCurrentStep(8);
     } else if (currentStep === 5 && recommendedPackage) {
       console.log('Starting loading animation from step 5');
       console.log('Package available:', !!recommendedPackage);
