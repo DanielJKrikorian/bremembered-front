@@ -212,44 +212,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     console.log('Recommended package exists:', !!recommendedPackage);
     
     if (currentStep < 5) {
-    } else if (currentStep === 5 && recommendedPackage) {
-      console.log('Starting loading animation from step 5');
-      console.log('Package available:', !!recommendedPackage);
-      
-      // Move to step 6 (loading) and start animation
-      setCurrentStep(6);
-      setLoadingStep(0);
-      
-      // Start the animation sequence
-      console.log('Starting animation sequence');
-      
-      // Step 1: Analyzing (after 800ms)
-      setTimeout(() => {
-        console.log('Animation step 1: Analyzing');
-        setLoadingStep(1);
-      }, 800);
-      
-      // Step 2: Matching (after 1.8s total)
-      setTimeout(() => {
-        console.log('Animation step 2: Matching');
-        setLoadingStep(2);
-      }, 1800);
-      
-      // Step 3: Calculating (after 2.8s total)
-      setTimeout(() => {
-        console.log('Animation step 3: Calculating');
-        setLoadingStep(3);
-      }, 2800);
-      
-      // Move to results (after 4s total)
-      setTimeout(() => {
-        console.log('Animation complete, moving to step 8');
-        console.log('Final recommended package:', recommendedPackage?.name || 'No package');
-        setCurrentStep(8);
-      }, 4000);
-    } else if (currentStep === 5 && !recommendedPackage) {
-      console.log('No package found, showing no match message');
-      setCurrentStep(8); // Show no match found message
+      const nextStep = currentStep + 1;
+      console.log('Moving to next step:', nextStep);
+      setCurrentStep(nextStep);
+    } else if (currentStep === 5) {
+      console.log('Going directly to results from step 5');
+      setCurrentStep(8);
     }
   };
 
@@ -819,7 +787,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
 
-            {/* Step 6: Matching/Loading */}
+            {/* Step 8: Results */}
             {currentStep === 8 && (
               <div className="space-y-6">
                 {console.log('=== RENDERING STEP 8 ===', { 
@@ -830,7 +798,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 {recommendedPackage ? (
                   <>
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                      <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Heart className="w-10 h-10 text-white" />
                       </div>
                       <h2 className="text-3xl font-bold text-gray-900 mb-4">
