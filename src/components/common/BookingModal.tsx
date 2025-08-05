@@ -1,32 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Camera, Video, Music, Users, Package, ArrowRight, Check, Clock, Star, X, MapPin, Heart } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Eye, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { supabase } from '../../lib/supabase';
-
-interface ServicePackage {
-  id: string;
-  service_type: string;
-  name: string;
-  description: string;
-  price: number;
-  features: string[];
-  coverage: any;
-  hour_amount?: number;
-  event_type?: string;
-  lookup_key?: string;
-}
-
-interface LeadData {
-  session_id: string;
-  event_type?: string;
-  selected_services: string[];
-  hour_preferences?: string;
-  coverage_preferences: string[];
-  budget_range?: string;
-  selected_packages: Record<string, any>;
-}
+import { EmailCaptureModal } from './EmailCaptureModal';
+import { useBooking } from '../../context/BookingContext';
+import { useAnonymousLead } from '../../hooks/useAnonymousLead';
+import { useServicePackages } from '../../hooks/useSupabase';
+import { ServicePackage } from '../../types/booking';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -35,353 +15,335 @@ interface BookingModalProps {
 
 export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { setSelectedServices, setEventType } = useBooking();
   const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Form data
-  const [eventType, setEventType] = useState<string>('');
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
-  const [preferenceType, setPreferenceType] = useState<'hours' | 'coverage' | ''>('');
-  const [selectedHours, setSelectedHours] = useState<number>(0);
+  const [selectedEventType, setSelectedEventType] = useState('');
+  const [localSelectedServices, setLocalSelectedServices] = useState<string[]>([]);
   const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<{min: number, max: number}>({min: 0, max: 10000});
-  
-  // Data from database
-  const [availablePackages, setAvailablePackages] = useState<ServicePackage[]>([]);
+  const [selectedHours, setSelectedHours] = useState('');
+  const [selectedBudget, setSelectedBudget] = useState('');
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchedPackage, setMatchedPackage] = useState<any>(null);
+  const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
-  const [selectedPackages, setSelectedPackages] = useState<Record<string, ServicePackage>>({});
-  
-  // Lead tracking
-  const [sessionId, setSessionId] = useState<string>('');
-  const [leadData, setLeadData] = useState<LeadData | null>(null);
 
-  // Generate session ID on mount
+  // Anonymous lead tracking
+  const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
+
+  const eventTypes = [
+    { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
+    { id: 'Proposal', name: 'Proposal', emoji: '💍' }
+  ];
+
+  const serviceTypes = [
+    { id: 'Photography', name: 'Photography', icon: Camera, emoji: '📸' },
+    { id: 'Videography', name: 'Videography', icon: Video, emoji: '🎥' },
+    { id: 'DJ Services', name: 'DJ Services', icon: Music, emoji: '🎵' },
+    { id: 'Coordination', name: 'Day-of Coordination', icon: Users, emoji: '👰' },
+    { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
+  ];
+
+  const coverageOptions = [
+    { id: 'Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
+    { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
+    { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
+    { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
+    { id: 'Reception', name: 'Reception', description: 'Dinner, dancing, and festivities' },
+    { id: 'Bridal Party', name: 'Bridal Party', description: 'Group photos with wedding party' },
+    { id: 'Family Photos', name: 'Family Photos', description: 'Formal family portraits' },
+    { id: 'Sunset Photos', name: 'Sunset Photos', description: 'Golden hour couple portraits' },
+    { id: 'Dancing', name: 'Dancing', description: 'Reception dancing and celebration' },
+    { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
+    { id: 'Send Off', name: 'Send Off', description: 'Grand exit celebration' }
+  ];
+
+  const hourOptions = [
+    { value: '4', label: '4 hours', description: 'Perfect for intimate ceremonies' },
+    { value: '6', label: '6 hours', description: 'Ceremony + reception coverage' },
+    { value: '8', label: '8 hours', description: 'Full day coverage' },
+    { value: '10', label: '10 hours', description: 'Extended celebration coverage' },
+    { value: '12', label: '12+ hours', description: 'Complete day documentation' }
+  ];
+
+  const budgetOptions = [
+    { value: '0-150000', label: 'Under $1,500', description: 'Budget-friendly options' },
+    { value: '150000-300000', label: '$1,500 - $3,000', description: 'Mid-range packages' },
+    { value: '300000-500000', label: '$3,000 - $5,000', description: 'Premium services' },
+    { value: '500000-1000000', label: '$5,000+', description: 'Luxury experiences' }
+  ];
+
+  // Get service packages based on answers
+  const shouldFetchPackages = currentStep === 6 && localSelectedServices.length > 0;
+  const { packages, loading: packagesLoading } = useServicePackages(
+    shouldFetchPackages ? localSelectedServices[0] : undefined,
+    shouldFetchPackages ? selectedEventType : undefined,
+    shouldFetchPackages ? {
+      coverage: selectedCoverage,
+      minHours: selectedHours ? parseInt(selectedHours) - 1 : undefined,
+      maxHours: selectedHours ? parseInt(selectedHours) + 1 : undefined,
+      minPrice: selectedBudget ? parseInt(selectedBudget.split('-')[0]) : undefined,
+      maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined,
+      selectedServices: localSelectedServices
+    } : undefined
+  );
+
+  // Set recommended package when packages are loaded
   useEffect(() => {
-    const generateSessionId = () => {
-      return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    };
-    
-    let id = localStorage.getItem('booking_session_id');
-    if (!id) {
-      id = generateSessionId();
-      localStorage.setItem('booking_session_id', id);
+    if (packages && packages.length > 0 && !recommendedPackage) {
+      setRecommendedPackage(packages[0]);
     }
-    setSessionId(id);
-  }, []);
+  }, [packages, recommendedPackage]);
 
-  // Initialize or fetch lead data
+  // Update lead data when answers change
   useEffect(() => {
-    if (!sessionId || !supabase) return;
+    if (lead && currentStep > 1) {
+      updateLead({
+        event_type: selectedEventType,
+        selected_services: localSelectedServices,
+        coverage_preferences: selectedCoverage,
+        hour_preferences: selectedHours,
+        budget_range: selectedBudget,
+        current_step: currentStep
+      });
+    }
+  }, [lead, selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, updateLead]);
 
-    const initializeLead = async () => {
-      try {
-        // Try to get existing lead
-        const { data: existingLead, error: fetchError } = await supabase
-          .from('leads_information')
-          .select('*')
-          .eq('session_id', sessionId)
-          .maybeSingle();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          throw fetchError;
-        }
-
-        if (existingLead) {
-          setLeadData(existingLead);
-          // Restore form state from database
-          if (existingLead.event_type) setEventType(existingLead.event_type);
-          if (existingLead.selected_services) setSelectedServices(existingLead.selected_services);
-        } else {
-          // Create new lead
-          const newLead = {
-            session_id: sessionId,
-            selected_services: [],
-            coverage_preferences: [],
-            selected_packages: {}
-          };
-
-          const { data: createdLead, error: createError } = await supabase
-            .from('leads_information')
-            .insert(newLead)
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          setLeadData(createdLead);
-        }
-      } catch (err) {
-        console.error('Error initializing lead:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize');
+  // Handle page/modal exit
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isOpen && currentStep > 1 && !lead?.email) {
+        e.preventDefault();
+        setShowEmailCapture(true);
+        return '';
       }
     };
 
-    initializeLead();
-  }, [sessionId]);
-
-  // Record answer in database
-  const recordAnswer = async (field: string, value: any) => {
-    if (!supabase || !sessionId) return;
-
-    try {
-      const updateData = {
-        [field]: value,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('leads_information')
-        .update(updateData)
-        .eq('session_id', sessionId);
-
-      if (error) throw error;
-      console.log(`Recorded ${field}:`, value);
-    } catch (err) {
-      console.error('Error recording answer:', err);
-    }
-  };
-
-  // Step 1: Handle event type selection
-  const handleEventTypeSelect = async (type: string) => {
-    setEventType(type);
-    await recordAnswer('event_type', type);
-    
-    // Filter packages by event type
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('service_packages')
-          .select('*')
-          .eq('status', 'approved')
-          .eq('event_type', type);
-
-        if (error) throw error;
-        setAvailablePackages(data || []);
-        console.log(`Found ${data?.length || 0} packages for event type: ${type}`);
-      } catch (err) {
-        console.error('Error filtering by event type:', err);
+    const handleVisibilityChange = () => {
+      if (document.hidden && isOpen && currentStep > 1 && !lead?.email) {
+        setShowEmailCapture(true);
       }
-    }
-    
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isOpen, currentStep, lead?.email]);
+
+  const handleEventTypeSelect = (eventType: string) => {
+    setSelectedEventType(eventType);
     setCurrentStep(2);
   };
 
-  // Step 2: Handle service selection
-  const handleServiceSelect = async (services: string[]) => {
-    setSelectedServices(services);
-    await recordAnswer('selected_services', services);
-    
-    // Filter packages by service lookup_key
-    if (supabase && services.length > 0) {
-      try {
-        // Map service names to lookup keys
-        const lookupKeyMap: Record<string, string> = {
-          'Photography': 'photography',
-          'Videography': 'videography',
-          'DJ Services': 'dj',
-          'Day-of Coordination': 'coordination',
-          'Coordination': 'coordination',
-          'Planning': 'planning'
-        };
-
-        const lookupKeys = services.map(service => lookupKeyMap[service] || service.toLowerCase());
-        
-        // Filter from existing packages
-        const filteredPackages = availablePackages.filter(pkg => 
-          lookupKeys.includes(pkg.lookup_key || '') || 
-          services.includes(pkg.service_type)
-        );
-
-        setAvailablePackages(filteredPackages);
-        console.log(`Filtered to ${filteredPackages.length} packages for services:`, services);
-      } catch (err) {
-        console.error('Error filtering by service:', err);
-      }
-    }
-    
-    setCurrentServiceIndex(0);
-    setCurrentStep(3);
-  };
-
-  // Step 3: Handle preference type selection (hours vs coverage)
-  const handlePreferenceTypeSelect = (type: 'hours' | 'coverage') => {
-    setPreferenceType(type);
-    setCurrentStep(4);
-  };
-
-  // Step 4a: Handle hours selection
-  const handleHoursSelect = async (hours: number) => {
-    setSelectedHours(hours);
-    await recordAnswer('hour_preferences', hours.toString());
-    
-    // Filter packages by hour_amount (±1 range)
-    const filteredPackages = availablePackages.filter(pkg => {
-      if (!pkg.hour_amount) return false;
-      const hourDiff = Math.abs(pkg.hour_amount - hours);
-      return hourDiff <= 1;
-    });
-
-    // Sort by closest to target hours
-    filteredPackages.sort((a, b) => {
-      const diffA = Math.abs((a.hour_amount || 0) - hours);
-      const diffB = Math.abs((b.hour_amount || 0) - hours);
-      return diffA - diffB;
-    });
-
-    setAvailablePackages(filteredPackages);
-    console.log(`Found ${filteredPackages.length} packages near ${hours} hours`);
-    setCurrentStep(5);
-  };
-
-  // Step 4b: Handle coverage selection
-  const handleCoverageSelect = async (coverage: string[]) => {
-    setSelectedCoverage(coverage);
-    await recordAnswer('coverage_preferences', coverage);
-    
-    // Filter packages by coverage.events
-    const filteredPackages = availablePackages.filter(pkg => {
-      if (!pkg.coverage || !pkg.coverage.events) return false;
-      
-      const packageEvents = pkg.coverage.events as string[];
-      // Check if package includes all selected coverage items
-      return coverage.every(item => 
-        packageEvents.some(event => 
-          event.toLowerCase().includes(item.toLowerCase()) ||
-          item.toLowerCase().includes(event.toLowerCase())
-        )
-      );
-    });
-
-    setAvailablePackages(filteredPackages);
-    console.log(`Found ${filteredPackages.length} packages with required coverage`);
-    setCurrentStep(5);
-  };
-
-  // Step 5: Handle price range and select highest priced package
-  const handlePriceRangeSelect = async (minPrice: number, maxPrice: number) => {
-    setPriceRange({min: minPrice, max: maxPrice});
-    await recordAnswer('budget_range', `${minPrice}-${maxPrice}`);
-    
-    // Filter packages within price range and select highest priced
-    const filteredPackages = availablePackages.filter(pkg => 
-      pkg.price >= minPrice && pkg.price <= maxPrice
+  const handleServiceToggle = (serviceId: string) => {
+    setLocalSelectedServices(prev => 
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
     );
-
-    const highestPricedPackage = filteredPackages.length > 0 
-      ? filteredPackages.reduce((highest, current) => 
-          current.price > highest.price ? current : highest
-        )
-      : null;
-
-    setRecommendedPackage(highestPricedPackage);
-    
-    // Record recommended package
-    if (highestPricedPackage) {
-      const currentService = selectedServices[currentServiceIndex];
-      const updatedPackages = {
-        ...leadData?.selected_packages,
-        [currentService]: {
-          recommended: highestPricedPackage.id
-        }
-      };
-      await recordAnswer('selected_packages', updatedPackages);
-    }
-
-    console.log('Recommended package:', highestPricedPackage?.name, 'at', highestPricedPackage?.price);
-    setCurrentStep(6);
   };
 
-  // Step 6: Handle package selection
-  const handlePackageSelect = async (packageId: string) => {
-    if (!recommendedPackage) return;
-    
-    const currentService = selectedServices[currentServiceIndex];
-    
-    // Record selected package
-    const updatedPackages = {
-      ...leadData?.selected_packages,
-      [currentService]: {
-        recommended: recommendedPackage.id,
-        selected: packageId
-      }
-    };
-    await recordAnswer('selected_packages', updatedPackages);
-    
-    // Store selected package
-    setSelectedPackages(prev => ({
-      ...prev,
-      [currentService]: recommendedPackage
-    }));
+  const handleCoverageToggle = (coverageId: string) => {
+    setSelectedCoverage(prev => 
+      prev.includes(coverageId)
+        ? prev.filter(id => id !== coverageId)
+        : [...prev, coverageId]
+    );
+  };
 
-    // Check if more services to process
-    if (currentServiceIndex < selectedServices.length - 1) {
-      // Move to next service
-      setCurrentServiceIndex(currentServiceIndex + 1);
-      setPreferenceType('');
-      setSelectedHours(0);
-      setSelectedCoverage([]);
+  const handleNextQuestion = () => {
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    } else if (currentStep === 5) {
+      // Start matching process
+      setIsMatching(true);
+      setCurrentStep(6);
       
-      // Reset available packages to original filtered set for next service
-      if (supabase) {
-        try {
-          const lookupKeyMap: Record<string, string> = {
-            'Photography': 'photography',
-            'Videography': 'videography',
-            'DJ Services': 'dj',
-            'Day-of Coordination': 'coordination',
-            'Coordination': 'coordination',
-            'Planning': 'planning'
-          };
-
-          const nextService = selectedServices[currentServiceIndex + 1];
-          const lookupKey = lookupKeyMap[nextService] || nextService.toLowerCase();
-          
-          const { data, error } = await supabase
-            .from('service_packages')
-            .select('*')
-            .eq('status', 'approved')
-            .eq('event_type', eventType)
-            .or(`lookup_key.eq.${lookupKey},service_type.eq.${nextService}`);
-
-          if (error) throw error;
-          setAvailablePackages(data || []);
-        } catch (err) {
-          console.error('Error loading packages for next service:', err);
-        }
-      }
+      // Update lead as starting matching process
+      updateLead({
+        current_step: 6
+      });
       
-      setCurrentStep(3); // Back to preference type selection
-    } else {
-      // All services completed
+      // Simulate matching delay
+      setTimeout(() => {
+        // Mock package matching logic
+        const mockPackage = {
+          id: 'recommended-1',
+          name: 'Perfect Wedding Photography',
+          description: 'Our most popular photography package, perfectly tailored to your preferences and budget.',
+          price: selectedBudget === '0-150000' ? 120000 : 
+                 selectedBudget === '150000-300000' ? 220000 :
+                 selectedBudget === '300000-500000' ? 380000 : 480000,
+          service_type: localSelectedServices[0],
+          hour_amount: parseInt(selectedHours),
+          features: [
+            'High-resolution digital gallery',
+            'Online sharing platform',
+            'Print release included',
+            selectedHours === '8' || selectedHours === '10' || selectedHours === '12' ? 'Engagement session' : null,
+            selectedCoverage.includes('Getting Ready') ? 'Getting ready coverage' : null,
+            selectedCoverage.includes('Reception') ? 'Reception coverage' : null
+          ].filter(Boolean),
+          coverage: {
+            events: selectedCoverage
+          },
+          vendor: {
+            name: 'Elegant Moments Photography',
+            rating: 4.9,
+            reviewCount: 127,
+            experience: 8,
+            avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            portfolio: [
+              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
+              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
+              'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400'
+            ]
+          }
+        };
+        
+        const topPackage = packages?.[0];
+        setRecommendedPackage(topPackage);
+        setMatchedPackage(mockPackage);
+        setIsMatching(false);
+        setCurrentStep(7);
+        
+        // Update lead with completion
+        updateLead({
+          current_step: 7,
+          completed_at: new Date().toISOString()
+        });
+      }, 2000);
+    }
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentStep > 1 && currentStep <= 5) {
+      setCurrentStep(currentStep - 1);
+    } else if (currentStep === 7) {
+      // Go back to budget question
+      setCurrentStep(5);
+      setMatchedPackage(null);
+    }
+  };
+
+  const handleBookPackage = () => {
+    if (recommendedPackage) {
+      // Navigate to booking with the recommended package
+      setSelectedServices(localSelectedServices);
+      setEventType(selectedEventType);
       onClose();
-      navigate('/booking/event-details', {
+      navigate('/booking/congratulations', {
         state: {
-          selectedServices,
-          selectedPackages,
-          eventType
+          selectedPackage: recommendedPackage,
+          selectedServices: localSelectedServices,
+          currentServiceIndex: 0,
+          eventType: selectedEventType,
+          preferences: {
+            coverage: selectedCoverage,
+            hours: selectedHours,
+            budget: selectedBudget
+          }
         }
       });
     }
   };
 
-  const resetModal = () => {
-    setCurrentStep(1);
-    setEventType('');
-    setSelectedServices([]);
-    setCurrentServiceIndex(0);
-    setPreferenceType('');
-    setSelectedHours(0);
-    setSelectedCoverage([]);
-    setPriceRange({min: 0, max: 10000});
-    setAvailablePackages([]);
-    setRecommendedPackage(null);
-    setSelectedPackages({});
+  const handleViewAllPackages = () => {
+    // View all packages instead of the recommended one
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    onClose();
+    navigate('/booking/packages', {
+      state: {
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType,
+        preferences: {
+          coverage: selectedCoverage,
+          hours: selectedHours,
+          budget: selectedBudget
+        }
+      }
+    });
   };
 
-  const handleClose = () => {
+  const handleSkipToPackages = () => {
+    // Skip questionnaire and go directly to packages
+    if (localSelectedServices.length > 0) {
+      setSelectedServices(localSelectedServices);
+      setEventType(selectedEventType);
+      onClose();
+      navigate('/booking/packages', {
+        state: {
+          selectedServices: localSelectedServices,
+          eventType: selectedEventType
+        }
+      });
+    }
+  };
+
+  // Handle modal close
+  const handleCloseModal = () => {
+    if (currentStep > 1 && !lead?.email) {
+      setShowEmailCapture(true);
+    } else {
+      onClose();
+      resetModal();
+    }
+  };
+
+  // Handle email save
+  const handleEmailSave = async (email: string) => {
+    await saveEmail(email);
+    setShowEmailCapture(false);
     onClose();
     resetModal();
+  };
+
+  // Handle email skip
+  const handleEmailSkip = async () => {
+    await abandonLead();
+    setShowEmailCapture(false);
+    onClose();
+    resetModal();
+  };
+
+  const resetModal = () => {
+    setCurrentStep(1);
+    setSelectedEventType('');
+    setLocalSelectedServices([]);
+    setSelectedCoverage([]);
+    setSelectedHours('');
+    setSelectedBudget('');
+    setIsMatching(false);
+    setMatchedPackage(null);
+    setRecommendedPackage(null);
+  };
+
+  const canProceedQuestion = () => {
+    switch (currentStep) {
+      case 1: return selectedEventType !== '';
+      case 2: return localSelectedServices.length > 0;
+      case 3: return selectedCoverage.length > 0;
+      case 4: return selectedHours !== '';
+      case 5: return selectedBudget !== '';
+      default: return false;
+    }
+  };
+
+  const getQuestionTitle = () => {
+    switch (currentStep) {
+      case 1: return 'What type of event?';
+      case 2: return 'What services do you need?';
+      case 3: return 'What moments to capture?';
+      case 4: return 'How many hours?';
+      case 5: return 'What\'s your budget?';
+      case 6: return 'Finding your perfect match...';
+      case 7: return 'Your perfect match!';
+      default: return '';
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -393,408 +355,556 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     }).format(price / 100);
   };
 
-  const getCurrentService = () => selectedServices[currentServiceIndex];
-
-  const getServiceIcon = (service: string) => {
-    switch (service) {
-      case 'Photography': return Camera;
-      case 'Videography': return Video;
-      case 'DJ Services': return Music;
-      case 'Day-of Coordination': 
-      case 'Coordination': return Users;
-      case 'Planning': return Calendar;
-      default: return Package;
+  const getPackageCoverage = (coverage: Record<string, any>) => {
+    if (!coverage || typeof coverage !== 'object') return [];
+    
+    const events = [];
+    if (coverage.events && Array.isArray(coverage.events)) {
+      events.push(...coverage.events);
     }
+    
+    // Add other coverage properties if they exist
+    Object.keys(coverage).forEach(key => {
+      if (key !== 'events' && coverage[key] === true) {
+        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
+      }
+    });
+    
+    return events;
   };
-
-  const services = [
-    { id: 'Photography', name: 'Photography', icon: Camera },
-    { id: 'Videography', name: 'Videography', icon: Video },
-    { id: 'DJ Services', name: 'DJ Services', icon: Music },
-    { id: 'Day-of Coordination', name: 'Day-of Coordination', icon: Users },
-    { id: 'Planning', name: 'Planning', icon: Calendar }
-  ];
-
-  const coverageOptions = [
-    'Full Getting Ready',
-    'First Look', 
-    'Ceremony',
-    'Cocktail Hour',
-    'Introduction',
-    'First Dance',
-    'Speeches',
-    'Parent Dances',
-    'Cake Cutting',
-    'Dance Floor',
-    'Last Dance'
-  ];
-
-  const priceRanges = [
-    { label: 'Under $1,000', min: 0, max: 100000 },
-    { label: '$1,000 - $2,500', min: 100000, max: 250000 },
-    { label: '$2,500 - $5,000', min: 250000, max: 500000 },
-    { label: '$5,000 - $10,000', min: 500000, max: 1000000 },
-    { label: 'Over $10,000', min: 1000000, max: 5000000 }
-  ];
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+    <>
+      {/* Modal */}
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleCloseModal()}>
+        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 ? 'max-w-4xl' : 'max-w-2xl'}`}>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {selectedServices.length > 1 && currentServiceIndex > 0 
-                  ? `${getCurrentService()} Package Selection`
-                  : 'Find Your Perfect Wedding Package'
-                }
-              </h2>
-              {selectedServices.length > 1 && (
-                <p className="text-gray-600 mt-1">
-                  Service {currentServiceIndex + 1} of {selectedServices.length}: {getCurrentService()}
+              <h3 className="text-xl font-semibold text-gray-900">
+                {getQuestionTitle()}
+              </h3>
+              {currentStep <= 5 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Question {currentStep} of 5
                 </p>
               )}
             </div>
             <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={handleCloseModal}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="flex items-center justify-center space-x-2 mb-8">
-            {[1, 2, 3, 4, 5, 6].map((step) => (
-              <div
-                key={step}
-                className={`w-3 h-3 rounded-full transition-all ${
-                  currentStep >= step ? 'bg-rose-500' : 'bg-gray-200'
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Step 1: Event Type */}
-          {currentStep === 1 && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                What type of event are you planning?
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {['Wedding', 'Proposal'].map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => handleEventTypeSelect(type)}
-                    className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
-                  >
-                    <div className="text-4xl mb-3">
-                      {type === 'Wedding' ? '💒' : '💍'}
-                    </div>
-                    <h4 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600">
-                      {type}
-                    </h4>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Service Selection */}
-          {currentStep === 2 && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                What services do you need?
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                {services.map((service) => {
-                  const Icon = service.icon;
-                  const isSelected = selectedServices.includes(service.id);
-                  return (
-                    <button
-                      key={service.id}
-                      onClick={() => {
-                        const newServices = isSelected
-                          ? selectedServices.filter(s => s !== service.id)
-                          : [...selectedServices, service.id];
-                        setSelectedServices(newServices);
-                      }}
-                      className={`p-4 border-2 rounded-xl transition-all text-left ${
-                        isSelected
-                          ? 'border-rose-500 bg-rose-50'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          isSelected ? 'bg-rose-500' : 'bg-gray-100'
-                        }`}>
-                          <Icon className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-600'}`} />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{service.name}</h4>
-                        </div>
-                        {isSelected && (
-                          <Check className="w-5 h-5 text-rose-600" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => handleServiceSelect(selectedServices)}
-                disabled={selectedServices.length === 0}
-                icon={ArrowRight}
-              >
-                Continue
-              </Button>
-            </div>
-          )}
-
-          {/* Step 3: Preference Type Selection */}
-          {currentStep === 3 && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                How would you like to choose your {getCurrentService()} package?
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button
-                  onClick={() => handlePreferenceTypeSelect('hours')}
-                  className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
-                >
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200">
-                    <Clock className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h4>
-                  <p className="text-gray-600 text-sm">Choose based on coverage duration</p>
-                </button>
-                <button
-                  onClick={() => handlePreferenceTypeSelect('coverage')}
-                  className="p-6 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
-                >
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200">
-                    <Heart className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">By Coverage</h4>
-                  <p className="text-gray-600 text-sm">Choose based on specific moments</p>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4a: Hours Selection */}
-          {currentStep === 4 && preferenceType === 'hours' && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                How many hours of {getCurrentService().toLowerCase()} do you need?
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[2, 4, 6, 8, 10, 12].map((hours) => (
-                  <button
-                    key={hours}
-                    onClick={() => handleHoursSelect(hours)}
-                    className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
-                  >
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{hours}</div>
-                    <div className="text-sm text-gray-600">hours</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 4b: Coverage Selection */}
-          {currentStep === 4 && preferenceType === 'coverage' && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                What moments would you like covered?
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                {coverageOptions.map((coverage) => {
-                  const isSelected = selectedCoverage.includes(coverage);
-                  return (
-                    <button
-                      key={coverage}
-                      onClick={() => {
-                        const newCoverage = isSelected
-                          ? selectedCoverage.filter(c => c !== coverage)
-                          : [...selectedCoverage, coverage];
-                        setSelectedCoverage(newCoverage);
-                      }}
-                      className={`p-3 border-2 rounded-lg transition-all text-left ${
-                        isSelected
-                          ? 'border-rose-500 bg-rose-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          isSelected ? 'border-rose-500 bg-rose-500' : 'border-gray-300'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">{coverage}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => handleCoverageSelect(selectedCoverage)}
-                disabled={selectedCoverage.length === 0}
-                icon={ArrowRight}
-              >
-                Continue
-              </Button>
-            </div>
-          )}
-
-          {/* Step 5: Price Range */}
-          {currentStep === 5 && (
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                What's your budget for {getCurrentService().toLowerCase()}?
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {priceRanges.map((range) => (
-                  <button
-                    key={range.label}
-                    onClick={() => handlePriceRangeSelect(range.min, range.max)}
-                    className="p-4 border-2 border-gray-200 rounded-xl hover:border-rose-300 hover:bg-rose-50 transition-all text-center"
-                  >
-                    <div className="text-lg font-semibold text-gray-900">{range.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 6: Package Recommendation */}
-          {currentStep === 6 && (
-            <div className="text-center">
-              {recommendedPackage ? (
-                <>
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Star className="w-8 h-8 text-green-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    Perfect! We found your ideal {getCurrentService()} package
-                  </h3>
-                  
-                  <Card className="p-6 mb-8 text-left bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h4 className="text-xl font-bold text-gray-900 mb-2">{recommendedPackage.name}</h4>
-                        <p className="text-gray-600 mb-4">{recommendedPackage.description}</p>
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Service:</span>
-                            <div className="font-medium">{recommendedPackage.service_type}</div>
-                          </div>
-                          {recommendedPackage.hour_amount && (
-                            <div>
-                              <span className="text-gray-600">Duration:</span>
-                              <div className="font-medium">{recommendedPackage.hour_amount} hours</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-2xl font-bold text-gray-900">
-                          {formatPrice(recommendedPackage.price)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {recommendedPackage.features && recommendedPackage.features.length > 0 && (
-                      <div>
-                        <h5 className="font-medium text-gray-900 mb-2">Includes:</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                          {recommendedPackage.features.slice(0, 6).map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
-                              <span className="text-sm text-gray-700">{feature}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-
-                  <div className="space-y-4">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() => handlePackageSelect(recommendedPackage.id)}
-                      icon={ArrowRight}
-                      className="w-full"
-                    >
-                      {selectedServices.length > 1 && currentServiceIndex < selectedServices.length - 1
-                        ? `Select This Package & Continue to ${selectedServices[currentServiceIndex + 1]}`
-                        : 'Select This Package'
-                      }
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full"
-                      onClick={() => setCurrentStep(5)}
-                    >
-                      See Other Options
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <X className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    No packages found
-                  </h3>
-                  <p className="text-gray-600 mb-8">
-                    We couldn't find any {getCurrentService().toLowerCase()} packages matching your criteria. Try adjusting your preferences.
+          {/* Modal Content */}
+          <div className="p-6">
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    What type of event are you planning?
+                  </h4>
+                  <p className="text-gray-600">
+                    Choose the type of celebration you're planning
                   </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {eventTypes.map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => handleEventTypeSelect(type.id)}
+                      className="p-6 rounded-xl border-2 border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
+                    >
+                      <div className="text-4xl mb-3">{type.emoji}</div>
+                      <h5 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600">
+                        {type.name}
+                      </h5>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    What services do you need?
+                  </h4>
+                  <p className="text-gray-600">
+                    Select all the services you'd like to book (you can choose multiple)
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {serviceTypes.map((service) => {
+                    const isSelected = localSelectedServices.includes(service.id);
+                    return (
+                      <button
+                        key={service.id}
+                        onClick={() => handleServiceToggle(service.id)}
+                        className={`
+                          relative p-4 rounded-xl border-2 transition-all text-left
+                          ${isSelected 
+                            ? 'border-rose-500 bg-rose-50' 
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-3">
+                          <div className="text-2xl">{service.emoji}</div>
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{service.name}</h5>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={handlePrevQuestion}
                   >
-                    Try Different Preferences
+                    Back
                   </Button>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Loading State */}
-          {loading && (
-            <div className="text-center py-8">
-              <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-600">Finding your perfect packages...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X className="w-8 h-8 text-red-600" />
+                  <Button
+                    variant="primary"
+                    onClick={handleNextQuestion}
+                    disabled={!canProceedQuestion()}
+                    icon={ArrowRight}
+                    className="px-8"
+                  >
+                    Continue
+                  </Button>
+                </div>
+                
+                <div className="text-center pt-2">
+                  <button
+                    onClick={handleSkipToPackages}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                    disabled={localSelectedServices.length === 0}
+                  >
+                    Skip questions and go to packages
+                  </button>
+                </div>
               </div>
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button variant="outline" onClick={() => setError(null)}>
-                Try Again
-              </Button>
-            </div>
-          )}
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    What moments would you like covered?
+                  </h4>
+                  <p className="text-gray-600">
+                    Select all the moments you want captured during your {selectedEventType.toLowerCase()}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
+                  {coverageOptions.map((option) => {
+                    const isSelected = selectedCoverage.includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleCoverageToggle(option.id)}
+                        className={`
+                          relative p-3 rounded-lg border-2 transition-all text-left
+                          ${isSelected 
+                            ? 'border-rose-500 bg-rose-50' 
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <h5 className="font-medium text-gray-900 text-sm">{option.name}</h5>
+                        <p className="text-xs text-gray-600">{option.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevQuestion}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleNextQuestion}
+                    disabled={!canProceedQuestion()}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    How many hours of coverage do you need?
+                  </h4>
+                  <p className="text-gray-600">
+                    Choose the duration that best fits your {selectedEventType.toLowerCase()} timeline
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {hourOptions.map((option) => {
+                    const isSelected = selectedHours === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setSelectedHours(option.value)}
+                        className={`
+                          relative p-4 rounded-lg border-2 transition-all text-center
+                          ${isSelected 
+                            ? 'border-amber-500 bg-amber-50' 
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="text-lg font-bold text-gray-900 mb-1">{option.label}</div>
+                        <p className="text-sm text-gray-600">{option.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevQuestion}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleNextQuestion}
+                    disabled={!canProceedQuestion()}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <div className="text-center">
+                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                    What's your budget for {localSelectedServices[0]?.toLowerCase()}?
+                  </h4>
+                  <p className="text-gray-600">
+                    Select a budget range that works for you
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {budgetOptions.map((option) => {
+                    const isSelected = selectedBudget === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={() => setSelectedBudget(option.value)}
+                        className={`
+                          relative p-4 rounded-lg border-2 transition-all text-center
+                          ${isSelected 
+                            ? 'border-emerald-500 bg-emerald-50' 
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        <div className="text-lg font-bold text-gray-900 mb-1">{option.label}</div>
+                        <p className="text-sm text-gray-600">{option.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevQuestion}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleNextQuestion}
+                    disabled={!canProceedQuestion() || packagesLoading}
+                    icon={ArrowRight}
+                    className="px-8"
+                  >
+                    {packagesLoading ? 'Loading Packages...' : 'Find My Perfect Package'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 6: Matching/Loading */}
+            {currentStep === 6 && (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
+                  <Sparkles className="w-12 h-12 text-white" />
+                </div>
+                <h4 className="text-3xl font-bold text-gray-900 mb-4">
+                  Finding Your Perfect Match...
+                </h4>
+                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
+                  We're analyzing hundreds of {localSelectedServices[0]?.toLowerCase()} packages to find your ideal match
+                </p>
+                
+                <div className="space-y-4 max-w-sm mx-auto">
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                    <span>Analyzing your preferences...</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <span>Matching with verified vendors...</span>
+                  </div>
+                  <div className="flex items-center space-x-3 text-gray-600">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    <span>Calculating best value...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 7: Perfect Match Result */}
+            {currentStep === 7 && (
+              <div className="space-y-6">
+                {recommendedPackage ? (
+                  <>
+                    {/* Success Header */}
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl animate-pulse">
+                        <Heart className="w-10 h-10 text-white" />
+                      </div>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                        🎉 We Found Your Perfect Match!
+                      </h2>
+                      <p className="text-gray-600 text-lg">
+                        Based on your preferences, here's the ideal {localSelectedServices[0]} package for your {selectedEventType.toLowerCase()}
+                      </p>
+                    </div>
+
+                    {/* Package Card */}
+                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-rose-200 overflow-hidden">
+                      {/* Recommended Badge */}
+                      <div className="bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <Sparkles className="w-5 h-5" />
+                          <span className="font-semibold">Perfect Match for You</span>
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <div className="p-6">
+                        <div className="flex flex-col lg:flex-row gap-6">
+                          <div className="flex-1">
+                            <h3 className="text-2xl font-bold text-gray-900 mb-3">{recommendedPackage.name}</h3>
+                            <p className="text-gray-600 leading-relaxed mb-4">{recommendedPackage.description}</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">What's Included</h4>
+                                <div className="space-y-1">
+                                  {recommendedPackage.features?.slice(0, 4).map((feature, index) => (
+                                    <div key={index} className="flex items-center space-x-2">
+                                      <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                      <span className="text-sm text-gray-700">{feature}</span>
+                                    </div>
+                                  ))}
+                                  {(recommendedPackage.features?.length || 0) > 4 && (
+                                    <div className="text-sm text-gray-500">
+                                      +{(recommendedPackage.features?.length || 0) - 4} more features
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Coverage</h4>
+                                <div className="space-y-1">
+                                  {getPackageCoverage(recommendedPackage.coverage || {}).slice(0, 4).map((event, index) => (
+                                    <div key={index} className="flex items-center space-x-2">
+                                      <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                      <span className="text-sm text-gray-700">{event}</span>
+                                    </div>
+                                  ))}
+                                  {getPackageCoverage(recommendedPackage.coverage || {}).length > 4 && (
+                                    <div className="text-sm text-gray-500">
+                                      +{getPackageCoverage(recommendedPackage.coverage || {}).length - 4} more events
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              {recommendedPackage.hour_amount && (
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  <span>{recommendedPackage.hour_amount} hours</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                                <span>Top rated package</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Shield className="w-4 h-4 mr-1" />
+                                <span>Verified vendors</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Price and Action */}
+                          <div className="lg:w-1/3">
+                            <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-xl p-6 text-white text-center">
+                              <div className="text-3xl font-bold mb-2">
+                                {formatPrice(recommendedPackage.price)}
+                              </div>
+                              <div className="text-rose-100 mb-4">Perfect for your needs</div>
+                              
+                              <div className="space-y-3">
+                                <Button
+                                  variant="secondary"
+                                  size="lg"
+                                  className="w-full bg-white text-rose-600 hover:bg-gray-50"
+                                  onClick={handleBookPackage}
+                                >
+                                  Book This Package
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="lg"
+                                  className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                                  icon={Eye}
+                                  onClick={handleViewAllPackages}
+                                >
+                                  View Other Options
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Why Perfect Match */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                        Why this is perfect for you:
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-blue-900">Perfect Coverage</div>
+                            <div className="text-sm text-blue-700">Matches your selected events</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-blue-900">Right Duration</div>
+                            <div className="text-sm text-blue-700">
+                              {recommendedPackage.hour_amount ? `${recommendedPackage.hour_amount} hours` : 'Perfect timing'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <DollarSign className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-blue-900">Within Budget</div>
+                            <div className="text-sm text-blue-700">Matches your price range</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* No Package Found */
+                  <div className="text-center">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <Sparkles className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                      No Perfect Match Found
+                    </h2>
+                    <p className="text-gray-600 mb-6">
+                      We couldn't find a package that exactly matches your preferences, but we have other great options available.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(3)}
+                      >
+                        Adjust Preferences
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleViewAllPackages}
+                      >
+                        View All Packages
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </Card>
-    </div>
+      </div>
+
+      {/* Email Capture Modal */}
+      <EmailCaptureModal
+        isOpen={showEmailCapture}
+        onClose={() => setShowEmailCapture(false)}
+        onSave={handleEmailSave}
+        onSkip={handleEmailSkip}
+      />
+    </>
   );
 };
