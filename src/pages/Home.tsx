@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Loader, Eye, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Loader, Eye, MessageCircle, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -7,6 +7,7 @@ import { ServiceCard } from '../components/booking/ServiceCard';
 import { mockBundles } from '../lib/mockData';
 import { useBooking } from '../context/BookingContext';
 import { useServicePackages } from '../hooks/useSupabase';
+import { ServicePackage } from '../types/booking';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export const Home: React.FC = () => {
   const [selectedBudget, setSelectedBudget] = useState('');
   const [isMatching, setIsMatching] = useState(false);
   const [matchedPackage, setMatchedPackage] = useState<any>(null);
+  const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
 
   const eventTypes = [
     { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
@@ -62,6 +64,27 @@ export const Home: React.FC = () => {
     { value: '300000-500000', label: '$3,000 - $5,000', description: 'Premium services' },
     { value: '500000-1000000', label: '$5,000+', description: 'Luxury experiences' }
   ];
+
+  // Get service packages based on answers
+  const shouldFetchPackages = currentStep === 6 && localSelectedServices.length > 0;
+  const { packages, loading: packagesLoading } = useServicePackages(
+    shouldFetchPackages ? localSelectedServices[0] : undefined,
+    shouldFetchPackages ? selectedEventType : undefined,
+    shouldFetchPackages ? {
+      coverage: selectedCoverage,
+      minHours: selectedHours ? parseInt(selectedHours) - 1 : undefined,
+      maxHours: selectedHours ? parseInt(selectedHours) + 1 : undefined,
+      minPrice: selectedBudget ? parseInt(selectedBudget.split('-')[0]) : undefined,
+      maxPrice: selectedBudget ? parseInt(selectedBudget.split('-')[1]) : undefined
+    } : undefined
+  );
+
+  // Set recommended package when packages are loaded
+  useEffect(() => {
+    if (packages && packages.length > 0 && !recommendedPackage) {
+      setRecommendedPackage(packages[0]);
+    }
+  }, [packages, recommendedPackage]);
 
   const handleStartBooking = () => {
     setShowModal(true);
@@ -252,6 +275,24 @@ export const Home: React.FC = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price / 100);
+  };
+
+  const getPackageCoverage = (coverage: Record<string, any>) => {
+    if (!coverage || typeof coverage !== 'object') return [];
+    
+    const events = [];
+    if (coverage.events && Array.isArray(coverage.events)) {
+      events.push(...coverage.events);
+    }
+    
+    // Add other coverage properties if they exist
+    Object.keys(coverage).forEach(key => {
+      if (key !== 'events' && coverage[key] === true) {
+        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
+      }
+    });
+    
+    return events;
   };
 
   const handleSearch = (filters: any) => {
@@ -929,11 +970,11 @@ export const Home: React.FC = () => {
                     <Button
                       variant="primary"
                       onClick={handleNextQuestion}
-                      disabled={!canProceedQuestion()}
+                      disabled={!canProceedQuestion() || packagesLoading}
                       icon={ArrowRight}
                       className="px-8"
                     >
-                      Find My Perfect Packages
+                      {packagesLoading ? 'Loading Packages...' : 'Find My Perfect Package'}
                     </Button>
                   </div>
                 </div>
@@ -970,188 +1011,223 @@ export const Home: React.FC = () => {
               )}
 
               {/* Step 7: Perfect Match Result */}
-              {currentStep === 7 && matchedPackage && (
-                <div className="space-y-8">
-                  {/* Celebration Header */}
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-                      <Heart className="w-10 h-10 text-white" />
-                    </div>
-                    <h4 className="text-3xl font-bold text-gray-900 mb-4">
-                      🎉 Perfect Match Found!
-                    </h4>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                      We found the ideal {localSelectedServices[0]?.toLowerCase()} package that matches your preferences and budget perfectly.
-                    </p>
-                  </div>
-
-                  {/* Package Card */}
-                  <div className="bg-gradient-to-br from-rose-50 to-amber-50 rounded-2xl p-6 border-2 border-rose-200">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Package Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-4">
-                          <h3 className="text-2xl font-bold text-gray-900">{matchedPackage.name}</h3>
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Perfect Match
-                          </span>
+              {currentStep === 7 && (
+                <div className="space-y-6">
+                  {recommendedPackage ? (
+                    <>
+                      {/* Success Header */}
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl animate-pulse">
+                          <Heart className="w-10 h-10 text-white" />
                         </div>
-                        
-                        <p className="text-gray-600 mb-6 leading-relaxed">{matchedPackage.description}</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">What's Included</h4>
-                            <div className="space-y-2">
-                              {matchedPackage.features.slice(0, 4).map((feature: string, index: number) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                  <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="text-sm text-gray-700">{feature}</span>
-                                </div>
-                              ))}
-                              {matchedPackage.features.length > 4 && (
-                                <div className="text-sm text-gray-500">
-                                  +{matchedPackage.features.length - 4} more features
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Coverage</h4>
-                            <div className="space-y-2">
-                              {selectedCoverage.slice(0, 4).map((coverage, index) => (
-                                <div key={index} className="flex items-center space-x-2">
-                                  <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  <span className="text-sm text-gray-700">{coverage}</span>
-                                </div>
-                              ))}
-                              {selectedCoverage.length > 4 && (
-                                <div className="text-sm text-gray-500">
-                                  +{selectedCoverage.length - 4} more events
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-6 text-sm text-gray-600 mt-6">
-                          <div className="flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span>{matchedPackage.hour_amount} hours coverage</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Shield className="w-4 h-4 mr-1" />
-                            <span>Fully insured</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Award className="w-4 h-4 mr-1" />
-                            <span>Top rated</span>
-                          </div>
-                        </div>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                          🎉 We Found Your Perfect Match!
+                        </h2>
+                        <p className="text-gray-600 text-lg">
+                          Based on your preferences, here's the ideal {localSelectedServices[0]} package for your {selectedEventType.toLowerCase()}
+                        </p>
                       </div>
 
-                      {/* Vendor & Pricing */}
-                      <div className="lg:w-1/3">
-                        {/* Vendor Info */}
-                        <div className="bg-white rounded-xl p-4 mb-4">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <img
-                              src={matchedPackage.vendor.avatar}
-                              alt={matchedPackage.vendor.name}
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                            <div>
-                              <h4 className="font-semibold text-gray-900">{matchedPackage.vendor.name}</h4>
-                              <div className="flex items-center text-sm text-gray-600">
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                <span>{matchedPackage.vendor.rating}</span>
-                                <span className="mx-1">•</span>
-                                <span>{matchedPackage.vendor.experience}y exp</span>
+                      {/* Package Card */}
+                      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-rose-200 overflow-hidden">
+                        {/* Recommended Badge */}
+                        <div className="bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <Sparkles className="w-5 h-5" />
+                            <span className="font-semibold">Perfect Match for You</span>
+                            <Sparkles className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <div className="flex flex-col lg:flex-row gap-6">
+                            <div className="flex-1">
+                              <h3 className="text-2xl font-bold text-gray-900 mb-3">{recommendedPackage.name}</h3>
+                              <p className="text-gray-600 leading-relaxed mb-4">{recommendedPackage.description}</p>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900 mb-2">What's Included</h4>
+                                  <div className="space-y-1">
+                                    {recommendedPackage.features?.slice(0, 4).map((feature, index) => (
+                                      <div key={index} className="flex items-center space-x-2">
+                                        <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                        <span className="text-sm text-gray-700">{feature}</span>
+                                      </div>
+                                    ))}
+                                    {(recommendedPackage.features?.length || 0) > 4 && (
+                                      <div className="text-sm text-gray-500">
+                                        +{(recommendedPackage.features?.length || 0) - 4} more features
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <h4 className="font-semibold text-gray-900 mb-2">Coverage</h4>
+                                  <div className="space-y-1">
+                                    {getPackageCoverage(recommendedPackage.coverage || {}).slice(0, 4).map((event, index) => (
+                                      <div key={index} className="flex items-center space-x-2">
+                                        <Check className="w-3 h-3 text-green-600 flex-shrink-0" />
+                                        <span className="text-sm text-gray-700">{event}</span>
+                                      </div>
+                                    ))}
+                                    {getPackageCoverage(recommendedPackage.coverage || {}).length > 4 && (
+                                      <div className="text-sm text-gray-500">
+                                        +{getPackageCoverage(recommendedPackage.coverage || {}).length - 4} more events
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                {recommendedPackage.hour_amount && (
+                                  <div className="flex items-center">
+                                    <Clock className="w-4 h-4 mr-1" />
+                                    <span>{recommendedPackage.hour_amount} hours</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center">
+                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                                  <span>Top rated package</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <Shield className="w-4 h-4 mr-1" />
+                                  <span>Verified vendors</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Price and Action */}
+                            <div className="lg:w-1/3">
+                              <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-xl p-6 text-white text-center">
+                                <div className="text-3xl font-bold mb-2">
+                                  {formatPrice(recommendedPackage.price)}
+                                </div>
+                                <div className="text-rose-100 mb-4">Perfect for your needs</div>
+                                
+                                <div className="space-y-3">
+                                  <Button
+                                    variant="secondary"
+                                    size="lg"
+                                    className="w-full bg-white text-rose-600 hover:bg-gray-50"
+                                    onClick={() => {
+                                      setShowModal(false);
+                                      navigate('/booking/congratulations', {
+                                        state: {
+                                          selectedPackage: recommendedPackage,
+                                          selectedServices: localSelectedServices,
+                                          currentServiceIndex: 0
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    Book This Package
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                                    icon={Eye}
+                                    onClick={() => {
+                                      setShowModal(false);
+                                      navigate('/booking/packages', {
+                                        state: {
+                                          selectedServices: localSelectedServices,
+                                          eventType: selectedEventType,
+                                          filters: {
+                                            coverage: selectedCoverage,
+                                            hours: selectedHours,
+                                            budget: selectedBudget
+                                          }
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    View Other Options
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          
-                          {/* Portfolio Preview */}
-                          <div className="grid grid-cols-3 gap-2">
-                            {matchedPackage.vendor.portfolio.map((photo: string, index: number) => (
-                              <img
-                                key={index}
-                                src={photo}
-                                alt={`Portfolio ${index + 1}`}
-                                className="aspect-square object-cover rounded-lg"
-                              />
-                            ))}
-                          </div>
                         </div>
+                      </div>
 
-                        {/* Pricing */}
-                        <div className="bg-gradient-to-br from-rose-500 to-amber-500 rounded-xl p-6 text-white text-center">
-                          <div className="text-3xl font-bold mb-2">
-                            {formatPrice(matchedPackage.price)}
+                      {/* Why Perfect Match */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                          Why this is perfect for you:
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-blue-900">Perfect Coverage</div>
+                              <div className="text-sm text-blue-700">Matches your selected events</div>
+                            </div>
                           </div>
-                          <div className="text-rose-100 mb-6">Perfect for your budget</div>
-                          
-                          <div className="space-y-3">
-                            <Button
-                              variant="secondary"
-                              size="lg"
-                              className="w-full bg-white text-rose-600 hover:bg-gray-50"
-                              onClick={handleBookPackage}
-                            >
-                              Book This Package
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="lg"
-                              className="w-full border-white text-white hover:bg-white hover:text-rose-600"
-                              icon={Eye}
-                              onClick={handleViewAllPackages}
-                            >
-                              View Other Options
-                            </Button>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-blue-900">Right Duration</div>
+                              <div className="text-sm text-blue-700">
+                                {recommendedPackage.hour_amount ? `${recommendedPackage.hour_amount} hours` : 'Perfect timing'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <DollarSign className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-blue-900">Within Budget</div>
+                              <div className="text-sm text-blue-700">Matches your price range</div>
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* No Package Found */
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Sparkles className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                        No Perfect Match Found
+                      </h2>
+                      <p className="text-gray-600 mb-6">
+                        We couldn't find a package that exactly matches your preferences, but we have other great options available.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCurrentStep(3)}
+                        >
+                          Adjust Preferences
+                        </Button>
+                        <Button
+                          variant="primary"
+                          onClick={() => {
+                            setShowModal(false);
+                            navigate('/booking/packages', {
+                              state: {
+                                selectedServices: localSelectedServices,
+                                eventType: selectedEventType
+                              }
+                            });
+                          }}
+                        >
+                          View All Packages
+                        </Button>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Why This Package */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                    <h4 className="font-semibold text-blue-900 mb-4 text-center">
-                      Why this is perfect for you:
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-blue-900">Perfect Coverage</div>
-                          <div className="text-sm text-blue-700">Matches your selected events</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-blue-900">Right Duration</div>
-                          <div className="text-sm text-blue-700">{selectedHours} hours as requested</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Award className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-blue-900">Within Budget</div>
-                          <div className="text-sm text-blue-700">Fits your price range</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
