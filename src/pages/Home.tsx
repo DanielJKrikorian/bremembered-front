@@ -12,66 +12,98 @@ export const Home: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-amber-500/10"></div>
-        <div className="relative max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            Your Perfect Wedding
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500">
-              Starts Here
-            </span>
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto mb-12 leading-relaxed">
-            Discover and book amazing wedding vendors in one place. From photography to coordination, 
-            we'll help you create the perfect day with trusted professionals.
-          </p>
-          
-          <div className="max-w-2xl mx-auto mb-12">
-            <SearchBar />
-          </div>
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <div>
+              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Your Perfect Wedding
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500">
+                  Starts Here
+                </span>
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                Discover and book amazing wedding vendors in one place. From photography to coordination, 
+                we'll help you create the perfect day with trusted professionals.
+              </p>
+              
+              <div className="mb-8">
+                <SearchBar />
+              </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button 
-              variant="primary" 
-              size="lg" 
-              icon={ArrowRight}
-              onClick={() => navigate('/booking/services')}
-              className="px-8 py-4 text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all"
-            >
-              Start Your Booking Journey
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
-              onClick={() => navigate('/how-it-works')}
-              className="px-8 py-4 text-lg"
-            >
-              How It Works
-            </Button>
-          </div>
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Button 
+                  variant="primary" 
+                  size="lg" 
+                  icon={ArrowRight}
+                  onClick={() => navigate('/booking/services')}
+                  className="px-8 py-4 text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all"
+                >
+                  Start Your Booking Journey
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  onClick={() => navigate('/how-it-works')}
+                  className="px-8 py-4 text-lg"
+                >
+                  How It Works
+                </Button>
+              </div>
 
-          {/* Trust Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="w-8 h-8 text-rose-600" />
+              {/* Trust Indicators */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-rose-500 mb-1">500+</div>
+                  <div className="text-gray-600 text-sm">Verified Vendors</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-rose-500 mb-1">10,000+</div>
+                  <div className="text-gray-600 text-sm">Happy Couples</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-rose-500 mb-1">4.9</div>
+                  <div className="text-gray-600 text-sm">Average Rating</div>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-rose-500 mb-2">500+</div>
-              <div className="text-gray-600">Verified Vendors</div>
             </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <Heart className="w-8 h-8 text-amber-600" />
+
+            {/* Right Image */}
+            <div className="relative">
+              <div className="relative z-10">
+                <img
+                  src="https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Beautiful wedding couple"
+                  className="w-full h-[600px] object-cover rounded-2xl shadow-2xl"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
               </div>
-              <div className="text-2xl font-bold text-rose-500 mb-2">10,000+</div>
-              <div className="text-gray-600">Happy Couples</div>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Star className="w-8 h-8 text-emerald-600" />
+              
+              {/* Floating Cards */}
+              <div className="absolute -top-6 -left-6 bg-white rounded-xl shadow-lg p-4 z-20">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+                    <Camera className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Photography</div>
+                    <div className="text-sm text-gray-600">Starting at $2,250</div>
+                  </div>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-rose-500 mb-2">4.9</div>
-              <div className="text-gray-600">Average Rating</div>
+              
+              <div className="absolute -bottom-6 -right-6 bg-white rounded-xl shadow-lg p-4 z-20">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                    <Video className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Videography</div>
+                    <div className="text-sm text-gray-600">Starting at $1,800</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
