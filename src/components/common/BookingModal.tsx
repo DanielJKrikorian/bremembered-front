@@ -206,58 +206,48 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleNextQuestion = () => {
+    console.log('=== handleNextQuestion called ===');
+    console.log('Current step:', currentStep);
+    console.log('Can proceed:', canProceedQuestion());
+    console.log('Recommended package exists:', !!recommendedPackage);
+    
     if (currentStep < 6) {
+      console.log('Moving to next step:', currentStep + 1);
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 5 && recommendedPackage) {
-      // Start matching process - stay on step 6 for loading animation
-      console.log('Starting loading animation with package:', recommendedPackage.name);
+    } else if (currentStep === 5) {
+      console.log('Starting loading animation from step 5');
+      console.log('Package available:', !!recommendedPackage);
+      
+      // Move to step 6 (loading) regardless of package status
       setLoadingStep(0);
       
-      // Update lead as starting matching process
-      updateLead({
-        current_step: 6
-      });
+      // Start the animation sequence
+      console.log('Starting animation sequence');
       
-      // Animate through loading steps with more dramatic timing
-      const animateLoading = () => {
-        console.log('Starting animation sequence');
-        // Step 1: Analyzing (after 800ms)
-        setTimeout(() => {
-          console.log('Animation step 1: Analyzing');
-          setLoadingStep(1);
-        }, 800);
-        
-        // Step 2: Matching (after 1.8s total)
-        setTimeout(() => {
-          console.log('Animation step 2: Matching');
-          setLoadingStep(2);
-        }, 1800);
-        
-        // Step 3: Calculating (after 2.8s total)
-        setTimeout(() => {
-          console.log('Animation step 3: Calculating');
-          setLoadingStep(3);
-        }, 2800);
-        
-        // Move to results (after 4s total)
-        setTimeout(() => {
-          console.log('Animation complete, moving to step 8');
-          console.log('Moving to step 8 with package:', recommendedPackage.name);
-          console.log('Moving to step 8');
-          setCurrentStep(8);
-          
-          // Update lead with completion
-          updateLead({
-            current_step: 8,
-            completed_at: new Date().toISOString()
-          });
-        }, 4000);
-      };
+      // Step 1: Analyzing (after 800ms)
+      setTimeout(() => {
+        console.log('Animation step 1: Analyzing');
+        setLoadingStep(1);
+      }, 800);
       
-      animateLoading();
-    } else if (currentStep === 5 && !recommendedPackage) {
-      console.log('No package found, cannot proceed');
-      // Could show an error or fallback here
+      // Step 2: Matching (after 1.8s total)
+      setTimeout(() => {
+        console.log('Animation step 2: Matching');
+        setLoadingStep(2);
+      }, 1800);
+      
+      // Step 3: Calculating (after 2.8s total)
+      setTimeout(() => {
+        console.log('Animation step 3: Calculating');
+        setLoadingStep(3);
+      }, 2800);
+      
+      // Move to results (after 4s total)
+      setTimeout(() => {
+        console.log('Animation complete, moving to step 8');
+        console.log('Final recommended package:', recommendedPackage?.name || 'No package');
+        setCurrentStep(8);
+      }, 4000);
     }
   };
 
@@ -376,13 +366,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const canProceedQuestion = () => {
+    console.log('=== canProceedQuestion called ===');
+    console.log('Current step:', currentStep);
+    
     switch (currentStep) {
-      case 1: return selectedEventType !== '';
-      case 2: return localSelectedServices.length > 0;
-      case 3: return preferenceType !== '';
-      case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
-      case 5: return selectedBudget !== '';
-      default: return false;
+      case 1: 
+        const step1Valid = selectedEventType !== '';
+        console.log('Step 1 valid:', step1Valid, 'selectedEventType:', selectedEventType);
+        return step1Valid;
+      case 2: 
+        const step2Valid = localSelectedServices.length > 0;
+        console.log('Step 2 valid:', step2Valid, 'services:', localSelectedServices);
+        return step2Valid;
+      case 3: 
+        const step3Valid = preferenceType !== '';
+        console.log('Step 3 valid:', step3Valid, 'preferenceType:', preferenceType);
+        return step3Valid;
+      case 4: 
+        const step4Valid = preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
+        console.log('Step 4 valid:', step4Valid, 'preferenceType:', preferenceType, 'coverage:', selectedCoverage, 'hours:', selectedHours);
+        return step4Valid;
+      case 5: 
+        const step5Valid = selectedBudget !== '';
+        console.log('Step 5 valid:', step5Valid, 'selectedBudget:', selectedBudget);
+        console.log('Package available for step 5:', !!recommendedPackage);
+        return step5Valid;
+      default: 
+        console.log('Unknown step, returning false');
+        return false;
     }
   };
 
@@ -793,15 +804,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   <Button
                     variant="primary"
                     onClick={handleNextQuestion}
-                    disabled={!canProceedQuestion() || packagesLoading || !recommendedPackage}
+                    disabled={!canProceedQuestion() || packagesLoading}
                     icon={ArrowRight}
                     className="px-8"
                   >
                     {packagesLoading 
                       ? 'Loading Packages...' 
-                      : !recommendedPackage 
-                        ? 'No Packages Found' 
-                        : 'Find My Perfect Package'
+                      : 'Find My Perfect Package'
                     }
                   </Button>
                 </div>
