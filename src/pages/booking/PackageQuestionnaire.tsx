@@ -272,13 +272,13 @@ export const PackageQuestionnaire: React.FC = () => {
           <Card className="p-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Grid className="w-8 h-8 text-amber-600" />
+                <Clock className="w-8 h-8 text-amber-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
                 How would you like to choose your {currentService} package?
               </h2>
               <p className="text-gray-600">
-                Select your preferred way to narrow down the perfect package
+                Choose the method that works best for you to find the perfect package
                 {isMultipleServices && (
                   <span className="block mt-2 text-sm">
                     Step {currentServiceIndex + 1} of {selectedServices.length}: {currentService}
@@ -290,25 +290,37 @@ export const PackageQuestionnaire: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
               <div
                 onClick={() => setPreferenceType('hours')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center group"
               >
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-amber-100 group-hover:bg-amber-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
                   <Clock className="w-8 h-8 text-amber-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Hours</h3>
-                <p className="text-gray-600">Choose based on how many hours of coverage you need</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">I Know How Many Hours I Need</h3>
+                <p className="text-gray-600 mb-4">Perfect if you have a specific timeline in mind</p>
+                <div className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
+                  <strong>Best for:</strong> Couples who know their event schedule and want precise coverage duration
+                </div>
               </div>
               
               <div
                 onClick={() => setPreferenceType('coverage')}
-                className="p-8 rounded-xl border-2 border-gray-200 hover:border-amber-500 hover:bg-amber-50 cursor-pointer transition-all text-center"
+                className="p-8 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all text-center group"
               >
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-purple-100 group-hover:bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
                   <List className="w-8 h-8 text-amber-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">By Coverage</h3>
-                <p className="text-gray-600">Choose based on specific moments you want captured</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">I Want to Choose by Moments</h3>
+                <p className="text-gray-600 mb-4">Select the specific moments you want covered</p>
+                <div className="text-sm text-purple-700 bg-purple-50 rounded-lg p-3">
+                  <strong>Best for:</strong> Couples who want to focus on specific moments and events
+                </div>
               </div>
+            </div>
+            
+            <div className="text-center mt-8">
+              <p className="text-sm text-gray-500">
+                💡 Don't worry - you can always discuss adjustments with your vendor later
+              </p>
             </div>
           </Card>
         )}
@@ -323,7 +335,7 @@ export const PackageQuestionnaire: React.FC = () => {
                 How many hours of coverage do you need?
               </h2>
               <p className="text-gray-600">
-                Choose the duration that best fits your {filters.eventType?.toLowerCase()} timeline
+                Select the coverage duration that matches your {filters.eventType?.toLowerCase()} schedule
               </p>
             </div>
 
@@ -353,6 +365,12 @@ export const PackageQuestionnaire: React.FC = () => {
                 );
               })}
             </div>
+            
+            <div className="text-center mt-8">
+              <p className="text-sm text-gray-500">
+                💡 We'll find packages with coverage close to your selected hours
+              </p>
+            </div>
           </Card>
         )}
 
@@ -366,7 +384,7 @@ export const PackageQuestionnaire: React.FC = () => {
                 What moments would you like covered?
               </h2>
               <p className="text-gray-600">
-                Select all the moments you want captured during your {filters.eventType?.toLowerCase()}
+                Choose the specific moments that are most important to you
               </p>
             </div>
 
@@ -407,6 +425,11 @@ export const PackageQuestionnaire: React.FC = () => {
               >
                 Continue
               </Button>
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">
+                  💡 We'll find packages that include all your selected moments
+                </p>
+              </div>
             </div>
           </Card>
         )}
