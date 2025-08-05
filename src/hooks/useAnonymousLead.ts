@@ -156,7 +156,7 @@ export const useAnonymousLead = () => {
       setLead(data);
       return data;
     } catch (err) {
-      console.log('Database update failed, using local state:', err instanceof Error ? err.message : 'Unknown error');
+      // Silently handle database errors and continue with local state
       // Local state is already updated, just return it
       return updatedLead;
     }
