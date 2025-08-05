@@ -14,6 +14,9 @@ export const Home: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [selectedEventType, setSelectedEventType] = useState('');
   const [localSelectedServices, setLocalSelectedServices] = useState<string[]>([]);
+  const [selectedCoverage, setSelectedCoverage] = useState<string[]>([]);
+  const [selectedHours, setSelectedHours] = useState('');
+  const [selectedBudget, setSelectedBudget] = useState('');
 
   const eventTypes = [
     { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
@@ -28,11 +31,43 @@ export const Home: React.FC = () => {
     { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
   ];
 
+  const coverageOptions = [
+    { id: 'Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
+    { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
+    { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
+    { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
+    { id: 'Reception', name: 'Reception', description: 'Dinner, dancing, and festivities' },
+    { id: 'Bridal Party', name: 'Bridal Party', description: 'Group photos with wedding party' },
+    { id: 'Family Photos', name: 'Family Photos', description: 'Formal family portraits' },
+    { id: 'Sunset Photos', name: 'Sunset Photos', description: 'Golden hour couple portraits' },
+    { id: 'Dancing', name: 'Dancing', description: 'Reception dancing and celebration' },
+    { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
+    { id: 'Send Off', name: 'Send Off', description: 'Grand exit celebration' }
+  ];
+
+  const hourOptions = [
+    { value: '4', label: '4 hours', description: 'Perfect for intimate ceremonies' },
+    { value: '6', label: '6 hours', description: 'Ceremony + reception coverage' },
+    { value: '8', label: '8 hours', description: 'Full day coverage' },
+    { value: '10', label: '10 hours', description: 'Extended celebration coverage' },
+    { value: '12', label: '12+ hours', description: 'Complete day documentation' }
+  ];
+
+  const budgetOptions = [
+    { value: '0-150000', label: 'Under $1,500', description: 'Budget-friendly options' },
+    { value: '150000-300000', label: '$1,500 - $3,000', description: 'Mid-range packages' },
+    { value: '300000-500000', label: '$3,000 - $5,000', description: 'Premium services' },
+    { value: '500000-1000000', label: '$5,000+', description: 'Luxury experiences' }
+  ];
+
   const handleStartBooking = () => {
     setShowModal(true);
     setCurrentQuestion(1);
     setSelectedEventType('');
     setLocalSelectedServices([]);
+    setSelectedCoverage([]);
+    setSelectedHours('');
+    setSelectedBudget('');
   };
 
   const handleEventTypeSelect = (eventType: string) => {
@@ -48,12 +83,51 @@ export const Home: React.FC = () => {
     );
   };
 
+  const handleCoverageToggle = (coverageId: string) => {
+    setSelectedCoverage(prev => 
+      prev.includes(coverageId)
+        ? prev.filter(id => id !== coverageId)
+        : [...prev, coverageId]
+    );
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestion < 5) {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQuestion > 1) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
+
   const handleContinue = () => {
+    // Final step - navigate to packages with all collected data
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    setShowModal(false);
+    navigate('/booking/packages', {
+      state: {
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType,
+        preferences: {
+          coverage: selectedCoverage,
+          hours: selectedHours,
+          budget: selectedBudget
+        }
+      }
+    });
+  };
+
+  const handleSkipToPackages = () => {
+    // Skip questionnaire and go directly to packages
     if (localSelectedServices.length > 0) {
       setSelectedServices(localSelectedServices);
       setEventType(selectedEventType);
       setShowModal(false);
-      navigate('/booking/questionnaire', {
+      navigate('/booking/packages', {
         state: {
           selectedServices: localSelectedServices,
           eventType: selectedEventType
@@ -67,6 +141,31 @@ export const Home: React.FC = () => {
     setCurrentQuestion(1);
     setSelectedEventType('');
     setLocalSelectedServices([]);
+    setSelectedCoverage([]);
+    setSelectedHours('');
+    setSelectedBudget('');
+  };
+
+  const canProceedQuestion = () => {
+    switch (currentQuestion) {
+      case 1: return selectedEventType !== '';
+      case 2: return localSelectedServices.length > 0;
+      case 3: return selectedCoverage.length > 0;
+      case 4: return selectedHours !== '';
+      case 5: return selectedBudget !== '';
+      default: return false;
+    }
+  };
+
+  const getQuestionTitle = () => {
+    switch (currentQuestion) {
+      case 1: return 'What type of event?';
+      case 2: return 'What services do you need?';
+      case 3: return 'What moments to capture?';
+      case 4: return 'How many hours?';
+      case 5: return 'What\'s your budget?';
+      default: return '';
+    }
   };
 
   const handleSearch = (filters: any) => {
@@ -464,10 +563,10 @@ export const Home: React.FC = () => {
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {currentQuestion === 1 ? 'What type of event?' : 'What services do you need?'}
+                  {getQuestionTitle()}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Question {currentQuestion} of 2
+                  Question {currentQuestion} of 5
                 </p>
               </div>
               <button
@@ -553,18 +652,197 @@ export const Home: React.FC = () => {
                   <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                     <Button
                       variant="outline"
-                      onClick={() => setCurrentQuestion(1)}
+                      onClick={handlePrevQuestion}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleNextQuestion}
+                      disabled={!canProceedQuestion()}
+                      icon={ArrowRight}
+                      className="px-8"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={handleSkipToPackages}
+                      className="text-sm text-gray-500 hover:text-gray-700 underline"
+                      disabled={localSelectedServices.length === 0}
+                    >
+                      Skip questions and go to packages
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {currentQuestion === 3 && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      What moments would you like covered?
+                    </h4>
+                    <p className="text-gray-600">
+                      Select all the moments you want captured during your {selectedEventType.toLowerCase()}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
+                    {coverageOptions.map((option) => {
+                      const isSelected = selectedCoverage.includes(option.id);
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => handleCoverageToggle(option.id)}
+                          className={`
+                            relative p-3 rounded-lg border-2 transition-all text-left
+                            ${isSelected 
+                              ? 'border-rose-500 bg-rose-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          <h5 className="font-medium text-gray-900 text-sm">{option.name}</h5>
+                          <p className="text-xs text-gray-600">{option.description}</p>
+                        </button>
+                      );
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevQuestion}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleNextQuestion}
+                      disabled={!canProceedQuestion()}
+                      icon={ArrowRight}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {currentQuestion === 4 && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      How many hours of coverage do you need?
+                    </h4>
+                    <p className="text-gray-600">
+                      Choose the duration that best fits your {selectedEventType.toLowerCase()} timeline
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {hourOptions.map((option) => {
+                      const isSelected = selectedHours === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => setSelectedHours(option.value)}
+                          className={`
+                            relative p-4 rounded-lg border-2 transition-all text-center
+                            ${isSelected 
+                              ? 'border-amber-500 bg-amber-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          <div className="text-lg font-bold text-gray-900 mb-1">{option.label}</div>
+                          <p className="text-sm text-gray-600">{option.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                    })}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevQuestion}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleNextQuestion}
+                      disabled={!canProceedQuestion()}
+                      icon={ArrowRight}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {currentQuestion === 5 && (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      What's your budget for {localSelectedServices[0]?.toLowerCase()}?
+                    </h4>
+                    <p className="text-gray-600">
+                      Select a budget range that works for you
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {budgetOptions.map((option) => {
+                      const isSelected = selectedBudget === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => setSelectedBudget(option.value)}
+                          className={`
+                            relative p-4 rounded-lg border-2 transition-all text-center
+                            ${isSelected 
+                              ? 'border-emerald-500 bg-emerald-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          <div className="text-lg font-bold text-gray-900 mb-1">{option.label}</div>
+                          <p className="text-sm text-gray-600">{option.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevQuestion}
                     >
                       Back
                     </Button>
                     <Button
                       variant="primary"
                       onClick={handleContinue}
-                     disabled={localSelectedServices.length === 0}
+                      disabled={!canProceedQuestion()}
                       icon={ArrowRight}
                       className="px-8"
                     >
-                      Continue to Packages
+                      Find My Perfect Packages
                     </Button>
                   </div>
                 </div>
