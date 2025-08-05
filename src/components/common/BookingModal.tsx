@@ -211,14 +211,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     console.log('Can proceed:', canProceedQuestion());
     console.log('Recommended package exists:', !!recommendedPackage);
     
-    if (currentStep < 6) {
+    if (currentStep < 5) {
       console.log('Moving to next step:', currentStep + 1);
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 5 && recommendedPackage) {
-      console.log('Going directly to results with package:', recommendedPackage.name);
-      setCurrentStep(8);
-    } else if (currentStep === 5 && !recommendedPackage) {
-      console.log('No package found, showing no match message');
       setCurrentStep(8);
     } else if (currentStep === 5 && recommendedPackage) {
       console.log('Starting loading animation from step 5');
@@ -828,59 +823,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             )}
 
             {/* Step 6: Matching/Loading */}
-            {currentStep === 6 && (
-              <div className="text-center py-12">
-                <div className="w-24 h-24 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
-                  <Sparkles className="w-12 h-12 text-white" />
-                </div>
-                <h4 className="text-3xl font-bold text-gray-900 mb-4">
-                  Finding Your Perfect Match...
-                </h4>
-                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
-                  We're analyzing hundreds of {localSelectedServices[0]?.toLowerCase()} packages to find your ideal match
-                </p>
-                
-                <div className="space-y-4 max-w-sm mx-auto">
-                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 1 ? 'text-rose-600 transform scale-105 font-semibold' : 'text-gray-400'
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
-                      loadingStep >= 1 ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'
-                    }`}></div>
-                    <span className="transition-all duration-1000">
-                      Analyzing your preferences...
-                    </span>
-                    {loadingStep >= 1 && <Check className="w-4 h-4 text-rose-500" />}
-                  </div>
-                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 2 ? 'text-amber-600 transform scale-105 font-semibold' : 'text-gray-400'
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
-                      loadingStep >= 2 ? 'bg-amber-500 animate-pulse' : 'bg-gray-300'
-                    }`}></div>
-                    <span className="transition-all duration-1000">
-                      Matching with verified vendors...
-                    </span>
-                    {loadingStep >= 2 && <Check className="w-4 h-4 text-amber-500" />}
-                  </div>
-                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 3 ? 'text-emerald-600 transform scale-105 font-semibold' : 'text-gray-400'
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
-                      loadingStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
-                    }`}></div>
-                    <span className="transition-all duration-1000">
-                      Calculating best value...
-                    </span>
-                    {loadingStep >= 3 && <Check className="w-4 h-4 text-emerald-500" />}
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-            {/* Step 8: Perfect Match Result */}
-            {currentStep === 8 && (
               <div className="space-y-6">
                 {console.log('=== RENDERING STEP 8 ===', { 
                   recommendedPackage: recommendedPackage?.name, 
