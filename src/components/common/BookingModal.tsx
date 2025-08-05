@@ -208,8 +208,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const handleNextQuestion = () => {
     if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 6) {
+    } else if (currentStep === 5 && recommendedPackage) {
       // Start matching process - stay on step 6 for loading animation
+      console.log('Starting loading animation with package:', recommendedPackage.name);
       setLoadingStep(0);
       
       // Update lead as starting matching process
@@ -219,6 +220,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       
       // Animate through loading steps with more dramatic timing
       const animateLoading = () => {
+        console.log('Starting animation sequence');
         // Step 1: Analyzing (after 800ms)
         setTimeout(() => {
           console.log('Animation step 1: Analyzing');
@@ -240,20 +242,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
         // Move to results (after 4s total)
         setTimeout(() => {
           console.log('Animation complete, moving to step 8');
-          console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage);
-          console.log('matchedPackages from hook:', matchedPackages);
-          
-          // Force set the recommended package
-          if (matchedRecommendedPackage) {
-            console.log('Setting recommended package from hook:', matchedRecommendedPackage.name);
-            setRecommendedPackage(matchedRecommendedPackage);
-          } else if (matchedPackages && matchedPackages.length > 0) {
-            console.log('Setting recommended package from first match:', matchedPackages[0].name);
-            setRecommendedPackage(matchedPackages[0]);
-          } else {
-            console.log('No packages found to recommend');
-          }
-          
+          console.log('Moving to step 8 with package:', recommendedPackage.name);
           console.log('Moving to step 8');
           setCurrentStep(8);
           
@@ -266,6 +255,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       };
       
       animateLoading();
+    } else if (currentStep === 5 && !recommendedPackage) {
+      console.log('No package found, cannot proceed');
+      // Could show an error or fallback here
     }
   };
 
@@ -801,11 +793,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   <Button
                     variant="primary"
                     onClick={handleNextQuestion}
-                    disabled={!canProceedQuestion() || packagesLoading}
+                    disabled={!canProceedQuestion() || packagesLoading || !recommendedPackage}
                     icon={ArrowRight}
                     className="px-8"
                   >
-                    {packagesLoading ? 'Loading Packages...' : 'Find My Perfect Package'}
+                    {packagesLoading 
+                      ? 'Loading Packages...' 
+                      : !recommendedPackage 
+                        ? 'No Packages Found' 
+                        : 'Find My Perfect Package'
+                    }
                   </Button>
                 </div>
               </div>
@@ -866,7 +863,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             {/* Step 8: Perfect Match Result */}
             {currentStep === 8 && (
               <div className="space-y-6">
-                {console.log('=== RENDERING STEP 8 ===', { recommendedPackage, currentStep })}
+                {console.log('=== RENDERING STEP 8 ===', { 
+                  recommendedPackage: recommendedPackage?.name, 
+                  currentStep,
+                  hasPackage: !!recommendedPackage 
+                })}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
