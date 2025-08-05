@@ -214,39 +214,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     if (currentStep < 6) {
       console.log('Moving to next step:', currentStep + 1);
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 5) {
-      console.log('Starting animation sequence from step 5');
-      // Move to step 6 (loading) and start animation
-      setCurrentStep(6);
-      setLoadingStep(0);
-      
-      // Start the animation sequence
-      console.log('Setting up animation timeouts');
-      
-      // Step 1: Analyzing (after 800ms)
-      setTimeout(() => {
-        console.log('Animation step 1: Analyzing');
-        setLoadingStep(1);
-      }, 800);
-      
-      // Step 2: Matching (after 1.8s total)
-      setTimeout(() => {
-        console.log('Animation step 2: Matching');
-        setLoadingStep(2);
-      }, 1800);
-      
-      // Step 3: Calculating (after 2.8s total)
-      setTimeout(() => {
-        console.log('Animation step 3: Calculating');
-        setLoadingStep(3);
-      }, 2800);
-      
-      // Move to results (after 4s total)
-      setTimeout(() => {
-        console.log('Animation complete, moving to step 8');
-        console.log('Final recommended package:', recommendedPackage?.name || 'No package');
-        setCurrentStep(8);
-      }, 4000);
+    } else if (currentStep === 5 && recommendedPackage) {
+      console.log('Going directly to results with package:', recommendedPackage.name);
+      setCurrentStep(8);
+    } else if (currentStep === 5 && !recommendedPackage) {
+      console.log('No package found, showing no match message');
+      setCurrentStep(8);
     } else if (currentStep === 5 && recommendedPackage) {
       console.log('Starting loading animation from step 5');
       console.log('Package available:', !!recommendedPackage);
