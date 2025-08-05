@@ -29,6 +29,10 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
   useEffect(() => {
     const fetchPackages = async () => {
+      if (!serviceType && (!filters?.selectedServices || filters.selectedServices.length === 0)) {
+        setLoading(false);
+        return;
+      }
 
       try {
         let query = supabase
@@ -105,13 +109,18 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         
         setPackages(singleServicePackages);
       } catch (err) {
+        console.error('Error fetching packages:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPackages();
+    if (serviceType || (filters?.selectedServices && filters.selectedServices.length > 0)) {
+      fetchPackages();
+    } else {
+      setLoading(false);
+    }
   }, [serviceType, eventType, filters]);
 
   return { packages, loading, error };

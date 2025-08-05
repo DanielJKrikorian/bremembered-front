@@ -125,7 +125,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Update lead data when answers change
   useEffect(() => {
-    if (lead && currentStep > 1) {
+    if (lead && currentStep > 1 && currentStep <= 6) {
       updateLead({
         event_type: selectedEventType,
         selected_services: localSelectedServices,
@@ -135,7 +135,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
         current_step: currentStep
       });
     }
-  }, [lead, selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, updateLead]);
+  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep]);
 
   // Handle page/modal exit
   useEffect(() => {
@@ -295,9 +295,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   // Handle email skip
   const handleEmailSkip = async () => {
     await abandonLead();
-    setShowEmailCapture(false);
-    onClose();
-    resetModal();
+    handleCloseModal();
   };
 
   const resetModal = () => {
@@ -311,6 +309,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     setIsMatching(false);
     setMatchedPackage(null);
     setRecommendedPackage(null);
+  };
+
+  // Handle modal close - always allow closing
+  const handleModalClose = () => {
+    onClose();
+    resetModal();
   };
 
   const canProceedQuestion = () => {
@@ -369,7 +373,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   return (
     <>
       {/* Modal */}
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleCloseModal()}>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleModalClose()}>
         <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 ? 'max-w-4xl' : 'max-w-2xl'}`}>
           {/* Modal Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -384,7 +388,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               )}
             </div>
             <button
-              onClick={handleCloseModal}
+              onClick={handleModalClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X className="w-5 h-5 text-gray-500" />
@@ -989,6 +993,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     </div>
                   </div>
                 )}
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleModalClose}
+                  >
+                    Continue Without Saving
+                  </Button>
+                </div>
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleModalClose}
+                  >
+                    Continue Without Saving
+                  </Button>
+                </div>
               </div>
             )}
           </div>
