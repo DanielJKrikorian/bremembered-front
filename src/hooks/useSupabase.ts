@@ -715,11 +715,4 @@ export const useLeadInformation = () => {
   };
 
   return { leadInfo, updateLeadInfo, loading, error };
-};ror updating lead info:', err);
-      // Local state is already updated, just return it
-      return updatedLeadInfo;
-    }
-  };
-
-  return { leadInfo, updateLeadInfo, loading, error };
 };
