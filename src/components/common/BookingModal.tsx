@@ -108,10 +108,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     console.log('useEffect triggered - currentStep:', currentStep);
     console.log('useEffect triggered - packagesLoading:', packagesLoading);
     
-    if (matchedRecommendedPackage && currentStep >= 8) {
+    if (matchedRecommendedPackage && !packagesLoading) {
       console.log('Setting recommended package from hook:', matchedRecommendedPackage);
       setRecommendedPackage(matchedRecommendedPackage);
-    } else if (matchedPackages && matchedPackages.length > 0 && currentStep >= 8) {
+    } else if (matchedPackages && matchedPackages.length > 0 && !packagesLoading) {
       // Find the best matching package based on user preferences
       let bestPackage = matchedPackages[0];
       
@@ -143,7 +143,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setRecommendedPackage(bestPackage);
       console.log('Setting recommended package from local logic:', bestPackage);
     }
-  }, [matchedPackages, matchedRecommendedPackage, currentStep, preferenceType, selectedHours, selectedCoverage, packagesLoading]);
+  }, [matchedPackages, matchedRecommendedPackage, packagesLoading, preferenceType, selectedHours, selectedCoverage]);
 
   // Update lead data when answers change
   useEffect(() => {
@@ -826,34 +826,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 
                 <div className="space-y-4 max-w-sm mx-auto">
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 1 ? 'text-rose-600' : 'text-gray-400'
+                    loadingStep >= 1 ? 'text-rose-600 transform scale-105' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
-                      loadingStep >= 1 ? 'bg-rose-500' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
+                      loadingStep >= 1 ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'
                     }`}></div>
-                    <span className={`transition-all duration-500 ${loadingStep >= 1 ? 'font-medium' : ''}`}>
+                    <span className={`transition-all duration-1000 ${loadingStep >= 1 ? 'font-semibold' : ''}`}>
                       Analyzing your preferences...
                     </span>
                     {loadingStep >= 1 && <Check className="w-4 h-4 text-rose-500" />}
                   </div>
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 2 ? 'text-amber-600' : 'text-gray-400'
+                    loadingStep >= 2 ? 'text-amber-600 transform scale-105' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
-                      loadingStep >= 2 ? 'bg-amber-500' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
+                      loadingStep >= 2 ? 'bg-amber-500 animate-pulse' : 'bg-gray-300'
                     }`}></div>
-                    <span className={`transition-all duration-500 ${loadingStep >= 2 ? 'font-medium' : ''}`}>
+                    <span className={`transition-all duration-1000 ${loadingStep >= 2 ? 'font-semibold' : ''}`}>
                       Matching with verified vendors...
                     </span>
                     {loadingStep >= 2 && <Check className="w-4 h-4 text-amber-500" />}
                   </div>
                   <div className={`flex items-center space-x-3 transition-all duration-500 ${
-                    loadingStep >= 3 ? 'text-emerald-600' : 'text-gray-400'
+                    loadingStep >= 3 ? 'text-emerald-600 transform scale-105' : 'text-gray-400'
                   }`}>
-                    <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
-                      loadingStep >= 3 ? 'bg-emerald-500' : 'bg-gray-300'
+                    <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${
+                      loadingStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
                     }`}></div>
-                    <span className={`transition-all duration-500 ${loadingStep >= 3 ? 'font-medium' : ''}`}>
+                    <span className={`transition-all duration-1000 ${loadingStep >= 3 ? 'font-semibold' : ''}`}>
                       Calculating best value...
                     </span>
                     {loadingStep >= 3 && <Check className="w-4 h-4 text-emerald-500" />}
