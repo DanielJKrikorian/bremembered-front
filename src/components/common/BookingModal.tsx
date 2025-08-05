@@ -27,6 +27,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const [matchedPackage, setMatchedPackage] = useState<any>(null);
   const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
+  const [loadingStep, setLoadingStep] = useState(0);
 
   // Anonymous lead tracking
   const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
@@ -103,6 +104,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Set recommended package when packages are loaded
   useEffect(() => {
+    console.log('useEffect triggered - matchedRecommendedPackage:', matchedRecommendedPackage);
+    console.log('useEffect triggered - currentStep:', currentStep);
+    console.log('useEffect triggered - packagesLoading:', packagesLoading);
+    
     if (matchedRecommendedPackage && currentStep >= 8) {
       console.log('Setting recommended package from hook:', matchedRecommendedPackage);
       setRecommendedPackage(matchedRecommendedPackage);
@@ -138,7 +143,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setRecommendedPackage(bestPackage);
       console.log('Setting recommended package from local logic:', bestPackage);
     }
-  }, [matchedPackages, matchedRecommendedPackage, currentStep, preferenceType, selectedHours, selectedCoverage]);
+  }, [matchedPackages, matchedRecommendedPackage, currentStep, preferenceType, selectedHours, selectedCoverage, packagesLoading]);
 
   // Update lead data when answers change
   useEffect(() => {
@@ -205,17 +210,31 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setCurrentStep(currentStep + 1);
     } else if (currentStep === 6) {
       // Start matching process
-      setIsMatching(true);
-      setCurrentStep(7);
+      setCurrentStep(6); // Stay on step 6 for loading animation
+      setLoadingStep(0);
       
       // Update lead as starting matching process
       updateLead({
-        current_step: 7
+        current_step: 6
       });
       
-      // Simulate matching delay
-      setTimeout(() => {
-        setIsMatching(false);
+      // Animate through loading steps with dramatic timing
+      const animateLoading = () => {
+        setLoadingStep(1);
+        setTimeout(() => setLoadingStep(2), 1000);
+        setTimeout(() => setLoadingStep(3), 2000);
+        setTimeout(() => {
+          console.log('Animation complete, moving to step 8');
+          console.log('Current recommendedPackage state:', recommendedPackage);
+          console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage);
+          
+          // Force set the recommended package if we have one
+          if (matchedRecommendedPackage) {
+            setRecommendedPackage(matchedRecommendedPackage);
+          } else if (matchedPackages && matchedPackages.length > 0) {
+            setRecommendedPackage(matchedPackages[0]);
+          }
+          
         setCurrentStep(8);
         console.log('Moving to step 8, packages available:', matchedPackages?.length || 0);
         
@@ -224,7 +243,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
           current_step: 8,
           completed_at: new Date().toISOString()
         });
-      }, 1500);
+        }, 3500);
+      };
+      
+      animateLoading();
     }
   };
 
@@ -784,56 +806,46 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 </p>
                 
                 <div className="space-y-4 max-w-sm mx-auto">
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
+                    loadingStep >= 1 ? 'text-rose-600 font-medium' : 'text-gray-400'
+                  }`}>
+                    <div className={`w-3 h-3 rounded-full ${
+                      loadingStep >= 1 ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'
+                    }`}></div>
                     <span>Analyzing your preferences...</span>
+                    {loadingStep >= 1 && <Check className="w-4 h-4 text-rose-500" />}
                   </div>
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
+                    loadingStep >= 2 ? 'text-amber-600 font-medium' : 'text-gray-400'
+                  }`}>
+                    <div className={`w-3 h-3 rounded-full ${
+                      loadingStep >= 2 ? 'bg-amber-500 animate-pulse' : 'bg-gray-300'
+                    }`}></div>
                     <span>Matching with verified vendors...</span>
+                    {loadingStep >= 2 && <Check className="w-4 h-4 text-amber-500" />}
                   </div>
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  <div className={`flex items-center space-x-3 transition-all duration-500 ${
+                    loadingStep >= 3 ? 'text-emerald-600 font-medium' : 'text-gray-400'
+                  }`}>
+                    <div className={`w-3 h-3 rounded-full ${
+                      loadingStep >= 3 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'
+                    }`}></div>
                     <span>Calculating best value...</span>
+                    {loadingStep >= 3 && <Check className="w-4 h-4 text-emerald-500" />}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Step 7: Perfect Match Result */}
-            {currentStep === 7 && (
-              <div className="text-center py-12">
-                <div className="w-24 h-24 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
-                  <Sparkles className="w-12 h-12 text-white" />
-                </div>
-                <h4 className="text-3xl font-bold text-gray-900 mb-4">
-                  Finding Your Perfect Match...
-                </h4>
-                <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
-                  We're analyzing hundreds of {localSelectedServices[0]?.toLowerCase()} packages to find your ideal match
-                </p>
-                
-                <div className="space-y-4 max-w-sm mx-auto">
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
-                    <span>Analyzing your preferences...</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    <span>Matching with verified vendors...</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-gray-600">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                    <span>Calculating best value...</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Step 8: Perfect Match Result */}
             {currentStep === 8 && (
               <div className="space-y-6">
-                {console.log('Rendering step 8, recommendedPackage:', recommendedPackage)}
+                {console.log('=== RENDERING STEP 8 ===')}
+                {console.log('recommendedPackage state:', recommendedPackage)}
+                {console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage)}
+                {console.log('matchedPackages from hook:', matchedPackages)}
+                {console.log('packagesLoading:', packagesLoading)}
                 {recommendedPackage ? (
                   <>
                     {/* Success Header */}
