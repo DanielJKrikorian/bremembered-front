@@ -275,10 +275,10 @@ export const PackageQuestionnaire: React.FC = () => {
                 <Clock className="w-8 h-8 text-amber-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                How would you like to choose your {currentService} package?
+                Would you like to be matched based on the number of hours on site or coverage of events on the day?
               </h2>
               <p className="text-gray-600">
-                Choose the method that works best for you to find the perfect package
+                Choose how you'd like to find your perfect {currentService} package
                 {isMultipleServices && (
                   <span className="block mt-2 text-sm">
                     Step {currentServiceIndex + 1} of {selectedServices.length}: {currentService}
@@ -295,10 +295,10 @@ export const PackageQuestionnaire: React.FC = () => {
                 <div className="w-16 h-16 bg-amber-100 group-hover:bg-amber-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
                   <Clock className="w-8 h-8 text-amber-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">I Know How Many Hours I Need</h3>
-                <p className="text-gray-600 mb-4">Perfect if you have a specific timeline in mind</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Hours</h3>
+                <p className="text-gray-600 mb-4">I know how many hours of coverage I need</p>
                 <div className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
-                  <strong>Best for:</strong> Couples who know their event schedule and want precise coverage duration
+                  <strong>Best for:</strong> Couples who have a specific timeline in mind
                 </div>
               </div>
               
@@ -307,12 +307,12 @@ export const PackageQuestionnaire: React.FC = () => {
                 className="p-8 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition-all text-center group"
               >
                 <div className="w-16 h-16 bg-purple-100 group-hover:bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
-                  <List className="w-8 h-8 text-amber-600" />
+                  <List className="w-8 h-8 text-purple-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">I Want to Choose by Moments</h3>
-                <p className="text-gray-600 mb-4">Select the specific moments you want covered</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">Coverage</h3>
+                <p className="text-gray-600 mb-4">I want to choose by specific moments/events</p>
                 <div className="text-sm text-purple-700 bg-purple-50 rounded-lg p-3">
-                  <strong>Best for:</strong> Couples who want to focus on specific moments and events
+                  <strong>Best for:</strong> Couples who want to focus on specific events during the day
                 </div>
               </div>
             </div>
