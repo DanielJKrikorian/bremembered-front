@@ -10,9 +10,9 @@ const isSupabaseAvailable = () => {
 const transformToLookupKey = (serviceName: string): string => {
   // Transform service names to simple lowercase lookup keys
   const lookupMap: Record<string, string> = {
-    'DJ Services': 'dj',
     'Photography': 'photography',
-    'Videography': 'videography',
+    'Videography': 'videography', 
+    'DJ Services': 'dj',
     'Coordination': 'coordination',
     'Planning': 'planning'
   };
@@ -49,11 +49,16 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
           if (filters.exactMatch) {
-            // Try both service_type and lookup_key for exact matching
-            const serviceConditions = filters.selectedServices.flatMap(service => [
-              `service_type.eq.${service}`,
-              `lookup_key.eq.${service.toLowerCase().replace(/\s+/g, '_')}`
-            ]).join(',');
+            // Create OR conditions for each service using both service_type and lookup_key
+            const serviceConditions = filters.selectedServices.flatMap(service => {
+              const lookupKey = transformToLookupKey(service);
+              console.log(`Service: ${service} -> lookup_key: ${lookupKey}`);
+              return [
+                `service_type.eq.${service}`,
+                `lookup_key.eq.${lookupKey}`
+              ];
+            }).join(',');
+            console.log('Service conditions:', serviceConditions);
             query = query.or(serviceConditions);
           } else {
             // Use partial matching (original behavior)
@@ -64,8 +69,10 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           }
         } else if (serviceType) {
           if (filters?.exactMatch) {
-            // Try both service_type and lookup_key
-            query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${serviceType.toLowerCase().replace(/\s+/g, '_')}`);
+            // Try both service_type and lookup_key with proper transformation
+            const lookupKey = transformToLookupKey(serviceType);
+            console.log(`Single service: ${serviceType} -> lookup_key: ${lookupKey}`);
+            query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
           } else {
             query = query.ilike('service_type', `%${serviceType}%`);
           }
