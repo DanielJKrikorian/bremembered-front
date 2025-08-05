@@ -75,6 +75,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Get service packages based on answers
   const shouldMatch = currentStep >= 5 && localSelectedServices.length > 0 && selectedBudget;
+  
+  // Debug: Log what we're searching for
+  useEffect(() => {
+    if (shouldMatch) {
+      console.log('Searching for packages with:', {
+        serviceType: localSelectedServices[0],
+        eventType: selectedEventType,
+        preferenceType,
+        preferenceValue: preferenceType === 'hours' ? selectedHours : selectedCoverage,
+        budgetRange: selectedBudget
+      });
+    }
+  }, [shouldMatch, localSelectedServices, selectedEventType, preferenceType, selectedHours, selectedCoverage, selectedBudget]);
+  
   const { matchedPackages, recommendedPackage: matchedRecommendedPackage, loading: packagesLoading } = usePackageMatching({
     serviceType: shouldMatch ? localSelectedServices[0] : '',
     eventType: shouldMatch ? selectedEventType : undefined,

@@ -2,17 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ServicePackage } from '../types/booking';
 
-interface PackageMatchResult {
-  package_id: string;
-  package_name: string;
-  package_description: string;
-  package_price: number;
-  package_features: string[];
-  package_coverage: Record<string, any>;
-  package_hour_amount: number;
-  match_score: number;
-}
-
 interface UsePackageMatchingProps {
   serviceType: string;
   eventType?: string;
@@ -41,40 +30,81 @@ export const usePackageMatching = ({
       setError(null);
 
       try {
-        // Use the new matching function
-        const { data: matches, error: matchError } = await supabase
-          .rpc('find_matching_packages', {
-            p_service_type: serviceType,
-            p_event_type: eventType || null,
-            p_preference_type: preferenceType || null,
-            p_preference_value: preferenceValue || null,
-            p_budget_range: budgetRange || null
-          });
-
-        if (matchError) throw matchError;
-
-        // Convert the results to ServicePackage format
-        const packages: ServicePackage[] = (matches || []).map((match: PackageMatchResult) => ({
-          id: match.package_id,
-          service_type: serviceType,
-          name: match.package_name,
-          description: match.package_description,
-          price: match.package_price,
-          features: match.package_features || [],
-          coverage: match.package_coverage || {},
-          hour_amount: match.package_hour_amount,
-          status: 'approved' as const,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-
-        setMatchedPackages(packages);
+        console.log('Starting package search for:', serviceType);
         
-        // Set the top match as recommended
-        if (packages.length > 0) {
-          setRecommendedPackage(packages[0]);
+        // First, let's try a simple direct query to see what packages exist
+        let query = supabase
+          .from('service_packages')
+          .select('*')
+          .eq('status', 'approved');
+
+        // Try both exact match and lookup key
+        const lookupKey = serviceType.toLowerCase().replace(/\s+/g, '');
+        query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
+
+        console.log('Query conditions:', { serviceType, lookupKey });
+
+        const { data: allPackages, error: queryError } = await query;
+
+        if (queryError) {
+          console.error('Query error:', queryError);
+          throw queryError;
+        }
+
+        console.log('Found packages:', allPackages?.length || 0);
+        console.log('Package details:', allPackages?.map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          service_type: p.service_type, 
+          lookup_key: p.lookup_key,
+          price: p.price,
+          hour_amount: p.hour_amount
+        })));
+
+        let filteredPackages = allPackages || [];
+
+        // Filter by event type if specified
+        if (eventType && filteredPackages.length > 0) {
+          filteredPackages = filteredPackages.filter(pkg => 
+            !pkg.event_type || pkg.event_type === eventType
+          );
+          console.log('After event type filter:', filteredPackages.length);
+        }
+
+        // Filter by hours if specified
+        if (preferenceType === 'hours' && preferenceValue && filteredPackages.length > 0) {
+          const targetHours = parseInt(preferenceValue);
+          filteredPackages = filteredPackages.filter(pkg => {
+            if (!pkg.hour_amount) return false;
+            // Allow packages within 1 hour of target
+            return Math.abs(pkg.hour_amount - targetHours) <= 1;
+          });
+          console.log('After hours filter:', filteredPackages.length, 'target hours:', targetHours);
+        }
+
+        // Filter by budget if specified
+        if (budgetRange && filteredPackages.length > 0) {
+          const [minPrice, maxPrice] = budgetRange.split('-').map(p => parseInt(p));
+          filteredPackages = filteredPackages.filter(pkg => 
+            pkg.price >= minPrice && pkg.price <= maxPrice
+          );
+          console.log('After budget filter:', filteredPackages.length, 'budget range:', budgetRange);
+        }
+
+        // Sort by price (lowest first)
+        filteredPackages.sort((a, b) => a.price - b.price);
+
+        console.log('Final filtered packages:', filteredPackages.length);
+
+        setMatchedPackages(filteredPackages);
+        
+        // Set the first (cheapest) match as recommended
+        if (filteredPackages.length > 0) {
+          setRecommendedPackage(filteredPackages[0]);
+          console.log('Recommended package:', filteredPackages[0].name, formatPrice(filteredPackages[0].price));
         } else {
           setRecommendedPackage(null);
+          console.log('No packages found matching criteria');
         }
 
       } catch (err) {
@@ -85,8 +115,19 @@ export const usePackageMatching = ({
       }
     };
 
-    findMatches();
+    if (serviceType) {
+      findMatches();
+    }
   }, [serviceType, eventType, preferenceType, preferenceValue, budgetRange]);
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
 
   return {
     matchedPackages,
@@ -98,14 +139,15 @@ export const usePackageMatching = ({
 
 // Helper function to convert budget range to database format
 export const convertBudgetRange = (budgetString: string): string => {
+  // Convert budget strings to price ranges in cents
   const budgetMap: Record<string, string> = {
-    '0-150000': 'under_1500',
-    '150000-300000': '1500_3000',
-    '300000-500000': '3000_5000',
-    '500000-1000000': '5000_plus'
+    '0-150000': '0-150000',
+    '150000-300000': '150000-300000', 
+    '300000-500000': '300000-500000',
+    '500000-1000000': '500000-1000000'
   };
   
-  return budgetMap[budgetString] || 'under_1500';
+  return budgetMap[budgetString] || '0-150000';
 };
 
 // Helper function to convert coverage array to string
