@@ -7,6 +7,19 @@ const isSupabaseAvailable = () => {
   return supabase !== null;
 };
 
+const transformToLookupKey = (serviceName: string): string => {
+  // Transform service names to simple lowercase lookup keys
+  const lookupMap: Record<string, string> = {
+    'DJ Services': 'dj',
+    'Photography': 'photography',
+    'Videography': 'videography',
+    'Coordination': 'coordination',
+    'Planning': 'planning'
+  };
+  
+  return lookupMap[serviceName] || serviceName.toLowerCase().replace(/\s+/g, '');
+};
+
 export const useServicePackages = (serviceType?: string, eventType?: string, filters?: {
   minHours?: number;
   maxHours?: number;
