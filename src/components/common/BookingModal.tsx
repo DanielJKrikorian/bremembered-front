@@ -268,29 +268,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       animateLoading();
     }
   };
-          console.log('matchedRecommendedPackage from hook:', matchedRecommendedPackage);
-          
-          // Force set the recommended package if we have one
-          if (matchedRecommendedPackage) {
-            setRecommendedPackage(matchedRecommendedPackage);
-          } else if (matchedPackages && matchedPackages.length > 0) {
-            setRecommendedPackage(matchedPackages[0]);
-          }
-          
-        setCurrentStep(8);
-        console.log('Moving to step 8, packages available:', matchedPackages?.length || 0);
-        
-        // Update lead with completion
-        updateLead({
-          current_step: 8,
-          completed_at: new Date().toISOString()
-        });
-        }, 3500);
-      };
-      
-      animateLoading();
-    }
-  };
 
   const handlePrevQuestion = () => {
     if (currentStep > 1 && currentStep <= 6) {
