@@ -215,10 +215,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       const nextStep = currentStep + 1;
       console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
-    } else if (currentStep === 5) {
-      console.log('Going directly to results from step 5');
-      setCurrentStep(8);
     }
+                  </h2>
+                  <p className="text-gray-600 text-lg mb-8">
+                    We're analyzing hundreds of {localSelectedServices[0]} packages to find the one that's perfect for your {selectedEventType.toLowerCase()}
+                  </p>
+                  
+                  {/* Animated progress indicators */}
+                  <div className="space-y-4 mb-8">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Matching your preferences with available packages...
+                    </p>
+                  </div>
+
+                  {/* Manual reveal button */}
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => setCurrentStep(8)}
+                    icon={Heart}
+                    className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                  >
+                    Click here to reveal your perfect match! ✨
+                  </Button>
+                </div>
+              </div>
+            )}
+
   };
 
   const handlePrevQuestion = () => {
