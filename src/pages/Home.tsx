@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Star, Heart, Calendar, Camera, Video, Music, Users, Package, Check, Search } from 'lucide-react';
+import { ArrowRight, Star, Heart, Calendar, Camera, Video, Music, Users, Package, Check, Search, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -7,9 +7,10 @@ import { SearchBar } from '../components/common/SearchBar';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-amber-50">
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-amber-500/10"></div>
