@@ -15,7 +15,6 @@ import { Profile } from './pages/Profile';
 import { ServiceSelection } from './pages/booking/ServiceSelection';
 import { PackageSelection } from './pages/booking/PackageSelection';
 import { EventDetails } from './pages/booking/EventDetails';
-import { PackageQuestionnaire } from './pages/booking/PackageQuestionnaire';
 import { PackageCongratulations } from './pages/booking/PackageCongratulations';
 import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 
@@ -43,7 +42,6 @@ function App() {
               
               {/* New Booking Flow Routes */}
               <Route path="/booking/services" element={<ServiceSelection />} />
-              <Route path="/booking/questionnaire" element={<PackageQuestionnaire />} />
               <Route path="/booking/packages" element={<PackageSelection />} />
               <Route path="/booking/event-details" element={<EventDetails />} />
               <Route path="/booking/congratulations" element={<PackageCongratulations />} />
