@@ -74,7 +74,7 @@ export const Home: React.FC = () => {
   // Get service packages based on answers
   const shouldFetchPackages = currentStep === 6 && localSelectedServices.length > 0;
   const { packages, loading: packagesLoading } = useServicePackages(
-    shouldFetchPackages ? localSelectedServices[0] : undefined,
+    undefined, // Don't use single service type
     shouldFetchPackages ? selectedEventType : undefined,
     shouldFetchPackages ? {
       coverage: selectedCoverage,

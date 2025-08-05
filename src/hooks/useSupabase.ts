@@ -13,6 +13,7 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
   coverage?: string[];
   minPrice?: number;
   maxPrice?: number;
+  selectedServices?: string[];
 }) => {
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,8 +33,15 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status')
           .eq('status', 'approved');
 
-        if (serviceType) {
-          query = query.eq('service_type', serviceType);
+        // Handle multiple selected services
+        if (filters?.selectedServices && filters.selectedServices.length > 0) {
+          // Create OR conditions for each selected service
+          const serviceConditions = filters.selectedServices
+            .map(service => `service_type.ilike.%${service}%`)
+            .join(',');
+          query = query.or(serviceConditions);
+        } else if (serviceType) {
+          query = query.ilike('service_type', `%${serviceType}%`);
         }
 
         if (eventType) {
