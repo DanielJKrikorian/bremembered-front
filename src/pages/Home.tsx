@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ServiceCard } from '../components/booking/ServiceCard';
+import { EmailCaptureModal } from '../components/common/EmailCaptureModal';
 import { mockBundles } from '../lib/mockData';
 import { useBooking } from '../context/BookingContext';
+import { useAnonymousLead } from '../hooks/useAnonymousLead';
 import { useServicePackages } from '../hooks/useSupabase';
 import { ServicePackage } from '../types/booking';
 
@@ -21,7 +23,11 @@ export const Home: React.FC = () => {
   const [selectedBudget, setSelectedBudget] = useState('');
   const [isMatching, setIsMatching] = useState(false);
   const [matchedPackage, setMatchedPackage] = useState<any>(null);
+  const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
+
+  // Anonymous lead tracking
+  const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
 
   const eventTypes = [
     { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
@@ -86,6 +92,45 @@ export const Home: React.FC = () => {
     }
   }, [packages, recommendedPackage]);
 
+  // Update lead data when answers change
+  useEffect(() => {
+    if (lead && currentStep > 1) {
+      updateLead({
+        event_type: selectedEventType,
+        selected_services: localSelectedServices,
+        coverage_preferences: selectedCoverage,
+        hour_preferences: selectedHours,
+        budget_range: selectedBudget,
+        current_step: currentStep
+      });
+    }
+  }, [lead, selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, updateLead]);
+
+  // Handle page/modal exit
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (showModal && currentStep > 1 && !lead?.email) {
+        e.preventDefault();
+        setShowEmailCapture(true);
+        return '';
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && showModal && currentStep > 1 && !lead?.email) {
+        setShowEmailCapture(true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [showModal, currentStep, lead?.email]);
+
   const handleStartBooking = () => {
     setShowModal(true);
     setCurrentStep(1);
@@ -127,6 +172,11 @@ export const Home: React.FC = () => {
       setIsMatching(true);
       setCurrentStep(6);
       
+      // Update lead as starting matching process
+      updateLead({
+        current_step: 6
+      });
+      
       // Simulate matching delay
       setTimeout(() => {
         // Mock package matching logic
@@ -165,9 +215,17 @@ export const Home: React.FC = () => {
           }
         };
         
+        const topPackage = packages?.[0];
+        setRecommendedPackage(topPackage);
         setMatchedPackage(mockPackage);
         setIsMatching(false);
         setCurrentStep(7);
+        
+        // Update lead with completion
+        updateLead({
+          current_step: 7,
+          completed_at: new Date().toISOString()
+        });
       }, 2000);
     }
   };
@@ -183,22 +241,25 @@ export const Home: React.FC = () => {
   };
 
   const handleBookPackage = () => {
-    // Book the matched package
-    setSelectedServices(localSelectedServices);
-    setEventType(selectedEventType);
-    setShowModal(false);
-    navigate('/booking/event-details', {
-      state: {
-        selectedPackage: matchedPackage,
-        selectedServices: localSelectedServices,
-        eventType: selectedEventType,
-        preferences: {
-          coverage: selectedCoverage,
-          hours: selectedHours,
-          budget: selectedBudget
+    if (recommendedPackage) {
+      // Navigate to booking with the recommended package
+      setSelectedServices(localSelectedServices);
+      setEventType(selectedEventType);
+      setShowModal(false);
+      navigate('/booking/congratulations', {
+        state: {
+          selectedPackage: recommendedPackage,
+          selectedServices: localSelectedServices,
+          currentServiceIndex: 0,
+          eventType: selectedEventType,
+          preferences: {
+            coverage: selectedCoverage,
+            hours: selectedHours,
+            budget: selectedBudget
+          }
         }
-      }
-    });
+      });
+    }
   };
 
   const handleViewAllPackages = () => {
@@ -234,14 +295,42 @@ export const Home: React.FC = () => {
     }
   };
 
+  // Handle modal close
   const handleCloseModal = () => {
+    if (currentStep > 1 && !lead?.email) {
+      setShowEmailCapture(true);
+    } else {
+      setShowModal(false);
+      resetModal();
+    }
+  };
+
+  // Handle email save
+  const handleEmailSave = async (email: string) => {
+    await saveEmail(email);
+    setShowEmailCapture(false);
     setShowModal(false);
+    resetModal();
+  };
+
+  // Handle email skip
+  const handleEmailSkip = async () => {
+    await abandonLead();
+    setShowEmailCapture(false);
+    setShowModal(false);
+    resetModal();
+  };
+
+  const resetModal = () => {
     setCurrentStep(1);
     setSelectedEventType('');
     setLocalSelectedServices([]);
     setSelectedCoverage([]);
     setSelectedHours('');
     setSelectedBudget('');
+    setIsMatching(false);
+    setMatchedPackage(null);
+    setRecommendedPackage(null);
   };
 
   const canProceedQuestion = () => {
@@ -1112,16 +1201,7 @@ export const Home: React.FC = () => {
                                     variant="secondary"
                                     size="lg"
                                     className="w-full bg-white text-rose-600 hover:bg-gray-50"
-                                    onClick={() => {
-                                      setShowModal(false);
-                                      navigate('/booking/congratulations', {
-                                        state: {
-                                          selectedPackage: recommendedPackage,
-                                          selectedServices: localSelectedServices,
-                                          currentServiceIndex: 0
-                                        }
-                                      });
-                                    }}
+                                    onClick={handleBookPackage}
                                   >
                                     Book This Package
                                   </Button>
@@ -1130,20 +1210,7 @@ export const Home: React.FC = () => {
                                     size="lg"
                                     className="w-full border-white text-white hover:bg-white hover:text-rose-600"
                                     icon={Eye}
-                                    onClick={() => {
-                                      setShowModal(false);
-                                      navigate('/booking/packages', {
-                                        state: {
-                                          selectedServices: localSelectedServices,
-                                          eventType: selectedEventType,
-                                          filters: {
-                                            coverage: selectedCoverage,
-                                            hours: selectedHours,
-                                            budget: selectedBudget
-                                          }
-                                        }
-                                      });
-                                    }}
+                                    onClick={handleViewAllPackages}
                                   >
                                     View Other Options
                                   </Button>
@@ -1213,15 +1280,7 @@ export const Home: React.FC = () => {
                         </Button>
                         <Button
                           variant="primary"
-                          onClick={() => {
-                            setShowModal(false);
-                            navigate('/booking/packages', {
-                              state: {
-                                selectedServices: localSelectedServices,
-                                eventType: selectedEventType
-                              }
-                            });
-                          }}
+                          onClick={handleViewAllPackages}
                         >
                           View All Packages
                         </Button>
@@ -1234,6 +1293,14 @@ export const Home: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Email Capture Modal */}
+      <EmailCaptureModal
+        isOpen={showEmailCapture}
+        onClose={() => setShowEmailCapture(false)}
+        onSave={handleEmailSave}
+        onSkip={handleEmailSkip}
+      />
     </div>
   );
 };
