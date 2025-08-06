@@ -1019,6 +1019,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     </div>
                   </div>
                 )}
+                
+                <div className="mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={handleCloseModal}
+                  >
+                    Continue Without Saving
+                  </Button>
+                </div>
               </div>
             )}
           </div>
