@@ -215,9 +215,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       const nextStep = currentStep + 1;
       console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
-    } else if (currentStep === 5) {
-      // After budget question, go to matching step
-      setCurrentStep(6);
       
       // Simulate matching process
       setTimeout(() => {
@@ -1022,15 +1019,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     </div>
                   </div>
                 )}
-                
-                <div className="mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={handleCloseModal}
-                  >
-                    Continue Without Saving
-                  </Button>
-                </div>
               </div>
             )}
           </div>
