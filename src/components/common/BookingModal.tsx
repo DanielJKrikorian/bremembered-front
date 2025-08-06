@@ -214,9 +214,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     if (currentStep < 5) {
       const nextStep = currentStep + 1;
       console.log('Moving to next step:', nextStep);
-      setCurrentStep(nextStep);
-      
-    }
+    }, 2000);
   };
 
   const handlePrevQuestion = () => {
