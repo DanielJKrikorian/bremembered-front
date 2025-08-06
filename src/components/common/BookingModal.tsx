@@ -216,10 +216,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
       
-      // Simulate matching process
-      setTimeout(() => {
-        setCurrentStep(8); // Go directly to results
-      }, 2000);
     }
   };
 
