@@ -216,7 +216,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
     } else if (currentStep === 5) {
+      // Start matching process
       setCurrentStep(6);
+      
+      // Auto-advance to results after 3 seconds
       setTimeout(() => {
         setCurrentStep(8);
       }, 2000);
