@@ -950,6 +950,59 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                       </div>
                     </div>
 
+                    {/* Why This Package is Perfect */}
+                    <div className="mb-8">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                        Why this package is perfect for you
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3 h-3 text-green-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-gray-900 mb-1">Perfect Duration</h5>
+                            <p className="text-sm text-gray-600">
+                              {recommendedPackage.hour_amount} hours matches your {preferences.hours} hour preference
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3 h-3 text-green-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-gray-900 mb-1">Great Value</h5>
+                            <p className="text-sm text-gray-600">
+                              Fits perfectly within your {preferences.budget} budget range
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3 h-3 text-green-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-gray-900 mb-1">Top Rated</h5>
+                            <p className="text-sm text-gray-600">
+                              Highly rated by couples with similar preferences
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Check className="w-3 h-3 text-green-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-gray-900 mb-1">Complete Coverage</h5>
+                            <p className="text-sm text-gray-600">
+                              Includes all the events you selected for coverage
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Alternative Packages */}
                     {matchedPackages.length > 1 && (
                       <div className="space-y-4">
@@ -968,59 +1021,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                     {formatPrice(pkg.price)}
                                   </div>
                                 </div>
-                                
-                                <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-                                  <div>
-                                    <div className="font-medium text-gray-700 mb-1">Features</div>
-                                    <div className="space-y-1">
-                                      {pkg.features?.slice(0, 2).map((feature, idx) => (
-                                        <div key={idx} className="flex items-center space-x-1">
-                                          <Check className="w-2 h-2 text-green-600 flex-shrink-0" />
-                                          <span className="text-gray-600 truncate">{feature}</span>
-                                        </div>
-                                      ))}
-                                      {(pkg.features?.length || 0) > 2 && (
-                                        <div className="text-gray-500">+{(pkg.features?.length || 0) - 2} more</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="font-medium text-gray-700 mb-1">Coverage</div>
-                                    <div className="space-y-1">
-                                      {getPackageCoverage(pkg.coverage || {}).slice(0, 2).map((event, idx) => (
-                                        <div key={idx} className="flex items-center space-x-1">
-                                          <Check className="w-2 h-2 text-green-600 flex-shrink-0" />
-                                          <span className="text-gray-600 truncate">{event}</span>
-                                        </div>
-                                      ))}
-                                      {getPackageCoverage(pkg.coverage || {}).length > 2 && (
-                                        <div className="text-gray-500">+{getPackageCoverage(pkg.coverage || {}).length - 2} more</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full text-xs"
-                                  onClick={() => {
-                                    setRecommendedPackage(pkg);
-                                    // Scroll to top to show the new selection
-                                    const modalContent = document.querySelector('.fixed.inset-0 .bg-white');
-                                    if (modalContent) {
-                                      modalContent.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }
-                                  }}
-                                >
-                                  Select This Package
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Browse All Packages Button */}
                     <div className="text-center">
                       <Button
