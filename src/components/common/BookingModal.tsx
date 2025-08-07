@@ -571,40 +571,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   </div>
                 ) : recommendedPackage ? (
                   <>
-                    {/* Why this is perfect for you */}
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
-                      <h4 className="text-lg font-semibold text-purple-900 mb-4">Why this is perfect for you:</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900">Perfect Coverage</div>
-                            <div className="text-sm text-gray-600">Matches your selected events</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900">Right Duration</div>
-                            <div className="text-sm text-gray-600">{recommendedPackage.hour_amount || selectedHours} hours</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                            <DollarSign className="w-4 h-4 text-emerald-600" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900">Within Budget</div>
-                            <div className="text-sm text-gray-600">Matches your price range</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Recommended Package */}
                     <Card className="p-6 border-2 border-rose-500 bg-gradient-to-br from-rose-50 to-amber-50">
                       <div className="flex items-start justify-between mb-4">
