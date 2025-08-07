@@ -382,6 +382,11 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
+      // Check if servicePackageId is empty or invalid
+      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
+        setLoading(false);
+        return;
+      }
 
       try {
         // Get vendors who offer the selected service package
