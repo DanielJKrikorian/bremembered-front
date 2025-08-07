@@ -933,12 +933,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                               
                               <div className="space-y-3">
                                 <Button
-                                  variant="secondary"
+                                  variant="outline"
                                   size="lg"
-                                  className="w-full border-white text-white hover:bg-white hover:text-rose-600"
+                                  className="w-full border-white text-white hover:bg-white/10 text-sm leading-tight py-3"
                                   onClick={handleBookPackage}
                                 >
-                                  Select This Package
+                                  Select This<br />Package
                                 </Button>
                               </div>
                             </div>
