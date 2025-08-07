@@ -60,6 +60,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   const hourOptions = [
+    { value: '2', label: '2 hours', description: 'Perfect for elopements' },
     { value: '4', label: '4 hours', description: 'Perfect for intimate ceremonies' },
     { value: '6', label: '6 hours', description: 'Ceremony + reception coverage' },
     { value: '8', label: '8 hours', description: 'Full day coverage' },
