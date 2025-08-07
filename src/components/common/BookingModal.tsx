@@ -984,44 +984,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                           </div>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Why this package is perfect for you */}
-                    <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200">
-                      <h4 className="text-lg font-semibold text-purple-900 mb-4">
-                        Why this is perfect for you:
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Check className="w-4 h-4 text-purple-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-purple-900">Perfect Coverage</h5>
-                            <p className="text-sm text-purple-700">Matches your selected events</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-blue-900">Right Duration</h5>
-                            <p className="text-sm text-blue-700">{recommendedPackage.hour_amount || 6} hours</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <DollarSign className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-green-900">Within Budget</h5>
-                            <p className="text-sm text-green-700">Matches your price range</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Alternative Packages */}
                     {/* Why this is perfect for you */}
                     <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
@@ -1134,43 +1096,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                       >
                         Browse All {localSelectedServices[0]} Packages
                       </Button>
-                    </div>
-                    {/* Why Perfect Match */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                        Why this is perfect for you:
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-blue-900">Perfect Coverage</div>
-                            <div className="text-sm text-blue-700">Matches your selected events</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-blue-900">Right Duration</div>
-                            <div className="text-sm text-blue-700">
-                              {recommendedPackage.hour_amount ? `${recommendedPackage.hour_amount} hours` : 'Perfect timing'}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <DollarSign className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-blue-900">Within Budget</div>
-                            <div className="text-sm text-blue-700">Matches your price range</div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </>
                 ) : (
