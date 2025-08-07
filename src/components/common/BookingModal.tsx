@@ -984,6 +984,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                           </div>
                         </div>
                       </div>
+                    </div>
                     {/* Alternative Packages */}
                     {/* Why this is perfect for you */}
                     <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
