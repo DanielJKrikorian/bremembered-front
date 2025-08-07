@@ -950,6 +950,88 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                       </div>
                     </div>
 
+                    {/* Alternative Packages */}
+                    {matchedPackages.length > 1 && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 text-center">
+                          Other Great Options
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {matchedPackages
+                            .filter(pkg => pkg.id !== recommendedPackage.id)
+                            .slice(0, 2)
+                            .map((pkg, index) => (
+                              <div key={pkg.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-semibold text-gray-900 text-sm">{pkg.name}</h4>
+                                  <div className="text-lg font-bold text-gray-900">
+                                    {formatPrice(pkg.price)}
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                                  <div>
+                                    <div className="font-medium text-gray-700 mb-1">Features</div>
+                                    <div className="space-y-1">
+                                      {pkg.features?.slice(0, 2).map((feature, idx) => (
+                                        <div key={idx} className="flex items-center space-x-1">
+                                          <Check className="w-2 h-2 text-green-600 flex-shrink-0" />
+                                          <span className="text-gray-600 truncate">{feature}</span>
+                                        </div>
+                                      ))}
+                                      {(pkg.features?.length || 0) > 2 && (
+                                        <div className="text-gray-500">+{(pkg.features?.length || 0) - 2} more</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-gray-700 mb-1">Coverage</div>
+                                    <div className="space-y-1">
+                                      {getPackageCoverage(pkg.coverage || {}).slice(0, 2).map((event, idx) => (
+                                        <div key={idx} className="flex items-center space-x-1">
+                                          <Check className="w-2 h-2 text-green-600 flex-shrink-0" />
+                                          <span className="text-gray-600 truncate">{event}</span>
+                                        </div>
+                                      ))}
+                                      {getPackageCoverage(pkg.coverage || {}).length > 2 && (
+                                        <div className="text-gray-500">+{getPackageCoverage(pkg.coverage || {}).length - 2} more</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-xs"
+                                  onClick={() => {
+                                    setRecommendedPackage(pkg);
+                                    // Scroll to top to show the new selection
+                                    const modalContent = document.querySelector('.fixed.inset-0 .bg-white');
+                                    if (modalContent) {
+                                      modalContent.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
+                                  }}
+                                >
+                                  Select This Package
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Browse All Packages Button */}
+                    <div className="text-center">
+                      <Button
+                        variant="outline"
+                        onClick={handleViewAllPackages}
+                        icon={Eye}
+                        className="px-6"
+                      >
+                        Browse All {localSelectedServices[0]} Packages
+                      </Button>
+                    </div>
                     {/* Why Perfect Match */}
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-blue-900 mb-4">
