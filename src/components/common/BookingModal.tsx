@@ -152,19 +152,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
         coverage_preferences: selectedCoverage,
         hour_preferences: selectedHours,
         budget_range: selectedBudget,
-        current_step: currentStep,
-        // Add vendor questionnaire data
-        venue_id: selectedVenue?.id,
-        venue_name: selectedVenue?.name,
-        region: selectedVenue?.region || selectedRegion,
-        event_date: eventDate,
-        event_time: eventTime,
-        languages: selectedLanguages,
-        style_preferences: selectedStyles,
-        vibe_preferences: selectedVibes
+        current_step: currentStep
       });
     }
-  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, selectedVenue, selectedRegion, eventDate, eventTime, selectedLanguages, selectedStyles, selectedVibes]);
+  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, lead, updateLead]);
 
   // Handle page/modal exit
   useEffect(() => {
