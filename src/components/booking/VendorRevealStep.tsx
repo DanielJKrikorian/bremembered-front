@@ -304,16 +304,6 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
       )}
 
       {/* Browse All Vendors Button */}
-      <div className="text-center">
-        <Button
-          variant="outline"
-          onClick={onViewAllVendors}
-          icon={Eye}
-          className="px-6"
-        >
-          Browse All {selectedServices[0]} Vendors
-        </Button>
-      </div>
     </div>
   );
 };
