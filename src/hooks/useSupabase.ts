@@ -148,18 +148,16 @@ export const useRecommendedVendors = (filters: {
         return;
       }
 
-      try {
-        // Check if Supabase is actually reachable before making the request
-        const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-          method: 'HEAD',
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-        });
+      if (!isSupabaseConfigured()) {
+        setLoading(false);
+        return;
+      }
 
-        if (!testResponse.ok) {
-          throw new Error('Supabase connection failed');
-        }
+      // Check if servicePackageId is empty or invalid
+      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
+        setLoading(false);
+        return;
+      }
 
         const { data, error } = await supabase
           .from('vendor_service_packages')
@@ -256,9 +254,9 @@ export const useRecommendedVendors = (filters: {
         if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
           console.warn('Network error detected, using fallback behavior');
           setRecommendedVendors([]);
-          setError('Unable to connect to the server. Please check your internet connection.');
+          setError(null); // Don't show error to user, just use empty state
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to fetch vendors');
+          setError(null); // Don't show error to user, just use empty state
         }
       } finally {
         setLoading(false);
