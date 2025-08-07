@@ -41,6 +41,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     { id: 'Photography', name: 'Photography', icon: Camera, emoji: '📸' },
     { id: 'Videography', name: 'Videography', icon: Video, emoji: '🎥' },
     { id: 'DJ Services', name: 'DJ Services', icon: Music, emoji: '🎵' },
+    { id: 'Live Musician', name: 'Live Musician', icon: Music, emoji: '🎼' },
     { id: 'Coordination', name: 'Day-of Coordination', icon: Users, emoji: '👰' },
     { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
   ];
@@ -60,6 +61,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   const hourOptions = [
+    { value: '1', label: '1 hour', description: 'Perfect for ceremony or cocktail hour' },
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
     { value: '4', label: '4 hours', description: 'Perfect for intimate ceremonies' },
     { value: '6', label: '6 hours', description: 'Ceremony + reception coverage' },
@@ -423,7 +425,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     <>
       {/* Modal */}
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleXButtonClick()}>
-        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 ? 'max-w-4xl' : 'max-w-2xl'}`}>
+        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 8 ? 'max-w-4xl' : 'max-w-2xl'}`} data-modal-content>
           {/* Modal Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
@@ -552,73 +554,106 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   <h4 className="text-2xl font-bold text-gray-900 mb-3">
                     How would you like to choose your package?
                   </h4>
-                  <p className="text-gray-600">
-                    Choose how you'd like to find your perfect {localSelectedServices[0]?.toLowerCase()} package
-                  </p>
+                  {localSelectedServices.includes('Live Musician') ? (
+                    <p className="text-gray-600">
+                      For live musicians, we'll help you choose based on the specific moments you want music for
+                    </p>
+                  ) : (
+                    <p className="text-gray-600">
+                      Choose how you'd like to find your perfect {localSelectedServices[0]?.toLowerCase()} package
+                    </p>
+                  )}
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <button
-                    onClick={() => setPreferenceType('hours')}
-                    className={`
-                      relative p-6 rounded-xl border-2 transition-all text-center
-                      ${preferenceType === 'hours'
-                        ? 'border-amber-500 bg-amber-50' 
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    {preferenceType === 'hours' && (
-                      <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <div className="text-4xl mb-4">⏰</div>
-                    <h5 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h5>
-                    <p className="text-sm text-gray-600">
-                      Choose based on how many hours of coverage you need
-                    </p>
-                  </button>
+                {localSelectedServices.includes('Live Musician') ? (
+                  /* Auto-select moments for musicians */
+                  <div className="text-center">
+                    <div className="p-6 rounded-xl border-2 border-rose-500 bg-rose-50">
+                      <div className="text-4xl mb-4">🎼</div>
+                      <h5 className="text-lg font-semibold text-gray-900 mb-2">Choose by Moments</h5>
+                      <p className="text-sm text-gray-600">
+                        We'll help you find the perfect musician based on when you need music during your event
+                      </p>
+                    </div>
+                    <div className="mt-6">
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          setPreferenceType('coverage');
+                          handleNextQuestion();
+                        }}
+                        icon={ArrowRight}
+                      >
+                        Choose Musical Moments
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <button
+                      onClick={() => setPreferenceType('hours')}
+                      className={`
+                        relative p-6 rounded-xl border-2 transition-all text-center
+                        ${preferenceType === 'hours'
+                          ? 'border-amber-500 bg-amber-50' 
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      {preferenceType === 'hours' && (
+                        <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                      <div className="text-4xl mb-4">⏰</div>
+                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h5>
+                      <p className="text-sm text-gray-600">
+                        Choose based on how many hours of coverage you need
+                      </p>
+                    </button>
 
-                  <button
-                    onClick={() => setPreferenceType('coverage')}
-                    className={`
-                      relative p-6 rounded-xl border-2 transition-all text-center
-                      ${preferenceType === 'coverage'
-                        ? 'border-rose-500 bg-rose-50' 
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    {preferenceType === 'coverage' && (
-                      <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <div className="text-4xl mb-4">📸</div>
-                    <h5 className="text-lg font-semibold text-gray-900 mb-2">By Moments</h5>
-                    <p className="text-sm text-gray-600">
-                      Choose based on specific moments you want captured
-                    </p>
-                  </button>
-                </div>
+                    <button
+                      onClick={() => setPreferenceType('coverage')}
+                      className={`
+                        relative p-6 rounded-xl border-2 transition-all text-center
+                        ${preferenceType === 'coverage'
+                          ? 'border-rose-500 bg-rose-50' 
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      {preferenceType === 'coverage' && (
+                        <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                      <div className="text-4xl mb-4">📸</div>
+                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Moments</h5>
+                      <p className="text-sm text-gray-600">
+                        Choose based on specific moments you want captured
+                      </p>
+                    </button>
+                  </div>
+                )}
                 
-                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handlePrevQuestion}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleNextQuestion}
-                    disabled={!canProceedQuestion()}
-                    icon={ArrowRight}
-                  >
-                    Continue
-                  </Button>
-                </div>
+                {!localSelectedServices.includes('Live Musician') && (
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handlePrevQuestion}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleNextQuestion}
+                      disabled={!canProceedQuestion()}
+                      icon={ArrowRight}
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -989,23 +1024,101 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     </div>
 
                     {/* Alternative Packages */}
+                    {/* Why this is perfect for you */}
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
+                      <h4 className="text-lg font-semibold text-purple-900 mb-4">
+                        Why this is perfect for you:
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Check className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-purple-900">Perfect Coverage</h5>
+                            <p className="text-sm text-purple-700">Matches your selected events</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-blue-900">Right Duration</h5>
+                            <p className="text-sm text-blue-700">{recommendedPackage.hour_amount || 6} hours</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <DollarSign className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <h5 className="font-semibold text-green-900">Within Budget</h5>
+                            <p className="text-sm text-green-700">Matches your price range</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Other Great Options */}
                     {matchedPackages.length > 1 && (
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 text-center">
-                          Other Great Options
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="inline-block bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-2 rounded-full">
+                            <h3 className="text-lg font-semibold">Other Great Options</h3>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {matchedPackages
                             .filter(pkg => pkg.id !== recommendedPackage.id)
                             .slice(0, 2)
                             .map((pkg, index) => (
-                              <div key={pkg.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="font-semibold text-gray-900 text-sm">{pkg.name}</h4>
-                                  <div className="text-lg font-bold text-gray-900">
+                              <div key={pkg.id} className="bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 p-6 hover:border-rose-300 hover:shadow-lg transition-all group">
+                                <div className="flex items-center justify-between mb-4">
+                                  <h4 className="font-bold text-gray-900 text-lg">{pkg.name}</h4>
+                                  <div className="text-2xl font-bold text-gray-900">
                                     {formatPrice(pkg.price)}
                                   </div>
                                 </div>
+                                
+                                <div className="grid grid-cols-1 gap-3 mb-4">
+                                  <div>
+                                    <h5 className="font-medium text-gray-700 mb-2 text-sm">Features</h5>
+                                    <div className="flex flex-wrap gap-1">
+                                      {pkg.features?.slice(0, 2).map((feature, idx) => (
+                                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                          {feature}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h5 className="font-medium text-gray-700 mb-2 text-sm">Coverage</h5>
+                                    <div className="flex flex-wrap gap-1">
+                                      {getPackageCoverage(pkg.coverage || {}).slice(0, 2).map((coverage, idx) => (
+                                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
+                                          {coverage}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full bg-gradient-to-r from-rose-500 to-amber-500 text-white border-0 hover:from-rose-600 hover:to-amber-600 group-hover:shadow-md transition-all"
+                                  onClick={() => {
+                                    setRecommendedPackage(pkg);
+                                    // Scroll to top of modal to show the new recommendation
+                                    const modal = document.querySelector('[data-modal-content]');
+                                    if (modal) {
+                                      modal.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
+                                  }}
+                                >
+                                  Select This Package
+                                </Button>
                               </div>
                             ))}
                         </div>
