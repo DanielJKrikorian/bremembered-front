@@ -866,6 +866,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                       <div className="p-6">
                         <div className="flex flex-col lg:flex-row gap-6">
                           <div className="flex-1">
+                            {/* Hours, Rating, and Verification - moved above title */}
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                              {recommendedPackage.hour_amount && (
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  <span className="whitespace-nowrap">{recommendedPackage.hour_amount} hours</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                                <span className="whitespace-nowrap">Top rated package</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Shield className="w-4 h-4 mr-1" />
+                                <span className="whitespace-nowrap">Verified vendors</span>
+                              </div>
+                            </div>
+                            
                             <h3 className="text-2xl font-bold text-gray-900 mb-3">{recommendedPackage.name}</h3>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -901,23 +919,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-4 text-sm text-gray-600">
-                              {recommendedPackage.hour_amount && (
-                                <div className="flex items-center">
-                                  <Clock className="w-4 h-4 mr-1" />
-                                  <span className="whitespace-nowrap">{recommendedPackage.hour_amount} hours</span>
-                                </div>
-                              )}
-                              <div className="flex items-center">
-                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                <span className="whitespace-nowrap">Top rated package</span>
-                              </div>
-                              <div className="flex items-center">
-                                <Shield className="w-4 h-4 mr-1" />
-                                <span className="whitespace-nowrap">Verified vendors</span>
                               </div>
                             </div>
                           </div>
