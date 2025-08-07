@@ -159,6 +159,7 @@ export const useRecommendedVendors = (filters: {
         return;
       }
 
+      try {
         const { data, error } = await supabase
           .from('vendor_service_packages')
           .select(`
