@@ -12,9 +12,12 @@ import { DateTimeStep } from '../booking/DateTimeStep';
 import { LanguageSelectionStep } from '../booking/LanguageSelectionStep';
 import { StyleSelectionStep } from '../booking/StyleSelectionStep';
 import { VibeSelectionStep } from '../booking/VibeSelectionStep';
+import { VendorMatchingStep } from '../booking/VendorMatchingStep';
+import { VendorRevealStep } from '../booking/VendorRevealStep';
 import { useBooking } from '../../context/BookingContext';
 import { useAnonymousLead } from '../../hooks/useAnonymousLead';
 import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
+import { useRecommendedVendors } from '../../hooks/useSupabase';
 import { ServicePackage, Venue } from '../../types/booking';
 
 interface BookingModalProps {
@@ -47,6 +50,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedStyles, setSelectedStyles] = useState<number[]>([]);
   const [selectedVibes, setSelectedVibes] = useState<number[]>([]);
+
+  // Vendor matching state
+  const [isVendorMatching, setIsVendorMatching] = useState(false);
+  const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
 
   // Anonymous lead tracking
   const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
@@ -82,6 +89,25 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     ) : undefined,
     budgetRange: shouldMatch ? convertBudgetRange(selectedBudget) : undefined
   });
+
+  // Get recommended vendors when we have all the data
+  const shouldMatchVendors = currentStep >= 15 && selectedPackages.length > 0 && eventDate && (selectedVenue || selectedRegion);
+  
+  const { vendors: matchedVendors, loading: vendorsLoading } = useRecommendedVendors({
+    servicePackageId: shouldMatchVendors ? selectedPackages[0]?.id || '' : '',
+    eventDate: shouldMatchVendors ? eventDate : '',
+    region: shouldMatchVendors ? (selectedVenue?.region || selectedRegion) : undefined,
+    languages: shouldMatchVendors ? selectedLanguages : undefined,
+    styles: shouldMatchVendors ? selectedStyles : undefined,
+    vibes: shouldMatchVendors ? selectedVibes : undefined
+  });
+
+  // Set recommended vendors when loaded
+  useEffect(() => {
+    if (matchedVendors && matchedVendors.length > 0 && !vendorsLoading) {
+      setRecommendedVendors(matchedVendors);
+    }
+  }, [matchedVendors, vendorsLoading]);
 
   // Set recommended package when packages are loaded
   useEffect(() => {
@@ -239,7 +265,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleContinueToVendors = () => {
-    // Start vendor questionnaire
+    // Start vendor questionnaire  
     setCurrentStep(10); // Venue selection step
   };
 
@@ -273,11 +299,43 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleFinalContinue = () => {
-    // Close modal and navigate to vendor selection with all data
+    // Start vendor matching process
+    setCurrentStep(15); // Vendor matching step
+    
+    // Auto-advance to vendor results after 2 seconds
+    setTimeout(() => {
+      setCurrentStep(16);
+    }, 2000);
+  };
+
+  const handleContinueToBooking = () => {
+    // Close modal and navigate to final booking with all data
     setSelectedServices(localSelectedServices);
     setEventType(selectedEventType);
     onClose();
-    navigate('/booking/vendor-recommendation', {
+    navigate('/booking/final-booking', {
+      state: {
+        selectedPackages,
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType,
+        eventDate,
+        eventTime,
+        venue: selectedVenue,
+        region: selectedVenue?.region || selectedRegion,
+        languages: selectedLanguages,
+        styles: selectedStyles,
+        vibes: selectedVibes,
+        recommendedVendors
+      }
+    });
+  };
+
+  const handleViewAllVendors = () => {
+    // Close modal and navigate to vendor browsing with filters
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    onClose();
+    navigate('/booking/vendors', {
       state: {
         selectedPackages,
         selectedServices: localSelectedServices,
@@ -359,6 +417,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 12: return selectedLanguages.length > 0;
       case 13: return selectedStyles.length > 0;
       case 14: return selectedVibes.length > 0;
+      case 15: return true; // Vendor matching step
+      case 16: return true; // Vendor reveal step
       default: return false;
     }
   };
@@ -378,6 +438,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 12: return 'Language preferences?';
       case 13: return 'What style do you love?';
       case 14: return 'What vibe are you going for?';
+      case 15: return 'Finding your perfect vendors...';
+      case 16: return 'Your perfect vendor matches!';
       default: return '';
     }
   };
@@ -427,6 +489,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     ? `Question ${currentStep} of 6`
                     : `Step ${currentStep - 9} of 5 - Event Details`
                   }
+                </p>
+              )}
+              {currentStep >= 10 && currentStep <= 14 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Step {currentStep - 9} of 5 - Event Details
                 </p>
               )}
             </div>
@@ -986,6 +1053,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 onPrev={handlePrevQuestion}
                 onSkip={handleFinalContinue}
                 canProceed={canProceedQuestion()}
+              />
+            )}
+
+            {/* Step 15: Vendor Matching */}
+            {currentStep === 15 && (
+              <VendorMatchingStep
+                selectedServices={localSelectedServices}
+                selectedEventType={selectedEventType}
+                onRevealVendors={() => setCurrentStep(16)}
+              />
+            )}
+
+            {/* Step 16: Vendor Reveal */}
+            {currentStep === 16 && (
+              <VendorRevealStep
+                selectedPackages={selectedPackages}
+                selectedServices={localSelectedServices}
+                selectedEventType={selectedEventType}
+                vendors={recommendedVendors}
+                onContinueToBooking={handleContinueToBooking}
+                onViewAllVendors={handleViewAllVendors}
+                formatPrice={formatPrice}
               />
             )}
           </div>
