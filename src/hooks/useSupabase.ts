@@ -383,6 +383,11 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
+      if (!isSupabaseConfigured()) {
+        setLoading(false);
+        return;
+      }
+
       // Check if servicePackageId is empty or invalid
       if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
         setLoading(false);
