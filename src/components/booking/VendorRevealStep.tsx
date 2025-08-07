@@ -224,14 +224,6 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                     Book This Vendor
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full border-white/50 text-white/80 hover:bg-white/10"
-                    onClick={onViewAllVendors}
-                  >
-                    View All Vendors
-                  </Button>
-                </div>
               </div>
             </div>
           </div>
