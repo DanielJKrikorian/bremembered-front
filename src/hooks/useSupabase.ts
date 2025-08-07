@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage, LeadInformation } from '../types/booking';
 
 const transformToLookupKey = (serviceName: string): string => {
@@ -544,7 +545,9 @@ export const useVendorReviews = (vendorId: string) => {
         return;
       }
 
-      if (!isSupabaseAvailable()) {
+      if (!isSupabaseConfigured()) {
+        setLoading(false);
+        return;
       }
 
       try {
