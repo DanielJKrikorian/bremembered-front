@@ -7,10 +7,15 @@ import { EventTypeStep } from '../booking/EventTypeStep';
 import { ServiceSelectionStep } from '../booking/ServiceSelectionStep';
 import { PreferenceTypeStep } from '../booking/PreferenceTypeStep';
 import { PackageSummaryStep } from '../booking/PackageSummaryStep';
+import { VenueSelectionStep } from '../booking/VenueSelectionStep';
+import { DateTimeStep } from '../booking/DateTimeStep';
+import { LanguageSelectionStep } from '../booking/LanguageSelectionStep';
+import { StyleSelectionStep } from '../booking/StyleSelectionStep';
+import { VibeSelectionStep } from '../booking/VibeSelectionStep';
 import { useBooking } from '../../context/BookingContext';
 import { useAnonymousLead } from '../../hooks/useAnonymousLead';
 import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
-import { ServicePackage } from '../../types/booking';
+import { ServicePackage, Venue } from '../../types/booking';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -34,36 +39,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const [selectedPackages, setSelectedPackages] = useState<ServicePackage[]>([]);
   const [loadingStep, setLoadingStep] = useState(0);
 
+  // Vendor questionnaire state
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventTime, setEventTime] = useState('');
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedStyles, setSelectedStyles] = useState<number[]>([]);
+  const [selectedVibes, setSelectedVibes] = useState<number[]>([]);
+
   // Anonymous lead tracking
   const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
-
-  const eventTypes = [
-    { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
-    { id: 'Proposal', name: 'Proposal', emoji: '💍' }
-  ];
-
-  const serviceTypes = [
-    { id: 'Photography', name: 'Photography', icon: Camera, emoji: '📸' },
-    { id: 'Videography', name: 'Videography', icon: Video, emoji: '🎥' },
-    { id: 'DJ Services', name: 'DJ Services', icon: Music, emoji: '🎵' },
-    { id: 'Live Musician', name: 'Live Musician', icon: Music, emoji: '🎼' },
-    { id: 'Coordination', name: 'Day-of Coordination', icon: Users, emoji: '👰' },
-    { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
-  ];
-
-  const coverageOptions = [
-    { id: 'Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
-    { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
-    { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
-    { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
-    { id: 'Reception', name: 'Reception', description: 'Dinner, dancing, and festivities' },
-    { id: 'Bridal Party', name: 'Bridal Party', description: 'Group photos with wedding party' },
-    { id: 'Family Photos', name: 'Family Photos', description: 'Formal family portraits' },
-    { id: 'Sunset Photos', name: 'Sunset Photos', description: 'Golden hour couple portraits' },
-    { id: 'Dancing', name: 'Dancing', description: 'Reception dancing and celebration' },
-    { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
-    { id: 'Send Off', name: 'Send Off', description: 'Grand exit celebration' }
-  ];
 
   const hourOptions = [
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
@@ -193,8 +179,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   const handleNextQuestion = () => {
     if (currentStep < 5) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
+      setCurrentStep(currentStep + 1);
     } else if (currentStep === 5) {
       // Start matching process
       setCurrentStep(6);
@@ -203,16 +188,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setTimeout(() => {
         setCurrentStep(8);
       }, 2000);
+    } else if (currentStep >= 9) {
+      // Continue through vendor questionnaire
+      setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrevQuestion = () => {
-    if (currentStep > 1 && currentStep <= 6) {
+    if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-    } else if (currentStep === 8) {
-      setCurrentStep(5);
-    } else if (currentStep === 9) {
-      setCurrentStep(8);
     }
   };
 
@@ -255,22 +239,58 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleContinueToVendors = () => {
-    // Close modal and navigate to vendor selection
-    setSelectedServices(localSelectedServices);
-    setEventType(selectedEventType);
-    onClose();
-    navigate('/booking/event-details', {
-      state: {
-        selectedPackages,
-        selectedServices: localSelectedServices,
-        eventType: selectedEventType
-      }
-    });
+    // Start vendor questionnaire
+    setCurrentStep(10); // Venue selection step
   };
 
   const handleAddMoreServices = () => {
     // Go back to service selection to add more
     setCurrentStep(2);
+  };
+
+  const handleLanguageToggle = (languageId: string) => {
+    setSelectedLanguages(prev => 
+      prev.includes(languageId)
+        ? prev.filter(id => id !== languageId)
+        : [...prev, languageId]
+    );
+  };
+
+  const handleStyleToggle = (styleId: number) => {
+    setSelectedStyles(prev => 
+      prev.includes(styleId)
+        ? prev.filter(id => id !== styleId)
+        : [...prev, styleId]
+    );
+  };
+
+  const handleVibeToggle = (vibeId: number) => {
+    setSelectedVibes(prev => 
+      prev.includes(vibeId)
+        ? prev.filter(id => id !== vibeId)
+        : [...prev, vibeId]
+    );
+  };
+
+  const handleFinalContinue = () => {
+    // Close modal and navigate to vendor selection with all data
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    onClose();
+    navigate('/booking/vendor-recommendation', {
+      state: {
+        selectedPackages,
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType,
+        eventDate,
+        eventTime,
+        venue: selectedVenue,
+        region: selectedVenue?.region || selectedRegion,
+        languages: selectedLanguages,
+        styles: selectedStyles,
+        vibes: selectedVibes
+      }
+    });
   };
 
   const handleXButtonClick = () => {
@@ -317,6 +337,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     setMatchedPackage(null);
     setRecommendedPackage(null);
     setSelectedPackages([]);
+    // Reset vendor questionnaire
+    setSelectedVenue(null);
+    setSelectedRegion('');
+    setEventDate('');
+    setEventTime('');
+    setSelectedLanguages([]);
+    setSelectedStyles([]);
+    setSelectedVibes([]);
   };
 
   const canProceedQuestion = () => {
@@ -326,6 +354,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 3: return preferenceType !== '';
       case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
       case 5: return selectedBudget !== '';
+      case 10: return selectedVenue || selectedRegion;
+      case 11: return eventDate && eventTime;
+      case 12: return selectedLanguages.length > 0;
+      case 13: return selectedStyles.length > 0;
+      case 14: return selectedVibes.length > 0;
       default: return false;
     }
   };
@@ -340,6 +373,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 6: return 'Finding your perfect match...';
       case 8: return 'Your perfect match!';
       case 9: return 'Your selected packages';
+      case 10: return 'Where is your event?';
+      case 11: return 'When is your event?';
+      case 12: return 'Language preferences?';
+      case 13: return 'What style do you love?';
+      case 14: return 'What vibe are you going for?';
       default: return '';
     }
   };
@@ -383,9 +421,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               <h3 className="text-xl font-semibold text-gray-900">
                 {getQuestionTitle()}
               </h3>
-              {currentStep <= 6 && (
+              {(currentStep <= 6 || currentStep >= 10) && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Question {currentStep} of 6
+                  {currentStep <= 6 
+                    ? `Question ${currentStep} of 6`
+                    : `Step ${currentStep - 9} of 5 - Event Details`
+                  }
                 </p>
               )}
             </div>
@@ -401,7 +442,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
           <div className="p-6">
             {currentStep === 1 && (
               <EventTypeStep
-                eventTypes={eventTypes}
+                eventTypes={[
+                  { id: 'Wedding', name: 'Wedding', emoji: '🎉' },
+                  { id: 'Proposal', name: 'Proposal', emoji: '💍' }
+                ]}
                 selectedEventType={selectedEventType}
                 onEventTypeSelect={handleEventTypeSelect}
               />
@@ -409,7 +453,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
             {currentStep === 2 && (
               <ServiceSelectionStep
-                serviceTypes={serviceTypes}
+                serviceTypes={[
+                  { id: 'Photography', name: 'Photography', icon: Camera, emoji: '📸' },
+                  { id: 'Videography', name: 'Videography', icon: Video, emoji: '🎥' },
+                  { id: 'DJ Services', name: 'DJ Services', icon: Music, emoji: '🎵' },
+                  { id: 'Live Musician', name: 'Live Musician', icon: Music, emoji: '🎼' },
+                  { id: 'Coordination', name: 'Day-of Coordination', icon: Users, emoji: '👰' },
+                  { id: 'Planning', name: 'Planning', icon: Calendar, emoji: '📅' }
+                ]}
                 localSelectedServices={localSelectedServices}
                 onServiceToggle={handleServiceToggle}
                 onNext={handleNextQuestion}
@@ -442,7 +493,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto">
-                  {coverageOptions.map((option) => {
+                  {[
+                    { id: 'Getting Ready', name: 'Getting Ready', description: 'Preparation and behind-the-scenes moments' },
+                    { id: 'First Look', name: 'First Look', description: 'Private moment before the ceremony' },
+                    { id: 'Ceremony', name: 'Ceremony', description: 'The main event and vows' },
+                    { id: 'Cocktail Hour', name: 'Cocktail Hour', description: 'Mingling and celebration' },
+                    { id: 'Reception', name: 'Reception', description: 'Dinner, dancing, and festivities' },
+                    { id: 'Bridal Party', name: 'Bridal Party', description: 'Group photos with wedding party' },
+                    { id: 'Family Photos', name: 'Family Photos', description: 'Formal family portraits' },
+                    { id: 'Sunset Photos', name: 'Sunset Photos', description: 'Golden hour couple portraits' },
+                    { id: 'Dancing', name: 'Dancing', description: 'Reception dancing and celebration' },
+                    { id: 'Cake Cutting', name: 'Cake Cutting', description: 'Special cake moment' },
+                    { id: 'Send Off', name: 'Send Off', description: 'Grand exit celebration' }
+                  ].map((option) => {
                     const isSelected = selectedCoverage.includes(option.id);
                     return (
                       <button
@@ -859,6 +922,70 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 onContinueToVendors={handleContinueToVendors}
                 onAddMoreServices={handleAddMoreServices}
                 formatPrice={formatPrice}
+              />
+            )}
+
+            {/* Step 10: Venue Selection */}
+            {currentStep === 10 && (
+              <VenueSelectionStep
+                selectedVenue={selectedVenue}
+                selectedRegion={selectedRegion}
+                onVenueSelect={setSelectedVenue}
+                onRegionSelect={setSelectedRegion}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                canProceed={canProceedQuestion()}
+              />
+            )}
+
+            {/* Step 11: Date & Time */}
+            {currentStep === 11 && (
+              <DateTimeStep
+                eventDate={eventDate}
+                eventTime={eventTime}
+                eventType={selectedEventType}
+                onEventDateChange={setEventDate}
+                onEventTimeChange={setEventTime}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                canProceed={canProceedQuestion()}
+              />
+            )}
+
+            {/* Step 12: Language Selection */}
+            {currentStep === 12 && (
+              <LanguageSelectionStep
+                selectedLanguages={selectedLanguages}
+                onLanguageToggle={handleLanguageToggle}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                onSkip={() => setCurrentStep(13)}
+                canProceed={canProceedQuestion()}
+              />
+            )}
+
+            {/* Step 13: Style Selection */}
+            {currentStep === 13 && (
+              <StyleSelectionStep
+                selectedStyles={selectedStyles}
+                onStyleToggle={handleStyleToggle}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                onSkip={() => setCurrentStep(14)}
+                canProceed={canProceedQuestion()}
+              />
+            )}
+
+            {/* Step 14: Vibe Selection */}
+            {currentStep === 14 && (
+              <VibeSelectionStep
+                selectedVibes={selectedVibes}
+                eventType={selectedEventType}
+                onVibeToggle={handleVibeToggle}
+                onNext={handleFinalContinue}
+                onPrev={handlePrevQuestion}
+                onSkip={handleFinalContinue}
+                canProceed={canProceedQuestion()}
               />
             )}
           </div>
