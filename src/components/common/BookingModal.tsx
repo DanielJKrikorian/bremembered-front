@@ -69,7 +69,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   const budgetOptions = [
-    { value: '0-150000', label: 'Under $1,500', description: 'Budget-friendly options' },
+    { value: '0-100000', label: 'Under $1,000', description: 'Musicians, photo booths, add-ons' },
+    { value: '100000-150000', label: '$1,000 - $1,500', description: 'Budget-friendly packages' },
     { value: '150000-300000', label: '$1,500 - $3,000', description: 'Mid-range packages' },
     { value: '300000-500000', label: '$3,000 - $5,000', description: 'Premium services' },
     { value: '500000-1000000', label: '$5,000+', description: 'Luxury experiences' }
