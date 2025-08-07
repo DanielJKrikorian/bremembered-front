@@ -717,7 +717,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   <Button
                     variant="primary"
                     onClick={handleNextQuestion}
-                    disabled={!canProceedQuestion() || packagesLoading}
+                    disabled={!canProceedQuestion()}
                     icon={ArrowRight}
                     className="px-8"
                   >
