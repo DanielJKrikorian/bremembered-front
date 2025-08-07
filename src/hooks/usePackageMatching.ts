@@ -84,13 +84,15 @@ export const usePackageMatching = ({
           if (packages && packages.length > 0) {
             let bestPackage = packages[0];
             
-            if (preferenceType === 'hours' && typeof preferenceValue === 'string') {
+            if (preferenceType === 'hours' && typeof preferenceValue === 'string' && preferenceValue) {
               const targetHours = parseInt(preferenceValue);
-              bestPackage = packages.reduce((best, current) => {
-                const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
-                const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
-                return currentDiff < bestDiff ? current : best;
-              });
+              if (!isNaN(targetHours)) {
+                bestPackage = packages.reduce((best, current) => {
+                  const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
+                  const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
+                  return currentDiff < bestDiff ? current : best;
+                });
+              }
             } else if (preferenceType === 'coverage' && Array.isArray(preferenceValue)) {
               // Find package that covers the most selected events
               bestPackage = packages.reduce((best, current) => {

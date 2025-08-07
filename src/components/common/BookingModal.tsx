@@ -276,17 +276,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleSkipToPackages = () => {
-    // Skip questionnaire and go directly to packages
+    // Skip questionnaire and go to matching animation, then show 6-hour package
     if (localSelectedServices.length > 0) {
-      setSelectedServices(localSelectedServices);
-      setEventType(selectedEventType);
-      onClose();
-      navigate('/booking/packages', {
-        state: {
-          selectedServices: localSelectedServices,
-          eventType: selectedEventType
-        }
-      });
+      // Set default preferences for skipped questions
+      setSelectedBudget('150000-300000'); // Default mid-range budget
+      setPreferenceType('hours');
+      setSelectedHours('6'); // Default to 6 hours
+      
+      // Go to matching animation
+      setCurrentStep(6);
+      
+      // Auto-advance to results after 2 seconds
+      setTimeout(() => {
+        setCurrentStep(8);
+      }, 2000);
     }
   };
 
@@ -535,7 +538,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     className="text-sm text-gray-500 hover:text-gray-700 underline"
                     disabled={localSelectedServices.length === 0}
                   >
-                    Skip questions and go to packages
+                    Skip questions and find my perfect package
                   </button>
                 </div>
               </div>
