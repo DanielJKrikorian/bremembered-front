@@ -138,15 +138,7 @@ export const useRecommendedVendors = (filters: {
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
       // Check if Supabase is configured first
-      if (!isSupabaseConfigured() || !supabase) {
-        setRecommendedVendors([]);
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      // Check if servicePackageId is empty or invalid
-      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
+      if (!isSupabaseConfigured() || !supabase || !filters.servicePackageId || filters.servicePackageId.trim() === '') {
         setRecommendedVendors([]);
         setLoading(false);
         setError(null);
@@ -177,7 +169,13 @@ export const useRecommendedVendors = (filters: {
           .eq('service_package_id', filters.servicePackageId)
           .eq('status', 'approved');
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Supabase query error:', error);
+          setRecommendedVendors([]);
+          setError(null);
+          setLoading(false);
+          return;
+        }
 
         let vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
 
@@ -192,13 +190,13 @@ export const useRecommendedVendors = (filters: {
 
         // If we have language preferences, filter vendors
         if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
-          const { data: vendorLanguages } = await supabase
+          const { data: vendorLanguages, error: languageError } = await supabase
             .from('vendor_languages')
             .select('vendor_id, language_id')
             .in('vendor_id', vendorData.map(v => v.id))
             .in('language_id', filters.languages);
 
-          if (vendorLanguages && vendorLanguages.length > 0) {
+          if (!languageError && vendorLanguages && vendorLanguages.length > 0) {
             const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
             vendorData = vendorData.filter(vendor => 
               vendorIdsWithLanguages.includes(vendor.id)
@@ -208,13 +206,13 @@ export const useRecommendedVendors = (filters: {
 
         // If we have style preferences, filter vendors
         if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
-          const { data: vendorStyles } = await supabase
+          const { data: vendorStyles, error: styleError } = await supabase
             .from('vendor_style_tags')
             .select('vendor_id, style_id')
             .in('vendor_id', vendorData.map(v => v.id))
             .in('style_id', filters.styles);
 
-          if (vendorStyles && vendorStyles.length > 0) {
+          if (!styleError && vendorStyles && vendorStyles.length > 0) {
             const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
             vendorData = vendorData.filter(vendor => 
               vendorIdsWithStyles.includes(vendor.id)
@@ -224,13 +222,13 @@ export const useRecommendedVendors = (filters: {
 
         // If we have vibe preferences, filter vendors
         if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
-          const { data: vendorVibes } = await supabase
+          const { data: vendorVibes, error: vibeError } = await supabase
             .from('vendor_vibe_tags')
             .select('vendor_id, vibe_id')
             .in('vendor_id', vendorData.map(v => v.id))
             .in('vibe_id', filters.vibes);
 
-          if (vendorVibes && vendorVibes.length > 0) {
+          if (!vibeError && vendorVibes && vendorVibes.length > 0) {
             const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
             vendorData = vendorData.filter(vendor => 
               vendorIdsWithVibes.includes(vendor.id)
@@ -244,7 +242,7 @@ export const useRecommendedVendors = (filters: {
         setRecommendedVendors(vendorData);
         setError(null);
       } catch (err) {
-        // Silently handle all errors and provide empty state
+        console.warn('Error fetching recommended vendors:', err);
         setRecommendedVendors([]);
         setError(null);
       } finally {
