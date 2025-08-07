@@ -487,13 +487,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 <p className="text-sm text-gray-600 mt-1">
                   {currentStep <= 6 
                     ? `Question ${currentStep} of 6`
-                    : `Step ${currentStep - 9} of 5 - Event Details`
+                    : `Step ${currentStep - 9} of 5`
                   }
-                </p>
-              )}
-              {currentStep >= 10 && currentStep <= 14 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Step {currentStep - 9} of 5 - Event Details
                 </p>
               )}
             </div>
