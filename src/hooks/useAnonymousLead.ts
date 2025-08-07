@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AnonymousLead {
   id?: string;
@@ -37,13 +37,14 @@ export const useAnonymousLead = () => {
     try {
       setLoading(true);
       
-      if (!supabase) {
+      if (!supabase || !isSupabaseConfigured()) {
         console.warn('Supabase not configured, using local-only lead');
         const sessionId = getSessionId();
         setLead({
           session_id: sessionId,
           current_step: 1
         });
+        setLoading(false);
         return;
       }
       
@@ -98,7 +99,7 @@ export const useAnonymousLead = () => {
   const updateLead = async (updates: Partial<AnonymousLead>) => {
     if (!lead) return;
 
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, ...updates } : null);
       return;
@@ -130,7 +131,7 @@ export const useAnonymousLead = () => {
   const saveEmail = async (email: string) => {
     if (!lead) return;
 
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, email } : null);
       return;
@@ -161,7 +162,7 @@ export const useAnonymousLead = () => {
   const abandonLead = async () => {
     if (!lead) return;
 
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, skipping abandon operation');
       return;
     }
