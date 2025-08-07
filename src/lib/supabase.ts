@@ -1,13 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Check if Supabase is properly configured
 export const isSupabaseConfigured = () => {
-  return supabaseUrl !== 'https://placeholder.supabase.co' && 
-         supabaseAnonKey !== 'placeholder-key' &&
-         supabaseUrl.includes('supabase.co');
+  return !!(supabaseUrl && 
+           supabaseAnonKey && 
+           supabaseUrl.includes('supabase.co') &&
+           supabaseUrl !== 'https://placeholder.supabase.co' &&
+           supabaseAnonKey !== 'placeholder-key');
+           supabaseUrl !== 'https://placeholder.supabase.co' &&
+           supabaseAnonKey !== 'placeholder-key');
 };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Only create client if properly configured
+export const supabase = isSupabaseConfigured() 
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;
+export const supabase = isSupabaseConfigured() 
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;

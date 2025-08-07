@@ -138,7 +138,7 @@ export const useRecommendedVendors = (filters: {
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
       // Check if Supabase is configured first
-      if (!isSupabaseConfigured()) {
+      if (!isSupabaseConfigured() || !supabase) {
         setRecommendedVendors([]);
         setLoading(false);
         setError(null);
@@ -551,7 +551,7 @@ export const useVendorReviews = (vendorId: string) => {
         return;
       }
 
-      if (!isSupabaseConfigured()) {
+      if (!isSupabaseConfigured() || !supabase) {
         setLoading(false);
         return;
       }
