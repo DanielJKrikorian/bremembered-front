@@ -117,22 +117,158 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
     };
 
-      console.error('Error fetching recommended vendors:', err);
-      
-      // If it's a network error, provide fallback behavior
-      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-        console.warn('Network error detected, using fallback behavior');
-        setRecommendedVendors([]);
-        setError('Unable to connect to the server. Please check your internet connection.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to fetch vendors');
-      }
-    } else {
-      setLoading(false);
-    }
+    fetchPackages();
   }, [serviceType, eventType, filters]);
 
   return { packages, loading, error };
+};
+
+export const useRecommendedVendors = (filters: {
+  servicePackageId: string;
+  eventDate: string;
+  region?: string;
+  languages?: string[];
+  styles?: number[];
+  vibes?: number[];
+}) => {
+  const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecommendedVendors = async () => {
+      if (!isSupabaseConfigured()) {
+        setLoading(false);
+        return;
+      }
+
+      // Check if servicePackageId is empty or invalid
+      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Check if Supabase is actually reachable before making the request
+        const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+          method: 'HEAD',
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        });
+
+        if (!testResponse.ok) {
+          throw new Error('Supabase connection failed');
+        }
+
+        const { data, error } = await supabase
+          .from('vendor_service_packages')
+          .select(`
+            vendor_id,
+            vendors!inner(
+              id,
+              name,
+              profile_photo,
+              rating,
+              years_experience,
+              phone,
+              portfolio_photos,
+              portfolio_videos,
+              intro_video,
+              specialties,
+              awards,
+              service_areas,
+              profile
+            )
+          `)
+          .eq('service_package_id', filters.servicePackageId)
+          .eq('status', 'approved');
+
+        if (error) throw error;
+
+        let vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+
+        // Filter by region if specified
+        if (filters.region && vendorData.length > 0) {
+          vendorData = vendorData.filter(vendor => 
+            vendor.service_areas?.some((area: string) => 
+              area.toLowerCase().includes(filters.region!.toLowerCase())
+            )
+          );
+        }
+
+        // If we have language preferences, filter vendors
+        if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
+          const { data: vendorLanguages } = await supabase
+            .from('vendor_languages')
+            .select('vendor_id, language_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('language_id', filters.languages);
+
+          if (vendorLanguages && vendorLanguages.length > 0) {
+            const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithLanguages.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have style preferences, filter vendors
+        if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
+          const { data: vendorStyles } = await supabase
+            .from('vendor_style_tags')
+            .select('vendor_id, style_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('style_id', filters.styles);
+
+          if (vendorStyles && vendorStyles.length > 0) {
+            const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithStyles.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have vibe preferences, filter vendors
+        if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
+          const { data: vendorVibes } = await supabase
+            .from('vendor_vibe_tags')
+            .select('vendor_id, vibe_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('vibe_id', filters.vibes);
+
+          if (vendorVibes && vendorVibes.length > 0) {
+            const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithVibes.includes(vendor.id)
+            );
+          }
+        }
+
+        // Sort by rating (highest first)
+        vendorData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+        setRecommendedVendors(vendorData);
+      } catch (err) {
+        console.error('Error fetching recommended vendors:', err);
+        
+        // If it's a network error, provide fallback behavior
+        if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+          console.warn('Network error detected, using fallback behavior');
+          setRecommendedVendors([]);
+          setError('Unable to connect to the server. Please check your internet connection.');
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to fetch vendors');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendedVendors();
+  }, [filters]);
+
+  return { vendors: recommendedVendors, loading, error };
 };
 
 export const useVendorsByPackage = (servicePackageId: string) => {
@@ -377,136 +513,6 @@ export const useLanguages = () => {
   return { languages, loading, error };
 };
 
-export const useRecommendedVendors = (filters: {
-  servicePackageId: string;
-  eventDate: string;
-  region?: string;
-  languages?: string[];
-  styles?: number[];
-  vibes?: number[];
-}) => {
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchRecommendedVendors = async () => {
-      if (!isSupabaseConfigured()) {
-        setLoading(false);
-        return;
-      }
-
-      // Check if servicePackageId is empty or invalid
-      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Get vendors who offer the selected service package
-        let query = supabase
-          .from('vendor_service_packages')
-          .select(`
-            vendor_id,
-            vendors!inner(
-              id,
-              name,
-              profile_photo,
-              rating,
-              years_experience,
-              phone,
-              portfolio_photos,
-              portfolio_videos,
-              intro_video,
-              specialties,
-              awards,
-              service_areas,
-              profile
-            )
-          `)
-          .eq('service_package_id', filters.servicePackageId)
-          .eq('status', 'approved');
-
-        const { data: vendorPackages, error: vendorError } = await query;
-
-        if (vendorError) throw vendorError;
-
-        let vendorData = vendorPackages?.map(item => item.vendors).filter(Boolean) || [];
-
-        // Filter by region if specified
-        if (filters.region && vendorData.length > 0) {
-          vendorData = vendorData.filter(vendor => 
-            vendor.service_areas?.some((area: string) => 
-              area.toLowerCase().includes(filters.region!.toLowerCase())
-            )
-          );
-        }
-
-        // If we have language preferences, filter vendors
-        if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
-          const { data: vendorLanguages } = await supabase
-            .from('vendor_languages')
-            .select('vendor_id, language_id')
-            .in('vendor_id', vendorData.map(v => v.id))
-            .in('language_id', filters.languages);
-
-          if (vendorLanguages && vendorLanguages.length > 0) {
-            const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithLanguages.includes(vendor.id)
-            );
-          }
-        }
-
-        // If we have style preferences, filter vendors
-        if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
-          const { data: vendorStyles } = await supabase
-            .from('vendor_style_tags')
-            .select('vendor_id, style_id')
-            .in('vendor_id', vendorData.map(v => v.id))
-            .in('style_id', filters.styles);
-
-          if (vendorStyles && vendorStyles.length > 0) {
-            const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithStyles.includes(vendor.id)
-            );
-          }
-        }
-
-        // If we have vibe preferences, filter vendors
-        if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
-          const { data: vendorVibes } = await supabase
-            .from('vendor_vibe_tags')
-            .select('vendor_id, vibe_id')
-            .in('vendor_id', vendorData.map(v => v.id))
-            .in('vibe_id', filters.vibes);
-
-          if (vendorVibes && vendorVibes.length > 0) {
-            const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithVibes.includes(vendor.id)
-            );
-          }
-        }
-
-        // Sort by rating (highest first)
-        vendorData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-        setVendors(vendorData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecommendedVendors();
-  }, [filters]);
-
-  return { vendors, loading, error };
-};
-
 export const useVendorReviews = (vendorId: string) => {
   const [reviews, setReviews] = useState<VendorReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -713,8 +719,6 @@ export const useLeadInformation = () => {
   const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
     if (!leadInfo) {
       console.error('No lead info to update');
-      setRecommendedVendors([]);
-      setLoading(false);
       return null;
     }
 
@@ -722,6 +726,9 @@ export const useLeadInformation = () => {
     const updatedLeadInfo = { ...leadInfo, ...updates, updated_at: new Date().toISOString() };
     setLeadInfo(updatedLeadInfo);
 
+    if (!isSupabaseConfigured()) {
+      return updatedLeadInfo;
+    }
 
     try {
       const { data, error } = await supabase
@@ -742,45 +749,9 @@ export const useLeadInformation = () => {
     } catch (err) {
       console.error('Error updating lead info:', err);
       // Local state is already updated, just return it
-      setRecommendedVendors([]);
-      setLoading(false);
       return updatedLeadInfo;
     }
   };
 
   return { leadInfo, updateLeadInfo, loading, error };
 };
-      // Check if Supabase is actually reachable before making the request
-      const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-        method: 'HEAD',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-      });
-
-      if (!testResponse.ok) {
-        throw new Error('Supabase connection failed');
-      }
-
-      const { data, error } = await supabase
-        .from('vendor_service_packages')
-        .select(`
-          vendor_id,
-          vendors!inner(
-            id,
-            name,
-            profile_photo,
-            rating,
-            years_experience,
-            phone,
-            portfolio_photos,
-            portfolio_videos,
-            intro_video,
-            specialties,
-            awards,
-            service_areas,
-            profile
-          )
-        `)
-        .eq('service_package_id', servicePackageId)
-        .eq('status', 'approved');
