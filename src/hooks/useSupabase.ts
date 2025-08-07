@@ -137,25 +137,19 @@ export const useRecommendedVendors = (filters: {
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
+      // Check if Supabase is configured first
       if (!isSupabaseConfigured()) {
+        setRecommendedVendors([]);
         setLoading(false);
+        setError(null);
         return;
       }
 
       // Check if servicePackageId is empty or invalid
       if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
+        setRecommendedVendors([]);
         setLoading(false);
-        return;
-      }
-
-      if (!isSupabaseConfigured()) {
-        setLoading(false);
-        return;
-      }
-
-      // Check if servicePackageId is empty or invalid
-      if (!filters.servicePackageId || filters.servicePackageId.trim() === '') {
-        setLoading(false);
+        setError(null);
         return;
       }
 
@@ -248,17 +242,11 @@ export const useRecommendedVendors = (filters: {
         vendorData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
         setRecommendedVendors(vendorData);
+        setError(null);
       } catch (err) {
-        console.error('Error fetching recommended vendors:', err);
-        
-        // If it's a network error, provide fallback behavior
-        if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-          console.warn('Network error detected, using fallback behavior');
-          setRecommendedVendors([]);
-          setError(null); // Don't show error to user, just use empty state
-        } else {
-          setError(null); // Don't show error to user, just use empty state
-        }
+        // Silently handle all errors and provide empty state
+        setRecommendedVendors([]);
+        setError(null);
       } finally {
         setLoading(false);
       }
