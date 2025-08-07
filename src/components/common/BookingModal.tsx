@@ -3,7 +3,8 @@ import { X, ArrowRight, ArrowLeft, Check, Clock, DollarSign, Users, Calendar, Ma
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { useServicePackages, usePackageMatching, useLeadInformation } from '../../hooks/useSupabase';
+import { useServicePackages, useLeadInformation } from '../../hooks/useSupabase';
+import { usePackageMatching } from '../../hooks/usePackageMatching';
 import { useAnonymousLead } from '../../hooks/useAnonymousLead';
 import { EmailCaptureModal } from './EmailCaptureModal';
 
