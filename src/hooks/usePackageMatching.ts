@@ -39,16 +39,27 @@ export const usePackageMatching = ({
           budgetRange
         });
 
-        // Start with base query
+        if (!supabase) {
+          console.warn('Supabase not configured, returning empty packages');
+          setMatchedPackages([]);
+          setRecommendedPackage(null);
+          setLoading(false);
+          return;
+        }
+
+        // Start with base query - try both exact match and lookup key
         let query = supabase
           .from('service_packages')
           .select('*')
-          .eq('status', 'approved')
-          .ilike('service_type', `%${serviceType}%`);
+          .eq('status', 'approved');
+
+        // Try to match service type using OR condition for both service_type and lookup_key
+        const lookupKey = serviceType.toLowerCase().replace(/\s+/g, '');
+        query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
 
         // Add event type filter if specified
         if (eventType) {
-          query = query.or(`event_type.ilike.%${eventType}%,event_type.is.null`);
+          query = query.or(`event_type.eq.${eventType},event_type.is.null`);
         }
 
         // Add budget filter if specified
@@ -66,18 +77,24 @@ export const usePackageMatching = ({
 
         if (error) {
           console.error('Error fetching packages:', error);
-          // Try fallback query without filters
+          // Try fallback query with just service type
           const { data: fallbackPackages } = await supabase
             .from('service_packages')
             .select('*')
             .eq('status', 'approved')
-            .ilike('service_type', `%${serviceType}%`)
+            .or(`service_type.ilike.%${serviceType}%,lookup_key.ilike.%${lookupKey}%`)
             .limit(10);
           
           setMatchedPackages(fallbackPackages || []);
           setRecommendedPackage(fallbackPackages?.[0] || null);
         } else {
           console.log('Found packages:', packages?.length || 0);
+          console.log('Package details:', packages?.map(p => ({ 
+            name: p.name, 
+            service_type: p.service_type, 
+            lookup_key: p.lookup_key,
+            price: p.price 
+          })));
           setMatchedPackages(packages || []);
           
           // Find best matching package
