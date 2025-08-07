@@ -841,7 +841,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 {recommendedPackage ? (
                   <>
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Heart className="w-10 h-10 text-white" />
                       </div>
                       <h2 className="text-3xl font-bold text-gray-900 mb-4">
