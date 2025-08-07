@@ -53,6 +53,7 @@ export const DateTimeStep: React.FC<DateTimeStepProps> = ({
           value={eventTime}
           onChange={(e) => onEventTimeChange(e.target.value)}
           icon={Clock}
+          helperText="This can be modified up to 24 hours before your wedding"
           required
         />
       </div>
