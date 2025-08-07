@@ -146,10 +146,12 @@ export const useRecommendedVendors = (filters: {
       }
 
       try {
+        // First, get vendors who have this package approved and are available
         const { data, error } = await supabase
           .from('vendor_service_packages')
           .select(`
             vendor_id,
+            service_package_id,
             vendors!inner(
               id,
               name,
@@ -178,6 +180,25 @@ export const useRecommendedVendors = (filters: {
         }
 
         let vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+
+        // Check vendor availability for the event date
+        if (filters.eventDate && vendorData.length > 0) {
+          const eventDate = new Date(filters.eventDate);
+          const { data: availabilityData, error: availabilityError } = await supabase
+            .from('events')
+            .select('vendor_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .eq('event_date', filters.eventDate.split('T')[0])
+            .neq('type', 'blocked');
+
+          if (!availabilityError && availabilityData) {
+            // Filter out vendors who are already booked on this date
+            const bookedVendorIds = availabilityData.map(event => event.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              !bookedVendorIds.includes(vendor.id)
+            );
+          }
+        }
 
         // Filter by region if specified
         if (filters.region && vendorData.length > 0) {
@@ -237,7 +258,11 @@ export const useRecommendedVendors = (filters: {
         }
 
         // Sort by rating (highest first)
-        vendorData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        vendorData.sort((a, b) => {
+          const ratingDiff = (b.rating || 0) - (a.rating || 0);
+          if (ratingDiff !== 0) return ratingDiff;
+          return (b.years_experience || 0) - (a.years_experience || 0);
+        });
 
         setRecommendedVendors(vendorData);
         setError(null);

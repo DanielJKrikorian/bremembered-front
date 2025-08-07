@@ -145,17 +145,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Update lead data when answers change
   useEffect(() => {
-    if (lead && currentStep > 1 && currentStep <= 6) {
+    if (lead && currentStep > 1) {
       updateLead({
         event_type: selectedEventType,
         selected_services: localSelectedServices,
         coverage_preferences: selectedCoverage,
         hour_preferences: selectedHours,
         budget_range: selectedBudget,
-        current_step: currentStep
+        current_step: currentStep,
+        // Add vendor questionnaire data
+        venue_id: selectedVenue?.id,
+        venue_name: selectedVenue?.name,
+        region: selectedVenue?.region || selectedRegion,
+        event_date: eventDate,
+        event_time: eventTime,
+        languages: selectedLanguages,
+        style_preferences: selectedStyles,
+        vibe_preferences: selectedVibes
       });
     }
-  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep]);
+  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, selectedVenue, selectedRegion, eventDate, eventTime, selectedLanguages, selectedStyles, selectedVibes]);
 
   // Handle page/modal exit
   useEffect(() => {
