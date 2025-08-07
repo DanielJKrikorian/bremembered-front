@@ -721,10 +721,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                     icon={ArrowRight}
                     className="px-8"
                   >
-                    {packagesLoading 
-                      ? 'Loading Packages...' 
-                      : 'Find My Perfect Package'
-                    }
+                    Find My Perfect Package
                   </Button>
                 </div>
               </div>
