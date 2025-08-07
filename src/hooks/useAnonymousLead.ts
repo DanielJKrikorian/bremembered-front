@@ -36,6 +36,17 @@ export const useAnonymousLead = () => {
   const initializeLead = async () => {
     try {
       setLoading(true);
+      
+      if (!supabase) {
+        console.warn('Supabase not configured, using local-only lead');
+        const sessionId = getSessionId();
+        setLead({
+          session_id: sessionId,
+          current_step: 1
+        });
+        return;
+      }
+      
       const sessionId = getSessionId();
 
       // Check if lead already exists
@@ -87,6 +98,12 @@ export const useAnonymousLead = () => {
   const updateLead = async (updates: Partial<AnonymousLead>) => {
     if (!lead) return;
 
+    if (!supabase) {
+      console.warn('Supabase not configured, updating local state only');
+      setLead(prev => prev ? { ...prev, ...updates } : null);
+      return;
+    }
+
     try {
       const updatedData = {
         ...updates,
@@ -113,6 +130,12 @@ export const useAnonymousLead = () => {
   const saveEmail = async (email: string) => {
     if (!lead) return;
 
+    if (!supabase) {
+      console.warn('Supabase not configured, updating local state only');
+      setLead(prev => prev ? { ...prev, email } : null);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('anonymous_leads')
@@ -137,6 +160,11 @@ export const useAnonymousLead = () => {
   // Abandon lead
   const abandonLead = async () => {
     if (!lead) return;
+
+    if (!supabase) {
+      console.warn('Supabase not configured, skipping abandon operation');
+      return;
+    }
 
     try {
       const { error } = await supabase
