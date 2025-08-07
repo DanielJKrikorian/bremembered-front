@@ -117,8 +117,16 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
     };
 
-    if (serviceType || (filters?.selectedServices && filters.selectedServices.length > 0)) {
-      fetchPackages();
+      console.error('Error fetching recommended vendors:', err);
+      
+      // If it's a network error, provide fallback behavior
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        console.warn('Network error detected, using fallback behavior');
+        setRecommendedVendors([]);
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to fetch vendors');
+      }
     } else {
       setLoading(false);
     }
@@ -705,6 +713,8 @@ export const useLeadInformation = () => {
   const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
     if (!leadInfo) {
       console.error('No lead info to update');
+      setRecommendedVendors([]);
+      setLoading(false);
       return null;
     }
 
@@ -732,9 +742,45 @@ export const useLeadInformation = () => {
     } catch (err) {
       console.error('Error updating lead info:', err);
       // Local state is already updated, just return it
+      setRecommendedVendors([]);
+      setLoading(false);
       return updatedLeadInfo;
     }
   };
 
   return { leadInfo, updateLeadInfo, loading, error };
 };
+      // Check if Supabase is actually reachable before making the request
+      const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+        method: 'HEAD',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      });
+
+      if (!testResponse.ok) {
+        throw new Error('Supabase connection failed');
+      }
+
+      const { data, error } = await supabase
+        .from('vendor_service_packages')
+        .select(`
+          vendor_id,
+          vendors!inner(
+            id,
+            name,
+            profile_photo,
+            rating,
+            years_experience,
+            phone,
+            portfolio_photos,
+            portfolio_videos,
+            intro_video,
+            specialties,
+            awards,
+            service_areas,
+            profile
+          )
+        `)
+        .eq('service_package_id', servicePackageId)
+        .eq('status', 'approved');
