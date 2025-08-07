@@ -908,16 +908,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                               {recommendedPackage.hour_amount && (
                                 <div className="flex items-center">
                                   <Clock className="w-4 h-4 mr-1" />
-                                  <span>{recommendedPackage.hour_amount} hours</span>
+                                  <span className="whitespace-nowrap">{recommendedPackage.hour_amount} hours</span>
                                 </div>
                               )}
                               <div className="flex items-center">
                                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                <span>Top rated package</span>
+                                <span className="whitespace-nowrap">Top rated package</span>
                               </div>
                               <div className="flex items-center">
                                 <Shield className="w-4 h-4 mr-1" />
-                                <span>Verified vendors</span>
+                                <span className="whitespace-nowrap">Verified vendors</span>
                               </div>
                             </div>
                           </div>
