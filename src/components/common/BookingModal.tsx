@@ -3,6 +3,10 @@ import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Aw
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { EmailCaptureModal } from './EmailCaptureModal';
+import { EventTypeStep } from '../booking/EventTypeStep';
+import { ServiceSelectionStep } from '../booking/ServiceSelectionStep';
+import { PreferenceTypeStep } from '../booking/PreferenceTypeStep';
+import { PackageSummaryStep } from '../booking/PackageSummaryStep';
 import { useBooking } from '../../context/BookingContext';
 import { useAnonymousLead } from '../../hooks/useAnonymousLead';
 import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
@@ -27,6 +31,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const [matchedPackage, setMatchedPackage] = useState<any>(null);
   const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
+  const [selectedPackages, setSelectedPackages] = useState<ServicePackage[]>([]);
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Anonymous lead tracking
@@ -80,19 +85,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   // Get service packages based on answers
   const shouldMatch = currentStep >= 5 && localSelectedServices.length > 0 && selectedBudget;
   
-  // Debug: Log what we're searching for
-  useEffect(() => {
-    if (shouldMatch) {
-      console.log('Searching for packages with:', {
-        serviceType: localSelectedServices[0],
-        eventType: selectedEventType,
-        preferenceType,
-        preferenceValue: preferenceType === 'hours' ? selectedHours : selectedCoverage,
-        budgetRange: selectedBudget
-      });
-    }
-  }, [shouldMatch, localSelectedServices, selectedEventType, preferenceType, selectedHours, selectedCoverage, selectedBudget]);
-  
   const { matchedPackages, recommendedPackage: matchedRecommendedPackage, loading: packagesLoading } = usePackageMatching({
     serviceType: shouldMatch ? localSelectedServices[0] : '',
     eventType: shouldMatch ? selectedEventType : undefined,
@@ -107,27 +99,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Set recommended package when packages are loaded
   useEffect(() => {
-    console.log('useEffect triggered - matchedRecommendedPackage:', matchedRecommendedPackage);
-    console.log('useEffect triggered - currentStep:', currentStep);
-    console.log('useEffect triggered - packagesLoading:', packagesLoading);
-    
     if (matchedRecommendedPackage && !packagesLoading) {
-      console.log('Setting recommended package from hook:', matchedRecommendedPackage);
       setRecommendedPackage(matchedRecommendedPackage);
     } else if (matchedPackages && matchedPackages.length > 0 && !packagesLoading) {
-      // Find the best matching package based on user preferences
       let bestPackage = matchedPackages[0];
       
       if (preferenceType === 'hours' && selectedHours) {
         const targetHours = parseInt(selectedHours);
-        // Find package with hour_amount closest to target
         bestPackage = matchedPackages.reduce((best, current) => {
           const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
           const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
           return currentDiff < bestDiff ? current : best;
         });
       } else if (preferenceType === 'coverage' && selectedCoverage.length > 0) {
-        // Find package that covers the most selected events
         bestPackage = matchedPackages.reduce((best, current) => {
           const bestCoverage = getPackageCoverage(best.coverage || {});
           const currentCoverage = getPackageCoverage(current.coverage || {});
@@ -144,7 +128,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       }
       
       setRecommendedPackage(bestPackage);
-      console.log('Setting recommended package from local logic:', bestPackage);
     }
   }, [matchedPackages, matchedRecommendedPackage, packagesLoading, preferenceType, selectedHours, selectedCoverage]);
 
@@ -209,20 +192,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleNextQuestion = () => {
-    console.log('=== handleNextQuestion called ===');
-    console.log('Current step:', currentStep);
-    console.log('Can proceed:', canProceedQuestion());
-    console.log('Recommended package exists:', !!recommendedPackage);
-    
     if (currentStep < 5) {
       const nextStep = currentStep + 1;
-      console.log('Moving to next step:', nextStep);
       setCurrentStep(nextStep);
     } else if (currentStep === 5) {
       // Start matching process
       setCurrentStep(6);
       
-      // Auto-advance to results after 3 seconds
+      // Auto-advance to results after 2 seconds
       setTimeout(() => {
         setCurrentStep(8);
       }, 2000);
@@ -233,35 +210,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     if (currentStep > 1 && currentStep <= 6) {
       setCurrentStep(currentStep - 1);
     } else if (currentStep === 8) {
-      // Go back to budget question
-      setCurrentStep(6);
+      setCurrentStep(5);
+    } else if (currentStep === 9) {
+      setCurrentStep(8);
     }
   };
 
   const handleBookPackage = () => {
     if (recommendedPackage) {
-      // Navigate to booking with the recommended package
-      setSelectedServices(localSelectedServices);
-      setEventType(selectedEventType);
-      onClose();
-      navigate('/booking/congratulations', {
-        state: {
-          selectedPackage: recommendedPackage,
-          selectedServices: localSelectedServices,
-          currentServiceIndex: 0,
-          eventType: selectedEventType,
-          preferences: {
-            coverage: selectedCoverage,
-            hours: selectedHours,
-            budget: selectedBudget
-          }
-        }
-      });
+      // Add package to selected packages and go to summary
+      setSelectedPackages([recommendedPackage]);
+      setCurrentStep(9); // Package summary step
     }
   };
 
   const handleViewAllPackages = () => {
-    // View all packages instead of the recommended one
     setSelectedServices(localSelectedServices);
     setEventType(selectedEventType);
     onClose();
@@ -279,29 +242,41 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleSkipToPackages = () => {
-    // Skip questionnaire and go to matching animation, then show 6-hour package
     if (localSelectedServices.length > 0) {
-      // Set default preferences for skipped questions
-      setSelectedBudget('150000-300000'); // Default mid-range budget
+      setSelectedBudget('150000-300000');
       setPreferenceType('hours');
-      setSelectedHours('6'); // Default to 6 hours
-      
-      // Go to matching animation
+      setSelectedHours('6');
       setCurrentStep(6);
       
-      // Auto-advance to results after 2 seconds
       setTimeout(() => {
         setCurrentStep(8);
       }, 2000);
     }
   };
 
-  // Handle X button click
+  const handleContinueToVendors = () => {
+    // Close modal and navigate to vendor selection
+    setSelectedServices(localSelectedServices);
+    setEventType(selectedEventType);
+    onClose();
+    navigate('/booking/event-details', {
+      state: {
+        selectedPackages,
+        selectedServices: localSelectedServices,
+        eventType: selectedEventType
+      }
+    });
+  };
+
+  const handleAddMoreServices = () => {
+    // Go back to service selection to add more
+    setCurrentStep(2);
+  };
+
   const handleXButtonClick = () => {
     if (currentStep > 1 && !lead?.email && currentStep !== 6 && currentStep !== 7) {
       setShowEmailCapture(true);
     } else if (currentStep === 6 || currentStep === 7) {
-      // During matching process, show email capture if no email
       if (!lead?.email) {
         setShowEmailCapture(true);
       } else {
@@ -312,21 +287,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     }
   };
 
-  // Handle email save
   const handleEmailSave = async (email: string) => {
     await saveEmail(email);
     setShowEmailCapture(false);
     handleCloseModal();
   };
 
-  // Handle email skip
   const handleEmailSkip = async () => {
     await abandonLead();
     setShowEmailCapture(false);
     handleCloseModal();
   };
 
-  // Handle modal close - always allow closing both modals
   const handleCloseModal = () => {
     setShowEmailCapture(false);
     onClose();
@@ -344,37 +316,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     setIsMatching(false);
     setMatchedPackage(null);
     setRecommendedPackage(null);
+    setSelectedPackages([]);
   };
 
   const canProceedQuestion = () => {
-    console.log('=== canProceedQuestion called ===');
-    console.log('Current step:', currentStep);
-    
     switch (currentStep) {
-      case 1: 
-        const step1Valid = selectedEventType !== '';
-        console.log('Step 1 valid:', step1Valid, 'selectedEventType:', selectedEventType);
-        return step1Valid;
-      case 2: 
-        const step2Valid = localSelectedServices.length > 0;
-        console.log('Step 2 valid:', step2Valid, 'services:', localSelectedServices);
-        return step2Valid;
-      case 3: 
-        const step3Valid = preferenceType !== '';
-        console.log('Step 3 valid:', step3Valid, 'preferenceType:', preferenceType);
-        return step3Valid;
-      case 4: 
-        const step4Valid = preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
-        console.log('Step 4 valid:', step4Valid, 'preferenceType:', preferenceType, 'coverage:', selectedCoverage, 'hours:', selectedHours);
-        return step4Valid;
-      case 5: 
-        const step5Valid = selectedBudget !== '';
-        console.log('Step 5 valid:', step5Valid, 'selectedBudget:', selectedBudget);
-        console.log('Package available for step 5:', !!recommendedPackage);
-        return step5Valid;
-      default: 
-        console.log('Unknown step, returning false');
-        return false;
+      case 1: return selectedEventType !== '';
+      case 2: return localSelectedServices.length > 0;
+      case 3: return preferenceType !== '';
+      case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
+      case 5: return selectedBudget !== '';
+      default: return false;
     }
   };
 
@@ -386,7 +338,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 4: return preferenceType === 'coverage' ? 'What moments to capture?' : 'How many hours?';
       case 5: return 'What\'s your budget?';
       case 6: return 'Finding your perfect match...';
-      case 7: return 'Your perfect match!';
+      case 8: return 'Your perfect match!';
+      case 9: return 'Your selected packages';
       default: return '';
     }
   };
@@ -408,7 +361,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       events.push(...coverage.events);
     }
     
-    // Add other coverage properties if they exist
     Object.keys(coverage).forEach(key => {
       if (key !== 'events' && coverage[key] === true) {
         events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
@@ -424,7 +376,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     <>
       {/* Modal */}
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleXButtonClick()}>
-        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 8 ? 'max-w-4xl' : 'max-w-2xl'}`} data-modal-content>
+        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 8 || currentStep === 9 ? 'max-w-4xl' : 'max-w-2xl'}`} data-modal-content>
           {/* Modal Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
@@ -448,212 +400,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
           {/* Modal Content */}
           <div className="p-6">
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                    What type of event are you planning?
-                  </h4>
-                  <p className="text-gray-600">
-                    Choose the type of celebration you're planning
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {eventTypes.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => handleEventTypeSelect(type.id)}
-                      className="p-6 rounded-xl border-2 border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all text-center group"
-                    >
-                      <div className="text-4xl mb-3">{type.emoji}</div>
-                      <h5 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600">
-                        {type.name}
-                      </h5>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <EventTypeStep
+                eventTypes={eventTypes}
+                selectedEventType={selectedEventType}
+                onEventTypeSelect={handleEventTypeSelect}
+              />
             )}
 
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                    What services do you need?
-                  </h4>
-                  <p className="text-gray-600">
-                    Select all the services you'd like to book (you can choose multiple)
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {serviceTypes.map((service) => {
-                    const isSelected = localSelectedServices.includes(service.id);
-                    return (
-                      <button
-                        key={service.id}
-                        onClick={() => handleServiceToggle(service.id)}
-                        className={`
-                          relative p-4 rounded-xl border-2 transition-all text-left
-                          ${isSelected 
-                            ? 'border-rose-500 bg-rose-50' 
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }
-                        `}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        )}
-                        <div className="flex items-center space-x-3">
-                          <div className="text-2xl">{service.emoji}</div>
-                          <div>
-                            <h5 className="font-semibold text-gray-900">{service.name}</h5>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handlePrevQuestion}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleNextQuestion}
-                    disabled={!canProceedQuestion()}
-                    icon={ArrowRight}
-                    className="px-8"
-                  >
-                    Continue
-                  </Button>
-                </div>
-                
-                <div className="text-center pt-2">
-                  <button
-                    onClick={handleSkipToPackages}
-                    className="text-sm text-gray-500 hover:text-gray-700 underline"
-                    disabled={localSelectedServices.length === 0}
-                  >
-                    Skip questions and find my perfect package
-                  </button>
-                </div>
-              </div>
+              <ServiceSelectionStep
+                serviceTypes={serviceTypes}
+                localSelectedServices={localSelectedServices}
+                onServiceToggle={handleServiceToggle}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                onSkipToPackages={handleSkipToPackages}
+                canProceed={canProceedQuestion()}
+              />
             )}
 
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                    How would you like to choose your package?
-                  </h4>
-                  {localSelectedServices.includes('Live Musician') ? (
-                    <p className="text-gray-600">
-                      For live musicians, we'll help you choose based on the specific moments you want music for
-                    </p>
-                  ) : (
-                    <p className="text-gray-600">
-                      Choose how you'd like to find your perfect {localSelectedServices[0]?.toLowerCase()} package
-                    </p>
-                  )}
-                </div>
-                
-                {localSelectedServices.includes('Live Musician') ? (
-                  /* Auto-select moments for musicians */
-                  <div className="text-center">
-                    <div className="p-6 rounded-xl border-2 border-rose-500 bg-rose-50">
-                      <div className="text-4xl mb-4">🎼</div>
-                      <h5 className="text-lg font-semibold text-gray-900 mb-2">Choose by Moments</h5>
-                      <p className="text-sm text-gray-600">
-                        We'll help you find the perfect musician based on when you need music during your event
-                      </p>
-                    </div>
-                    <div className="mt-6">
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setPreferenceType('coverage');
-                          handleNextQuestion();
-                        }}
-                        icon={ArrowRight}
-                      >
-                        Choose Musical Moments
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <button
-                      onClick={() => setPreferenceType('hours')}
-                      className={`
-                        relative p-6 rounded-xl border-2 transition-all text-center
-                        ${preferenceType === 'hours'
-                          ? 'border-amber-500 bg-amber-50' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {preferenceType === 'hours' && (
-                        <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      <div className="text-4xl mb-4">⏰</div>
-                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Hours</h5>
-                      <p className="text-sm text-gray-600">
-                        Choose based on how many hours of coverage you need
-                      </p>
-                    </button>
-
-                    <button
-                      onClick={() => setPreferenceType('coverage')}
-                      className={`
-                        relative p-6 rounded-xl border-2 transition-all text-center
-                        ${preferenceType === 'coverage'
-                          ? 'border-rose-500 bg-rose-50' 
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {preferenceType === 'coverage' && (
-                        <div className="absolute top-3 right-3 w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      <div className="text-4xl mb-4">📸</div>
-                      <h5 className="text-lg font-semibold text-gray-900 mb-2">By Moments</h5>
-                      <p className="text-sm text-gray-600">
-                        Choose based on specific moments you want captured
-                      </p>
-                    </button>
-                  </div>
-                )}
-                
-                {!localSelectedServices.includes('Live Musician') && (
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handlePrevQuestion}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleNextQuestion}
-                      disabled={!canProceedQuestion()}
-                      icon={ArrowRight}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <PreferenceTypeStep
+                localSelectedServices={localSelectedServices}
+                preferenceType={preferenceType}
+                onPreferenceTypeSelect={setPreferenceType}
+                onNext={handleNextQuestion}
+                onPrev={handlePrevQuestion}
+                canProceed={canProceedQuestion()}
+              />
             )}
 
             {currentStep === 4 && preferenceType === 'coverage' && (
@@ -844,7 +618,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   We're analyzing hundreds of {localSelectedServices[0]} packages to find the one that's perfect for your {selectedEventType.toLowerCase()}
                 </p>
                 
-                {/* Animated progress indicators */}
                 <div className="space-y-4 mb-8">
                   <div className="flex items-center justify-center space-x-2">
                     <div className="w-2 h-2 bg-rose-500 rounded-full animate-bounce"></div>
@@ -856,7 +629,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   </p>
                 </div>
 
-                {/* Manual reveal button */}
                 <Button
                   variant="primary"
                   size="lg"
@@ -872,11 +644,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             {/* Step 8: Results */}
             {currentStep === 8 && (
               <div className="space-y-6">
-                {console.log('=== RENDERING STEP 8 ===', { 
-                  recommendedPackage: recommendedPackage?.name, 
-                  currentStep,
-                  hasPackage: !!recommendedPackage 
-                })}
                 {recommendedPackage ? (
                   <>
                     <div className="text-center">
@@ -893,19 +660,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
                     {/* Package Card */}
                     <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-rose-200 overflow-hidden">
-                      {/* Recommended Badge */}
-                      <div className="bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <Sparkles className="w-5 h-5" />
-                          <span className="font-semibold">Perfect Match for You</span>
-                          <Sparkles className="w-5 h-5" />
-                        </div>
-                      </div>
-
                       <div className="p-6">
                         <div className="flex flex-col lg:flex-row gap-6">
                           <div className="flex-1">
-                            {/* Hours, Rating, and Verification - moved above title */}
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
                               {recommendedPackage.hour_amount && (
                                 <div className="flex items-center">
@@ -985,42 +742,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                         </div>
                       </div>
                     </div>
-                    {/* Alternative Packages */}
-                    {/* Why this is perfect for you */}
-                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
-                      <h4 className="text-lg font-semibold text-purple-900 mb-4">
-                        Why this is perfect for you:
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Check className="w-4 h-4 text-purple-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-purple-900">Perfect Coverage</h5>
-                            <p className="text-sm text-purple-700">Matches your selected events</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-blue-900">Right Duration</h5>
-                            <p className="text-sm text-blue-700">{recommendedPackage.hour_amount || 6} hours</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <DollarSign className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div>
-                            <h5 className="font-semibold text-green-900">Within Budget</h5>
-                            <p className="text-sm text-green-700">Matches your price range</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Other Great Options */}
                     {matchedPackages.length > 1 && (
@@ -1072,7 +793,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                   className="w-full bg-gradient-to-r from-rose-500 to-amber-500 text-white border-0 hover:from-rose-600 hover:to-amber-600 group-hover:shadow-md transition-all"
                                   onClick={() => {
                                     setRecommendedPackage(pkg);
-                                    // Scroll to top of modal to show the new recommendation
                                     const modal = document.querySelector('[data-modal-content]');
                                     if (modal) {
                                       modal.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1128,6 +848,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Step 9: Package Summary */}
+            {currentStep === 9 && (
+              <PackageSummaryStep
+                selectedPackages={selectedPackages}
+                selectedServices={localSelectedServices}
+                selectedEventType={selectedEventType}
+                onContinueToVendors={handleContinueToVendors}
+                onAddMoreServices={handleAddMoreServices}
+                formatPrice={formatPrice}
+              />
             )}
           </div>
         </div>
