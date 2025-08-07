@@ -60,8 +60,13 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
     }
   };
 
-  const recommendedVendor = vendors[0];
-  const otherVendors = vendors.slice(1, 4);
+  // Remove duplicates and get unique vendors
+  const uniqueVendors = vendors.filter((vendor, index, self) => 
+    index === self.findIndex(v => v.id === vendor.id)
+  );
+  
+  const recommendedVendor = uniqueVendors[0];
+  const otherVendors = uniqueVendors.slice(1, 4);
 
   if (!recommendedVendor) {
     return (
