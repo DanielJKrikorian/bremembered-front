@@ -10,14 +10,9 @@ export const isSupabaseConfigured = () => {
            supabaseUrl.includes('supabase.co') &&
            supabaseUrl !== 'https://placeholder.supabase.co' &&
            supabaseAnonKey !== 'placeholder-key');
-           supabaseUrl !== 'https://placeholder.supabase.co' &&
-           supabaseAnonKey !== 'placeholder-key');
 };
 
 // Only create client if properly configured
-export const supabase = isSupabaseConfigured() 
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : null;
 export const supabase = isSupabaseConfigured() 
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
