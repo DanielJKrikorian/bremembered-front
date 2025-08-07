@@ -963,7 +963,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                           <div>
                             <h5 className="font-medium text-gray-900 mb-1">Perfect Duration</h5>
                             <p className="text-sm text-gray-600">
-                              {recommendedPackage.hour_amount} hours matches your {preferences.hours} hour preference
+                              {recommendedPackage.hour_amount} hours matches your {selectedHours} hour preference
                             </p>
                           </div>
                         </div>
@@ -974,7 +974,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                           <div>
                             <h5 className="font-medium text-gray-900 mb-1">Great Value</h5>
                             <p className="text-sm text-gray-600">
-                              Fits perfectly within your {preferences.budget} budget range
+                              Fits perfectly within your {selectedBudget} budget range
                             </p>
                           </div>
                         </div>
@@ -1021,6 +1021,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                     {formatPrice(pkg.price)}
                                   </div>
                                 </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Browse All Packages Button */}
                     <div className="text-center">
                       <Button
