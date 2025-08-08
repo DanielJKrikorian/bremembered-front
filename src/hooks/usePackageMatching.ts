@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { ServicePackage } from '../types/booking';
 
 interface UsePackageMatchingParams {
@@ -39,7 +40,7 @@ export const usePackageMatching = ({
           budgetRange
         });
 
-        if (!supabase) {
+        if (!supabase || !isSupabaseConfigured()) {
           console.warn('Supabase not configured, returning empty packages');
           setMatchedPackages([]);
           setRecommendedPackage(null);
@@ -47,19 +48,22 @@ export const usePackageMatching = ({
           return;
         }
 
-        // Start with base query - try both exact match and lookup key
+        // Start with base query
         let query = supabase
           .from('service_packages')
           .select('*')
           .eq('status', 'approved');
 
-        // Try to match service type using OR condition for both service_type and lookup_key
-        const lookupKey = serviceType.toLowerCase().replace(/\s+/g, '');
-        query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
+        // Match service type - try exact match first, then lookup key
+        const lookupKey = serviceType.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        console.log(`Matching service: ${serviceType} -> lookup_key: ${lookupKey}`);
+        
+        // Use ilike for more flexible matching
+        query = query.or(`service_type.ilike.%${serviceType}%,lookup_key.ilike.%${lookupKey}%`);
 
-        // Add event type filter if specified
+        // Add event type filter if specified - be more flexible
         if (eventType) {
-          query = query.or(`event_type.eq.${eventType},event_type.is.null`);
+          query = query.or(`event_type.ilike.%${eventType}%,event_type.is.null`);
         }
 
         // Add budget filter if specified
@@ -77,14 +81,15 @@ export const usePackageMatching = ({
 
         if (error) {
           console.error('Error fetching packages:', error);
-          // Try fallback query with just service type
+          // Try simpler fallback query
           const { data: fallbackPackages } = await supabase
             .from('service_packages')
             .select('*')
             .eq('status', 'approved')
-            .or(`service_type.ilike.%${serviceType}%,lookup_key.ilike.%${lookupKey}%`)
+            .ilike('service_type', `%${serviceType}%`)
             .limit(10);
           
+          console.log('Fallback packages found:', fallbackPackages?.length || 0);
           setMatchedPackages(fallbackPackages || []);
           setRecommendedPackage(fallbackPackages?.[0] || null);
         } else {
