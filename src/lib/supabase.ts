@@ -7,9 +7,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const isSupabaseConfigured = () => {
   return !!(supabaseUrl && 
            supabaseAnonKey && 
+           supabaseUrl.startsWith('https://') &&
            supabaseUrl.includes('supabase.co') &&
            supabaseUrl !== 'https://placeholder.supabase.co' &&
-           supabaseAnonKey !== 'placeholder-key');
+           supabaseAnonKey !== 'placeholder-key' &&
+           supabaseAnonKey.length > 20);
 };
 
 // Only create client if properly configured
