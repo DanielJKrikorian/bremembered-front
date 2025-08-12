@@ -192,7 +192,8 @@ export const useRecommendedVendors = (filters: {
             .from('events')
             .select('vendor_id')
             .in('vendor_id', vendorData.map(v => v.id))
-            .eq('event_date', filters.eventDate.split('T')[0]);
+            .gte('start_time', filters.eventDate.split('T')[0])
+            .lt('start_time', new Date(new Date(filters.eventDate).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
           if (!availabilityError && availabilityData) {
             // Filter out vendors who are already booked on this date
