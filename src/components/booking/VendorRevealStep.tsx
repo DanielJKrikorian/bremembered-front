@@ -98,6 +98,17 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
             variant="primary"
             onClick={onViewAllVendors}
           >
+            View All Vendors
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Main Vendor Card */}
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
         <div className="p-6">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Left Column - Vendor Photo */}
