@@ -159,6 +159,14 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                     <span className="font-bold text-emerald-800">{recommendedVendor.service_areas[0]}</span>
                   </div>
                 )}
+                <div className="flex items-center bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                  <Shield className="w-4 h-4 text-green-600 mr-1" />
+                  <span className="font-bold text-green-800">Verified</span>
+                </div>
+                <div className="flex items-center bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                  <Clock className="w-4 h-4 text-purple-600 mr-1" />
+                  <span className="font-bold text-purple-800">Quick Response</span>
+                </div>
               </div>
 
               {/* Bio */}
