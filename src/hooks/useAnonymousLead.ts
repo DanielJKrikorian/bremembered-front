@@ -123,7 +123,11 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.error('Error updating lead:', err);
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        console.error('Network error updating lead: Failed to fetch. Please verify your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables in the .env file, and ensure your Supabase project is accessible.');
+      } else {
+        console.error('Error updating lead:', err);
+      }
       // Update local state even if DB update fails
       setLead(prev => prev ? { ...prev, ...updates } : null);
     }
