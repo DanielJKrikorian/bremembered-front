@@ -192,8 +192,7 @@ export const useRecommendedVendors = (filters: {
             .from('events')
             .select('vendor_id')
             .in('vendor_id', vendorData.map(v => v.id))
-            .eq('event_date', filters.eventDate.split('T')[0])
-            .neq('type', 'blocked');
+            .eq('event_date', filters.eventDate.split('T')[0]);
 
           if (!availabilityError && availabilityData) {
             // Filter out vendors who are already booked on this date
