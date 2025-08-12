@@ -174,6 +174,31 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                 </div>
               </div>
 
+              {/* Trust Indicators - Horizontal below badges */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Shield className="w-4 h-4 text-white" />
+                  </div>
+                  <h5 className="font-bold text-green-900 text-xs mb-1">Verified</h5>
+                  <p className="text-xs text-green-700">Background checked</p>
+                </div>
+                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Award className="w-4 h-4 text-white" />
+                  </div>
+                  <h5 className="font-bold text-blue-900 text-xs mb-1">Top Rated</h5>
+                  <p className="text-xs text-blue-700">Excellent reviews</p>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Clock className="w-4 h-4 text-white" />
+                  </div>
+                  <h5 className="font-bold text-purple-900 text-xs mb-1">Quick Response</h5>
+                  <p className="text-xs text-purple-700">Within 2 hours</p>
+                </div>
+              </div>
+
               {/* Bio Section - Full Width */}
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                 <h4 className="font-semibold text-gray-900 mb-3">About {recommendedVendor.name}</h4>
@@ -392,34 +417,5 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
           </div>
         </div>
       )}
-
-      {/* Bottom Actions */}
-      <div className="text-center space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button
-            variant="primary"
-            size="lg"
-            icon={ArrowRight}
-            onClick={onContinueToBooking}
-            className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
-          >
-            Book {recommendedVendor.name}
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            icon={Eye}
-            onClick={onViewAllVendors}
-            className="px-8 py-4 text-lg"
-          >
-            Browse All Vendors
-          </Button>
-        </div>
-        
-        <p className="text-sm text-gray-500">
-          Need to discuss your vision first? <button className="text-purple-600 hover:text-purple-700 underline">Message the vendor</button>
-        </p>
-      </div>
-    </div>
   );
 };
