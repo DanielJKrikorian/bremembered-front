@@ -139,9 +139,11 @@ export const useRecommendedVendors = (filters: {
     const fetchRecommendedVendors = async () => {
       // Check if Supabase is configured first
       if (!isSupabaseConfigured() || !supabase || !filters.servicePackageId || filters.servicePackageId.trim() === '') {
-        setRecommendedVendors([]);
-        setLoading(false);
-        setError(null);
+        if (loading) {
+          setRecommendedVendors([]);
+          setLoading(false);
+          setError(null);
+        }
         return;
       }
 
@@ -173,9 +175,11 @@ export const useRecommendedVendors = (filters: {
 
         if (error) {
           console.warn('Supabase query error:', error);
-          setRecommendedVendors([]);
-          setError(null);
-          setLoading(false);
+          if (loading) {
+            setRecommendedVendors([]);
+            setError(null);
+            setLoading(false);
+          }
           return;
         }
 
@@ -268,15 +272,19 @@ export const useRecommendedVendors = (filters: {
         setError(null);
       } catch (err) {
         console.warn('Error fetching recommended vendors:', err);
-        setRecommendedVendors([]);
-        setError(null);
+        if (loading) {
+          setRecommendedVendors([]);
+          setError(null);
+        }
       } finally {
-        setLoading(false);
+        if (loading) {
+          setLoading(false);
+        }
       }
     };
 
     fetchRecommendedVendors();
-  }, [filters]);
+  }, [filters.servicePackageId, filters.eventDate, filters.region, JSON.stringify(filters.languages), JSON.stringify(filters.styles), JSON.stringify(filters.vibes)]);
 
   return { vendors: recommendedVendors, loading, error };
 };
