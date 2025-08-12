@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Star, MapPin, Award, Camera, Video, Music, Users, Calendar, Check, Eye, MessageCircle, ArrowRight, Clock, Shield, Sparkles } from 'lucide-react';
+import { Heart, Star, MapPin, Award, Camera, Video, Music, Users, Calendar, Check, Eye, MessageCircle, ArrowRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface Vendor {
@@ -128,105 +128,32 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               {/* Vendor Header */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                    {/* Vendor Photo */}
-                    <div className="lg:col-span-1">
-                <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl p-8 text-white shadow-xl">
-                  <div className="text-center mb-6">
-                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Sparkles className="w-8 h-8 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-2">Your Package</h3>
-                  </div>
-                  
-                          src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                    <div className="space-y-6">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-purple-100 mb-1">{selectedPackage.service_type}</div>
-                        <div className="text-xl font-bold text-white mb-2">{selectedPackage.name}</div>
-                        {selectedPackage.hour_amount && (
-                          <div className="text-purple-200 text-sm">{selectedPackage.hour_amount} hours coverage</div>
-                        )}
-                      </div>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                {/* Vendor Photo */}
+                <div className="lg:col-span-1">
+                  <img
+                    src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                    alt={recommendedVendor.name}
+                    className="w-full aspect-square object-cover rounded-xl shadow-lg"
+                  />
+                </div>
 
-                    {/* Vendor Info */}
-                    <div className="lg:col-span-2">
-                      <div className="mb-6">
-                        <h3 className="text-3xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
-                        <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
-                          {recommendedVendor.rating && (
-                            <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full">
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                      <h5 className="font-semibold text-green-900 mb-1">Verified Professional</h5>
-                      <p className="text-sm text-green-700">Background checked & insured</p>
-                          <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
-                    <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Award className="w-6 h-6 text-blue-600" />
+                {/* Vendor Info */}
+                <div className="lg:col-span-2">
+                  <div className="mb-6">
+                    <h3 className="text-3xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
+                    <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
+                      {recommendedVendor.rating && (
+                        <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                          <span className="font-medium">{recommendedVendor.rating}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
+                        <Award className="w-4 h-4 text-blue-600 mr-1" />
+                        <span className="font-medium">{recommendedVendor.years_experience} years</span>
                       </div>
-                      <h5 className="font-semibold text-blue-900 mb-1">Top Rated</h5>
-                      <p className="text-sm text-blue-700">Consistently excellent reviews</p>
                     </div>
-                    <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-200">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Clock className="w-6 h-6 text-purple-600" />
-                            {recommendedVendor.profile || `Professional ${currentService.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
-                      <h5 className="font-semibold text-purple-900 mb-1">Quick Response</h5>
-                      <p className="text-sm text-purple-700">Responds within 2 hours</p>
-                          </p>
-                  </div>
-
-                  {/* Portfolio Preview */}
-                  {recommendedVendor.portfolio_photos && recommendedVendor.portfolio_photos.length > 0 && (
-                    <div className="mb-8">
-                      <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-xl font-semibold text-gray-900">Recent Work</h4>
-                        <Button variant="outline" size="sm" icon={Eye}>
-                          View Full Portfolio
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-6">
-                        {recommendedVendor.portfolio_photos.slice(0, 3).map((photo: string, index: number) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={photo}
-                              alt={`Portfolio ${index + 1}`}
-                              className="aspect-square object-cover rounded-xl shadow-md group-hover:shadow-xl transition-all duration-300"
-                    <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Shield className="w-6 h-6 text-green-600" />
-                      </div>
-                    )}
-                      
-                      <div className="border-t border-white/20 pt-6">
-                        <div className="text-center">
-                          <div className="text-4xl font-bold text-white mb-2">
-                            {formatPrice(selectedPackage.price)}
-                          </div>
-                          <div className="text-purple-200">Total Package Price</div>
-                        </div>
-                      <>
-                      
-                      <div className="space-y-3">
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          className="w-full border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold py-4 text-lg"
-                          onClick={onContinueToBooking}
-                        >
-                          Book This Vendor
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="lg"
-                          className="w-full text-white hover:bg-white/10 font-medium"
-                          onClick={handleViewProfile}
-                        >
-                          View Full Profile
-                        </div>
-                      </>
-                    )}
                   </div>
                   <p className="text-gray-600 text-lg leading-relaxed">
                     {recommendedVendor.profile || `Professional ${selectedServices[0]?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
@@ -326,16 +253,11 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                       {vendor.rating && (
                         <>
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                  
-                  <div className="mt-8 pt-6 border-t border-white/20">
-                    <div className="text-center text-purple-100 text-sm">
-                      <p>✓ Free cancellation up to 30 days</p>
-                      <p>✓ Secure payment processing</p>
-                      <p>✓ 24/7 customer support</p>
+                          <span>{vendor.rating}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
-                
                 </div>
               </div>
             ))}
