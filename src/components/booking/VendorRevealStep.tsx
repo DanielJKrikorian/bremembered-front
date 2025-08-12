@@ -126,7 +126,7 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
             </div>
 
             {/* Middle Column - Vendor Info */}
-            <div className="lg:w-1/3 flex flex-col space-y-6">
+            <div className="lg:w-1/3 space-y-6">
               {/* Vendor Name & Basic Info */}
               <div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
@@ -151,15 +151,15 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
               </div>
 
               {/* Bio */}
-              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 flex-1">
-                <p className="text-gray-700 leading-relaxed text-base">
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p className="text-gray-700 leading-relaxed">
                   {recommendedVendor.profile || `Professional ${currentService?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
                 </p>
               </div>
 
               {/* Specialties */}
               {recommendedVendor.specialties && recommendedVendor.specialties.length > 0 && (
-                <div className="mt-auto">
+                <div>
                   <h4 className="font-semibold text-gray-900 mb-3">Specialties</h4>
                   <div className="flex flex-wrap gap-2">
                     {recommendedVendor.specialties.map((specialty, index) => (
