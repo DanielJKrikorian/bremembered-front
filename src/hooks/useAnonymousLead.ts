@@ -101,7 +101,7 @@ export const useAnonymousLead = () => {
     if (!lead) return;
 
     // Check if Supabase is properly configured before making requests
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || !supabase) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, ...updates } : null);
       return;
@@ -123,11 +123,7 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        console.error('Network error updating lead: Failed to fetch. Please verify your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables in the .env file, and ensure your Supabase project is accessible.');
-      } else {
-        console.error('Error updating lead:', err);
-      }
+      console.warn('Supabase update failed, using local state only:', err);
       // Update local state even if DB update fails
       setLead(prev => prev ? { ...prev, ...updates } : null);
     }
@@ -138,7 +134,7 @@ export const useAnonymousLead = () => {
     if (!lead) return;
 
     // Check if Supabase is properly configured before making requests
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || !supabase) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, email } : null);
       return;
@@ -159,7 +155,7 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.error('Error saving email:', err);
+      console.warn('Supabase email save failed, using local state only:', err);
       // Update local state even if DB update fails
       setLead(prev => prev ? { ...prev, email } : null);
     }
@@ -170,7 +166,7 @@ export const useAnonymousLead = () => {
     if (!lead) return;
 
     // Check if Supabase is properly configured before making requests
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || !supabase) {
       console.warn('Supabase not configured, skipping abandon operation');
       return;
     }
@@ -186,7 +182,7 @@ export const useAnonymousLead = () => {
 
       if (error) throw error;
     } catch (err) {
-      console.error('Error abandoning lead:', err);
+      console.warn('Supabase abandon operation failed:', err);
     }
   };
 
