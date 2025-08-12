@@ -128,69 +128,85 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               {/* Vendor Header */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Vendor Photo */}
-                <div className="lg:col-span-1">
-                  <img
-                    src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                    alt={recommendedVendor.name}
-                    className="w-full aspect-square object-cover rounded-xl shadow-lg"
-                  />
-                </div>
-
-                {/* Vendor Info */}
-                <div className="lg:col-span-2">
-                  <div className="mb-6">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
-                    <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
-                      {recommendedVendor.rating && (
-                        <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                          <span className="font-medium">{recommendedVendor.rating}</span>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    {/* Vendor Photo */}
+                    <div className="lg:col-span-1">
+                      <div className="relative">
+                        <img
+                          src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                          alt={recommendedVendor.name}
+                          className="w-full aspect-square rounded-2xl object-cover border-4 border-rose-100 shadow-lg"
+                        />
+                        <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center shadow-lg">
+                          <Heart className="w-6 h-6 text-white" />
                         </div>
-                      )}
-                      <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
-                        <Award className="w-4 h-4 text-blue-600 mr-1" />
-                        <span className="font-medium">{recommendedVendor.years_experience} years</span>
+                      </div>
+                    </div>
+
+                    {/* Vendor Info */}
+                    <div className="lg:col-span-2">
+                      <div className="mb-6">
+                        <h3 className="text-3xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
+                        <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
+                          {recommendedVendor.rating && (
+                            <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full">
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                              <span className="font-medium">{recommendedVendor.rating}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
+                            <span className="font-medium">{recommendedVendor.years_experience} years experience</span>
+                          </div>
+                          {recommendedVendor.service_areas && recommendedVendor.service_areas.length > 0 && (
+                            <div className="flex items-center">
+                              <MapPin className="w-4 h-4 mr-1" />
+                              <span className="font-medium">{recommendedVendor.service_areas[0]}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-gray-600 text-lg leading-relaxed">
+                          {recommendedVendor.profile || `Professional ${selectedServices[0]?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
+                        </p>
                       </div>
                     </div>
                   </div>
-                  <p className="text-gray-600 text-lg leading-relaxed">
-                    {recommendedVendor.profile || `Professional ${selectedServices[0]?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
-                  </p>
-                </div>
-              </div>
 
-              {/* Specialties */}
-              {recommendedVendor.specialties && recommendedVendor.specialties.length > 0 && (
-                <div className="mb-8">
-                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Specialties</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {recommendedVendor.specialties.map((specialty, index) => (
-                      <span key={index} className="px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                        {specialty}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+                  {/* Specialties */}
+                  {recommendedVendor.specialties && recommendedVendor.specialties.length > 0 && (
+                    <div className="mb-8">
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4">Specialties</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {recommendedVendor.specialties.map((specialty, index) => (
+                          <span key={index} className="px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Portfolio Preview */}
-              {recommendedVendor.portfolio_photos && recommendedVendor.portfolio_photos.length > 0 && (
-                <div>
-                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Recent Work</h4>
-                  <div className="grid grid-cols-3 gap-6">
-                    {recommendedVendor.portfolio_photos.slice(0, 3).map((photo, index) => (
-                      <img
-                        key={index}
-                        src={photo}
-                        alt={`Portfolio ${index + 1}`}
-                        className="aspect-square object-cover rounded-xl shadow-md hover:shadow-lg transition-shadow"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+                  {/* Portfolio Preview */}
+                  {recommendedVendor.portfolio_photos && recommendedVendor.portfolio_photos.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex items-center justify-between mb-6">
+                        <h4 className="text-xl font-semibold text-gray-900">Recent Work</h4>
+                        <Button variant="outline" size="sm" icon={Eye}>
+                          View Full Portfolio
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-6">
+                        {recommendedVendor.portfolio_photos.slice(0, 3).map((photo: string, index: number) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={photo}
+                              alt={`Portfolio ${index + 1}`}
+                              className="aspect-square object-cover rounded-xl shadow-md group-hover:shadow-xl transition-all duration-300"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
             </div>
 
             {/* Package Summary Sidebar */}
@@ -253,12 +269,42 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                       {vendor.rating && (
                         <>
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                          <span>{vendor.rating}</span>
+                          <span className="font-medium">{vendor.rating}</span>
+                          <span className="mx-2">•</span>
                         </>
                       )}
+                      <span className="font-medium">{vendor.years_experience} years</span>
                     </div>
                   </div>
                 </div>
+                
+                {vendor.specialties && vendor.specialties.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex flex-wrap gap-1">
+                      {vendor.specialties.slice(0, 2).map((specialty, idx) => (
+                        <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 font-medium">
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0 hover:from-purple-600 hover:to-blue-600 group-hover:shadow-md transition-all font-semibold"
+                  onClick={() => {
+                    // Switch to this vendor as the recommended one
+                    // This would update the recommended vendor state
+                    const modal = document.querySelector('[data-modal-content]');
+                    if (modal) {
+                      modal.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  Select This Vendor
+                </Button>
               </div>
             ))}
           </div>
