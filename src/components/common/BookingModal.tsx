@@ -373,8 +373,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   const handleEmailSkip = async () => {
     await abandonLead();
-    setShowEmailCapture(false);
-    handleCloseModal();
+    onClose();
+    resetModal();
   };
 
   const handleCloseModal = () => {
