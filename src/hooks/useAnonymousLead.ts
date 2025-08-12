@@ -37,8 +37,8 @@ export const useAnonymousLead = () => {
     try {
       setLoading(true);
       
-      // Always check if Supabase is properly configured before making requests
-      if (!isSupabaseConfigured() || !supabase) {
+      // Check if Supabase is properly configured before making requests
+      if (!supabase || !isSupabaseConfigured()) {
         console.warn('Supabase not configured, using local-only lead');
         const sessionId = getSessionId();
         setLead({
@@ -100,8 +100,8 @@ export const useAnonymousLead = () => {
   const updateLead = async (updates: Partial<AnonymousLead>) => {
     if (!lead) return;
 
-    // Always check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
+    // Check if Supabase is properly configured before making requests
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, ...updates } : null);
       return;
@@ -133,8 +133,8 @@ export const useAnonymousLead = () => {
   const saveEmail = async (email: string) => {
     if (!lead) return;
 
-    // Always check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
+    // Check if Supabase is properly configured before making requests
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, updating local state only');
       setLead(prev => prev ? { ...prev, email } : null);
       return;
@@ -165,8 +165,8 @@ export const useAnonymousLead = () => {
   const abandonLead = async () => {
     if (!lead) return;
 
-    // Always check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
+    // Check if Supabase is properly configured before making requests
+    if (!supabase || !isSupabaseConfigured()) {
       console.warn('Supabase not configured, skipping abandon operation');
       return;
     }
