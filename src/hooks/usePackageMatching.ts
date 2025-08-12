@@ -54,26 +54,26 @@ export const usePackageMatching = ({
           .select('*')
           .eq('status', 'approved');
 
-        // Match service type - try exact match first, then lookup key
-        const lookupKey = serviceType.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-        console.log(`Matching service: ${serviceType} -> lookup_key: ${lookupKey}`);
-        
-        // Use ilike for more flexible matching
-        query = query.or(`service_type.ilike.%${serviceType}%,lookup_key.ilike.%${lookupKey}%`);
+        // Match service type with more flexible approach
+        console.log(`Matching service: ${serviceType}`);
+        query = query.ilike('service_type', `%${serviceType}%`);
 
-        // Add event type filter if specified - be more flexible
+        // Add event type filter if specified
         if (eventType) {
-          query = query.or(`event_type.ilike.%${eventType}%,event_type.is.null`);
+          query = query.or(`event_type.eq.${eventType},event_type.is.null`);
         }
 
         // Add budget filter if specified
         if (budgetRange) {
+          // Convert budget range from cents to dollars for comparison
           const [minStr, maxStr] = budgetRange.split('-');
-          const min = parseInt(minStr);
-          const max = maxStr ? parseInt(maxStr) : 999999999;
+          const minCents = parseInt(minStr);
+          const maxCents = maxStr ? parseInt(maxStr) : 99999999;
           
-          if (!isNaN(min) && !isNaN(max)) {
-            query = query.gte('price', min).lte('price', max);
+          console.log(`Budget filter: ${minCents} - ${maxCents} cents`);
+          
+          if (!isNaN(minCents) && !isNaN(maxCents)) {
+            query = query.gte('price', minCents).lte('price', maxCents);
           }
         }
 
@@ -81,12 +81,11 @@ export const usePackageMatching = ({
 
         if (error) {
           console.error('Error fetching packages:', error);
-          // Try simpler fallback query
+          // Try simpler fallback query without filters
           const { data: fallbackPackages } = await supabase
             .from('service_packages')
             .select('*')
             .eq('status', 'approved')
-            .ilike('service_type', `%${serviceType}%`)
             .limit(10);
           
           console.log('Fallback packages found:', fallbackPackages?.length || 0);
@@ -97,7 +96,6 @@ export const usePackageMatching = ({
           console.log('Package details:', packages?.map(p => ({ 
             name: p.name, 
             service_type: p.service_type, 
-            lookup_key: p.lookup_key,
             price: p.price 
           })));
           setMatchedPackages(packages || []);

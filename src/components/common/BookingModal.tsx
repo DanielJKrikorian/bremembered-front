@@ -76,7 +76,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   ];
 
   // Get service packages based on answers
-  const shouldMatch = currentStep >= 5 && localSelectedServices.length > 0 && selectedBudget;
+  const shouldMatch = currentStep >= 5 && localSelectedServices.length > 0 && selectedBudget && (preferenceType === 'hours' ? selectedHours : selectedCoverage.length > 0);
   
   const { matchedPackages, recommendedPackage: matchedRecommendedPackage, loading: packagesLoading } = usePackageMatching({
     serviceType: shouldMatch ? localSelectedServices[0] : '',
@@ -84,10 +84,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     preferenceType: shouldMatch ? preferenceType : undefined,
     preferenceValue: shouldMatch ? (
       preferenceType === 'hours' ? selectedHours : 
-      preferenceType === 'coverage' ? convertCoverageToString(selectedCoverage) : 
+      preferenceType === 'coverage' ? selectedCoverage : 
       undefined
     ) : undefined,
-    budgetRange: shouldMatch ? convertBudgetRange(selectedBudget) : undefined
+    budgetRange: shouldMatch ? selectedBudget : undefined
   });
 
   // Get recommended vendors when we have all the data
