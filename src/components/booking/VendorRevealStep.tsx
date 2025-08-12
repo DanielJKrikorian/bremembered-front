@@ -417,5 +417,6 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
           </div>
         </div>
       )}
+    </div>
   );
 };
