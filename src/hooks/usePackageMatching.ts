@@ -32,13 +32,14 @@ export const usePackageMatching = ({
     const fetchPackages = async () => {
       setLoading(true);
       try {
-        console.log('Fetching packages with params:', {
-          serviceType,
-          eventType,
-          preferenceType,
-          preferenceValue,
-          budgetRange
-        });
+        console.log('=== PACKAGE MATCHING DEBUG ===');
+        console.log('Service Type:', serviceType);
+        console.log('Event Type:', eventType);
+        console.log('Preference Type:', preferenceType);
+        console.log('Preference Value:', preferenceValue);
+        console.log('Budget Range:', budgetRange);
+        console.log('Supabase configured:', isSupabaseConfigured());
+        console.log('Supabase client exists:', !!supabase);
 
         if (!supabase || !isSupabaseConfigured()) {
           console.warn('Supabase not configured, returning empty packages');
@@ -48,43 +49,92 @@ export const usePackageMatching = ({
           return;
         }
 
-        // Start with base query
-        let query = supabase
+        // First, let's see what packages exist in the database
+        console.log('Checking all packages in database...');
+        const { data: allPackages, error: allError } = await supabase
           .from('service_packages')
-          .select('*')
-          .eq('status', 'approved');
-
-        // Match service type with more flexible approach
-        console.log(`Matching service: ${serviceType}`);
-        query = query.ilike('service_type', `%${serviceType}%`);
-
-        // Add event type filter if specified
-        if (eventType) {
-          query = query.or(`event_type.eq.${eventType},event_type.is.null`);
+          .select('id, service_type, name, price, status, event_type, hour_amount')
+          .limit(10);
+        
+        console.log('All packages found:', allPackages?.length || 0);
+        console.log('Sample packages:', allPackages?.map(p => ({
+          id: p.id,
+          service_type: p.service_type,
+          name: p.name,
+          status: p.status,
+          price: p.price
+        })));
+        
+        if (allError) {
+          console.error('Error fetching all packages:', allError);
         }
 
-        // Add budget filter if specified
+        // Now try the filtered query
+        let query = supabase
+          .from('service_packages')
+          .select('*');
+
+        // Only filter by status if we have approved packages
+        const approvedPackages = allPackages?.filter(p => p.status === 'approved') || [];
+        console.log('Approved packages:', approvedPackages.length);
+        
+        if (approvedPackages.length > 0) {
+          query = query.eq('status', 'approved');
+        }
+
+        // Try exact match first, then partial match
+        console.log(`Trying to match service type: "${serviceType}"`);
+        const exactMatches = allPackages?.filter(p => 
+          p.service_type === serviceType || 
+          p.service_type?.toLowerCase() === serviceType.toLowerCase()
+        ) || [];
+        console.log('Exact matches:', exactMatches.length);
+        
+        const partialMatches = allPackages?.filter(p => 
+          p.service_type?.toLowerCase().includes(serviceType.toLowerCase()) ||
+          serviceType.toLowerCase().includes(p.service_type?.toLowerCase() || '')
+        ) || [];
+        console.log('Partial matches:', partialMatches.length);
+        
+        if (exactMatches.length > 0) {
+          query = query.eq('service_type', serviceType);
+        } else if (partialMatches.length > 0) {
+          query = query.ilike('service_type', `%${serviceType}%`);
+        } else {
+          // No service type filter - get all packages
+          console.log('No service type matches, getting all packages');
+        }
+
+        // Add other filters only if we have matches
         if (budgetRange) {
           // Convert budget range from cents to dollars for comparison
-          const [minStr, maxStr] = budgetRange.split('-');
-          const minCents = parseInt(minStr);
-          const maxCents = maxStr ? parseInt(maxStr) : 99999999;
-          
-          console.log(`Budget filter: ${minCents} - ${maxCents} cents`);
-          
-          if (!isNaN(minCents) && !isNaN(maxCents)) {
-            query = query.gte('price', minCents).lte('price', maxCents);
+          try {
+            const [minStr, maxStr] = budgetRange.split('-');
+            const minCents = parseInt(minStr);
+            const maxCents = maxStr ? parseInt(maxStr) : 99999999;
+            
+            console.log(`Budget filter: ${minCents} - ${maxCents} cents`);
+            
+            if (!isNaN(minCents) && !isNaN(maxCents)) {
+              query = query.gte('price', minCents).lte('price', maxCents);
+            }
+          } catch (budgetError) {
+            console.warn('Error parsing budget range:', budgetError);
           }
         }
 
         const { data: packages, error } = await query;
+        
+        console.log('Query result - packages found:', packages?.length || 0);
+        console.log('Query error:', error);
 
         if (error) {
           console.error('Error fetching packages:', error);
-          // Try simpler fallback query without filters
+          // Simple fallback - just get some packages
           const { data: fallbackPackages } = await supabase
             .from('service_packages')
             .select('*')
+            .order('price', { ascending: true })
             .eq('status', 'approved')
             .limit(10);
           
@@ -92,12 +142,14 @@ export const usePackageMatching = ({
           setMatchedPackages(fallbackPackages || []);
           setRecommendedPackage(fallbackPackages?.[0] || null);
         } else {
-          console.log('Found packages:', packages?.length || 0);
-          console.log('Package details:', packages?.map(p => ({ 
+          console.log('Successfully found packages:', packages?.length || 0);
+          console.log('Package details:', packages?.slice(0, 3).map(p => ({ 
             name: p.name, 
             service_type: p.service_type, 
-            price: p.price 
+            price: p.price,
+            status: p.status
           })));
+          
           setMatchedPackages(packages || []);
           
           // Find best matching package
@@ -131,7 +183,9 @@ export const usePackageMatching = ({
             }
             
             setRecommendedPackage(bestPackage);
+            console.log('Recommended package:', bestPackage?.name);
           } else {
+            console.log('No packages found, setting recommended to null');
             setRecommendedPackage(null);
           }
         }
