@@ -98,168 +98,103 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
             variant="primary"
             onClick={onViewAllVendors}
           >
-            View All Vendors
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Success Header */}
-      <div className="text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Heart className="w-10 h-10 text-white" />
-        </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          🎉 Perfect! We Found Your Dream Team!
-        </h2>
-        <p className="text-gray-600 text-lg">
-          Based on your preferences, here are the ideal vendors for your {selectedEventType.toLowerCase()}
-        </p>
-      </div>
-
-      {/* Recommended Vendor Card */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-purple-200 overflow-hidden">
-        {/* Recommended Badge */}
-        <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-6 py-3 text-center">
-          <div className="flex items-center justify-center space-x-2">
-            <Heart className="w-5 h-5" />
-            <span className="font-semibold">Your Perfect Vendor Match</span>
-            <Heart className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              {/* Vendor Header */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Vendor Photo */}
-                <div className="lg:col-span-1">
-                  <img
-                    src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                    alt={recommendedVendor.name}
-                    className="w-full aspect-square object-cover rounded-xl shadow-lg"
-                  />
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Left Column - Vendor Photo */}
+            <div className="lg:w-1/3">
+              <div className="relative">
+                <img
+                  src={recommendedVendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                  alt={recommendedVendor.name}
+                  className="w-full aspect-square object-cover rounded-2xl shadow-lg"
+                />
+                <div className="absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Heart className="w-6 h-6 text-white" />
                 </div>
+              </div>
+            </div>
 
-                {/* Vendor Info */}
-                <div className="lg:col-span-2">
-                  <div className="mb-6">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
-                    <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
-                      {recommendedVendor.rating && (
-                        <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                          <span className="font-medium">{recommendedVendor.rating}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
-                        <Award className="w-4 h-4 text-blue-600 mr-1" />
-                        <span className="font-medium">{recommendedVendor.years_experience} years</span>
-                      </div>
+            {/* Middle Column - Vendor Info */}
+            <div className="lg:w-1/3 space-y-6">
+              {/* Vendor Name & Basic Info */}
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">{recommendedVendor.name}</h3>
+                <div className="space-y-2">
+                  {recommendedVendor.rating && (
+                    <div className="flex items-center bg-yellow-50 px-3 py-2 rounded-lg border border-yellow-200">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-2" />
+                      <span className="font-semibold text-yellow-800">{recommendedVendor.rating} Rating</span>
                     </div>
+                  )}
+                  <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+                    <Award className="w-4 h-4 text-blue-600 mr-2" />
+                    <span className="font-semibold text-blue-800">{recommendedVendor.years_experience} Years Experience</span>
                   </div>
-
-                  {/* Trust Indicators */}
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-6 bg-green-50 rounded-xl border border-green-200">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Shield className="w-6 h-6 text-green-600" />
-                      </div>
-                      <h5 className="font-semibold text-green-900 mb-1">Verified Professional</h5>
-                      <p className="text-sm text-green-700">Background checked & insured</p>
+                  {recommendedVendor.service_areas && recommendedVendor.service_areas.length > 0 && (
+                    <div className="flex items-center bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
+                      <MapPin className="w-4 h-4 text-emerald-600 mr-2" />
+                      <span className="font-semibold text-emerald-800">{recommendedVendor.service_areas[0]}</span>
                     </div>
-                    <div className="text-center p-6 bg-blue-50 rounded-xl border border-blue-200">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Award className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <h5 className="font-semibold text-blue-900 mb-1">Top Rated</h5>
-                      <p className="text-sm text-blue-700">Consistently excellent reviews</p>
-                    </div>
-                    <div className="text-center p-6 bg-purple-50 rounded-xl border border-purple-200">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Clock className="w-6 h-6 text-purple-600" />
-                      </div>
-                      <h5 className="font-semibold text-purple-900 mb-1">Quick Response</h5>
-                      <p className="text-sm text-purple-700">Responds within 2 hours</p>
-                    </div>
-                  </div>
-
-                  <p className="text-gray-600 text-lg leading-relaxed">
-                    {recommendedVendor.profile || `Professional ${currentService?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
-                  </p>
+                  )}
                 </div>
+              </div>
+
+              {/* Bio */}
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p className="text-gray-700 leading-relaxed">
+                  {recommendedVendor.profile || `Professional ${currentService?.toLowerCase()} specialist with ${recommendedVendor.years_experience} years of experience creating beautiful memories for couples.`}
+                </p>
               </div>
 
               {/* Specialties */}
               {recommendedVendor.specialties && recommendedVendor.specialties.length > 0 && (
-                <div className="mb-8">
-                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Specialties</h4>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Specialties</h4>
                   <div className="flex flex-wrap gap-2">
                     {recommendedVendor.specialties.map((specialty, index) => (
-                      <span key={index} className="px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                      <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
                         {specialty}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* Portfolio Preview */}
-              {recommendedVendor.portfolio_photos && recommendedVendor.portfolio_photos.length > 0 && (
-                <div>
-                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Recent Work</h4>
-                  <div className="grid grid-cols-3 gap-6">
-                    {recommendedVendor.portfolio_photos.slice(0, 3).map((photo, index) => (
-                      <img
-                        key={index}
-                        src={photo}
-                        alt={`Portfolio ${index + 1}`}
-                        className="aspect-square object-cover rounded-xl shadow-md hover:shadow-lg transition-shadow"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Package Summary Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl p-8 text-white shadow-xl">
+            {/* Right Column - Package Summary */}
+            <div className="lg:w-1/3">
+              <div className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl p-6 text-white shadow-xl h-full">
                 <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="w-8 h-8 text-white" />
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Sparkles className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">Your Package</h3>
+                  <h3 className="text-xl font-bold">Your Package</h3>
                 </div>
                 
-                <div className="space-y-6">
+                <div className="space-y-4 mb-6">
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-purple-100 mb-1">{selectedPackage?.service_type}</div>
-                    <div className="text-xl font-bold text-white mb-2">{selectedPackage?.name}</div>
+                    <div className="text-sm font-medium text-purple-100 mb-1">{selectedPackage?.service_type}</div>
+                    <div className="text-lg font-bold text-white mb-1">{selectedPackage?.name}</div>
                     {selectedPackage?.hour_amount && (
                       <div className="text-purple-200 text-sm">{selectedPackage.hour_amount} hours coverage</div>
                     )}
                   </div>
                 </div>
                 
-                <div className="border-t border-white/20 pt-6">
+                <div className="border-t border-white/20 pt-4 mb-6">
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-white mb-2">
+                    <div className="text-3xl font-bold text-white mb-1">
                       {formatPrice(selectedPackage?.price || 0)}
                     </div>
-                    <div className="text-purple-200">Total Package Price</div>
+                    <div className="text-purple-200 text-sm">Total Package Price</div>
                   </div>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-3 mb-6">
                   <Button
                     variant="outline"
                     size="lg"
-                    className="w-full border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold py-4 text-lg"
+                    className="w-full border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold py-3"
                     onClick={onContinueToBooking}
                   >
                     Book This Vendor
@@ -267,20 +202,87 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
                   <Button
                     variant="ghost"
                     size="lg"
-                    className="w-full text-white hover:bg-white/10 font-medium"
+                    className="w-full text-white hover:bg-white/10 font-medium py-2"
                     onClick={handleViewProfile}
                   >
                     View Full Profile
                   </Button>
                 </div>
                 
-                <div className="mt-8 pt-6 border-t border-white/20">
-                  <div className="text-center text-purple-100 text-sm">
-                    <p>✓ Free cancellation up to 30 days</p>
-                    <p>✓ Secure payment processing</p>
-                    <p>✓ 24/7 customer support</p>
+                <div className="pt-4 border-t border-white/20">
+                  <div className="text-center text-purple-100 text-xs space-y-1">
+                    <p className="flex items-center justify-center">
+                      <Check className="w-3 h-3 mr-1" />
+                      Free cancellation up to 30 days
+                    </p>
+                    <p className="flex items-center justify-center">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Secure payment processing
+                    </p>
+                    <p className="flex items-center justify-center">
+                      <Clock className="w-3 h-3 mr-1" />
+                      24/7 customer support
+                    </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Portfolio Section - Full Width Below */}
+        {recommendedVendor.portfolio_photos && recommendedVendor.portfolio_photos.length > 0 && (
+          <div className="px-6 pb-6">
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-bold text-gray-900">Recent Work</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Eye}
+                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                >
+                  View Full Portfolio
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {recommendedVendor.portfolio_photos.slice(0, 3).map((photo, index) => (
+                  <img
+                    key={index}
+                    src={photo}
+                    alt={`Portfolio ${index + 1}`}
+                    className="aspect-square object-cover rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trust Indicators - Full Width Below */}
+        <div className="px-6 pb-6">
+          <div className="border-t border-gray-200 pt-6">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <h5 className="font-semibold text-green-900 text-sm mb-1">Verified</h5>
+                <p className="text-xs text-green-700">Background checked</p>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Award className="w-5 h-5 text-white" />
+                </div>
+                <h5 className="font-semibold text-blue-900 text-sm mb-1">Top Rated</h5>
+                <p className="text-xs text-blue-700">Excellent reviews</p>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200">
+                <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <h5 className="font-semibold text-purple-900 text-sm mb-1">Quick Response</h5>
+                <p className="text-xs text-purple-700">Within 2 hours</p>
               </div>
             </div>
           </div>
