@@ -44,9 +44,17 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
 
       try {
-        console.log('Fetching packages for service type:', serviceType);
-        console.log('Event type:', eventType);
-        console.log('Filters:', filters);
+        // Service type to lookup_key mapping
+        const serviceLookupMap: Record<string, string> = {
+          'Photography': 'photography',
+          'DJ Services': 'dj',
+          'Day-of Coordination': 'coordination',
+          'Coordination': 'coordination',
+          'Videography': 'videography',
+          'Live Musician': 'live_musician',
+          'Planning': 'planning',
+          'Photo Booth': 'photo_booth'
+        };
 
         let query = supabase
           .from('service_packages')
@@ -55,36 +63,19 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Try both service_type and lookup_key matching for multiple services
-          const serviceTypeConditions = filters.selectedServices.map(service => `service_type.eq.${service}`).join(',');
-          const lookupKeyConditions = filters.selectedServices.map(service => {
-            if (service === 'DJ Services') return 'lookup_key.eq.dj';
-            if (service === 'Photography') return 'lookup_key.eq.photography';
-            if (service === 'Videography') return 'lookup_key.eq.videography';
-            if (service === 'Live Musician') return 'lookup_key.eq.musician';
-            if (service === 'Coordination') return 'lookup_key.eq.coordination';
-            if (service === 'Planning') return 'lookup_key.eq.planning';
-            return `lookup_key.eq.${service.toLowerCase()}`;
-          }).join(',');
+          // Use only lookup_key for multiple services
+          const lookupKeys = filters.selectedServices
+            .map(service => serviceLookupMap[service])
+            .filter(Boolean);
           
-          query = query.or(`${serviceTypeConditions},${lookupKeyConditions}`);
+          if (lookupKeys.length > 0) {
+            query = query.in('lookup_key', lookupKeys);
+          }
         } else if (serviceType) {
-          // Try both service_type and lookup_key for single service
-          if (serviceType === 'DJ Services') {
-            query = query.or('service_type.eq.DJ Services,lookup_key.eq.dj');
-          } else if (serviceType === 'Photography') {
-            query = query.or('service_type.eq.Photography,lookup_key.eq.photography');
-          } else if (serviceType === 'Videography') {
-            query = query.or('service_type.eq.Videography,lookup_key.eq.videography');
-          } else if (serviceType === 'Live Musician') {
-            query = query.or('service_type.eq.Live Musician,lookup_key.eq.musician');
-          } else if (serviceType === 'Coordination') {
-            query = query.or('service_type.eq.Coordination,lookup_key.eq.coordination');
-          } else if (serviceType === 'Planning') {
-            query = query.or('service_type.eq.Planning,lookup_key.eq.planning');
-          } else {
-            // Fallback to exact service_type match
-            query = query.eq('service_type', serviceType);
+          // Use only lookup_key for single service
+          const lookupKey = serviceLookupMap[serviceType];
+          if (lookupKey) {
+            query = query.eq('lookup_key', lookupKey);
           }
         }
 
@@ -118,16 +109,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         if (error) throw error;
         
-        console.log('Found packages:', data?.length || 0);
-        console.log('Sample packages:', data?.slice(0, 3).map(p => ({ 
-          name: p.name, 
-          service_type: p.service_type, 
-          lookup_key: p.lookup_key 
-        })));
-        
         setPackages(data || []);
       } catch (err) {
-        console.error('Error fetching packages:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
