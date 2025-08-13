@@ -509,7 +509,7 @@ export const PackageDetails: React.FC = () => {
           {/* Booking Sidebar */}
           <div className="space-y-6">
             {/* Quick Book */}
-            <Card className="p-6 sticky top-4">
+            <Card className="p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Book This Package</h3>
               
               <div className="space-y-4 mb-6">
