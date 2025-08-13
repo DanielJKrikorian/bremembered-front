@@ -212,6 +212,25 @@ export const SearchResults: React.FC = () => {
     }
   };
 
+  const getServicePhoto = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': 
+        return 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
+      case 'Videography': 
+        return 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800';
+      case 'DJ Services': 
+        return 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800';
+      case 'Live Musician': 
+        return 'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800';
+      case 'Coordination': 
+        return 'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800';
+      case 'Planning': 
+        return 'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800';
+      default: 
+        return 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
+    }
+  };
+
   const activeFiltersCount = 
     filters.serviceTypes.length + 
     filters.eventTypes.length + 
@@ -586,12 +605,16 @@ export const SearchResults: React.FC = () => {
                       
                       return (
                         <Card key={pkg.id} hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/package/${pkg.id}`)}>
+                          <div className="aspect-video overflow-hidden">
+                            <img
+                              src={getServicePhoto(pkg.service_type)}
+                              alt={pkg.name}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
                           <div className="p-6">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center">
-                                  <ServiceIcon className="w-6 h-6 text-rose-600" />
-                                </div>
                                 <div>
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
                                     {pkg.service_type}
@@ -674,9 +697,11 @@ export const SearchResults: React.FC = () => {
                         <Card key={pkg.id} hover className="p-6 cursor-pointer" onClick={() => navigate(`/package/${pkg.id}`)}>
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="md:w-1/4">
-                              <div className="w-full h-48 bg-gradient-to-br from-rose-100 to-amber-100 rounded-lg flex items-center justify-center">
-                                <ServiceIcon className="w-16 h-16 text-rose-600" />
-                              </div>
+                              <img
+                                src={getServicePhoto(pkg.service_type)}
+                                alt={pkg.name}
+                                className="w-full h-48 object-cover rounded-lg"
+                              />
                             </div>
                             <div className="md:w-3/4">
                               <div className="flex justify-between items-start mb-4">
