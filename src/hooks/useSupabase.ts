@@ -8,7 +8,7 @@ const transformToLookupKey = (serviceName: string): string => {
   const lookupMap: Record<string, string> = {
     'Photography': 'photography',
     'Videography': 'videography', 
-    'DJ Services': 'dj',
+    'DJ Services': 'dj_services',
     'Coordination': 'coordination',
     'Planning': 'planning'
   };
@@ -43,22 +43,12 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Create OR conditions for each service using both service_type and lookup_key
-          const serviceConditions = filters.selectedServices.flatMap(service => {
-            const lookupKey = transformToLookupKey(service);
-            console.log(`Service: ${service} -> lookup_key: ${lookupKey}`);
-            return [
-              `service_type.eq.${service}`,
-              `lookup_key.eq.${lookupKey}`
-            ];
-          }).join(',');
-          console.log('Service conditions:', serviceConditions);
-          query = query.or(serviceConditions);
+          // Use exact service_type match first, then try lookup_key if no results
+          const exactServiceTypes = filters.selectedServices.join(',');
+          query = query.in('service_type', filters.selectedServices);
         } else if (serviceType) {
-          // Try both service_type and lookup_key with proper transformation
-          const lookupKey = transformToLookupKey(serviceType);
-          console.log(`Single service: ${serviceType} -> lookup_key: ${lookupKey}`);
-          query = query.or(`service_type.eq.${serviceType},lookup_key.eq.${lookupKey}`);
+          // Use exact service_type match
+          query = query.eq('service_type', serviceType);
         }
 
         if (eventType) {
