@@ -47,8 +47,7 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           'Coordination': 'coordination',
           'Videography': 'videography',
           'Live Musician': 'live_musician',
-          'Planning': 'planning',
-          'Photo Booth': 'photo_booth'
+          'Planning': 'planning'
         };
 
         let query = supabase
