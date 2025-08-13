@@ -268,10 +268,8 @@ export const useRecommendedVendors = (filters: {
         setError(null);
       } catch (err) {
         console.warn('Error fetching recommended vendors:', err);
-        if (loading) {
-          setRecommendedVendors([]);
-          setError(null);
-        }
+        setError(err instanceof Error ? err.message : 'Failed to fetch vendors. Please check your connection.');
+        setRecommendedVendors([]);
       } finally {
         if (loading) {
           setLoading(false);
