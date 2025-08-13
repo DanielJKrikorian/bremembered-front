@@ -850,7 +850,13 @@ export const SearchResults: React.FC = () => {
                                   <Button variant="outline" size="sm">
                                     Add to Cart
                                   </Button>
-                                  <Button variant="primary">
+                                  <Button 
+                                    variant="primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/package/${pkg.id}`);
+                                    }}
+                                  >
                                     View Details
                                   </Button>
                                 </div>
