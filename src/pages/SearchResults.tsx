@@ -212,7 +212,7 @@ export const SearchResults: React.FC = () => {
     }
   };
 
-  const getServicePhoto = (serviceType: string) => {
+  const getServicePhoto = (serviceType: string, pkg: ServicePackage) => {
     // Create a hash from package ID to ensure consistent but unique photos
     const hash = pkg.id.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
