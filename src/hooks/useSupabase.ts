@@ -55,7 +55,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, primary_image')
          .eq('status', 'approved')
          .neq('service_type', 'Editing')
-         .neq('service_type', 'Photo Booth');
+         .neq('service_type', 'Photo Booth')
+         .not('service_type', 'like', '%,%');
 
         // Only filter by service type if specified
         if (serviceType) {
