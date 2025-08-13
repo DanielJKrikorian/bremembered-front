@@ -658,7 +658,7 @@ export const SearchResults: React.FC = () => {
                         <Card key={pkg.id} hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/package/${pkg.id}`)}>
                           <div className="aspect-video overflow-hidden">
                             <img
-                              src={pkg.images && pkg.images.length > 0 ? pkg.images[0] : getServicePhoto(pkg.service_type, pkg)}
+                              src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
                               alt={pkg.name}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                             />
@@ -749,7 +749,7 @@ export const SearchResults: React.FC = () => {
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="md:w-1/4">
                               <img
-                                src={pkg.images && pkg.images.length > 0 ? pkg.images[0] : getServicePhoto(pkg.service_type, pkg)}
+                                src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
                                 alt={pkg.name}
                                 className="w-full h-48 object-cover rounded-lg"
                               />

@@ -10,7 +10,7 @@ export interface ServicePackage {
   vendor_id?: string;
   hour_amount?: number;
   event_type?: string;
-  images?: string[];
+  primary_image?: string;
   created_at: string;
   updated_at: string;
 }

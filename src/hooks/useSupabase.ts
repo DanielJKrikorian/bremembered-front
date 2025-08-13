@@ -53,7 +53,7 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         let query = supabase
           .from('service_packages')
-          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, images')
+          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, primary_image')
          .eq('status', 'approved')
          .neq('service_type', 'Editing');
 
