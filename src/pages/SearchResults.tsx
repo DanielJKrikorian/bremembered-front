@@ -307,15 +307,25 @@ export const SearchResults: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           {/* Search Bar */}
           <div className="mb-6">
-            <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search packages by name, service type, or features..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500 text-lg"
-              />
+            <div className="flex items-center gap-4 max-w-4xl mx-auto">
+              <Button
+                variant="primary"
+                icon={Package}
+                onClick={() => navigate('/booking/services')}
+                className="whitespace-nowrap"
+              >
+                Create Custom Package
+              </Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search packages by name, service type, or features..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500 text-lg"
+                />
+              </div>
             </div>
           </div>
 
