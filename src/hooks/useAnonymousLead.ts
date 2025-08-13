@@ -39,7 +39,6 @@ export const useAnonymousLead = () => {
       
       // Check if Supabase is properly configured before making requests
       if (!supabase || !isSupabaseConfigured()) {
-        console.warn('Supabase not configured, using local-only lead');
         const sessionId = getSessionId();
         setLead({
           session_id: sessionId,
@@ -68,7 +67,6 @@ export const useAnonymousLead = () => {
         // Create new lead
         const newLead = {
           session_id: sessionId,
-          ip_address: null, // Will be handled by server
           current_step: 1
         };
 
@@ -82,9 +80,6 @@ export const useAnonymousLead = () => {
         setLead(data);
       }
     } catch (err) {
-      console.error('Error initializing lead:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      
       // Create local-only lead as fallback
       const sessionId = getSessionId();
       setLead({
@@ -104,8 +99,7 @@ export const useAnonymousLead = () => {
     setLead(prev => prev ? { ...prev, ...updates } : null);
 
     // Check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase not configured, using local state only');
+    if (!supabase || !isSupabaseConfigured()) {
       return;
     }
 
@@ -125,7 +119,6 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.warn('Supabase update failed, continuing with local state:', err);
       // Local state is already updated above, so we can continue
     }
   };
@@ -138,8 +131,7 @@ export const useAnonymousLead = () => {
     setLead(prev => prev ? { ...prev, email } : null);
 
     // Check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase not configured, using local state only');
+    if (!supabase || !isSupabaseConfigured()) {
       return;
     }
 
@@ -158,7 +150,6 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.warn('Supabase email save failed, continuing with local state:', err);
       // Local state is already updated above, so we can continue
     }
   };
@@ -168,8 +159,7 @@ export const useAnonymousLead = () => {
     if (!lead) return;
 
     // Check if Supabase is properly configured before making requests
-    if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase not configured, skipping abandon operation');
+    if (!supabase || !isSupabaseConfigured()) {
       return;
     }
 
@@ -184,7 +174,7 @@ export const useAnonymousLead = () => {
 
       if (error) throw error;
     } catch (err) {
-      console.warn('Supabase abandon operation failed:', err);
+      // Silently handle abandon failures
     }
   };
 
