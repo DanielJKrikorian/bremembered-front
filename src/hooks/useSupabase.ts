@@ -313,9 +313,7 @@ export const useVendorsByPackage = (servicePackageId: string) => {
               phone,
               portfolio_photos,
               portfolio_videos,
-              specialties,
-              service_areas,
-              profile
+              profile,
               specialties,
               service_areas
             )
