@@ -367,7 +367,9 @@ export const PackageDetails: React.FC = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {vendors.map((vendor) => (
+                        {vendors.filter((vendor, index, self) => 
+                          index === self.findIndex(v => v.id === vendor.id)
+                        ).map((vendor) => (
                           <Card key={vendor.id} className="p-6 hover:shadow-lg transition-shadow">
                             <div className="flex items-start space-x-4 mb-4">
                               {vendor.profile_photo ? (
