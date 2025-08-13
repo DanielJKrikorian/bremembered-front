@@ -100,10 +100,12 @@ export const useAnonymousLead = () => {
   const updateLead = async (updates: Partial<AnonymousLead>) => {
     if (!lead) return;
 
+    // Always update local state first
+    setLead(prev => prev ? { ...prev, ...updates } : null);
+
     // Check if Supabase is properly configured before making requests
     if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase not configured, updating local state only');
-      setLead(prev => prev ? { ...prev, ...updates } : null);
+      console.warn('Supabase not configured, using local state only');
       return;
     }
 
@@ -123,9 +125,8 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.warn('Supabase update failed, using local state only:', err);
-      // Update local state even if DB update fails
-      setLead(prev => prev ? { ...prev, ...updates } : null);
+      console.warn('Supabase update failed, continuing with local state:', err);
+      // Local state is already updated above, so we can continue
     }
   };
 
@@ -133,10 +134,12 @@ export const useAnonymousLead = () => {
   const saveEmail = async (email: string) => {
     if (!lead) return;
 
+    // Always update local state first
+    setLead(prev => prev ? { ...prev, email } : null);
+
     // Check if Supabase is properly configured before making requests
     if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase not configured, updating local state only');
-      setLead(prev => prev ? { ...prev, email } : null);
+      console.warn('Supabase not configured, using local state only');
       return;
     }
 
@@ -155,9 +158,8 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
-      console.warn('Supabase email save failed, using local state only:', err);
-      // Update local state even if DB update fails
-      setLead(prev => prev ? { ...prev, email } : null);
+      console.warn('Supabase email save failed, continuing with local state:', err);
+      // Local state is already updated above, so we can continue
     }
   };
 
