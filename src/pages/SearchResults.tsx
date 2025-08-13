@@ -743,6 +743,9 @@ export const SearchResults: React.FC = () => {
                             <Button variant="primary" size="sm" className="w-full">
                               View Package Details
                             </Button>
+                            <Button variant="outline" size="sm" className="w-full mt-2">
+                              Add to Cart
+                            </Button>
                           </div>
                         </Card>
                       );
@@ -843,9 +846,14 @@ export const SearchResults: React.FC = () => {
                                 <div className="text-sm text-gray-500">
                                   Click to view full details and book
                                 </div>
-                                <Button variant="primary">
-                                  View Details
-                                </Button>
+                                <div className="flex space-x-2">
+                                  <Button variant="outline" size="sm">
+                                    Add to Cart
+                                  </Button>
+                                  <Button variant="primary">
+                                    View Details
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
