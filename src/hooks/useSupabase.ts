@@ -629,6 +629,56 @@ export const useVendorReviews = (vendorId: string) => {
   return { reviews, loading, error };
 };
 
+export const usePackageReviews = (packageId: string) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPackageReviews = async () => {
+      if (!isSupabaseConfigured() || !supabase || !packageId) {
+        setReviews([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('support_feedback')
+          .select(`
+            id,
+            customer_name,
+            booking_experience_rating,
+            support_experience_rating,
+            would_recommend,
+            feedback,
+            created_at,
+            couple_id,
+            bookings!inner(
+              package_id
+            )
+          `)
+          .eq('bookings.package_id', packageId)
+          .not('booking_experience_rating', 'is', null)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setReviews(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (packageId) {
+      fetchPackageReviews();
+    }
+  }, [packageId]);
+
+  return { reviews, loading, error };
+};
+
 // Generate a unique session ID for anonymous users
 const generateSessionId = () => {
   return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
