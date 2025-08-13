@@ -54,7 +54,8 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         let query = supabase
           .from('service_packages')
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key')
-          .eq('status', 'approved');
+         .eq('status', 'approved')
+         .neq('service_type', 'Editing');
 
         // Only filter by service type if specified
         if (serviceType) {

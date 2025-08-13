@@ -111,10 +111,7 @@ export const SearchResults: React.FC = () => {
 
   const eventTypeOptions = [
     { value: 'Wedding', label: 'Wedding' },
-    { value: 'Corporate', label: 'Corporate Event' },
-    { value: 'Event', label: 'Special Event' },
-    { value: 'Sports', label: 'Sports Event' },
-    { value: 'School', label: 'School Event' }
+   { value: 'Proposal', label: 'Proposal' }
   ];
 
   const coverageOptions = [
