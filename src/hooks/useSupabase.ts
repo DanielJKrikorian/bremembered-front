@@ -36,6 +36,16 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
 
       try {
+        // Map service types to lookup keys
+        const serviceLookupMap: Record<string, string> = {
+          'Photography': 'photography',
+          'Videography': 'videography',
+          'DJ Services': 'dj',
+          'Live Musician': 'musician',
+          'Coordination': 'coordination',
+          'Planning': 'planning'
+        };
+
         let query = supabase
           .from('service_packages')
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key')
@@ -43,12 +53,13 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Use exact service_type match first, then try lookup_key if no results
-          const exactServiceTypes = filters.selectedServices.join(',');
-          query = query.in('service_type', filters.selectedServices);
+          // Map selected services to lookup keys
+          const lookupKeys = filters.selectedServices.map(service => serviceLookupMap[service] || service.toLowerCase());
+          query = query.in('lookup_key', lookupKeys);
         } else if (serviceType) {
-          // Use exact service_type match
-          query = query.eq('service_type', serviceType);
+          // Use lookup_key for single service
+          const lookupKey = serviceLookupMap[serviceType] || serviceType.toLowerCase();
+          query = query.eq('lookup_key', lookupKey);
         }
 
         if (eventType) {
@@ -81,24 +92,7 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         if (error) throw error;
         
-        // Filter out packages with multiple service types (containing commas)
-        const singleServicePackages = (data || []).filter(pkg => {
-          const hasMultipleServices = pkg.service_type && pkg.service_type.includes(',');
-          return !hasMultipleServices;
-        });
-        
-        // Debug: Log filtered packages
-        console.log('All returned packages:', data);
-        console.log('Filtered single-service packages:', singleServicePackages);
-        console.log('Detailed package breakdown:', singleServicePackages?.map(p => ({ 
-          id: p.id,
-          name: p.name, 
-          service_type: p.service_type, 
-          lookup_key: p.lookup_key,
-          status: p.status
-        })));
-        
-        setPackages(singleServicePackages);
+        setPackages(data || []);
       } catch (err) {
         console.error('Error fetching packages:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
