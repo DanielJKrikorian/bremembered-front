@@ -35,6 +35,14 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         return;
       }
 
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured() || !supabase) {
+        console.warn('Supabase not configured, returning empty packages');
+        setPackages([]);
+        setLoading(false);
+        return;
+      }
+
       try {
         // Map service types to lookup keys
         const serviceLookupMap: Record<string, string> = {
