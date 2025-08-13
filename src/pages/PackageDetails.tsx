@@ -370,11 +370,17 @@ export const PackageDetails: React.FC = () => {
                         {vendors.map((vendor) => (
                           <Card key={vendor.id} className="p-6 hover:shadow-lg transition-shadow">
                             <div className="flex items-start space-x-4 mb-4">
-                              <img
-                                src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                                alt={vendor.name}
-                                className="w-16 h-16 rounded-full object-cover"
-                              />
+                              {vendor.profile_photo ? (
+                                <img
+                                  src={vendor.profile_photo}
+                                  alt={vendor.name}
+                                  className="w-16 h-16 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <Users className="w-8 h-8 text-gray-400" />
+                                </div>
+                              )}
                               <div className="flex-1">
                                 <h4 className="text-lg font-semibold text-gray-900">{vendor.name}</h4>
                                 <div className="flex items-center text-sm text-gray-600 mb-2">
