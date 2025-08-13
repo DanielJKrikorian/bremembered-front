@@ -749,7 +749,7 @@ export const SearchResults: React.FC = () => {
                           <div className="flex flex-col md:flex-row gap-6">
                             <div className="md:w-1/4">
                               <img
-                                src={getServicePhoto(pkg.service_type)}
+                                src={getServicePhoto(pkg.service_type, pkg)}
                                 alt={pkg.name}
                                 className="w-full h-48 object-cover rounded-lg"
                               />
