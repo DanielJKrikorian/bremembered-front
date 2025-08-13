@@ -30,11 +30,6 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
   useEffect(() => {
     const fetchPackages = async () => {
-      if (!serviceType && (!filters?.selectedServices || filters.selectedServices.length === 0)) {
-        setLoading(false);
-        return;
-      }
-
       // Check if Supabase is configured first
       if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase not configured, returning empty packages');
@@ -61,21 +56,20 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
           .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key')
           .eq('status', 'approved');
 
-        // Handle multiple selected services
-        if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Use only lookup_key for multiple services
+        // Only filter by service type if specified
+        if (serviceType) {
+          const lookupKey = serviceLookupMap[serviceType];
+          if (lookupKey) {
+            query = query.eq('lookup_key', lookupKey);
+          }
+        } else if (filters?.selectedServices && filters.selectedServices.length > 0) {
+          // Handle multiple selected services
           const lookupKeys = filters.selectedServices
             .map(service => serviceLookupMap[service])
             .filter(Boolean);
           
           if (lookupKeys.length > 0) {
             query = query.in('lookup_key', lookupKeys);
-          }
-        } else if (serviceType) {
-          // Use only lookup_key for single service
-          const lookupKey = serviceLookupMap[serviceType];
-          if (lookupKey) {
-            query = query.eq('lookup_key', lookupKey);
           }
         }
 

@@ -21,8 +21,7 @@ export const SearchResults: React.FC = () => {
     maxHours: 12,
     minPrice: 0,
     maxPrice: 500000,
-    coverage: [] as string[],
-    rating: 0
+    coverage: [] as string[]
   });
 
   // Get all service packages with current filters
@@ -220,7 +219,6 @@ export const SearchResults: React.FC = () => {
     filters.serviceTypes.length + 
     filters.eventTypes.length + 
     filters.coverage.length + 
-    (filters.rating > 0 ? 1 : 0) +
     (filters.minPrice > 0 || filters.maxPrice < 500000 ? 1 : 0) +
     (filters.minHours > 1 || filters.maxHours < 12 ? 1 : 0);
 
@@ -554,35 +552,6 @@ export const SearchResults: React.FC = () => {
                 </div>
 
                 {/* Rating Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Minimum Rating
-                  </label>
-                  <div className="space-y-2">
-                    {[4.8, 4.5, 4.0, 0].map((rating) => (
-                      <label key={rating} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="rating"
-                          value={rating}
-                          checked={filters.rating === rating}
-                          onChange={(e) => handleFilterChange('rating', parseFloat(e.target.value))}
-                          className="mr-2 text-yellow-500 focus:ring-yellow-500"
-                        />
-                        <div className="flex items-center">
-                          {rating > 0 ? (
-                            <>
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                              <span className="text-sm">{rating}+ stars</span>
-                            </>
-                          ) : (
-                            <span className="text-sm">Any rating</span>
-                          )}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </div>
             </Card>
           </div>
