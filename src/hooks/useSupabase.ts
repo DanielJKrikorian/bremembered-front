@@ -44,15 +44,9 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
 
       try {
-        // Map service types to lookup keys
-        const serviceLookupMap: Record<string, string> = {
-          'Photography': 'photography',
-          'Videography': 'videography',
-          'DJ Services': 'dj',
-          'Live Musician': 'musician',
-          'Coordination': 'coordination',
-          'Planning': 'planning'
-        };
+        console.log('Fetching packages for service type:', serviceType);
+        console.log('Event type:', eventType);
+        console.log('Filters:', filters);
 
         let query = supabase
           .from('service_packages')
@@ -61,13 +55,37 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         // Handle multiple selected services
         if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Map selected services to lookup keys
-          const lookupKeys = filters.selectedServices.map(service => serviceLookupMap[service] || service.toLowerCase());
-          query = query.in('lookup_key', lookupKeys);
+          // Try both service_type and lookup_key matching for multiple services
+          const serviceTypeConditions = filters.selectedServices.map(service => `service_type.eq.${service}`).join(',');
+          const lookupKeyConditions = filters.selectedServices.map(service => {
+            if (service === 'DJ Services') return 'lookup_key.eq.dj';
+            if (service === 'Photography') return 'lookup_key.eq.photography';
+            if (service === 'Videography') return 'lookup_key.eq.videography';
+            if (service === 'Live Musician') return 'lookup_key.eq.musician';
+            if (service === 'Coordination') return 'lookup_key.eq.coordination';
+            if (service === 'Planning') return 'lookup_key.eq.planning';
+            return `lookup_key.eq.${service.toLowerCase()}`;
+          }).join(',');
+          
+          query = query.or(`${serviceTypeConditions},${lookupKeyConditions}`);
         } else if (serviceType) {
-          // Use lookup_key for single service
-          const lookupKey = serviceLookupMap[serviceType] || serviceType.toLowerCase();
-          query = query.eq('lookup_key', lookupKey);
+          // Try both service_type and lookup_key for single service
+          if (serviceType === 'DJ Services') {
+            query = query.or('service_type.eq.DJ Services,lookup_key.eq.dj');
+          } else if (serviceType === 'Photography') {
+            query = query.or('service_type.eq.Photography,lookup_key.eq.photography');
+          } else if (serviceType === 'Videography') {
+            query = query.or('service_type.eq.Videography,lookup_key.eq.videography');
+          } else if (serviceType === 'Live Musician') {
+            query = query.or('service_type.eq.Live Musician,lookup_key.eq.musician');
+          } else if (serviceType === 'Coordination') {
+            query = query.or('service_type.eq.Coordination,lookup_key.eq.coordination');
+          } else if (serviceType === 'Planning') {
+            query = query.or('service_type.eq.Planning,lookup_key.eq.planning');
+          } else {
+            // Fallback to exact service_type match
+            query = query.eq('service_type', serviceType);
+          }
         }
 
         if (eventType) {
@@ -99,6 +117,13 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         const { data, error } = await query.order('price', { ascending: true });
 
         if (error) throw error;
+        
+        console.log('Found packages:', data?.length || 0);
+        console.log('Sample packages:', data?.slice(0, 3).map(p => ({ 
+          name: p.name, 
+          service_type: p.service_type, 
+          lookup_key: p.lookup_key 
+        })));
         
         setPackages(data || []);
       } catch (err) {

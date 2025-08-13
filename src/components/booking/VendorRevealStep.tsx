@@ -143,6 +143,32 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
               
               {/* Info Badges */}
               <div className="flex flex-wrap gap-2 mb-4">
+                {/* Vendor Badges */}
+                <div className="flex items-center bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                  <span className="font-bold text-yellow-800">{recommendedVendor.rating || '4.9'}</span>
+                </div>
+                <div className="flex items-center bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                  <Award className="w-4 h-4 text-blue-600 mr-1" />
+                  <span className="font-bold text-blue-800">{recommendedVendor.years_experience} Years</span>
+                </div>
+                {recommendedVendor.service_areas && recommendedVendor.service_areas.length > 0 && (
+                  <div className="flex items-center bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                    <MapPin className="w-4 h-4 text-emerald-600 mr-1" />
+                    <span className="font-bold text-emerald-800">{recommendedVendor.service_areas[0]}</span>
+                  </div>
+                )}
+                <div className="flex items-center bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                  <Shield className="w-4 h-4 text-green-600 mr-1" />
+                  <span className="font-bold text-green-800">Verified</span>
+                </div>
+                <div className="flex items-center bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                  <Clock className="w-4 h-4 text-purple-600 mr-1" />
+                  <span className="font-bold text-purple-800">Quick Response</span>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 text-gray-600 mb-4">
                 {recommendedVendor.rating && (
                   <div className="flex items-center bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
