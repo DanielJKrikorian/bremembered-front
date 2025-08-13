@@ -292,12 +292,18 @@ export const useVendorsByPackage = (servicePackageId: string) => {
 
   useEffect(() => {
     const fetchVendorsByPackage = async () => {
+      if (!isSupabaseConfigured() || !supabase || !servicePackageId) {
+        setVendors([]);
+        setLoading(false);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
           .from('vendor_service_packages')
           .select(`
             vendor_id,
+            service_package_id,
             vendors!inner(
               id,
               name,
@@ -306,6 +312,10 @@ export const useVendorsByPackage = (servicePackageId: string) => {
               years_experience,
               phone,
               portfolio_photos,
+              portfolio_videos,
+              specialties,
+              service_areas,
+              profile
               specialties,
               service_areas
             )
