@@ -422,6 +422,14 @@ export const MyBookings: React.FC = () => {
                         <Button variant="outline" icon={Download} size="sm">
                           Download Contract
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          icon={Eye} 
+                          size="sm"
+                          onClick={() => navigate('/profile?tab=gallery')}
+                        >
+                          View Gallery
+                        </Button>
                         {booking.status === 'confirmed' && (
                           booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
                         ) && (
