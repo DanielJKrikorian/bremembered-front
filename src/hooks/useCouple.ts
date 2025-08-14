@@ -84,13 +84,13 @@ export const useCouple = () => {
           .select(`
             *,
             couple_style_preferences(
-              style_tags(id, label, description)
+              style_tags!inner(id, label, description)
             ),
             couple_vibe_preferences(
-              vibe_tags(id, label, description)
+              vibe_tags!inner(id, label, description)
             ),
             couple_language_preferences(
-              languages(id, language)
+              languages!inner(id, language)
             )
           `)
           .eq('user_id', user.id)
@@ -122,10 +122,15 @@ export const useCouple = () => {
           // Transform the data to include preferences
           const coupleWithPreferences = {
             ...data,
-            style_preferences: data.couple_style_preferences?.map((pref: any) => pref.style_tags) || [],
-            vibe_preferences: data.couple_vibe_preferences?.map((pref: any) => pref.vibe_tags) || [],
-            language_preferences: data.couple_language_preferences?.map((pref: any) => pref.languages) || []
+            style_preferences: data.couple_style_preferences?.map((pref: any) => pref.style_tags).filter(Boolean) || [],
+            vibe_preferences: data.couple_vibe_preferences?.map((pref: any) => pref.vibe_tags).filter(Boolean) || [],
+            language_preferences: data.couple_language_preferences?.map((pref: any) => pref.languages).filter(Boolean) || []
           };
+          console.log('Loaded couple with preferences:', {
+            style_count: coupleWithPreferences.style_preferences.length,
+            vibe_count: coupleWithPreferences.vibe_preferences.length,
+            language_count: coupleWithPreferences.language_preferences.length
+          });
           setCouple(coupleWithPreferences);
         }
       } catch (err) {
