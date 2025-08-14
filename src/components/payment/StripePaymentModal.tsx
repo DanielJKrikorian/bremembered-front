@@ -255,7 +255,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   required
                 />
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <Input
                     label="Expiry Date"
                     placeholder="MM/YY"
@@ -272,6 +272,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     maxLength={4}
                     required
                   />
+                  <div></div>
                 </div>
                 
                 <Input
