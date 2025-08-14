@@ -766,7 +766,7 @@ export const SearchResults: React.FC = () => {
                               className="w-full mt-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Add to cart functionality would go here
+                                navigate(`/package/${pkg.id}`);
                               }}
                             >
                               Add to Cart
@@ -877,7 +877,7 @@ export const SearchResults: React.FC = () => {
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Add to cart functionality would go here
+                                      navigate(`/package/${pkg.id}`);
                                     }}
                                   >
                                     Add to Cart
@@ -885,6 +885,10 @@ export const SearchResults: React.FC = () => {
                                   <Button 
                                     variant="primary"
                                     size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/package/${pkg.id}`);
+                                    }}
                                   >
                                     View Details
                                   </Button>
