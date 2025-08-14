@@ -627,6 +627,93 @@ export const useVendorReviews = (vendorId: string) => {
   return { reviews, loading, error };
 };
 
+export const useLatestReviews = (limit: number = 3) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLatestReviews = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        // Return mock data if Supabase not configured
+        const mockReviews = [
+          {
+            id: 'mock-1',
+            overall_rating: 5,
+            feedback: 'B. Remembered made our wedding planning so much easier. We found our perfect photographer and DJ in one place, and the booking process was seamless.',
+            vendor: { name: 'Elegant Moments Photography' },
+            couple: { name: 'Sarah & Michael', wedding_date: '2024-01-15' }
+          },
+          {
+            id: 'mock-2',
+            overall_rating: 5,
+            feedback: 'The quality of vendors on this platform is incredible. Our videographer captured our day perfectly, and the coordination service was flawless.',
+            vendor: { name: 'Timeless Studios' },
+            couple: { name: 'Emily & James', wedding_date: '2024-01-10' }
+          },
+          {
+            id: 'mock-3',
+            overall_rating: 5,
+            feedback: 'From booking to our wedding day, everything was perfect. The vendors were professional, and the platform made everything so organized.',
+            vendor: { name: 'Perfect Harmony Events' },
+            couple: { name: 'Jessica & David', wedding_date: '2024-01-05' }
+          }
+        ];
+        setReviews(mockReviews);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('vendor_reviews')
+          .select(`
+            id,
+            overall_rating,
+            feedback,
+            created_at,
+            vendors!inner(
+              name
+            ),
+            couples!inner(
+              name,
+              wedding_date
+            )
+          `)
+          .not('feedback', 'is', null)
+          .not('overall_rating', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (error) throw error;
+        
+        // Transform the data to match our expected format
+        const transformedReviews = data?.map(review => ({
+          id: review.id,
+          overall_rating: review.overall_rating,
+          feedback: review.feedback,
+          vendor: review.vendors,
+          couple: review.couples,
+          created_at: review.created_at
+        })) || [];
+        
+        setReviews(transformedReviews);
+      } catch (err) {
+        console.error('Error fetching latest reviews:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        // Fallback to empty array
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestReviews();
+  }, [limit]);
+
+  return { reviews, loading, error };
+};
+
 // Generate a unique session ID for anonymous users
 const generateSessionId = () => {
   return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();

@@ -6,10 +6,12 @@ import { Card } from '../components/ui/Card';
 import { ServiceCard } from '../components/booking/ServiceCard';
 import { BookingModal } from '../components/common/BookingModal';
 import { mockBundles } from '../lib/mockData';
+import { useLatestReviews } from '../hooks/useSupabase';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const { reviews, loading: reviewsLoading } = useLatestReviews(3);
 
   const featuredBundles = mockBundles.slice(0, 3);
 
@@ -273,51 +275,58 @@ export const Home: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: 'Sarah & Michael',
-                location: 'Los Angeles, CA',
-                review: 'B. Remembered made our wedding planning so much easier. We found our perfect photographer and DJ in one place, and the booking process was seamless.',
-                rating: 5,
-                image: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400'
-              },
-              {
-                name: 'Emily & James',
-                location: 'San Francisco, CA',
-                review: 'The quality of vendors on this platform is incredible. Our videographer captured our day perfectly, and the coordination service was flawless.',
-                rating: 5,
-                image: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400'
-              },
-              {
-                name: 'Jessica & David',
-                location: 'San Diego, CA',
-                review: 'From booking to our wedding day, everything was perfect. The vendors were professional, and the platform made everything so organized.',
-                rating: 5,
-                image: 'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400'
-              }
-            ].map((testimonial, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-600 mb-4 italic">"{testimonial.review}"</p>
-                <div className="flex items-center">
-                  <img
-                    src={testimonial.image}
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full object-cover mr-3"
-                  />
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-500">{testimonial.location}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {reviewsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading real couple reviews...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {reviews.map((review, index) => {
+                // Generate consistent images based on review ID
+                const images = [
+                  'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
+                  'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
+                  'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400',
+                  'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=400',
+                  'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400'
+                ];
+                const imageIndex = index % images.length;
+                
+                return (
+                  <Card key={review.id} className="p-6">
+                    <div className="flex items-center mb-4">
+                      {[...Array(review.overall_rating || 5)].map((_, i) => (
+                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                    <p className="text-gray-600 mb-4 italic">"{review.feedback}"</p>
+                    <div className="flex items-center">
+                      <img
+                        src={images[imageIndex]}
+                        alt={review.couple?.name || 'Happy Couple'}
+                        className="w-12 h-12 rounded-full object-cover mr-3"
+                      />
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{review.couple?.name || 'Happy Couple'}</h4>
+                        <p className="text-sm text-gray-500">
+                          {review.vendor?.name ? `${review.vendor.name} client` : 'B. Remembered client'}
+                        </p>
+                        {review.couple?.wedding_date && (
+                          <p className="text-xs text-gray-400">
+                            {new Date(review.couple.wedding_date).toLocaleDateString('en-US', { 
+                              month: 'long', 
+                              year: 'numeric' 
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
