@@ -310,7 +310,7 @@ export const Home: React.FC = () => {
                       <div>
                         <h4 className="font-semibold text-gray-900">{review.couple?.name || 'Happy Couple'}</h4>
                         <p className="text-sm text-gray-500">
-                          {review.vendor?.name ? `${review.vendor.name} client` : 'B. Remembered client'}
+                          {review.vendor?.name || 'B. Remembered'}
                         </p>
                         {review.couple?.wedding_date && (
                           <p className="text-xs text-gray-400">
