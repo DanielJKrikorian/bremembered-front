@@ -164,8 +164,7 @@ const PaymentForm: React.FC<{
       base: {
         fontSize: '16px',
         color: '#424770',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        lineHeight: '24px',
+        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
         '::placeholder': {
           color: '#aab7c4',
         },
@@ -174,7 +173,6 @@ const PaymentForm: React.FC<{
         color: '#9e2146',
       },
     },
-    hidePostalCode: false,
   };
 
   if (!stripeConfigured) {
@@ -230,7 +228,7 @@ const PaymentForm: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Card Information
           </label>
-          <div className="border border-gray-300 rounded-lg p-4 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white min-h-[44px] flex items-center">
+          <div className="border border-gray-300 rounded-lg p-3 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white">
             <CardElement options={cardElementOptions} />
           </div>
         </div>
