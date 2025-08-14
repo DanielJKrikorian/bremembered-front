@@ -15,7 +15,7 @@ export const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { couple, loading: coupleLoading, updateCouple } = useCouple();
-  const { updateStylePreferences, updateVibePreferences, loading: preferencesLoading } = useCouplePreferences();
+  const { updateStylePreferences, updateVibePreferences, updateLanguagePreferences, loading: preferencesLoading } = useCouplePreferences();
   const { bookings } = useBookings();
   const { uploadPhoto, deletePhoto, uploading: photoUploading, error: photoError } = usePhotoUpload();
   const { styleTags, loading: styleTagsLoading } = useStyleTags();

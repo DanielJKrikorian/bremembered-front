@@ -311,6 +311,7 @@ export const useCouplePreferences = () => {
     updateStylePreferences,
     updateVibePreferences,
     updateLanguagePreferences,
+    updateLanguagePreferences,
     loading,
     error
   };
