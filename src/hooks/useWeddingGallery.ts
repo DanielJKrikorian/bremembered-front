@@ -162,28 +162,27 @@ export const useWeddingGallery = () => {
 
         // Process files to add public URLs
         const processedFiles = (filesResult.data || []).map(file => {
-          // Construct the storage path from file_path (folder) and file_name
-          let publicUrl = file.public_url;
+          // Use file_path as folder and file_name as filename in vendor_media bucket
+          let publicUrl;
           
-          if (!publicUrl && file.file_path && file.file_name) {
-            // Construct the full storage path: file_path/file_name
+          if (file.file_path && file.file_name && supabase && isSupabaseConfigured()) {
+            // Construct storage path: file_path (folder) + file_name
             const storagePath = `${file.file_path}/${file.file_name}`;
             
-            // Get public URL from Supabase storage
-            if (supabase && isSupabaseConfigured()) {
-              try {
-                const { data } = supabase.storage
-                  .from('vendor_media')
-                  .getPublicUrl(storagePath);
-                publicUrl = data.publicUrl;
-              } catch (error) {
-                console.warn('Error getting public URL for:', storagePath, error);
-                publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
-              }
-            } else {
+            try {
+              // Get public URL from vendor_media bucket
+              const { data } = supabase.storage
+                .from('vendor_media')
+                .getPublicUrl(storagePath);
+              
+              publicUrl = data.publicUrl;
+              console.log('Generated public URL:', publicUrl, 'for path:', storagePath);
+            } catch (error) {
+              console.error('Error getting public URL for path:', storagePath, error);
               publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
             }
-          } else if (!publicUrl) {
+          } else {
+            // Fallback for missing data or unconfigured Supabase
             publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
           }
           
@@ -198,7 +197,10 @@ export const useWeddingGallery = () => {
         setExtensions(extensionsResult.data || []);
       } catch (err) {
         console.error('Error fetching gallery data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch gallery data');
+        // Set mock data as fallback
+        setFiles(mockFiles);
+        setSubscription(mockSubscription);
+        setExtensions([]);
       } finally {
         setLoading(false);
       }
