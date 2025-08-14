@@ -571,6 +571,188 @@ export const Profile: React.FC = () => {
               </Card>
             )}
 
+            {activeTab === 'wedding-preferences' && (
+              <Card className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-semibold text-gray-900">Wedding Preferences</h2>
+                  {preferencesChanged && (
+                    <Button 
+                      variant="primary" 
+                      icon={Save} 
+                      onClick={handleSavePreferences}
+                      loading={updating || preferencesLoading}
+                      disabled={updating || preferencesLoading}
+                    >
+                      Save Changes
+                    </Button>
+                  )}
+                </div>
+
+                {updateError && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{updateError}</p>
+                  </div>
+                )}
+
+                <div className="space-y-8">
+                  {/* Style Preferences */}
+                  <div>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <Palette className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Style Preferences</h3>
+                        <p className="text-sm text-gray-600">Choose the photography/videography styles you love</p>
+                      </div>
+                    </div>
+                    
+                    {styleTagsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin w-6 h-6 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-gray-600">Loading styles...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {styleTags.map((style) => {
+                          const isSelected = selectedStyles.includes(style.id);
+                          return (
+                            <div
+                              key={style.id}
+                              onClick={() => handleStyleToggle(style.id)}
+                              className={`
+                                relative p-3 rounded-lg border-2 cursor-pointer transition-all
+                                ${isSelected 
+                                  ? 'border-purple-500 bg-purple-50' 
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }
+                              `}
+                            >
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                              <h4 className="font-medium text-gray-900 text-sm">{style.label}</h4>
+                              {style.description && (
+                                <p className="text-xs text-gray-600 mt-1">{style.description}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vibe Preferences */}
+                  <div>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
+                        <Heart className="w-4 h-4 text-pink-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Vibe Preferences</h3>
+                        <p className="text-sm text-gray-600">Select the vibes that match your wedding vision</p>
+                      </div>
+                    </div>
+                    
+                    {vibeTagsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin w-6 h-6 border-4 border-pink-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-gray-600">Loading vibes...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {vibeTags.map((vibe) => {
+                          const isSelected = selectedVibes.includes(vibe.id);
+                          return (
+                            <div
+                              key={vibe.id}
+                              onClick={() => handleVibeToggle(vibe.id)}
+                              className={`
+                                relative p-3 rounded-lg border-2 cursor-pointer transition-all
+                                ${isSelected 
+                                  ? 'border-pink-500 bg-pink-50' 
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }
+                              `}
+                            >
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                              <h4 className="font-medium text-gray-900 text-sm">{vibe.label}</h4>
+                              {vibe.description && (
+                                <p className="text-xs text-gray-600 mt-1">{vibe.description}</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Language Preferences */}
+                  <div>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <Globe className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Language Preferences</h3>
+                        <p className="text-sm text-gray-600">Select languages you'd like your vendors to speak</p>
+                      </div>
+                    </div>
+                    
+                    {languagesLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin w-6 h-6 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-gray-600">Loading languages...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {languages.map((language) => {
+                          const isSelected = selectedLanguages.includes(language.id);
+                          return (
+                            <div
+                              key={language.id}
+                              onClick={() => handleLanguageToggle(language.id)}
+                              className={`
+                                relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
+                                ${isSelected 
+                                  ? 'border-emerald-500 bg-emerald-50' 
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }
+                              `}
+                            >
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                              <div className="font-medium text-gray-900 text-sm">{language.language}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Help Text */}
+                <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-900 mb-2">Why set preferences?</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Get better vendor recommendations that match your style</li>
+                    <li>• Help vendors understand your vision before they contact you</li>
+                    <li>• Find vendors who speak your preferred languages</li>
+                    <li>• Save time by filtering out vendors who don't match your vibe</li>
+                  </ul>
+                </div>
+              </Card>
+            )}
+
             {activeTab === 'preferences' && (
               <Card className="p-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-8">Notification Preferences</h2>
