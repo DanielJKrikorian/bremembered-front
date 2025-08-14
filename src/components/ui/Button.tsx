@@ -1,5 +1,5 @@
 import React from 'react';
-import { DivideIcon as LucideIcon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -19,6 +19,7 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   className = '',
   disabled,
+  onClick,
   ...props
 }) => {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
@@ -38,10 +39,20 @@ export const Button: React.FC<ButtonProps> = ({
 
   const disabledClasses = disabled || loading ? 'opacity-50 cursor-not-allowed' : '';
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (disabled || loading) {
+      e.preventDefault();
+      return;
+    }
+    if (onClick) {
+      onClick(e);
+    }
+  };
   return (
     <button
       className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`}
       disabled={disabled || loading}
+      onClick={handleClick}
       {...props}
     >
       {loading ? (

@@ -173,7 +173,11 @@ export const Home: React.FC = () => {
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => setShowBookingModal(true)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowBookingModal(true);
+                  }}
                   className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
                 >
                   Start Your Booking Journey ✨

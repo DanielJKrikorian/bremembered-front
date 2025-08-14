@@ -24,7 +24,11 @@ export const SearchBar: React.FC = () => {
             variant="primary"
             size="lg"
             className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-xl"
-            onClick={() => setIsBookingModalOpen(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsBookingModalOpen(true);
+            }}
           >
             Start Your Booking Journey
           </Button>
