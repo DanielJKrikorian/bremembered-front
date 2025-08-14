@@ -110,7 +110,29 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const formatCardNumber = (value: string) => {
     // Remove all non-digits
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    // Add spaces every 4 digits
+  
+  // Check if it's an American Express card (starts with 34 or 37)
+  const isAmex = v.startsWith('34') || v.startsWith('37');
+  
+  if (isAmex) {
+    // American Express format: 4-6-5 (e.g., 3782 822463 10005)
+    const matches = v.match(/\d{4,15}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    
+    if (match.length > 0) {
+      parts.push(match.substring(0, 4));
+      if (match.length > 4) {
+        parts.push(match.substring(4, 10));
+      }
+      if (match.length > 10) {
+        parts.push(match.substring(10, 15));
+      }
+    }
+    
+    return parts.join(' ');
+  } else {
+    // Standard format: 4-4-4-4
     const matches = v.match(/\d{4,16}/g);
     const match = matches && matches[0] || '';
     const parts = [];
@@ -122,11 +144,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     } else {
       return v;
     }
+  }
   };
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCardNumber(e.target.value);
-    if (formatted.replace(/\s/g, '').length <= 16) {
+    if (formatted.replace(/\s/g, '').length <= 19) {
       handleInputChange('cardNumber', formatted);
     }
   };
@@ -148,16 +171,23 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numericValue = e.target.value.replace(/[^0-9]/g, '');
-    if (numericValue.length <= 4) {
+    const cardNumber = formData.cardNumber.replace(/\s/g, '');
+    const isAmex = cardNumber.startsWith('34') || cardNumber.startsWith('37');
+    const maxLength = isAmex ? 4 : 3;
+    
+    if (numericValue.length <= maxLength) {
       handleInputChange('cvc', numericValue);
     }
   };
 
   const validateForm = () => {
     if (!formData.email) return 'Email is required';
-    if (!formData.cardNumber || formData.cardNumber.replace(/\s/g, '').length < 13) return 'Valid card number is required';
+    const cardNumber = formData.cardNumber.replace(/\s/g, '');
+    if (!cardNumber || cardNumber.length < 13 || cardNumber.length > 19) return 'Valid card number is required';
     if (!formData.expiryMonth || !formData.expiryYear) return 'Expiry date is required';
-    if (!formData.cvc || formData.cvc.length < 3) return 'CVC is required';
+    const isAmex = cardNumber.startsWith('34') || cardNumber.startsWith('37');
+    const minCvcLength = isAmex ? 4 : 3;
+    if (!formData.cvc || formData.cvc.length < minCvcLength) return `CVC must be ${minCvcLength} digits`;
     if (!formData.cardName) return 'Cardholder name is required';
     if (!formData.agreedToTerms) return 'Please agree to the terms';
     return null;
@@ -339,7 +369,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     value={formData.cardNumber}
                     onChange={handleCardNumberChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-base"
-                    maxLength={19}
+                    maxLength={23}
                     required
                   />
                 </div>
@@ -366,11 +396,11 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   />
                   <input
                     type="text"
-                    placeholder="CVC"
+                    placeholder={formData.cardNumber.replace(/\s/g, '').startsWith('34') || formData.cardNumber.replace(/\s/g, '').startsWith('37') ? 'CVVV' : 'CVC'}
                     value={formData.cvc}
                     onChange={handleCvcChange}
                     className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-base text-center"
-                    maxLength={4}
+                    maxLength={formData.cardNumber.replace(/\s/g, '').startsWith('34') || formData.cardNumber.replace(/\s/g, '').startsWith('37') ? 4 : 3}
                     required
                   />
                 </div>
