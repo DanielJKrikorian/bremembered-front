@@ -146,7 +146,7 @@ export const useWeddingGallery = () => {
             .from('couple_subscriptions')
             .select('*')
             .eq('couple_id', coupleData.id)
-            .single(),
+            .maybeSingle(),
           
           supabase
             .from('couple_storage_extensions')
