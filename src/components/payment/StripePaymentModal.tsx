@@ -190,13 +190,14 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="w-full max-w-md mx-auto my-8">
+        <Card className="w-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">Subscribe to Wedding Gallery</h3>
-            <p className="text-sm text-gray-600 mt-1">Secure your wedding memories forever</p>
+            <h3 className="text-lg font-semibold text-gray-900">Wedding Gallery</h3>
+            <p className="text-xs text-gray-600 mt-1">Secure your memories</p>
           </div>
           <button
             onClick={onClose}
@@ -208,49 +209,42 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
         {/* Plan Summary */}
         {plan && (
-          <div className="p-6 bg-gradient-to-r from-rose-50 to-amber-50 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-lg font-semibold text-gray-900">{plan.name}</h4>
-                <p className="text-gray-600">{plan.description}</p>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-                  <span>✓ Unlimited photo storage</span>
-                  <span>✓ HD video streaming</span>
-                  <span>✓ Download anytime</span>
-                </div>
+          <div className="p-4 bg-gradient-to-r from-rose-50 to-amber-50 border-b border-gray-200">
+            <div className="text-center">
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">{plan.name}</h4>
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                ${(plan.amount / 100).toFixed(2)}<span className="text-sm font-normal text-gray-600">/month</span>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">
-                  ${(plan.amount / 100).toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-600">per {plan.billing_interval}</div>
+              <div className="flex justify-center space-x-4 text-xs text-gray-600">
+                <span>✓ Unlimited storage</span>
+                <span>✓ HD streaming</span>
+                <span>✓ Download anytime</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Payment Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-4">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Security Notice */}
-            <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
               <Lock className="w-5 h-5 text-green-600" />
               <div>
-                <p className="text-sm font-medium text-green-800">Secure Payment</p>
-                <p className="text-xs text-green-700">Your payment information is encrypted and secure</p>
+                <p className="text-xs font-medium text-green-800">Secure Payment - Encrypted & Protected</p>
               </div>
             </div>
 
             {/* Card Information */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h4>
-              <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Payment Information</h4>
+              <div className="space-y-3">
                 <Input
                   label="Card Number"
                   placeholder="1234 5678 9012 3456"
@@ -261,7 +255,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   required
                 />
                 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Expiry Date"
                     placeholder="MM/YY"
@@ -278,7 +272,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     maxLength={4}
                     required
                   />
-                  <div></div>
                 </div>
                 
                 <Input
@@ -288,27 +281,36 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   onChange={(e) => handleInputChange('cardName', e.target.value)}
                   required
                 />
+                
+                <Input
+                  label="Email Address"
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={paymentForm.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  icon={Mail}
+                  required
+                />
               </div>
             </div>
 
-
             {/* Terms */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-4">
               <label className="flex items-start space-x-3">
                 <input 
                   type="checkbox" 
                   className="mt-1 text-rose-500 focus:ring-rose-500" 
                   required 
                 />
-                <span className="text-sm text-gray-600">
-                  I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand this is a recurring monthly subscription that can be cancelled anytime.
+                <span className="text-xs text-gray-600">
+                  I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. Monthly subscription, cancel anytime.
                 </span>
               </label>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="mt-6">
+          <div className="mt-4">
             <Button
               type="submit"
               variant="primary"
@@ -329,8 +331,8 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
           </div>
 
           {/* Security Footer */}
-          <div className="mt-6 text-center">
-            <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
+          <div className="mt-3 text-center">
+            <div className="flex items-center justify-center space-x-3 text-xs text-gray-500">
               <div className="flex items-center">
                 <Lock className="w-3 h-3 mr-1" />
                 <span>SSL Encrypted</span>
@@ -344,12 +346,13 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 <span>Powered by Stripe</span>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Cancel anytime. No hidden fees. Your card will be charged ${(amount / 100).toFixed(2)} monthly.
+            <p className="text-xs text-gray-500 mt-1">
+              Cancel anytime. No hidden fees.
             </p>
           </div>
         </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
