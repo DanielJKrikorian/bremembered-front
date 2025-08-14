@@ -1,25 +1,38 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield, Upload, Trash2 } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield, Upload, Trash2, Palette, Globe, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
-import { useCouple } from '../hooks/useCouple';
+import { useCouple, useCouplePreferences } from '../hooks/useCouple';
 import { useBookings } from '../hooks/useBookings';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
+import { useStyleTags, useVibeTags, useLanguages } from '../hooks/useSupabase';
 import { AuthModal } from '../components/auth/AuthModal';
+import { useNavigate } from 'react-router-dom';
 
 export const Profile: React.FC = () => {
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { couple, loading: coupleLoading, updateCouple } = useCouple();
+  const { updateStylePreferences, updateVibePreferences, loading: preferencesLoading } = useCouplePreferences();
   const { bookings } = useBookings();
   const { uploadPhoto, deletePhoto, uploading: photoUploading, error: photoError } = usePhotoUpload();
+  const { styleTags, loading: styleTagsLoading } = useStyleTags();
+  const { vibeTags, loading: vibeTagsLoading } = useVibeTags();
+  const { languages, loading: languagesLoading } = useLanguages();
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'wedding-preferences' | 'preferences' | 'security'>('profile');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  
+  // Preference states
+  const [selectedStyles, setSelectedStyles] = useState<number[]>([]);
+  const [selectedVibes, setSelectedVibes] = useState<number[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [preferencesChanged, setPreferencesChanged] = useState(false);
 
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -29,6 +42,15 @@ export const Profile: React.FC = () => {
     bookingUpdates: true,
     newsletter: true
   });
+
+  // Initialize preferences when couple data loads
+  React.useEffect(() => {
+    if (couple) {
+      setSelectedStyles(couple.style_preferences?.map(s => s.id) || []);
+      setSelectedVibes(couple.vibe_preferences?.map(v => v.id) || []);
+      setSelectedLanguages(couple.language_preferences?.map(l => l.id) || []);
+    }
+  }, [couple]);
 
   const handleProfileUpdate = async () => {
     if (!couple) return;
@@ -113,6 +135,55 @@ export const Profile: React.FC = () => {
 
   const handlePreferenceChange = (field: string, value: boolean) => {
     setPreferences(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleStyleToggle = (styleId: number) => {
+    setSelectedStyles(prev => {
+      const newStyles = prev.includes(styleId)
+        ? prev.filter(id => id !== styleId)
+        : [...prev, styleId];
+      setPreferencesChanged(true);
+      return newStyles;
+    });
+  };
+
+  const handleVibeToggle = (vibeId: number) => {
+    setSelectedVibes(prev => {
+      const newVibes = prev.includes(vibeId)
+        ? prev.filter(id => id !== vibeId)
+        : [...prev, vibeId];
+      setPreferencesChanged(true);
+      return newVibes;
+    });
+  };
+
+  const handleLanguageToggle = (languageId: string) => {
+    setSelectedLanguages(prev => {
+      const newLanguages = prev.includes(languageId)
+        ? prev.filter(id => id !== languageId)
+        : [...prev, languageId];
+      setPreferencesChanged(true);
+      return newLanguages;
+    });
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setUpdating(true);
+      setUpdateError(null);
+      
+      await Promise.all([
+        updateStylePreferences(selectedStyles),
+        updateVibePreferences(selectedVibes)
+        // Note: Language preferences would need a similar table structure
+      ]);
+      
+      setPreferencesChanged(false);
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : 'Failed to save preferences');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   // Redirect to auth if not authenticated
@@ -289,12 +360,20 @@ export const Profile: React.FC = () => {
                   Profile Information
                 </button>
                 <button
+                  onClick={() => setActiveTab('wedding-preferences')}
+                  className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'wedding-preferences' ? 'bg-rose-100 text-rose-700' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Wedding Preferences
+                </button>
+                <button
                   onClick={() => setActiveTab('preferences')}
                   className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
                     activeTab === 'preferences' ? 'bg-rose-100 text-rose-700' : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  Preferences
+                  Notifications
                 </button>
                 <button
                   onClick={() => setActiveTab('security')}

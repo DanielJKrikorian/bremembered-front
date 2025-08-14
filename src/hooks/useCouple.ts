@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { StyleTag, VibeTag } from '../types/booking';
 
 export interface Couple {
   id: string;
@@ -28,6 +29,10 @@ export interface Couple {
   profile_photo?: string;
   created_at: string;
   updated_at: string;
+  // Preferences
+  style_preferences?: StyleTag[];
+  vibe_preferences?: VibeTag[];
+  language_preferences?: { id: string; language: string }[];
 }
 
 export const useCouple = () => {
@@ -76,7 +81,15 @@ export const useCouple = () => {
       try {
         const { data, error } = await supabase
           .from('couples')
-          .select('*')
+          .select(`
+            *,
+            couple_style_preferences(
+              style_tags(id, label, description)
+            ),
+            couple_vibe_preferences(
+              vibe_tags(id, label, description)
+            )
+          `)
           .eq('user_id', user.id)
           .single();
 
@@ -103,7 +116,14 @@ export const useCouple = () => {
             throw error;
           }
         } else {
-          setCouple(data);
+          // Transform the data to include preferences
+          const coupleWithPreferences = {
+            ...data,
+            style_preferences: data.couple_style_preferences?.map((pref: any) => pref.style_tags) || [],
+            vibe_preferences: data.couple_vibe_preferences?.map((pref: any) => pref.vibe_tags) || [],
+            language_preferences: [] // We'll fetch this separately if needed
+          };
+          setCouple(coupleWithPreferences);
         }
       } catch (err) {
         console.error('Error fetching couple:', err);
@@ -148,4 +168,105 @@ export const useCouple = () => {
   };
 
   return { couple, loading, error, updateCouple };
+};
+
+export const useCouplePreferences = () => {
+  const { user, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateStylePreferences = async (styleIds: number[]) => {
+    if (!isAuthenticated || !user || !supabase || !isSupabaseConfigured()) {
+      throw new Error('Authentication required');
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get couple ID
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (coupleError) throw coupleError;
+
+      // Delete existing preferences
+      await supabase
+        .from('couple_style_preferences')
+        .delete()
+        .eq('couple_id', coupleData.id);
+
+      // Insert new preferences
+      if (styleIds.length > 0) {
+        const preferences = styleIds.map(styleId => ({
+          couple_id: coupleData.id,
+          style_id: styleId
+        }));
+
+        const { error: insertError } = await supabase
+          .from('couple_style_preferences')
+          .insert(preferences);
+
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update style preferences');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateVibePreferences = async (vibeIds: number[]) => {
+    if (!isAuthenticated || !user || !supabase || !isSupabaseConfigured()) {
+      throw new Error('Authentication required');
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get couple ID
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (coupleError) throw coupleError;
+
+      // Delete existing preferences
+      await supabase
+        .from('couple_vibe_preferences')
+        .delete()
+        .eq('couple_id', coupleData.id);
+
+      // Insert new preferences
+      if (vibeIds.length > 0) {
+        const preferences = vibeIds.map(vibeId => ({
+          couple_id: coupleData.id,
+          vibe_id: vibeId
+        }));
+
+        const { error: insertError } = await supabase
+          .from('couple_vibe_preferences')
+          .insert(preferences);
+
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update vibe preferences');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    updateStylePreferences,
+    updateVibePreferences,
+    loading,
+    error
+  };
 };
