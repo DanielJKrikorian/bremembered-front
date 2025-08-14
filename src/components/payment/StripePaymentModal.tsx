@@ -30,17 +30,26 @@ interface StoragePlan {
   plan_type: string;
 }
 
-// Initialize Stripe outside component to prevent re-initialization
-const getStripePromise = () => {
+// Debug Stripe configuration
+const getStripeConfig = () => {
   const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-  if (!publishableKey || publishableKey === 'your_stripe_publishable_key_here') {
-    console.warn('Stripe publishable key not configured');
+  console.log('=== STRIPE CONFIG DEBUG ===');
+  console.log('Publishable Key exists:', !!publishableKey);
+  console.log('Key length:', publishableKey?.length || 0);
+  console.log('Key starts with pk_:', publishableKey?.startsWith('pk_'));
+  console.log('Environment variables:', {
+    VITE_STRIPE_PUBLISHABLE_KEY: publishableKey ? 'SET' : 'NOT SET',
+    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET'
+  });
+  
+  if (!publishableKey || publishableKey === 'your_stripe_publishable_key_here' || !publishableKey.startsWith('pk_')) {
+    console.error('❌ Stripe publishable key not properly configured');
     return null;
   }
-  return loadStripe(publishableKey);
+  
+  console.log('✅ Stripe key properly configured');
+  return publishableKey;
 };
-
-const stripePromise = getStripePromise();
 
 // Payment Form Component (inside Elements provider)
 const PaymentForm: React.FC<{
@@ -57,8 +66,28 @@ const PaymentForm: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Debug Stripe Elements
+  useEffect(() => {
+    console.log('=== STRIPE ELEMENTS DEBUG ===');
+    console.log('Stripe instance:', !!stripe);
+    console.log('Elements instance:', !!elements);
+    console.log('User authenticated:', !!user);
+    
+    if (elements) {
+      const cardElement = elements.getElement(CardElement);
+      console.log('CardElement found:', !!cardElement);
+    }
+  }, [stripe, elements, user]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('=== PAYMENT SUBMISSION DEBUG ===');
+    console.log('Form submitted');
+    console.log('Stripe ready:', !!stripe);
+    console.log('Elements ready:', !!elements);
+    console.log('User:', !!user);
+    console.log('Email:', email);
+    console.log('Terms agreed:', agreedToTerms);
     
     if (!stripe || !elements || !user) {
       setError('Payment system not ready or user not authenticated');
@@ -80,6 +109,7 @@ const PaymentForm: React.FC<{
     setError(null);
 
     try {
+      console.log('Creating customer...');
       // Step 1: Create customer using edge function
       const customerResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer`, {
         method: 'POST',
@@ -94,10 +124,12 @@ const PaymentForm: React.FC<{
       });
 
       const customerData = await customerResponse.json();
+      console.log('Customer response:', customerData);
       if (!customerResponse.ok) {
         throw new Error(customerData.error || 'Failed to create customer');
       }
 
+      console.log('Creating payment intent...');
       // Step 2: Create payment intent using edge function
       const paymentIntentResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`, {
         method: 'POST',
@@ -114,10 +146,12 @@ const PaymentForm: React.FC<{
       });
 
       const paymentIntentData = await paymentIntentResponse.json();
+      console.log('Payment intent response:', paymentIntentData);
       if (!paymentIntentResponse.ok) {
         throw new Error(paymentIntentData.error || 'Failed to create payment intent');
       }
 
+      console.log('Confirming card payment...');
       // Step 3: Confirm payment with Stripe Elements
       const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
         paymentIntentData.clientSecret,
@@ -133,9 +167,11 @@ const PaymentForm: React.FC<{
       );
 
       if (confirmError) {
+        console.error('Payment confirmation error:', confirmError);
         throw new Error(confirmError.message || 'Payment failed');
       }
 
+      console.log('Payment intent status:', paymentIntent?.status);
       if (paymentIntent?.status === 'succeeded') {
         // Step 4: Confirm subscription using edge function
         const { data: coupleData } = await supabase
@@ -145,6 +181,7 @@ const PaymentForm: React.FC<{
           .single() || { data: null };
 
         if (coupleData) {
+          console.log('Confirming subscription...');
           const confirmResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/confirm-subscription`, {
             method: 'POST',
             headers: {
@@ -160,11 +197,13 @@ const PaymentForm: React.FC<{
           });
 
           const confirmData = await confirmResponse.json();
+          console.log('Subscription confirmation response:', confirmData);
           if (!confirmResponse.ok) {
             console.warn('Subscription confirmation failed:', confirmData.error);
           }
         }
 
+        console.log('✅ Payment successful!');
         onSuccess();
         onClose();
       } else {
@@ -210,14 +249,15 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div className="p-4 border border-gray-300 rounded-lg bg-white">
+        <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[50px] flex items-center">
           <CardElement
             options={{
               style: {
                 base: {
                   fontSize: '16px',
                   color: '#374151',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  lineHeight: '24px',
                   '::placeholder': {
                     color: '#9CA3AF',
                   },
@@ -225,8 +265,12 @@ const PaymentForm: React.FC<{
                 invalid: {
                   color: '#EF4444',
                 },
+                complete: {
+                  color: '#059669',
+                },
               },
-              hidePostalCode: false,
+              hidePostalCode: true,
+              iconStyle: 'solid',
             }}
           />
         </div>
@@ -281,20 +325,39 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const { user } = useAuth();
   const [plan, setPlan] = useState<StoragePlan | null>(null);
   const [email, setEmail] = useState(user?.email || '');
-  const [stripeReady, setStripeReady] = useState(false);
+  const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
-  // Check if Stripe is ready
+  // Initialize Stripe when modal opens
   useEffect(() => {
-    const checkStripe = async () => {
-      if (stripePromise) {
-        const stripe = await stripePromise;
-        setStripeReady(!!stripe);
+    const initializeStripe = async () => {
+      if (!isOpen) return;
+      
+      const publishableKey = getStripeConfig();
+      if (!publishableKey) {
+        setStripeError('Stripe is not configured. Please contact support.');
+        return;
+      }
+      
+      try {
+        console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
+        const stripeInstance = loadStripe(publishableKey);
+        setStripePromise(stripeInstance);
+        setStripeError(null);
+        
+        // Test if Stripe loads properly
+        const stripe = await stripeInstance;
+        if (!stripe) {
+          throw new Error('Failed to load Stripe');
+        }
+        console.log('✅ Stripe loaded successfully');
+      } catch (error) {
+        console.error('❌ Stripe loading error:', error);
+        setStripeError('Failed to load payment system. Please refresh and try again.');
       }
     };
-    
-    if (isOpen) {
-      checkStripe();
-    }
+
+    initializeStripe();
   }, [isOpen]);
 
   // Fetch the storage plan details
@@ -351,8 +414,33 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   if (!isOpen || !plan) return null;
 
+  // Show error if Stripe failed to load
+  if (stripeError) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="w-full max-w-md mx-auto my-8">
+          <Card className="w-full p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment System Error</h3>
+            <p className="text-gray-600 mb-6">{stripeError}</p>
+            <div className="space-y-3">
+              <Button variant="primary" onClick={() => window.location.reload()}>
+                Refresh Page
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   // Show loading if Stripe isn't ready
-  if (!stripeReady || !stripePromise) {
+  if (!stripePromise) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="w-full max-w-md mx-auto my-8">
