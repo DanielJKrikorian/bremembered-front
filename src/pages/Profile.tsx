@@ -160,8 +160,15 @@ export const Profile: React.FC = () => {
     
     try {
       await updateStylePreferences(newStyleIds);
-      // Refresh couple data to show updated preferences
-      window.location.reload();
+      // Update local state immediately for better UX
+      const updatedStylePreferences = isSelected
+        ? couple.style_preferences?.filter(pref => pref.id !== styleTag.id) || []
+        : [...(couple.style_preferences || []), styleTag];
+      
+      const updatedCouple = { ...couple, style_preferences: updatedStylePreferences };
+      // This would need to be passed down from a parent component that manages couple state
+      // For now, we'll just update the couple data through the updateCouple function
+      await updateCouple({ style_preferences: updatedStylePreferences });
     } catch (error) {
       console.error('Error updating style preferences:', error);
     }
@@ -182,8 +189,12 @@ export const Profile: React.FC = () => {
     
     try {
       await updateVibePreferences(newVibeIds);
-      // Refresh couple data to show updated preferences
-      window.location.reload();
+      // Update local state immediately for better UX
+      const updatedVibePreferences = isSelected
+        ? couple.vibe_preferences?.filter(pref => pref.id !== vibeTag.id) || []
+        : [...(couple.vibe_preferences || []), vibeTag];
+      
+      await updateCouple({ vibe_preferences: updatedVibePreferences });
     } catch (error) {
       console.error('Error updating vibe preferences:', error);
     }
@@ -204,8 +215,12 @@ export const Profile: React.FC = () => {
     
     try {
       await updateLanguagePreferences(newLanguageIds);
-      // Refresh couple data to show updated preferences
-      window.location.reload();
+      // Update local state immediately for better UX
+      const updatedLanguagePreferences = isSelected
+        ? couple.language_preferences?.filter(pref => pref.id !== language.id) || []
+        : [...(couple.language_preferences || []), language];
+      
+      await updateCouple({ language_preferences: updatedLanguagePreferences });
     } catch (error) {
       console.error('Error updating language preferences:', error);
     }
@@ -731,7 +746,7 @@ export const Profile: React.FC = () => {
                           `}
                         >
                           {isSelected && (
-                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg">
                               <span className="text-white text-sm">📸</span>
                             </div>
                           )}
@@ -778,7 +793,7 @@ export const Profile: React.FC = () => {
                           `}
                         >
                           {isSelected && (
-                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-pink-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-pink-500 rounded-full flex items-center justify-center shadow-lg">
                               <span className="text-white text-sm">💖</span>
                             </div>
                           )}
