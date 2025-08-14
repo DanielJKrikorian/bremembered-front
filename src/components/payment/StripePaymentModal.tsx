@@ -300,8 +300,7 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div 
-          className="p-4 border border-gray-300 rounded-lg bg-white relative" 
+        <div>
           {!cardReady && (
             <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
               <div className="text-sm text-gray-500">Loading card input...</div>
@@ -310,9 +309,6 @@ const PaymentForm: React.FC<{
           {cardReady && (
             <div className="p-4 border border-gray-300 rounded-lg bg-white">
               <CardElement />
-            </div>
-          )}
-              <div className="text-sm text-gray-500">Loading card input...</div>
             </div>
           )}
         </div>
