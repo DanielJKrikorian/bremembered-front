@@ -341,7 +341,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
       
       try {
         console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-        const stripeInstance = loadStripe(publishableKey);
+        const stripeInstance = loadStripe(publishableKey, {
+          locale: 'en'
+        });
         setStripePromise(stripeInstance);
         setStripeError(null);
         
@@ -488,7 +490,17 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           {/* Payment Form with Stripe Elements */}
           <div className="p-4">
-            <Elements stripe={stripePromise}>
+            <Elements 
+              stripe={stripePromise}
+              options={{
+                fonts: [
+                  {
+                    cssSrc: 'https://fonts.googleapis.com/css?family=Inter:400,500,600'
+                  }
+                ],
+                locale: 'en'
+              }}
+            >
               <PaymentForm
                 plan={plan}
                 email={email}
