@@ -7,6 +7,7 @@ export interface FileUpload {
   vendor_id: string;
   couple_id: string;
   file_path: string;
+  public_url?: string;
   file_name: string;
   file_size: number;
   upload_date: string;
@@ -68,6 +69,7 @@ export const useWeddingGallery = () => {
             vendor_id: 'mock-vendor-1',
             couple_id: 'mock-couple-1',
             file_path: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+            public_url: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
             file_name: 'wedding-ceremony-001.jpg',
             file_size: 2048576,
             upload_date: '2024-01-20T10:00:00Z',
@@ -84,6 +86,7 @@ export const useWeddingGallery = () => {
             vendor_id: 'mock-vendor-1',
             couple_id: 'mock-couple-1',
             file_path: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+            public_url: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
             file_name: 'wedding-reception-highlights.mp4',
             file_size: 52428800,
             upload_date: '2024-01-22T14:00:00Z',
@@ -157,7 +160,13 @@ export const useWeddingGallery = () => {
         }
         if (extensionsResult.error) throw extensionsResult.error;
 
-        setFiles(filesResult.data || []);
+        // Process files to add public URLs
+        const processedFiles = (filesResult.data || []).map(file => ({
+          ...file,
+          public_url: getPublicUrl(file.file_path)
+        }));
+        
+        setFiles(processedFiles);
         setSubscription(subscriptionResult.data || null);
         setExtensions(extensionsResult.data || []);
       } catch (err) {
@@ -171,11 +180,28 @@ export const useWeddingGallery = () => {
     fetchGalleryData();
   }, [user, isAuthenticated]);
 
+  const getPublicUrl = (filePath: string): string => {
+    // If it's already a full URL, return as is
+    if (filePath.startsWith('http')) {
+      return filePath;
+    }
+    
+    // If Supabase is configured, get public URL from storage
+    if (supabase && isSupabaseConfigured()) {
+      const { data } = supabase.storage
+        .from('wedding-files')
+        .getPublicUrl(filePath);
+      return data.publicUrl;
+    }
+    
+    // Fallback to file path
+    return filePath;
+  };
   const downloadFile = async (file: FileUpload) => {
     try {
       // Create a temporary link to download the file
       const link = document.createElement('a');
-      link.href = file.file_path;
+      link.href = file.public_url || file.file_path;
       link.download = file.file_name;
       link.target = '_blank';
       document.body.appendChild(link);
