@@ -65,6 +65,8 @@ const PaymentForm: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
 
   // Debug Stripe Elements
   useEffect(() => {
@@ -76,6 +78,31 @@ const PaymentForm: React.FC<{
     if (elements) {
       const cardElement = elements.getElement(CardElement);
       console.log('CardElement found:', !!cardElement);
+      
+      if (cardElement) {
+        // Add event listeners to debug CardElement
+        cardElement.on('ready', () => {
+          console.log('✅ CardElement is ready for input');
+          setCardReady(true);
+        });
+        
+        cardElement.on('change', (event) => {
+          console.log('CardElement change:', event);
+          if (event.error) {
+            setCardError(event.error.message);
+          } else {
+            setCardError(null);
+          }
+        });
+        
+        cardElement.on('focus', () => {
+          console.log('CardElement focused');
+        });
+        
+        cardElement.on('blur', () => {
+          console.log('CardElement blurred');
+        });
+      }
     }
   }, [stripe, elements, user]);
   
@@ -250,43 +277,38 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[60px] relative">
+        <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[50px] relative">
+          {!cardReady && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-sm text-gray-500">Loading card input...</div>
+            </div>
+          )}
           <CardElement
             options={{
               style: {
                 base: {
                   fontSize: '16px',
-                  fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontSmoothing: 'antialiased',
-                  color: '#424770',
-                  iconColor: '#666EE8',
-                  lineHeight: '24px',
+                  color: '#32325d',
                   '::placeholder': {
-                    color: '#aab7c4',
+                    color: '#aab7c4'
                   },
                 },
                 invalid: {
-                  color: '#9e2146',
-                  iconColor: '#fa755a',
-                },
-                complete: {
-                  color: '#32325d',
-                  iconColor: '#666EE8',
-                  '::placeholder': {
-                    color: '#9CA3AF',
-                    iconColor: '#059669',
-                  },
-                },
-                complete: {
-                  color: '#059669',
+                  color: '#fa755a'
                 },
               },
-              hidePostalCode: false,
-              iconStyle: 'solid',
-              disabled: false,
+              hidePostalCode: false
             }}
           />
         </div>
+        {cardError && (
+          <p className="text-sm text-red-600 mt-1">{cardError}</p>
+        )}
+        {cardReady && (
+          <p className="text-xs text-green-600 mt-1">✓ Card input ready</p>
+        )}
       </div>
 
       {/* Terms */}
@@ -501,7 +523,17 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           {/* Payment Form with Stripe Elements */}
           <div className="p-4">
-            <Elements stripe={stripePromise}>
+            <Elements 
+              stripe={stripePromise}
+              options={{
+                appearance: {
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: '#f43f5e',
+                  }
+                }
+              }}
+            >
               <PaymentForm
                 plan={plan}
                 email={email}
