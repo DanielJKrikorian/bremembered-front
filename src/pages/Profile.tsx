@@ -252,18 +252,22 @@ export const Profile: React.FC = () => {
               Please sign in to your account to view and manage your wedding profile.
             </p>
             <div className="space-y-3">
-              <button 
+              <Button 
+                variant="primary" 
+                size="lg" 
+                className="w-full"
                 onClick={() => setShowAuthModal(true)}
-                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 px-6 py-3 text-lg"
               >
                 Sign In
-              </button>
-              <button 
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full"
                 onClick={() => navigate('/')}
-                className="w-full border-2 border-rose-500 text-rose-600 hover:bg-rose-50 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 px-6 py-3 text-lg"
               >
                 Back to Home
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -368,183 +372,170 @@ export const Profile: React.FC = () => {
                 )}
               </div>
 
-              {coupleLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading your profile...</p>
-                </div>
-              ) : !couple ? (
-                <Card className="p-8 text-center">
-                  <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Profile Not Found</h3>
-                  <p className="text-gray-600">Unable to load your profile information.</p>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Profile Photo */}
-                  <div className="text-center">
-                    <div className="relative inline-block">
-                      <div className="w-32 h-32 bg-gray-200 rounded-full overflow-hidden mx-auto mb-4">
-                        {couple.profile_photo ? (
-                          <img
-                            src={couple.profile_photo}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <User className="w-12 h-12 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      {isEditing && (
-                        <label className="absolute bottom-0 right-0 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-rose-600 transition-colors">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePhotoUpload}
-                            className="hidden"
-                          />
-                          {uploading ? (
-                            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                          ) : (
-                            <Upload className="w-4 h-4 text-white" />
-                          )}
-                        </label>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Profile Photo */}
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    <div className="w-32 h-32 bg-gray-200 rounded-full overflow-hidden mx-auto mb-4">
+                      {couple.profile_photo ? (
+                        <img
+                          src={couple.profile_photo}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-12 h-12 text-gray-400" />
+                        </div>
                       )}
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900">{couple.name}</h3>
-                    <p className="text-gray-600">{couple.email}</p>
-                  </div>
-
-                  {/* Basic Information */}
-                  <div className="lg:col-span-2 space-y-6">
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Partner 1 Name"
-                          value={isEditing ? editForm.partner1_name : couple.partner1_name}
-                          onChange={(e) => handleInputChange('partner1_name', e.target.value)}
-                          icon={User}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Partner 2 Name"
-                          value={isEditing ? editForm.partner2_name : couple.partner2_name || ''}
-                          onChange={(e) => handleInputChange('partner2_name', e.target.value)}
-                          icon={User}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Email"
-                          type="email"
-                          value={isEditing ? editForm.email : couple.email || ''}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          icon={Mail}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Phone"
-                          type="tel"
-                          value={isEditing ? editForm.phone : couple.phone || ''}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          icon={Phone}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Wedding Details</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Wedding Date"
-                          type="date"
-                          value={isEditing ? editForm.wedding_date : couple.wedding_date || ''}
-                          onChange={(e) => handleInputChange('wedding_date', e.target.value)}
-                          icon={Calendar}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Guest Count"
-                          type="number"
-                          value={isEditing ? editForm.guest_count : couple.guest_count?.toString() || ''}
-                          onChange={(e) => handleInputChange('guest_count', e.target.value)}
-                          icon={Users}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Ceremony Time"
-                          type="time"
-                          value={isEditing ? editForm.ceremony_time : couple.ceremony_time || ''}
-                          onChange={(e) => handleInputChange('ceremony_time', e.target.value)}
-                          icon={Clock}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Reception Time"
-                          type="time"
-                          value={isEditing ? editForm.reception_time : couple.reception_time || ''}
-                          onChange={(e) => handleInputChange('reception_time', e.target.value)}
-                          icon={Clock}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Venue Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="Venue Name"
-                          value={isEditing ? editForm.venue_name : couple.venue_name || ''}
-                          onChange={(e) => handleInputChange('venue_name', e.target.value)}
-                          icon={MapPin}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="Budget"
-                          type="number"
-                          value={isEditing ? editForm.budget : couple.budget ? (couple.budget / 100).toString() : ''}
-                          onChange={(e) => handleInputChange('budget', e.target.value)}
-                          placeholder="Enter total budget"
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="City"
-                          value={isEditing ? editForm.venue_city : couple.venue_city || ''}
-                          onChange={(e) => handleInputChange('venue_city', e.target.value)}
-                          icon={MapPin}
-                          disabled={!isEditing}
-                        />
-                        <Input
-                          label="State"
-                          value={isEditing ? editForm.venue_state : couple.venue_state || ''}
-                          onChange={(e) => handleInputChange('venue_state', e.target.value)}
-                          icon={MapPin}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                    </div>
-
                     {isEditing && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Additional Notes
-                        </label>
-                        <textarea
-                          value={editForm.notes}
-                          onChange={(e) => handleInputChange('notes', e.target.value)}
-                          rows={4}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          placeholder="Share any special details about your wedding vision, requirements, or preferences..."
+                      <label className="absolute bottom-0 right-0 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-rose-600 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
                         />
-                      </div>
+                        {uploading ? (
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        ) : (
+                          <Upload className="w-4 h-4 text-white" />
+                        )}
+                      </label>
                     )}
                   </div>
+                  <h3 className="text-xl font-semibold text-gray-900">{couple.name}</h3>
+                  <p className="text-gray-600">{couple.email}</p>
                 </div>
-              )}
+
+                {/* Basic Information */}
+                <div className="lg:col-span-2 space-y-6">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Partner 1 Name"
+                        value={isEditing ? editForm.partner1_name : couple.partner1_name}
+                        onChange={(e) => handleInputChange('partner1_name', e.target.value)}
+                        icon={User}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Partner 2 Name"
+                        value={isEditing ? editForm.partner2_name : couple.partner2_name || ''}
+                        onChange={(e) => handleInputChange('partner2_name', e.target.value)}
+                        icon={User}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={isEditing ? editForm.email : couple.email || ''}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        icon={Mail}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Phone"
+                        type="tel"
+                        value={isEditing ? editForm.phone : couple.phone || ''}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        icon={Phone}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Wedding Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Wedding Date"
+                        type="date"
+                        value={isEditing ? editForm.wedding_date : couple.wedding_date || ''}
+                        onChange={(e) => handleInputChange('wedding_date', e.target.value)}
+                        icon={Calendar}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Guest Count"
+                        type="number"
+                        value={isEditing ? editForm.guest_count : couple.guest_count?.toString() || ''}
+                        onChange={(e) => handleInputChange('guest_count', e.target.value)}
+                        icon={Users}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Ceremony Time"
+                        type="time"
+                        value={isEditing ? editForm.ceremony_time : couple.ceremony_time || ''}
+                        onChange={(e) => handleInputChange('ceremony_time', e.target.value)}
+                        icon={Clock}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Reception Time"
+                        type="time"
+                        value={isEditing ? editForm.reception_time : couple.reception_time || ''}
+                        onChange={(e) => handleInputChange('reception_time', e.target.value)}
+                        icon={Clock}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Venue Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Venue Name"
+                        value={isEditing ? editForm.venue_name : couple.venue_name || ''}
+                        onChange={(e) => handleInputChange('venue_name', e.target.value)}
+                        icon={MapPin}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="Budget"
+                        type="number"
+                        value={isEditing ? editForm.budget : couple.budget ? (couple.budget / 100).toString() : ''}
+                        onChange={(e) => handleInputChange('budget', e.target.value)}
+                        placeholder="Enter total budget"
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="City"
+                        value={isEditing ? editForm.venue_city : couple.venue_city || ''}
+                        onChange={(e) => handleInputChange('venue_city', e.target.value)}
+                        icon={MapPin}
+                        disabled={!isEditing}
+                      />
+                      <Input
+                        label="State"
+                        value={isEditing ? editForm.venue_state : couple.venue_state || ''}
+                        onChange={(e) => handleInputChange('venue_state', e.target.value)}
+                        icon={MapPin}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  {isEditing && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        value={editForm.notes}
+                        onChange={(e) => handleInputChange('notes', e.target.value)}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        placeholder="Share any special details about your wedding vision, requirements, or preferences..."
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </Card>
 
             {/* Preferences */}
