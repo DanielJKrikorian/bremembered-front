@@ -826,11 +826,6 @@ export const Profile: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button variant="primary">
-                    Save Preferences
-                  </Button>
-                </div>
               </div>
             </Card>
           )}
