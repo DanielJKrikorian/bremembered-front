@@ -641,35 +641,35 @@ export const Profile: React.FC = () => {
                   </p>
                   <div className="flex flex-wrap gap-3">
                     {[
-                      { label: 'Classic', description: 'Timeless and traditional photography' },
-                      { label: 'Modern', description: 'Contemporary and sleek aesthetic' },
-                      { label: 'Vintage', description: 'Nostalgic and romantic feel' },
-                      { label: 'Artistic', description: 'Creative and unique compositions' },
-                      { label: 'Candid', description: 'Natural and spontaneous moments' },
-                      { label: 'Editorial', description: 'Fashion-inspired and dramatic' },
-                      { label: 'Fine Art', description: 'Museum-quality artistic vision' },
-                      { label: 'Documentary', description: 'Storytelling through authentic moments' }
+                      { label: 'Classic', description: '📸 Timeless and traditional photography' },
+                      { label: 'Modern', description: '✨ Contemporary and sleek aesthetic' },
+                      { label: 'Vintage', description: '🎞️ Nostalgic and romantic feel' },
+                      { label: 'Artistic', description: '🎨 Creative and unique compositions' },
+                      { label: 'Candid', description: '😊 Natural and spontaneous moments' },
+                      { label: 'Editorial', description: '💫 Fashion-inspired and dramatic' },
+                      { label: 'Fine Art', description: '🖼️ Museum-quality artistic vision' },
+                      { label: 'Documentary', description: '📖 Storytelling through authentic moments' }
                     ].map((style) => {
                       const isSelected = couple?.style_preferences?.some(pref => pref.label === style.label);
                       return (
                         <button
                           key={style.label}
                           className={`
-                            group relative px-6 py-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500/20
+                            group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 min-w-[160px]
                             ${isSelected 
-                              ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 text-purple-800 shadow-lg' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 hover:text-purple-700 hover:shadow-md'
+                              ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-100 text-indigo-800 shadow-xl animate-pulse' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-100 hover:text-indigo-700 hover:shadow-lg'
                             }
                           `}
                         >
                           {isSelected && (
-                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                              <span className="text-white text-xs">✓</span>
+                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                              <span className="text-white text-sm">📸</span>
                             </div>
                           )}
                           <div className="text-center">
-                            <div className="font-semibold text-lg mb-1">{style.label}</div>
-                            <div className="text-xs opacity-80 leading-tight">{style.description}</div>
+                            <div className="font-bold text-lg mb-2">{style.label}</div>
+                            <div className="text-xs opacity-90 leading-tight font-medium">{style.description}</div>
                           </div>
                         </button>
                       );
@@ -698,21 +698,21 @@ export const Profile: React.FC = () => {
                         <button
                           key={vibe.label}
                           className={`
-                            group relative px-6 py-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-pink-500/20
+                            group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-pink-500/20 min-w-[160px]
                             ${isSelected 
-                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-lg' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-md'
+                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-xl animate-pulse' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-lg'
                             }
                           `}
                         >
                           {isSelected && (
-                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                              <span className="text-white text-xs">✓</span>
+                            <div className="absolute -top-3 -right-3 w-7 h-7 bg-pink-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                              <span className="text-white text-sm">💖</span>
                             </div>
                           )}
                           <div className="text-center">
-                            <div className="font-semibold text-lg mb-1">{vibe.label}</div>
-                            <div className="text-xs opacity-80 leading-tight">{vibe.description}</div>
+                            <div className="font-bold text-lg mb-2">{vibe.label}</div>
+                            <div className="text-xs opacity-90 leading-tight font-medium">{vibe.description}</div>
                           </div>
                         </button>
                       );
@@ -732,19 +732,19 @@ export const Profile: React.FC = () => {
                         <button
                           key={language}
                           className={`
-                            relative px-5 py-3 rounded-full border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/20
+                            relative px-5 py-3 rounded-full border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 min-w-[100px]
                             ${isSelected 
-                              ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 shadow-lg' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 hover:text-emerald-700 hover:shadow-md'
+                              ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 shadow-xl' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 hover:text-emerald-700 hover:shadow-lg'
                             }
                           `}
                         >
                           {isSelected && (
-                            <div className="absolute -top-2 -right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                               <span className="text-white text-xs">✓</span>
                             </div>
                           )}
-                          <span className="font-medium">{language}</span>
+                          <span className="font-bold">{language}</span>
                         </button>
                       );
                     })}
