@@ -1312,9 +1312,13 @@ export const Profile: React.FC = () => {
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={handlePaymentSuccess}
         planId="Couple_Capsule"
-        planName="Wedding Gallery Access"
-        amount={499} // $4.99 in cents
-      />
-    </div>
-  );
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const urlTab = searchParams.get('tab');
+    if (urlTab === 'gallery' || urlTab === 'preferences') {
+      setActiveTab(urlTab);
+    }
+  }, [location.search]);
+
+  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'gallery'>('profile');
 };
