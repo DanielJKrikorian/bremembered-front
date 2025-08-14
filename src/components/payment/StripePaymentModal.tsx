@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Lock, Check, Loader, Mail } from 'lucide-react';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import { stripePromise, getStripeConfig } from '../../lib/stripe';
+import { getStripeConfig } from '../../lib/stripe';
 import { useAuth } from '../../context/AuthContext';
 
 interface StripePaymentModalProps {
@@ -42,13 +43,14 @@ const PaymentForm: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(user?.email || '');
   const [stripeConfigured, setStripeConfigured] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkStripeConfig = async () => {
       const config = await getStripeConfig();
       setStripeConfigured(config.isConfigured);
       if (!config.isConfigured) {
-        setError('Payment system not configured. Please contact support.');
+        setStripeError('Payment system not configured. Please contact support.');
       }
     };
     checkStripeConfig();
@@ -58,13 +60,13 @@ const PaymentForm: React.FC<{
     e.preventDefault();
     
     if (!stripe || !elements || !user || !stripeConfigured) {
-      setError('Payment system not ready. Please check your configuration or contact support.');
+      setError('Payment system not ready. Please try again in a moment.');
       return;
     }
 
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) {
-      setError('Card information not found. Please refresh and try again.');
+      setError('Please enter your card information.');
       return;
     }
 
@@ -164,23 +166,31 @@ const PaymentForm: React.FC<{
       base: {
         fontSize: '16px',
         color: '#424770',
-        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSmoothing: 'antialiased',
         '::placeholder': {
           color: '#aab7c4',
         },
+        iconColor: '#666EE8',
       },
       invalid: {
         color: '#9e2146',
+        iconColor: '#9e2146',
+      },
+      complete: {
+        color: '#424770',
+        iconColor: '#666EE8',
       },
     },
+    hidePostalCode: false,
   };
 
-  if (!stripeConfigured) {
+  if (!stripeConfigured || stripeError) {
     return (
       <div className="p-4">
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-600">
-            Payment system is not configured. Please contact support to complete your subscription.
+            {stripeError || 'Payment system is not configured. Please contact support to complete your subscription.'}
           </p>
         </div>
         <Button
@@ -228,7 +238,7 @@ const PaymentForm: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Card Information
           </label>
-          <div className="border border-gray-300 rounded-lg p-3 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white">
+          <div className="border border-gray-300 rounded-lg p-4 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white min-h-[44px] flex items-center">
             <CardElement options={cardElementOptions} />
           </div>
         </div>
@@ -302,6 +312,22 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   amount = 499
 }) => {
   const [plan, setPlan] = useState<StoragePlan | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
+
+  // Initialize Stripe when modal opens
+  useEffect(() => {
+    const initializeStripe = async () => {
+      if (!isOpen) return;
+      
+      const config = await getStripeConfig();
+      if (config.isConfigured && config.publishableKey) {
+        const stripe = loadStripe(config.publishableKey);
+        setStripePromise(stripe);
+      }
+    };
+    
+    initializeStripe();
+  }, [isOpen]);
 
   // Fetch the storage plan details
   useEffect(() => {
@@ -355,7 +381,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     }
   }, [isOpen, planId]);
 
-  if (!isOpen || !plan) return null;
+  if (!isOpen || !plan || !stripePromise) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -391,7 +417,23 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
           </div>
 
           {/* Payment Form with Stripe Elements */}
-          <Elements stripe={stripePromise}>
+          <Elements 
+            stripe={stripePromise}
+            options={{
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#f43f5e',
+                  colorBackground: '#ffffff',
+                  colorText: '#374151',
+                  colorDanger: '#ef4444',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  spacingUnit: '4px',
+                  borderRadius: '8px',
+                }
+              }
+            }}
+          >
             <PaymentForm 
               plan={plan}
               onSuccess={onSuccess}
