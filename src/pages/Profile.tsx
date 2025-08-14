@@ -1261,7 +1261,7 @@ export const Profile: React.FC = () => {
                               </div>
                               <p className="text-sm text-gray-600">{session.location} • {session.time}</p>
                             </div>
-                               onClick={() => setIsPaymentModalOpen(true)}
+                            {!session.current && (
                               <Button variant="outline" size="sm">
                                 Revoke
                               </Button>
