@@ -17,14 +17,34 @@ export const Home: React.FC = () => {
     if (packages.length === 0) return [];
     
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-    const startIndex = dayOfYear % packages.length;
     
-    // Get 3 packages starting from the calculated index
-    const dealsOfTheDay = [];
-    for (let i = 0; i < 3 && i < packages.length; i++) {
-      const index = (startIndex + i) % packages.length;
-      dealsOfTheDay.push(packages[index]);
+    // Group packages by service type to avoid duplicates
+    const packagesByServiceType = packages.reduce((acc, pkg) => {
+      if (!acc[pkg.service_type]) {
+        acc[pkg.service_type] = [];
+      }
+      acc[pkg.service_type].push(pkg);
+      return acc;
+    }, {} as Record<string, typeof packages>);
+    
+    const serviceTypes = Object.keys(packagesByServiceType);
+    if (serviceTypes.length === 0) return [];
+    
+    // Select 3 different service types starting from a rotating index
+    const startIndex = dayOfYear % serviceTypes.length;
+    const selectedServiceTypes = [];
+    
+    for (let i = 0; i < 3 && i < serviceTypes.length; i++) {
+      const serviceTypeIndex = (startIndex + i) % serviceTypes.length;
+      selectedServiceTypes.push(serviceTypes[serviceTypeIndex]);
     }
+    
+    // For each selected service type, pick one package (rotate within that service type)
+    const dealsOfTheDay = selectedServiceTypes.map(serviceType => {
+      const servicePackages = packagesByServiceType[serviceType];
+      const packageIndex = dayOfYear % servicePackages.length;
+      return servicePackages[packageIndex];
+    });
     
     return dealsOfTheDay;
   };
