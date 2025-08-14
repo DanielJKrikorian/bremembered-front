@@ -3,7 +3,7 @@ import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
-import { useCouplePreferences } from '../hooks/useCouple';
+import { useCouplePreferences, useStyleTags, useVibeTags, useLanguages } from '../hooks/useCouple';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -33,7 +33,15 @@ export const Profile: React.FC = () => {
     getDaysUntilExpiry,
     formatFileSize 
   } = useWeddingGallery();
-  const { updateStylePreferences, updateVibePreferences, updateLanguagePreferences } = useCouplePreferences();
+  const { 
+    updateStylePreferences, 
+    updateVibePreferences, 
+    updateLanguagePreferences,
+    loading: preferencesLoading 
+  } = useCouplePreferences();
+  const { styleTags } = useStyleTags();
+  const { vibeTags } = useVibeTags();
+  const { languages } = useLanguages();
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<'profile' | 'timeline' | 'gallery' | 'preferences' | 'settings'>('profile');
@@ -135,6 +143,72 @@ export const Profile: React.FC = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleStyleToggle = async (styleLabel: string) => {
+    if (!couple) return;
+    
+    const styleTag = styleTags.find(tag => tag.label === styleLabel);
+    if (!styleTag) return;
+    
+    const currentStyleIds = couple.style_preferences?.map(pref => pref.id) || [];
+    const isSelected = currentStyleIds.includes(styleTag.id);
+    
+    const newStyleIds = isSelected 
+      ? currentStyleIds.filter(id => id !== styleTag.id)
+      : [...currentStyleIds, styleTag.id];
+    
+    try {
+      await updateStylePreferences(newStyleIds);
+      // Refresh couple data to show updated preferences
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating style preferences:', error);
+    }
+  };
+
+  const handleVibeToggle = async (vibeLabel: string) => {
+    if (!couple) return;
+    
+    const vibeTag = vibeTags.find(tag => tag.label === vibeLabel);
+    if (!vibeTag) return;
+    
+    const currentVibeIds = couple.vibe_preferences?.map(pref => pref.id) || [];
+    const isSelected = currentVibeIds.includes(vibeTag.id);
+    
+    const newVibeIds = isSelected 
+      ? currentVibeIds.filter(id => id !== vibeTag.id)
+      : [...currentVibeIds, vibeTag.id];
+    
+    try {
+      await updateVibePreferences(newVibeIds);
+      // Refresh couple data to show updated preferences
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating vibe preferences:', error);
+    }
+  };
+
+  const handleLanguageToggle = async (languageName: string) => {
+    if (!couple) return;
+    
+    const language = languages.find(lang => lang.language === languageName);
+    if (!language) return;
+    
+    const currentLanguageIds = couple.language_preferences?.map(pref => pref.id) || [];
+    const isSelected = currentLanguageIds.includes(language.id);
+    
+    const newLanguageIds = isSelected 
+      ? currentLanguageIds.filter(id => id !== language.id)
+      : [...currentLanguageIds, language.id];
+    
+    try {
+      await updateLanguagePreferences(newLanguageIds);
+      // Refresh couple data to show updated preferences
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating language preferences:', error);
+    }
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -654,12 +728,15 @@ export const Profile: React.FC = () => {
                       return (
                         <button
                           key={style.label}
+                          onClick={() => handleStyleToggle(style.label)}
+                          disabled={preferencesLoading}
                           className={`
                             group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 min-w-[160px]
                             ${isSelected 
                               ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-100 text-indigo-800 shadow-xl animate-pulse' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-100 hover:text-indigo-700 hover:shadow-lg'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-100 hover:text-indigo-700 hover:shadow-lg cursor-pointer'
                             }
+                            ${preferencesLoading ? 'opacity-50 cursor-not-allowed' : ''}
                           `}
                         >
                           {isSelected && (
@@ -697,12 +774,15 @@ export const Profile: React.FC = () => {
                       return (
                         <button
                           key={vibe.label}
+                          onClick={() => handleVibeToggle(vibe.label)}
+                          disabled={preferencesLoading}
                           className={`
                             group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-pink-500/20 min-w-[160px]
                             ${isSelected 
                               ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-xl animate-pulse' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-lg'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-lg cursor-pointer'
                             }
+                            ${preferencesLoading ? 'opacity-50 cursor-not-allowed' : ''}
                           `}
                         >
                           {isSelected && (
@@ -731,12 +811,15 @@ export const Profile: React.FC = () => {
                       return (
                         <button
                           key={language}
+                          onClick={() => handleLanguageToggle(language)}
+                          disabled={preferencesLoading}
                           className={`
                             relative px-5 py-3 rounded-full border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 min-w-[100px]
                             ${isSelected 
                               ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 shadow-xl' 
-                              : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 hover:text-emerald-700 hover:shadow-lg'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 hover:text-emerald-700 hover:shadow-lg cursor-pointer'
                             }
+                            ${preferencesLoading ? 'opacity-50 cursor-not-allowed' : ''}
                           `}
                         >
                           {isSelected && (
