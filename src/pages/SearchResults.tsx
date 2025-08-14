@@ -885,10 +885,6 @@ export const SearchResults: React.FC = () => {
                                   <Button 
                                     variant="primary"
                                     size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/package/${pkg.id}`);
-                                    }}
                                   >
                                     View Details
                                   </Button>
