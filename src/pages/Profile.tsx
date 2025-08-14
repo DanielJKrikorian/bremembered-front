@@ -714,16 +714,7 @@ export const Profile: React.FC = () => {
                     Select the photography and videography styles you love
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {[
-                      { label: 'Classic', description: '📸 Timeless and traditional photography' },
-                      { label: 'Modern', description: '✨ Contemporary and sleek aesthetic' },
-                      { label: 'Vintage', description: '🎞️ Nostalgic and romantic feel' },
-                      { label: 'Artistic', description: '🎨 Creative and unique compositions' },
-                      { label: 'Candid', description: '😊 Natural and spontaneous moments' },
-                      { label: 'Editorial', description: '💫 Fashion-inspired and dramatic' },
-                      { label: 'Fine Art', description: '🖼️ Museum-quality artistic vision' },
-                      { label: 'Documentary', description: '📖 Storytelling through authentic moments' }
-                    ].map((style) => {
+                    {styleTags.map((style) => {
                       const isSelected = couple?.style_preferences?.some(pref => pref.label === style.label);
                       return (
                         <button
@@ -746,7 +737,7 @@ export const Profile: React.FC = () => {
                           )}
                           <div className="text-center">
                             <div className="font-bold text-lg mb-2">{style.label}</div>
-                            <div className="text-xs opacity-90 leading-tight font-medium">{style.description}</div>
+                            <div className="text-xs opacity-90 leading-tight font-medium">📸 {style.description || 'Photography style'}</div>
                           </div>
                         </button>
                       );
@@ -760,16 +751,17 @@ export const Profile: React.FC = () => {
                     Choose the vibes that match your wedding vision
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {[
-                      { label: 'Romantic', description: '💕 Soft, dreamy, and intimate' },
-                      { label: 'Fun', description: '🎉 Energetic and playful celebration' },
-                      { label: 'Elegant', description: '✨ Sophisticated and refined' },
-                      { label: 'Rustic', description: '🌾 Natural and countryside charm' },
-                      { label: 'Boho', description: '🌸 Free-spirited and artistic' },
-                      { label: 'Modern', description: '🏙️ Clean lines and contemporary' },
-                      { label: 'Traditional', description: '👑 Classic and formal ceremony' },
-                      { label: 'Intimate', description: '🤍 Small and meaningful gathering' }
-                    ].map((vibe) => {
+                    {vibeTags.map((vibe) => {
+                      const vibeDescriptions: Record<string, string> = {
+                        'Romantic': '💕 Soft, dreamy, and intimate',
+                        'Fun': '🎉 Energetic and playful celebration',
+                        'Elegant': '✨ Sophisticated and refined',
+                        'Rustic': '🌾 Natural and countryside charm',
+                        'Boho': '🌸 Free-spirited and artistic',
+                        'Modern': '🏙️ Clean lines and contemporary',
+                        'Traditional': '👑 Classic and formal ceremony',
+                        'Intimate': '🤍 Small and meaningful gathering'
+                      };
                       const isSelected = couple?.vibe_preferences?.some(pref => pref.label === vibe.label);
                       return (
                         <button
@@ -792,7 +784,7 @@ export const Profile: React.FC = () => {
                           )}
                           <div className="text-center">
                             <div className="font-bold text-lg mb-2">{vibe.label}</div>
-                            <div className="text-xs opacity-90 leading-tight font-medium">{vibe.description}</div>
+                            <div className="text-xs opacity-90 leading-tight font-medium">{vibeDescriptions[vibe.label] || vibe.description || 'Wedding vibe'}</div>
                           </div>
                         </button>
                       );
@@ -806,12 +798,12 @@ export const Profile: React.FC = () => {
                     Select languages you'd like your vendors to speak
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {['English', 'Spanish', 'French', 'Italian', 'Portuguese', 'German', 'Mandarin', 'Japanese'].map((language) => {
-                      const isSelected = couple?.language_preferences?.some(pref => pref.language === language);
+                    {languages.map((language) => {
+                      const isSelected = couple?.language_preferences?.some(pref => pref.id === language.id);
                       return (
                         <button
-                          key={language}
-                          onClick={() => handleLanguageToggle(language)}
+                          key={language.id}
+                          onClick={() => handleLanguageToggle(language.language)}
                           disabled={preferencesLoading}
                           className={`
                             relative px-5 py-3 rounded-full border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 min-w-[100px]
@@ -827,7 +819,7 @@ export const Profile: React.FC = () => {
                               <span className="text-white text-xs">✓</span>
                             </div>
                           )}
-                          <span className="font-bold">{language}</span>
+                          <span className="font-bold">{language.language}</span>
                         </button>
                       );
                     })}

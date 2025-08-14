@@ -319,8 +319,142 @@ export const useCouplePreferences = () => {
     updateStylePreferences,
     updateVibePreferences,
     updateLanguagePreferences,
-    updateLanguagePreferences,
     loading,
     error
   };
+};
+
+export const useStyleTags = () => {
+  const [styleTags, setStyleTags] = useState<StyleTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStyleTags = async () => {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock data for demo
+        const mockStyleTags: StyleTag[] = [
+          { id: 1, label: 'Classic', description: 'Timeless and traditional photography' },
+          { id: 2, label: 'Modern', description: 'Contemporary and sleek aesthetic' },
+          { id: 3, label: 'Vintage', description: 'Nostalgic and romantic feel' },
+          { id: 4, label: 'Artistic', description: 'Creative and unique compositions' },
+          { id: 5, label: 'Candid', description: 'Natural and spontaneous moments' },
+          { id: 6, label: 'Editorial', description: 'Fashion-inspired and dramatic' },
+          { id: 7, label: 'Fine Art', description: 'Museum-quality artistic vision' },
+          { id: 8, label: 'Documentary', description: 'Storytelling through authentic moments' }
+        ];
+        setStyleTags(mockStyleTags);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('style_tags')
+          .select('*')
+          .order('label');
+
+        if (error) throw error;
+        setStyleTags(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStyleTags();
+  }, []);
+
+  return { styleTags, loading, error };
+};
+
+export const useVibeTags = () => {
+  const [vibeTags, setVibeTags] = useState<VibeTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVibeTags = async () => {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock data for demo
+        const mockVibeTags: VibeTag[] = [
+          { id: 1, label: 'Romantic', description: 'Soft, dreamy, and intimate' },
+          { id: 2, label: 'Fun', description: 'Energetic and playful celebration' },
+          { id: 3, label: 'Elegant', description: 'Sophisticated and refined' },
+          { id: 4, label: 'Rustic', description: 'Natural and countryside charm' },
+          { id: 5, label: 'Boho', description: 'Free-spirited and artistic' },
+          { id: 6, label: 'Modern', description: 'Clean lines and contemporary' },
+          { id: 7, label: 'Traditional', description: 'Classic and formal ceremony' },
+          { id: 8, label: 'Intimate', description: 'Small and meaningful gathering' }
+        ];
+        setVibeTags(mockVibeTags);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('vibe_tags')
+          .select('*')
+          .order('label');
+
+        if (error) throw error;
+        setVibeTags(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVibeTags();
+  }, []);
+
+  return { vibeTags, loading, error };
+};
+
+export const useLanguages = () => {
+  const [languages, setLanguages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock data for demo
+        const mockLanguages = [
+          { id: '1', language: 'English' },
+          { id: '2', language: 'Spanish' },
+          { id: '3', language: 'French' },
+          { id: '4', language: 'Italian' },
+          { id: '5', language: 'Portuguese' },
+          { id: '6', language: 'German' },
+          { id: '7', language: 'Mandarin' },
+          { id: '8', language: 'Japanese' }
+        ];
+        setLanguages(mockLanguages);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('languages')
+          .select('id, language')
+          .order('language');
+
+        if (error) throw error;
+        setLanguages(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLanguages();
+  }, []);
+
+  return { languages, loading, error };
 };
