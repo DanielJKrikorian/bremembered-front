@@ -329,10 +329,15 @@ const PaymentForm: React.FC<{
               }
             }}
           />
+          {!cardReady && (
+            <div 
+              className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/90"
+              style={{ zIndex: 1 }}
+            >
+              <div className="text-sm text-gray-500">Loading card input...</div>
+            </div>
+          )}
         </div>
-        {!cardReady && (
-          <p className="text-xs text-gray-500 mt-1">Loading card input...</p>
-        )}
         {cardError && (
           <p className="text-sm text-red-600 mt-1">{cardError}</p>
         )}
