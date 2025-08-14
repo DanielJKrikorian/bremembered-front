@@ -503,11 +503,12 @@ export const Profile: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {folders.map((folder) => (
-                      <Card 
-                        key={folder.path} 
-                        className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                      <div
+                        key={folder.path}
                         onClick={() => setCurrentFolder(folder.path)}
+                        className="cursor-pointer"
                       >
+                        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                         <div className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden">
                           {folder.previewImage ? (
                             <img
@@ -550,7 +551,8 @@ export const Profile: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      </Card>
+                        </Card>
+                      </div>
                     ))}
                   </div>
                 </div>
