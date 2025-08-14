@@ -255,15 +255,17 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   required
                 />
                 
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Expiry Date"
-                    placeholder="MM/YY"
-                    value={paymentForm.expiryDate}
-                    onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
-                    maxLength={5}
-                    required
-                  />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <Input
+                      label="Expiry Date"
+                      placeholder="MM/YY"
+                      value={paymentForm.expiryDate}
+                      onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
+                      maxLength={5}
+                      required
+                    />
+                  </div>
                   <Input
                     label="CVV"
                     placeholder="123"
