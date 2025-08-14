@@ -535,8 +535,16 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             <Elements 
               stripe={stripePromise}
               options={{
+                fonts: [
+                  {
+                    cssSrc: 'https://fonts.googleapis.com/css?family=Open+Sans',
+                  },
+                ],
                 appearance: {
-                  theme: 'stripe'
+                  theme: 'stripe',
+                  variables: {
+                    colorPrimary: '#f43f5e',
+                  }
                 }
               }}
             >
