@@ -39,6 +39,7 @@ export const Profile: React.FC = () => {
   const { languages, loading: languagesLoading } = useLanguages();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'wedding-preferences' | 'preferences' | 'security'>('profile');
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
