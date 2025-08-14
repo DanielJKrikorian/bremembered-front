@@ -747,6 +747,37 @@ export const useLeadInformation = () => {
 
   useEffect(() => {
     const fetchOrCreateLeadInfo = async () => {
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured() || !supabase) {
+        const defaultLeadInfo: LeadInformation = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          user_id: null,
+          selected_services: [],
+          event_type: null,
+          event_date: null,
+          event_time: null,
+          venue_id: null,
+          venue_name: null,
+          region: null,
+          languages: [],
+          style_preferences: [],
+          vibe_preferences: [],
+          budget_range: null,
+          coverage_preferences: [],
+          hour_preferences: null,
+          selected_packages: {},
+          selected_vendors: {},
+          total_estimated_cost: 0,
+          current_step: 'service_selection',
+          completed_steps: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLeadInfo(defaultLeadInfo);
+        setLoading(false);
+        return;
+      }
 
       try {
         const sessionId = getSessionId();
