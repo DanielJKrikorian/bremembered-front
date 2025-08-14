@@ -68,7 +68,7 @@ export const useWeddingGallery = () => {
             id: 'mock-file-1',
             vendor_id: 'mock-vendor-1',
             couple_id: 'mock-couple-1',
-            file_path: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+            file_path: 'wedding-photos/ceremony-001.jpg',
             public_url: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
             file_name: 'wedding-ceremony-001.jpg',
             file_size: 2048576,
@@ -85,7 +85,7 @@ export const useWeddingGallery = () => {
             id: 'mock-file-2',
             vendor_id: 'mock-vendor-1',
             couple_id: 'mock-couple-1',
-            file_path: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+            file_path: 'wedding-videos/reception-highlights.mp4',
             public_url: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
             file_name: 'wedding-reception-highlights.mp4',
             file_size: 52428800,
@@ -161,10 +161,14 @@ export const useWeddingGallery = () => {
         if (extensionsResult.error) throw extensionsResult.error;
 
         // Process files to add public URLs
-        const processedFiles = (filesResult.data || []).map(file => ({
-          ...file,
-          public_url: getPublicUrl(file.file_path)
-        }));
+        const processedFiles = (filesResult.data || []).map(file => {
+          // If file already has a public_url, use it; otherwise generate one
+          const publicUrl = file.public_url || getPublicUrl(file.file_path);
+          return {
+            ...file,
+            public_url: publicUrl
+          };
+        });
         
         setFiles(processedFiles);
         setSubscription(subscriptionResult.data || null);
@@ -194,8 +198,8 @@ export const useWeddingGallery = () => {
       return data.publicUrl;
     }
     
-    // Fallback to file path
-    return filePath;
+    // Fallback for mock data - return a placeholder image
+    return 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
   };
   const downloadFile = async (file: FileUpload) => {
     try {

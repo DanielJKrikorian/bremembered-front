@@ -495,14 +495,9 @@ export const Profile: React.FC = () => {
                       <div className="aspect-video bg-gray-100 flex items-center justify-center">
                         {file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                           <img
-                            src={file.public_url || file.file_path}
+                            src={file.public_url}
                             alt={file.file_name}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback to a placeholder if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.src = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400';
-                            }}
                           />
                         ) : (
                           <div className="text-center">
