@@ -162,12 +162,12 @@ export const useWeddingGallery = () => {
 
         // Process files to add public URLs
         const processedFiles = (filesResult.data || []).map(file => {
-          // Use file_path as folder and file_name as filename in vendor_media bucket
+          // Use file_path as the complete storage path in vendor_media bucket
           let publicUrl;
           
-          if (file.file_path && file.file_name && supabase && isSupabaseConfigured()) {
-            // Construct storage path: file_path (folder) + file_name
-            const storagePath = `${file.file_path}/${file.file_name}`;
+          if (file.file_path && supabase && isSupabaseConfigured()) {
+            // Use file_path as the complete storage path
+            const storagePath = file.file_path;
             
             try {
               // Get public URL from vendor_media bucket
@@ -182,7 +182,7 @@ export const useWeddingGallery = () => {
               publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
             }
           } else {
-            // Fallback for missing data or unconfigured Supabase
+            // Fallback for missing file_path or unconfigured Supabase
             publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
           }
           
