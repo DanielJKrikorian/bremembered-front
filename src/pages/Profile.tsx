@@ -615,7 +615,11 @@ export const Profile: React.FC = () => {
                         variant="primary"
                         icon={Download}
                         onClick={downloadAllFiles}
-                        loading={downloadingAll}
+                       onClick={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         setIsPaymentModalOpen(true);
+                       }}
                         disabled={downloadingAll}
                       >
                         Download All
