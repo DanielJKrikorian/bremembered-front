@@ -13,10 +13,10 @@ export const Home: React.FC = () => {
   const { packages, loading: packagesLoading } = useServicePackages();
 
   // Get deals of the day - rotate through packages based on day of year
-  const getDealOfTheDay = () => {
+  const getDealOfTheWeek = () => {
     if (packages.length === 0) return [];
     
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+    const weekOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24 * 7));
     
     // Group packages by service type to avoid duplicates
     const packagesByServiceType = packages.reduce((acc, pkg) => {
@@ -31,7 +31,7 @@ export const Home: React.FC = () => {
     if (serviceTypes.length === 0) return [];
     
     // Select 3 different service types starting from a rotating index
-    const startIndex = dayOfYear % serviceTypes.length;
+    const startIndex = weekOfYear % serviceTypes.length;
     const selectedServiceTypes = [];
     
     for (let i = 0; i < 3 && i < serviceTypes.length; i++) {
@@ -42,14 +42,14 @@ export const Home: React.FC = () => {
     // For each selected service type, pick one package (rotate within that service type)
     const dealsOfTheDay = selectedServiceTypes.map(serviceType => {
       const servicePackages = packagesByServiceType[serviceType];
-      const packageIndex = dayOfYear % servicePackages.length;
+      const packageIndex = weekOfYear % servicePackages.length;
       return servicePackages[packageIndex];
     });
     
     return dealsOfTheDay;
   };
 
-  const dealsOfTheDay = getDealOfTheDay();
+  const dealsOfTheWeek = getDealOfTheWeek();
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -286,25 +286,25 @@ export const Home: React.FC = () => {
           <div className="text-center mb-12">
             <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-2 rounded-full mb-4">
               <Sparkles className="w-4 h-4" />
-              <span className="font-bold">Today's Special Deals</span>
+              <span className="font-bold">This Week's Special Deals</span>
               <Sparkles className="w-4 h-4" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Deals of the Day - 10% Off!
+              Deals of the Week - 10% Off!
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Limited time offers on premium wedding packages. These deals rotate daily, so book now!
+              Limited time offers on premium wedding packages. These deals rotate weekly, so book now!
             </p>
           </div>
 
           {packagesLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading today's deals...</p>
+              <p className="text-gray-600">Loading this week's deals...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {dealsOfTheDay.map((pkg) => {
+              {dealsOfTheWeek.map((pkg) => {
                 const ServiceIcon = getServiceIcon(pkg.service_type);
                 const originalPrice = pkg.price;
                 const discountedPrice = getDiscountedPrice(originalPrice);
@@ -315,7 +315,7 @@ export const Home: React.FC = () => {
                     {/* Deal Badge */}
                     <div className="absolute top-4 left-4 z-10">
                       <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                        10% OFF TODAY
+                        10% OFF THIS WEEK
                       </div>
                     </div>
                     
