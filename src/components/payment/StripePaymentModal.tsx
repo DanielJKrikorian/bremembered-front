@@ -549,12 +549,14 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 <span>✓ Download anytime</span>
               </div>
             </div>
-                  hidePostalCode: true,
+          </div>
 
           {/* Payment Form with Stripe Elements */}
-                      fontSize: '16px',
+          <div className="p-6">
             <Elements 
-                      fontFamily: 'system-ui, -apple-system, sans-serif',
+              stripe={stripePromise}
+              options={{
+                fonts: [
                   {
                     cssSrc: 'https://fonts.googleapis.com/css?family=Open+Sans',
                   },
