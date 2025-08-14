@@ -18,6 +18,20 @@ export const Profile: React.FC = () => {
   const { updateStylePreferences, updateVibePreferences, updateLanguagePreferences, loading: preferencesLoading } = useCouplePreferences();
   const { bookings } = useBookings();
   const { uploadPhoto, deletePhoto, uploading: photoUploading, error: photoError } = usePhotoUpload();
+  const { 
+    files, 
+    photoFiles, 
+    videoFiles, 
+    subscription, 
+    loading: galleryLoading, 
+    error: galleryError,
+    downloadingAll,
+    downloadFile, 
+    downloadAllFiles, 
+    isAccessExpired, 
+    getDaysUntilExpiry, 
+    formatFileSize 
+  } = useWeddingGallery();
   const { styleTags, loading: styleTagsLoading } = useStyleTags();
   const { vibeTags, loading: vibeTagsLoading } = useVibeTags();
   const { languages, loading: languagesLoading } = useLanguages();
@@ -360,6 +374,14 @@ export const Profile: React.FC = () => {
                   Profile Information
                 </button>
                 <button
+                  onClick={() => setActiveTab('gallery')}
+                  className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === 'gallery' ? 'bg-rose-100 text-rose-700' : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Wedding Gallery
+                </button>
+                <button
                   onClick={() => setActiveTab('wedding-preferences')}
                   className={`w-full text-left px-4 py-2 rounded-lg transition-colors ${
                     activeTab === 'wedding-preferences' ? 'bg-rose-100 text-rose-700' : 'text-gray-600 hover:bg-gray-50'
@@ -569,6 +591,347 @@ export const Profile: React.FC = () => {
                   </div>
                 )}
               </Card>
+            )}
+
+            {activeTab === 'gallery' && (
+              <div className="space-y-6">
+                {/* Gallery Header */}
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-2xl font-semibold text-gray-900">Wedding Gallery</h2>
+                      <p className="text-gray-600">View and download your wedding photos and videos</p>
+                    </div>
+                    {files.length > 0 && !isAccessExpired() && (
+                      <Button
+                        variant="primary"
+                        icon={Download}
+                        onClick={downloadAllFiles}
+                        loading={downloadingAll}
+                        disabled={downloadingAll}
+                      >
+                        Download All
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Subscription Status */}
+                  {subscription && (
+                    <div className={`p-4 rounded-lg border ${
+                      isAccessExpired() 
+                        ? 'bg-red-50 border-red-200' 
+                        : getDaysUntilExpiry() <= 7 
+                          ? 'bg-yellow-50 border-yellow-200'
+                          : 'bg-green-50 border-green-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          {isAccessExpired() ? (
+                            <>
+                              <h4 className="font-medium text-red-900">Gallery Access Expired</h4>
+                              <p className="text-sm text-red-700">
+                                Your free 30-day access has expired. Subscribe to continue viewing your photos and videos.
+                              </p>
+                            </>
+                          ) : getDaysUntilExpiry() <= 7 ? (
+                            <>
+                              <h4 className="font-medium text-yellow-900">Access Expiring Soon</h4>
+                              <p className="text-sm text-yellow-700">
+                                Your free access expires in {getDaysUntilExpiry()} day{getDaysUntilExpiry() !== 1 ? 's' : ''}. 
+                                Subscribe now to keep your memories safe.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <h4 className="font-medium text-green-900">Free Access Active</h4>
+                              <p className="text-sm text-green-700">
+                                {getDaysUntilExpiry()} days remaining in your free trial
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        {(isAccessExpired() || getDaysUntilExpiry() <= 7) && (
+                          <Button variant="primary" size="sm">
+                            Upgrade for $4.99/month
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+
+                {galleryLoading ? (
+                  <Card className="p-12 text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading your wedding gallery...</p>
+                  </Card>
+                ) : galleryError ? (
+                  <Card className="p-8 text-center">
+                    <p className="text-red-600 mb-4">Error loading gallery: {galleryError}</p>
+                    <Button variant="primary" onClick={() => window.location.reload()}>
+                      Try Again
+                    </Button>
+                  </Card>
+                ) : files.length === 0 ? (
+                  <Card className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Camera className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No Photos or Videos Yet</h3>
+                    <p className="text-gray-600 mb-6">
+                      Your wedding photos and videos will appear here once your vendors upload them.
+                    </p>
+                    <Button variant="primary" onClick={() => navigate('/search')}>
+                      Book Wedding Services
+                    </Button>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Photos Section */}
+                    {photoFiles.length > 0 && (
+                      <Card className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center">
+                              <Camera className="w-4 h-4 text-rose-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Wedding Photos</h3>
+                              <p className="text-sm text-gray-600">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                          {!isAccessExpired() && (
+                            <Button variant="outline" size="sm" icon={Download}>
+                              Download All Photos
+                            </Button>
+                          )}
+                        </div>
+
+                        {isAccessExpired() ? (
+                          <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Shield className="w-8 h-8 text-red-600" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
+                            <p className="text-gray-600 mb-4">Subscribe to view and download your wedding photos</p>
+                            <Button variant="primary">
+                              Subscribe for $4.99/month
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {photoFiles.map((file) => (
+                              <div key={file.id} className="relative group">
+                                <img
+                                  src={file.file_path}
+                                  alt={file.file_name}
+                                  className="w-full aspect-square object-cover rounded-lg"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                  <div className="flex space-x-2">
+                                    <Button
+                                      variant="ghost"
+                                      icon={Eye}
+                                      size="sm"
+                                      className="bg-white/20 text-white hover:bg-white/30"
+                                      onClick={() => window.open(file.file_path, '_blank')}
+                                    >
+                                      View
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      icon={Download}
+                                      size="sm"
+                                      className="bg-white/20 text-white hover:bg-white/30"
+                                      onClick={() => downloadFile(file)}
+                                    >
+                                      Download
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="absolute bottom-2 left-2 right-2">
+                                  <div className="bg-black/70 text-white text-xs px-2 py-1 rounded truncate">
+                                    {file.file_name}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Photo Stats */}
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">{photoFiles.length}</div>
+                            <div className="text-sm text-gray-600">Total Photos</div>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">
+                              {formatFileSize(photoFiles.reduce((sum, file) => sum + file.file_size, 0))}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Size</div>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">
+                              {photoFiles.length > 0 
+                                ? new Date(Math.min(...photoFiles.map(f => new Date(f.upload_date).getTime()))).toLocaleDateString()
+                                : 'N/A'
+                              }
+                            </div>
+                            <div className="text-sm text-gray-600">First Upload</div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Videos Section */}
+                    {videoFiles.length > 0 && (
+                      <Card className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                              <Video className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">Wedding Videos</h3>
+                              <p className="text-sm text-gray-600">{videoFiles.length} video{videoFiles.length !== 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                          {!isAccessExpired() && (
+                            <Button variant="outline" size="sm" icon={Download}>
+                              Download All Videos
+                            </Button>
+                          )}
+                        </div>
+
+                        {isAccessExpired() ? (
+                          <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Shield className="w-8 h-8 text-red-600" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
+                            <p className="text-gray-600 mb-4">Subscribe to view and download your wedding videos</p>
+                            <Button variant="primary">
+                              Subscribe for $4.99/month
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {videoFiles.map((file) => (
+                              <div key={file.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div className="w-16 h-16 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Video className="w-8 h-8 text-amber-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-gray-900 truncate">{file.file_name}</h4>
+                                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                    <span>{formatFileSize(file.file_size)}</span>
+                                    <span>•</span>
+                                    <span>Uploaded {new Date(file.upload_date).toLocaleDateString()}</span>
+                                    {file.vendors && (
+                                      <>
+                                        <span>•</span>
+                                        <span>by {file.vendors.name}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    icon={Eye}
+                                    size="sm"
+                                    onClick={() => window.open(file.file_path, '_blank')}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant="primary"
+                                    icon={Download}
+                                    size="sm"
+                                    onClick={() => downloadFile(file)}
+                                  >
+                                    Download
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Video Stats */}
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">{videoFiles.length}</div>
+                            <div className="text-sm text-gray-600">Total Videos</div>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">
+                              {formatFileSize(videoFiles.reduce((sum, file) => sum + file.file_size, 0))}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Size</div>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="text-lg font-bold text-gray-900">
+                              {videoFiles.length > 0 
+                                ? new Date(Math.min(...videoFiles.map(f => new Date(f.upload_date).getTime()))).toLocaleDateString()
+                                : 'N/A'
+                              }
+                            </div>
+                            <div className="text-sm text-gray-600">First Upload</div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* Gallery Summary */}
+                    {files.length > 0 && (
+                      <Card className="p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Gallery Summary</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="font-medium text-gray-700 mb-3">Content Overview</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Total Files:</span>
+                                <span className="font-medium">{files.length}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Photos:</span>
+                                <span className="font-medium">{photoFiles.length}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Videos:</span>
+                                <span className="font-medium">{videoFiles.length}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Total Size:</span>
+                                <span className="font-medium">
+                                  {formatFileSize(files.reduce((sum, file) => sum + file.file_size, 0))}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-gray-700 mb-3">Contributing Vendors</h4>
+                            <div className="space-y-2">
+                              {Array.from(new Set(files.map(f => f.vendors?.name).filter(Boolean))).map((vendorName, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <Users className="w-3 h-3 text-blue-600" />
+                                  </div>
+                                  <span className="text-sm text-gray-700">{vendorName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {activeTab === 'wedding-preferences' && (
