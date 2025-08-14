@@ -651,10 +651,7 @@ export const usePackageReviews = (packageId: string) => {
             would_recommend,
             feedback,
             created_at,
-            couple_id,
-            bookings!inner(
-              package_id
-            )
+            couple_id
           `)
           .eq('package_id', packageId)
           .not('booking_experience_rating', 'is', null)
