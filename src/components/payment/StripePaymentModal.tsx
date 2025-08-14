@@ -255,15 +255,19 @@ const PaymentForm: React.FC<{
               style: {
                 base: {
                   fontSize: '16px',
-                  color: '#374151',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSmoothing: 'antialiased',
+                    iconColor: '#EF4444',
                   lineHeight: '24px',
                   '::placeholder': {
                     color: '#9CA3AF',
+                    iconColor: '#059669',
                   },
                 },
-                invalid: {
-                  color: '#EF4444',
+                hidePostalCode: false,
+                iconStyle: 'default',
+                disabled: false,
                 },
                 complete: {
                   color: '#059669',
@@ -341,7 +345,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
       
       try {
         console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-        const stripeInstance = loadStripe(publishableKey);
+        const stripeInstance = loadStripe(publishableKey, {
+          locale: 'en'
+        });
         setStripePromise(stripeInstance);
         setStripeError(null);
         
@@ -488,7 +494,17 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           {/* Payment Form with Stripe Elements */}
           <div className="p-4">
-            <Elements stripe={stripePromise}>
+            <Elements 
+              stripe={stripePromise}
+              options={{
+                fonts: [
+                  {
+                    cssSrc: 'https://fonts.googleapis.com/css?family=Inter:400,500,600'
+                  }
+                ],
+                locale: 'en'
+              }}
+            >
               <PaymentForm
                 plan={plan}
                 email={email}
