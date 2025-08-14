@@ -162,8 +162,17 @@ export const useWeddingGallery = () => {
 
         // Process files to add public URLs
         const processedFiles = (filesResult.data || []).map(file => {
-          // If file already has a public_url, use it; otherwise generate one
-          const publicUrl = file.public_url || getPublicUrl(file.file_path);
+          // Construct the storage path from file_path (folder) and file_name
+          let publicUrl = file.public_url;
+          
+          if (!publicUrl && file.file_path && file.file_name) {
+            // Combine file_path (folder) and file_name to create full storage path
+            const fullStoragePath = `${file.file_path}/${file.file_name}`;
+            publicUrl = getPublicUrl(fullStoragePath);
+          } else if (!publicUrl) {
+            publicUrl = getPublicUrl(file.file_path);
+          }
+          
           return {
             ...file,
             public_url: publicUrl
@@ -194,7 +203,7 @@ export const useWeddingGallery = () => {
     if (supabase && isSupabaseConfigured()) {
       try {
         const { data } = supabase.storage
-          .from('wedding-files')
+          .from('vendor_media')
           .getPublicUrl(filePath);
         return data.publicUrl;
       } catch (error) {
