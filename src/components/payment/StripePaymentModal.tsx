@@ -80,6 +80,7 @@ const PaymentForm: React.FC<{
       console.log('CardElement found:', !!cardElement);
       
       if (cardElement) {
+        console.log('Setting up CardElement event listeners...');
         // Add event listeners to debug CardElement
         cardElement.on('ready', () => {
           console.log('✅ CardElement is ready for input');
@@ -87,7 +88,7 @@ const PaymentForm: React.FC<{
         });
         
         cardElement.on('change', (event) => {
-          console.log('CardElement change:', event);
+          console.log('CardElement change event:', event.complete, event.error);
           if (event.error) {
             setCardError(event.error.message);
           } else {
@@ -102,6 +103,12 @@ const PaymentForm: React.FC<{
         cardElement.on('blur', () => {
           console.log('CardElement blurred');
         });
+        
+        // Force focus to test if element is interactive
+        setTimeout(() => {
+          console.log('Attempting to focus CardElement...');
+          cardElement.focus();
+        }, 1000);
       }
     }
   }, [stripe, elements, user]);
@@ -277,31 +284,30 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[50px] relative">
+        <div className="p-4 border border-gray-300 rounded-lg bg-white relative" style={{ minHeight: '44px' }}>
+          <CardElement
+            options={{
+              hidePostalCode: false,
+              style: {
+                base: {
+                  fontSize: '14px',
+                  color: '#32325d',
+                  fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  }
+                },
+                invalid: {
+                  color: '#fa755a',
+                }
+              }
+            }}
+          />
           {!cardReady && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-sm text-gray-500">Loading card input...</div>
             </div>
           )}
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  fontSmoothing: 'antialiased',
-                  color: '#32325d',
-                  '::placeholder': {
-                    color: '#aab7c4'
-                  },
-                },
-                invalid: {
-                  color: '#fa755a'
-                },
-              },
-              hidePostalCode: false
-            }}
-          />
         </div>
         {cardError && (
           <p className="text-sm text-red-600 mt-1">{cardError}</p>
@@ -526,10 +532,18 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             <Elements 
               stripe={stripePromise}
               options={{
+                fonts: [
+                  {
+                    cssSrc: 'https://fonts.googleapis.com/css?family=Open+Sans',
+                  },
+                ],
                 appearance: {
                   theme: 'stripe',
                   variables: {
                     colorPrimary: '#f43f5e',
+                    fontFamily: 'Open Sans, system-ui, sans-serif',
+                    spacingUnit: '2px',
+                    borderRadius: '4px',
                   }
                 }
               }}
