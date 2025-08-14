@@ -3,13 +3,13 @@ import { Star, MapPin, Clock, Users, Calendar, Check, Heart, Share2, MessageCirc
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { useServicePackages, useVendorsByPackage, usePackageReviews } from '../hooks/useSupabase';
+import { useServicePackages, useVendorsByPackage } from '../hooks/useSupabase';
 
 export const PackageDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(0);
-  const [activeTab, setActiveTab] = useState<'overview' | 'vendors' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
   
   // Get the specific package
   const { packages, loading: packageLoading } = useServicePackages();
@@ -17,9 +17,6 @@ export const PackageDetails: React.FC = () => {
   
   // Get vendors who offer this package
   const { vendors, loading: vendorsLoading } = useVendorsByPackage(id || '');
-  
-  // Get reviews for this package from support_feedback
-  const { reviews, loading: reviewsLoading } = usePackageReviews(id || '');
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -255,8 +252,7 @@ export const PackageDetails: React.FC = () => {
                 <nav className="-mb-px flex space-x-8 px-6">
                   {[
                     { key: 'overview', label: 'Overview' },
-                    { key: 'vendors', label: `Available Vendors (${vendors.length})` },
-                    { key: 'reviews', label: 'Reviews' }
+                    { key: 'vendors', label: `Available Vendors (${vendors.length})` }
                   ].map((tab) => (
                     <button
                       key={tab.key}
@@ -436,98 +432,6 @@ export const PackageDetails: React.FC = () => {
                               </Button>
                             </div>
                           </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'reviews' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-semibold text-gray-900">Customer Reviews</h3>
-                      <div className="flex items-center space-x-2">
-                        <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                        <span className="text-lg font-semibold">
-                          {reviews.length > 0 
-                            ? (reviews.reduce((sum, r) => sum + (r.booking_experience_rating || 0), 0) / reviews.length).toFixed(1)
-                            : '4.9'
-                          }
-                        </span>
-                        <span className="text-gray-600">({reviews.length} reviews)</span>
-                      </div>
-                    </div>
-
-                    {reviewsLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                        <p className="text-gray-600">Loading reviews...</p>
-                      </div>
-                    ) : reviews.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Star className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h4>
-                        <p className="text-gray-600">Be the first to book this package and leave a review!</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {reviews.map((review) => (
-                          <div key={review.id} className="border-b border-gray-200 pb-6">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center">
-                                  <span className="text-sm font-medium text-gray-700">
-                                    {review.customer_name?.[0] || 'A'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <div className="flex items-center space-x-2">
-                                    <h5 className="font-medium text-gray-900">
-                                      {review.customer_name || 'Anonymous'}
-                                    </h5>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800">
-                                      <Check className="w-3 h-3 mr-1" />
-                                      Verified
-                                    </span>
-                                    {review.would_recommend && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">
-                                        👍 Recommends
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-gray-500">
-                                    {new Date(review.created_at).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center">
-                                {[...Array(review.booking_experience_rating || 5)].map((_, i) => (
-                                  <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                ))}
-                              </div>
-                            </div>
-                            <p className="text-gray-600 mb-3 leading-relaxed">{review.feedback}</p>
-                            {review.support_experience_rating && (
-                              <div className="mt-3 flex items-center space-x-4 text-sm">
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-gray-600">Booking Experience:</span>
-                                  <div className="flex">
-                                    {[...Array(review.booking_experience_rating)].map((_, i) => (
-                                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                    ))}
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-gray-600">Support:</span>
-                                  <div className="flex">
-                                    {[...Array(review.support_experience_rating)].map((_, i) => (
-                                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
                         ))}
                       </div>
                     )}
