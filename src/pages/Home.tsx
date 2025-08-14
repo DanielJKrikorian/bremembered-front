@@ -3,17 +3,98 @@ import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Aw
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ServiceCard } from '../components/booking/ServiceCard';
 import { BookingModal } from '../components/common/BookingModal';
-import { mockBundles } from '../lib/mockData';
-import { useLatestReviews } from '../hooks/useSupabase';
+import { useLatestReviews, useServicePackages } from '../hooks/useSupabase';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
+  const { packages, loading: packagesLoading } = useServicePackages();
 
-  const featuredBundles = mockBundles.slice(0, 3);
+  // Get deals of the day - rotate through packages based on day of year
+  const getDealOfTheDay = () => {
+    if (packages.length === 0) return [];
+    
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+    const startIndex = dayOfYear % packages.length;
+    
+    // Get 3 packages starting from the calculated index
+    const dealsOfTheDay = [];
+    for (let i = 0; i < 3 && i < packages.length; i++) {
+      const index = (startIndex + i) % packages.length;
+      dealsOfTheDay.push(packages[index]);
+    }
+    
+    return dealsOfTheDay;
+  };
+
+  const dealsOfTheDay = getDealOfTheDay();
+
+  const getServiceIcon = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': return Camera;
+      case 'Videography': return Video;
+      case 'DJ Services': return Music;
+      case 'Live Musician': return Music;
+      case 'Coordination': return Users;
+      case 'Planning': return Calendar;
+      default: return Star;
+    }
+  };
+
+  const getServicePhoto = (serviceType: string, packageId: string) => {
+    // Create a hash from package ID to ensure consistent but unique photos
+    const hash = packageId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const photoIndex = Math.abs(hash) % getServicePhotos(serviceType).length;
+    return getServicePhotos(serviceType)[photoIndex];
+  };
+
+  const getServicePhotos = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': 
+        return [
+          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+      case 'Videography': 
+        return [
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+      case 'DJ Services': 
+        return [
+          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+      default: 
+        return [
+          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
+
+  const getDiscountedPrice = (price: number) => {
+    return Math.round(price * 0.9); // 10% off
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
@@ -180,41 +261,141 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Featured Bundles */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-2 rounded-full mb-4">
+              <Sparkles className="w-4 h-4" />
+              <span className="font-bold">Today's Special Deals</span>
+              <Sparkles className="w-4 h-4" />
+            </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Popular Wedding Packages
+              Deals of the Day - 10% Off!
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Curated bundles from our top-rated vendors, designed to make your special day unforgettable
+              Limited time offers on premium wedding packages. These deals rotate daily, so book now!
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredBundles.map((bundle) => (
-              <ServiceCard
-                key={bundle.id}
-                bundle={bundle}
-                onClick={() => navigate(`/bundle/${bundle.id}`)}
-              />
-            ))}
-          </div>
+          {packagesLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading today's deals...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {dealsOfTheDay.map((pkg) => {
+                const ServiceIcon = getServiceIcon(pkg.service_type);
+                const originalPrice = pkg.price;
+                const discountedPrice = getDiscountedPrice(originalPrice);
+                const savings = originalPrice - discountedPrice;
+                
+                return (
+                  <Card key={pkg.id} hover className="overflow-hidden cursor-pointer relative" onClick={() => navigate(`/package/${pkg.id}`)}>
+                    {/* Deal Badge */}
+                    <div className="absolute top-4 left-4 z-10">
+                      <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                        10% OFF TODAY
+                      </div>
+                    </div>
+                    
+                    <div className="aspect-video overflow-hidden">
+                      <img
+                        src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg.id)}
+                        alt={pkg.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center">
+                          <ServiceIcon className="w-4 h-4 text-rose-600" />
+                        </div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
+                          {pkg.service_type}
+                        </span>
+                        {pkg.event_type && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {pkg.event_type}
+                          </span>
+                        )}
+                      </div>
 
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
+                      <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
+
+                      {/* Features */}
+                      {pkg.features && pkg.features.length > 0 && (
+                        <div className="mb-4">
+                          <div className="flex flex-wrap gap-1">
+                            {pkg.features.slice(0, 2).map((feature, index) => (
+                              <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                <Check className="w-3 h-3 mr-1" />
+                                {feature}
+                              </span>
+                            ))}
+                            {pkg.features.length > 2 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                                +{pkg.features.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg text-gray-500 line-through">
+                            {formatPrice(originalPrice)}
+                          </span>
+                          <span className="text-2xl font-bold text-rose-600">
+                            {formatPrice(discountedPrice)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-green-600 font-medium">
+                            Save {formatPrice(savings)}
+                          </div>
+                          {pkg.hour_amount && (
+                            <div className="text-xs text-gray-500">
+                              {pkg.hour_amount} hours
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button 
+                        size="sm" 
+                        variant="primary" 
+                        className="w-full mt-4"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          navigate(`/package/${pkg.id}`); 
+                        }}
+                      >
+                        Claim This Deal
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
           <div className="text-center mt-12">
             <Button 
               variant="primary" 
               size="lg"
-              onClick={() => navigate('/booking/services')}
+              onClick={() => navigate('/search')}
             >
-              View All Packages
+              Browse All Wedding Packages
             </Button>
           </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -264,7 +445,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -333,7 +514,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
