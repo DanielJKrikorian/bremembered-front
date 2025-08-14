@@ -760,7 +760,15 @@ export const SearchResults: React.FC = () => {
                             <Button variant="primary" size="sm" className="w-full">
                               View Package Details
                             </Button>
-                            <Button variant="outline" size="sm" className="w-full mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full mt-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Add to cart functionality would go here
+                              }}
+                            >
                               Add to Cart
                             </Button>
                           </div>
@@ -864,7 +872,14 @@ export const SearchResults: React.FC = () => {
                                   Click to view full details and book
                                 </div>
                                 <div className="flex space-x-2">
-                                  <Button variant="outline" size="sm">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Add to cart functionality would go here
+                                    }}
+                                  >
                                     Add to Cart
                                   </Button>
                                   <Button 
