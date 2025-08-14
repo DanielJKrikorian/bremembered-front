@@ -9,7 +9,6 @@ import { useCouple, useCouplePreferences } from '../hooks/useCouple';
 import { useBookings } from '../hooks/useBookings';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
-import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { useStyleTags, useVibeTags, useLanguages } from '../hooks/useSupabase';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useNavigate } from 'react-router-dom';
