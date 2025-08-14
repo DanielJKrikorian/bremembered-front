@@ -45,11 +45,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     expiryDate: '',
     cvv: '',
     cardName: '',
-    email: user?.email || '',
-    billingAddress: '',
-    city: '',
-    state: '',
-    zipCode: ''
+    email: user?.email || ''
   });
 
   // Fetch the storage plan details
@@ -195,7 +191,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-lg">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -295,57 +291,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
               </div>
             </div>
 
-            {/* Billing Information */}
-            <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Billing Information</h4>
-              <div className="space-y-4">
-                <Input
-                  label="Email Address"
-                  type="email"
-                  value={paymentForm.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="your.email@example.com"
-                  required
-                />
-                
-                <Input
-                  label="Billing Address"
-                  placeholder="123 Main Street"
-                  value={paymentForm.billingAddress}
-                  onChange={(e) => handleInputChange('billingAddress', e.target.value)}
-                  required
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="City"
-                    placeholder="City"
-                    value={paymentForm.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    required
-                  />
-                  <Input
-                    label="State"
-                    placeholder="State"
-                    value={paymentForm.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="ZIP Code"
-                    placeholder="12345"
-                    value={paymentForm.zipCode}
-                    onChange={(e) => handleInputChange('zipCode', e.target.value.replace(/\D/g, ''))}
-                    maxLength={5}
-                    required
-                  />
-                  <div></div>
-                </div>
-              </div>
-            </div>
 
             {/* Terms */}
             <div className="border-t pt-6">
@@ -363,7 +308,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
           </div>
 
           {/* Submit Button */}
-          <div className="mt-8">
+          <div className="mt-6">
             <Button
               type="submit"
               variant="primary"
