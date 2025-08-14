@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield, Upload, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useBookings } from '../hooks/useBookings';
+import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { AuthModal } from '../components/auth/AuthModal';
 
 export const Profile: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { couple, loading: coupleLoading, updateCouple } = useCouple();
   const { bookings } = useBookings();
+  const { uploadPhoto, deletePhoto, uploading: photoUploading, error: photoError } = usePhotoUpload();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'security'>('profile');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
 
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -46,7 +49,8 @@ export const Profile: React.FC = () => {
         venue_state: couple.venue_state,
         guest_count: couple.guest_count,
         ceremony_time: couple.ceremony_time,
-        reception_time: couple.reception_time
+        reception_time: couple.reception_time,
+        profile_photo: couple.profile_photo
       });
       setIsEditing(false);
     } catch (err) {
@@ -58,8 +62,53 @@ export const Profile: React.FC = () => {
 
   const handleInputChange = (field: string, value: string | number) => {
     if (!couple) return;
-    setIsEditing(false);
-    setCouple(prev => prev ? { ...prev, [field]: value } : null);
+    setIsEditing(true);
+    // This should update the couple state through the useCouple hook
+    // We'll need to modify this to work with the couple state properly
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user || !couple) return;
+
+    setPhotoUploadError(null);
+
+    try {
+      // Delete old photo if it exists
+      if (couple.profile_photo) {
+        try {
+          await deletePhoto(couple.profile_photo);
+        } catch (err) {
+          console.warn('Failed to delete old photo:', err);
+        }
+      }
+
+      // Upload new photo
+      const photoUrl = await uploadPhoto(file, user.id);
+      
+      if (photoUrl) {
+        // Update couple record with new photo URL
+        await updateCouple({ profile_photo: photoUrl });
+      }
+    } catch (err) {
+      setPhotoUploadError(err instanceof Error ? err.message : 'Failed to upload photo');
+    }
+
+    // Clear the input
+    event.target.value = '';
+  };
+
+  const handlePhotoDelete = async () => {
+    if (!couple?.profile_photo) return;
+
+    setPhotoUploadError(null);
+
+    try {
+      await deletePhoto(couple.profile_photo);
+      await updateCouple({ profile_photo: null });
+    } catch (err) {
+      setPhotoUploadError(err instanceof Error ? err.message : 'Failed to delete photo');
+    }
   };
 
   const handlePreferenceChange = (field: string, value: boolean) => {
@@ -167,19 +216,58 @@ export const Profile: React.FC = () => {
             <Card className="p-6">
               <div className="text-center mb-6">
                 <div className="relative inline-block">
-                  <img
-                    src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400"
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full object-cover mx-auto"
-                  />
-                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center text-white hover:bg-rose-600 transition-colors">
-                    <Camera className="w-4 h-4" />
-                  </button>
+                  {couple.profile_photo ? (
+                    <img
+                      src={couple.profile_photo}
+                      alt="Profile"
+                      className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-gray-300 border-dashed flex items-center justify-center mx-auto">
+                      <User className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
+                  
+                  {/* Photo Upload/Delete Controls */}
+                  <div className="absolute bottom-0 right-0 flex space-x-1">
+                    <label className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center text-white hover:bg-rose-600 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        disabled={photoUploading}
+                      />
+                      {photoUploading ? (
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      ) : (
+                        <Camera className="w-4 h-4" />
+                      )}
+                    </label>
+                    
+                    {couple.profile_photo && (
+                      <button
+                        onClick={handlePhotoDelete}
+                        className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                        disabled={photoUploading}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mt-4">
                   {couple.partner1_name}
                 </h3>
                 <p className="text-gray-600">{couple.email}</p>
+                
+                {/* Photo Upload Error */}
+                {photoUploadError && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                    {photoUploadError}
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-center space-x-1 mt-2">
                   <MapPin className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-500">
@@ -279,14 +367,22 @@ export const Profile: React.FC = () => {
                   <Input
                     label="Your Name"
                     value={couple.partner1_name}
-                    onChange={(e) => handleInputChange('partner1_name', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, partner1_name: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={User}
                   />
                   <Input
                     label="Partner's Name"
                     value={couple.partner2_name || ''}
-                    onChange={(e) => handleInputChange('partner2_name', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, partner2_name: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={Heart}
                   />
@@ -294,21 +390,33 @@ export const Profile: React.FC = () => {
                     label="Email Address"
                     type="email"
                     value={couple.email || ''}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, email: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={Mail}
                   />
                   <Input
                     label="Phone Number"
                     value={couple.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, phone: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={Phone}
                   />
                   <Input
                     label="Wedding Venue"
                     value={couple.venue_name || ''}
-                    onChange={(e) => handleInputChange('venue_name', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, venue_name: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={MapPin}
                   />
@@ -316,7 +424,11 @@ export const Profile: React.FC = () => {
                     label="Wedding Date"
                     type="date"
                     value={couple.wedding_date || ''}
-                    onChange={(e) => handleInputChange('wedding_date', e.target.value)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, wedding_date: e.target.value } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={Calendar}
                   />
@@ -324,7 +436,11 @@ export const Profile: React.FC = () => {
                     label="Guest Count"
                     type="number"
                     value={couple.guest_count?.toString() || ''}
-                    onChange={(e) => handleInputChange('guest_count', parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, guest_count: parseInt(e.target.value) || 0 } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     icon={User}
                   />
@@ -332,7 +448,11 @@ export const Profile: React.FC = () => {
                     label="Budget"
                     type="number"
                     value={couple.budget ? (couple.budget / 100).toString() : ''}
-                    onChange={(e) => handleInputChange('budget', (parseInt(e.target.value) || 0) * 100)}
+                    onChange={(e) => {
+                      if (isEditing) {
+                        setCouple(prev => prev ? { ...prev, budget: (parseInt(e.target.value) || 0) * 100 } : null);
+                      }
+                    }}
                     disabled={!isEditing}
                     placeholder="Enter budget in dollars"
                     helperText="Your total wedding budget"
@@ -343,7 +463,11 @@ export const Profile: React.FC = () => {
                     </label>
                     <textarea
                       value={couple.notes || ''}
-                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      onChange={(e) => {
+                        if (isEditing) {
+                          setCouple(prev => prev ? { ...prev, notes: e.target.value } : null);
+                        }
+                      }}
                       disabled={!isEditing}
                       rows={4}
                       className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 ${

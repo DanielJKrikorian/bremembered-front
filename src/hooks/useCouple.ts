@@ -25,6 +25,7 @@ export interface Couple {
   venue_zip?: string;
   venue_region?: string;
   stripe_customer_id?: string;
+  profile_photo?: string;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +64,7 @@ export const useCouple = () => {
           venue_city: 'Los Angeles',
           venue_state: 'CA',
           venue_region: 'Southern California',
+          profile_photo: null,
           created_at: '2024-01-01T00:00:00Z',
           updated_at: '2024-01-01T00:00:00Z'
         };
