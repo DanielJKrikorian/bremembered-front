@@ -3,23 +3,93 @@ import { Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filt
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { mockBookings } from '../lib/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useBookings } from '../hooks/useBookings';
+import { AuthModal } from '../components/auth/AuthModal';
 
 export const MyBookings: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { bookings, loading, error } = useBookings();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  
-  const bookings = mockBookings; // In a real app, this would be filtered by user
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Redirect to auth if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Card className="p-12 text-center max-w-md">
+            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Calendar className="w-8 h-8 text-rose-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Sign In to View Your Bookings</h2>
+            <p className="text-gray-600 mb-6">
+              Please sign in to your account to view and manage your wedding bookings.
+            </p>
+            <div className="space-y-3">
+              <Button 
+                variant="primary" 
+                size="lg" 
+                className="w-full"
+                onClick={() => setShowAuthModal(true)}
+              >
+                Sign In
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full"
+                onClick={() => navigate('/')}
+              >
+                Back to Home
+              </Button>
+            </div>
+          </Card>
+        </div>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          initialMode="login"
+        />
+      </>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your bookings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <p className="text-red-600 mb-4">Error loading bookings: {error}</p>
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = booking.bundle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.bundle.vendor.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const packageName = booking.service_packages?.name || booking.service_type;
+    const vendorName = booking.vendors?.name || '';
+    const matchesSearch = packageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         vendorName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const now = new Date();
-    const eventDate = new Date(booking.eventDate);
+    const eventDate = booking.events?.start_time ? new Date(booking.events.start_time) : new Date(booking.created_at);
     
     switch (activeTab) {
       case 'upcoming':
@@ -51,8 +121,23 @@ export const MyBookings: React.FC = () => {
     }
   };
 
-  const upcomingCount = bookings.filter(b => new Date(b.eventDate) >= new Date()).length;
-  const pastCount = bookings.filter(b => new Date(b.eventDate) < new Date()).length;
+  const upcomingCount = bookings.filter(b => {
+    const eventDate = b.events?.start_time ? new Date(b.events.start_time) : new Date(b.created_at);
+    return eventDate >= new Date();
+  }).length;
+  const pastCount = bookings.filter(b => {
+    const eventDate = b.events?.start_time ? new Date(b.events.start_time) : new Date(b.created_at);
+    return eventDate < new Date();
+  }).length;
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -177,108 +262,152 @@ export const MyBookings: React.FC = () => {
               <Card key={booking.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="p-6">
                   <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Booking Image */}
-                    <div className="lg:w-1/4">
-                      <div className="relative">
-                        <img
-                          src={booking.bundle.images[0]}
-                          alt={booking.bundle.name}
-                          className="w-full h-48 lg:h-full object-cover rounded-lg"
-                        />
-                        <div className="absolute top-3 right-3">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                            <span className="mr-1">{getStatusIcon(booking.status)}</span>
-                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Booking Details */}
-                    <div className="lg:w-3/4">
+                    <div className="flex-1">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                            {booking.bundle.name}
+                            {booking.service_packages?.name || booking.service_type}
                           </h3>
                           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
-                              <span className="font-medium">{booking.eventDate.toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}</span>
+                              <span className="font-medium">
+                                {booking.events?.start_time 
+                                  ? new Date(booking.events.start_time).toLocaleDateString('en-US', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })
+                                  : 'Date TBD'
+                                }
+                              </span>
                             </div>
+                            {booking.events?.location && (
+                              <div className="flex items-center">
+                                <MapPin className="w-4 h-4 mr-1" />
+                                <span>{booking.events.location}</span>
+                              </div>
+                            )}
+                            {booking.service_packages?.hour_amount && (
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-1" />
+                                <span>{booking.service_packages.hour_amount}h service</span>
+                              </div>
+                            )}
                             <div className="flex items-center">
-                              <MapPin className="w-4 h-4 mr-1" />
-                              <span>{booking.eventLocation}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              <span>{booking.bundle.duration}h service</span>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                                <span className="mr-1">{getStatusIcon(booking.status)}</span>
+                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="text-right ml-4">
                           <div className="text-2xl font-bold text-gray-900">
-                            ${booking.totalPrice.toLocaleString()}
+                            {formatPrice(booking.amount)}
                           </div>
                           <div className="text-sm text-gray-500">
-                            Booked {booking.createdAt.toLocaleDateString()}
+                            Booked {new Date(booking.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
 
                       {/* Vendor Info */}
-                      <div className="flex items-center space-x-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                        <img
-                          src={booking.bundle.vendor.avatar}
-                          alt={booking.bundle.vendor.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{booking.bundle.vendor.name}</h4>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                            <span>{booking.bundle.vendor.rating} rating</span>
-                            <span className="mx-2">•</span>
-                            <span>{booking.bundle.vendor.experience} years experience</span>
+                      {booking.vendors && (
+                        <div className="flex items-center space-x-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                          <img
+                            src={booking.vendors.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                            alt={booking.vendors.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{booking.vendors.name}</h4>
+                            <div className="flex items-center text-sm text-gray-600">
+                              {booking.vendors.rating && (
+                                <>
+                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                  <span>{booking.vendors.rating} rating</span>
+                                  <span className="mx-2">•</span>
+                                </>
+                              )}
+                              <span>{booking.vendors.years_experience} years experience</span>
+                            </div>
+                          </div>
+                          <Button variant="outline" icon={MessageCircle} size="sm">
+                            Message
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Package Info */}
+                      {booking.service_packages && (
+                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                          <h5 className="font-medium text-blue-900 mb-1">Package Details</h5>
+                          <p className="text-sm text-blue-800">
+                            <strong>Package:</strong> {booking.service_packages.name}
+                          </p>
+                          {booking.service_packages.hour_amount && (
+                            <p className="text-sm text-blue-800">
+                              <strong>Duration:</strong> {booking.service_packages.hour_amount} hours
+                            </p>
+                          )}
+                          {booking.service_packages.description && (
+                            <p className="text-sm text-blue-800">
+                              <strong>Description:</strong> {booking.service_packages.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Features */}
+                      {booking.service_packages?.features && booking.service_packages.features.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="font-medium text-gray-900 mb-2">Features Included:</h5>
+                          <div className="flex flex-wrap gap-2">
+                            {booking.service_packages.features.slice(0, 3).map((feature, index) => (
+                              <span key={index} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-rose-100 text-rose-800">
+                                {feature}
+                              </span>
+                            ))}
+                            {booking.service_packages.features.length > 3 && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                                +{booking.service_packages.features.length - 3} more
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <Button variant="outline" icon={MessageCircle} size="sm">
-                          Message
-                        </Button>
-                      </div>
+                      )}
 
-                      {/* Couple Info */}
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                        <h5 className="font-medium text-blue-900 mb-1">Event Details</h5>
-                        <p className="text-sm text-blue-800">
-                          <strong>Couple:</strong> {booking.coupleInfo.bride} & {booking.coupleInfo.groom}
-                        </p>
-                        <p className="text-sm text-blue-800">
-                          <strong>Contact:</strong> {booking.coupleInfo.email} • {booking.coupleInfo.phone}
-                        </p>
-                      </div>
+                      {/* Venue Info */}
+                      {booking.venues && (
+                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                          <h5 className="font-medium text-green-900 mb-1">Venue Details</h5>
+                          <p className="text-sm text-green-800">
+                            <strong>Venue:</strong> {booking.venues.name}
+                          </p>
+                          {booking.venues.street_address && (
+                            <p className="text-sm text-green-800">
+                              <strong>Address:</strong> {booking.venues.street_address}, {booking.venues.city}, {booking.venues.state}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
-                      {/* Services Included */}
+                      {/* Service Type Badge */}
                       <div className="mb-4">
-                        <h5 className="font-medium text-gray-900 mb-2">Services Included:</h5>
                         <div className="flex flex-wrap gap-2">
-                          {booking.bundle.services.slice(0, 3).map((service) => (
-                            <span key={service.id} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-rose-100 text-rose-800">
-                              {service.name}
-                            </span>
-                          ))}
-                          {booking.bundle.services.length > 3 && (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                              +{booking.bundle.services.length - 3} more
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                            {booking.service_type}
+                          </span>
+                          {booking.vibe && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                              {booking.vibe} vibe
                             </span>
                           )}
                         </div>
-                      </div>
+                      )}
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-3">
@@ -286,14 +415,16 @@ export const MyBookings: React.FC = () => {
                           variant="primary" 
                           icon={Eye} 
                           size="sm"
-                          onClick={() => navigate(`/bundle/${booking.bundleId}`)}
+                          onClick={() => navigate(`/package/${booking.service_packages?.id || booking.id}`)}
                         >
                           View Details
                         </Button>
                         <Button variant="outline" icon={Download} size="sm">
                           Download Contract
                         </Button>
-                        {booking.status === 'confirmed' && new Date(booking.eventDate) > new Date() && (
+                        {booking.status === 'confirmed' && (
+                          booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
+                        ) && (
                           <Button variant="outline" size="sm">
                             Modify Booking
                           </Button>
@@ -352,13 +483,16 @@ export const MyBookings: React.FC = () => {
           </Card>
           <Card className="p-6 text-center">
             <div className="text-3xl font-bold text-emerald-500 mb-2">
-              ${bookings.reduce((sum, b) => sum + b.totalPrice, 0).toLocaleString()}
+              {formatPrice(bookings.reduce((sum, b) => sum + b.amount, 0))}
             </div>
             <div className="text-gray-600">Total Invested</div>
           </Card>
           <Card className="p-6 text-center">
             <div className="text-3xl font-bold text-blue-500 mb-2">
-              {Math.round(bookings.reduce((sum, b) => sum + b.bundle.rating, 0) / bookings.length * 10) / 10}
+              {bookings.length > 0 
+                ? Math.round(bookings.reduce((sum, b) => sum + (b.vendors?.rating || 4.5), 0) / bookings.length * 10) / 10
+                : 0
+              }
             </div>
             <div className="text-gray-600">Avg Vendor Rating</div>
           </Card>
