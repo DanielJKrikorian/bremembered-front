@@ -81,6 +81,10 @@ const PaymentForm: React.FC<{
       
       if (cardElement) {
         console.log('Setting up CardElement event listeners...');
+        
+        // Check if element is already ready
+        console.log('Checking CardElement initial state...');
+        
         // Add event listeners to debug CardElement
         cardElement.on('ready', () => {
           console.log('✅ CardElement is ready for input');
@@ -104,10 +108,23 @@ const PaymentForm: React.FC<{
           console.log('CardElement blurred');
         });
         
-        // Force focus to test if element is interactive
+        // Force ready state after a delay if not triggered
         setTimeout(() => {
           console.log('Attempting to focus CardElement...');
-          cardElement.focus();
+          try {
+            cardElement.focus();
+            // If focus works but ready event didn't fire, manually set ready
+            setTimeout(() => {
+              if (!cardReady) {
+                console.log('⚠️ CardElement ready event not fired, setting manually');
+                setCardReady(true);
+              }
+            }, 1000);
+          } catch (error) {
+            console.error('Error focusing CardElement:', error);
+            // Set ready anyway since element exists
+            setCardReady(true);
+          }
         }, 1000);
       }
     }
@@ -284,27 +301,39 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div className="p-4 border border-gray-300 rounded-lg bg-white relative" style={{ minHeight: '44px' }}>
+        <div 
+          className="p-4 border border-gray-300 rounded-lg bg-white relative" 
+          style={{ minHeight: '50px', position: 'relative' }}
+        >
           <CardElement
             options={{
-              hidePostalCode: false,
+              hidePostalCode: true,
               style: {
                 base: {
                   fontSize: '14px',
                   color: '#32325d',
                   fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+                  fontSmoothing: 'antialiased',
+                  fontSize: '16px',
                   '::placeholder': {
                     color: '#aab7c4',
-                  }
+                  },
                 },
                 invalid: {
                   color: '#fa755a',
+                  iconColor: '#fa755a',
                 }
+                complete: {
+                  color: '#424770',
+                },
               }
             }}
           />
           {!cardReady && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div 
+              className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/90"
+              style={{ zIndex: 1 }}
+            >
               <div className="text-sm text-gray-500">Loading card input...</div>
             </div>
           )}
