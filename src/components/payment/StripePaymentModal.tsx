@@ -196,15 +196,6 @@ const PaymentForm: React.FC<{
       </div>
     );
   }
-        '::placeholder': {
-          color: '#aab7c4',
-        },
-      },
-      invalid: {
-        color: '#9e2146',
-      },
-    },
-  };
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
