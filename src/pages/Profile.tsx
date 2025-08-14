@@ -60,16 +60,6 @@ export const Profile: React.FC = () => {
     newsletter: true
   });
 
-  const showPaymentModal = () => {
-    setIsPaymentModalOpen(true);
-  };
-
-  const handlePaymentSuccess = () => {
-    setIsPaymentModalOpen(false);
-    // Refresh gallery data after successful payment
-    window.location.reload();
-  };
-
   // Initialize preferences when couple data loads
   React.useEffect(() => {
     if (couple) {
@@ -211,6 +201,12 @@ export const Profile: React.FC = () => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setIsPaymentModalOpen(false);
+    // Refresh gallery data
+    window.location.reload();
   };
 
   // Redirect to auth if not authenticated
@@ -1316,7 +1312,7 @@ export const Profile: React.FC = () => {
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={handlePaymentSuccess}
         planId="Couple_Capsule"
-        planName="Wedding Gallery Storage"
+        planName="Wedding Gallery Access"
         amount={499} // $4.99 in cents
       />
     </div>
