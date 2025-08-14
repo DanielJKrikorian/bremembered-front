@@ -652,15 +652,14 @@ export const Profile: React.FC = () => {
                   <p className="text-gray-600 mb-4">
                     Select the photography and videography styles you love
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {['Classic', 'Modern', 'Vintage', 'Artistic', 'Candid', 'Editorial', 'Fine Art', 'Documentary'].map((style) => (
-                      <label key={style} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          className="text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{style}</span>
-                      </label>
+                      <button
+                        key={style}
+                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        {style}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -670,15 +669,14 @@ export const Profile: React.FC = () => {
                   <p className="text-gray-600 mb-4">
                     Choose the vibes that match your wedding vision
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {['Romantic', 'Fun', 'Elegant', 'Rustic', 'Boho', 'Modern', 'Traditional', 'Intimate'].map((vibe) => (
-                      <label key={vibe} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          className="text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{vibe}</span>
-                      </label>
+                      <button
+                        key={vibe}
+                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                      >
+                        {vibe}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -688,15 +686,14 @@ export const Profile: React.FC = () => {
                   <p className="text-gray-600 mb-4">
                     Select languages you'd like your vendors to speak
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {['English', 'Spanish', 'French', 'Italian', 'Portuguese', 'German', 'Mandarin', 'Japanese'].map((language) => (
-                      <label key={language} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          className="text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{language}</span>
-                      </label>
+                      <button
+                        key={language}
+                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      >
+                        {language}
+                      </button>
                     ))}
                   </div>
                 </div>
