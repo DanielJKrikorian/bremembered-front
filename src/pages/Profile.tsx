@@ -617,6 +617,19 @@ export const Profile: React.FC = () => {
             </div>
           )}
 
+          {/* Back to Folders Button */}
+          {currentFolder && (
+            <div className="mb-6">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentFolder(null)}
+                className="flex items-center space-x-2"
+              >
+                <span>← Back to Folders</span>
+              </Button>
+            </div>
+          )}
+
           {activeTab === 'preferences' && (
             <Card className="p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Wedding Preferences</h3>
