@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Lock, Check, Loader, Mail } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -30,7 +30,6 @@ interface StoragePlan {
   plan_type: string;
 }
 
-// Debug Stripe configuration
 const getStripeConfig = () => {
   const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
   console.log('=== STRIPE CONFIG DEBUG ===');
@@ -47,7 +46,6 @@ const getStripeConfig = () => {
   return publishableKey;
 };
 
-// Payment Form Component
 const PaymentForm: React.FC<{
   plan: StoragePlan;
   email: string;
@@ -70,21 +68,18 @@ const PaymentForm: React.FC<{
     console.log('Elements instance:', !!elements);
     console.log('User authenticated:', !!user);
 
-    if (elements) {
+    if (stripe && elements) {
       const cardElement = elements.getElement(CardElement);
-      console.log('CardElement found:', !!cardElement);
-
       if (cardElement) {
+        console.log('✅ CardElement found');
         cardElement.on('ready', () => {
           console.log('✅ CardElement is ready for input');
           setCardReady(true);
         });
-
         cardElement.on('change', (event) => {
           console.log('CardElement change event:', event);
           setCardError(event.error ? event.error.message : null);
         });
-
         cardElement.on('focus', () => console.log('CardElement focused'));
         cardElement.on('blur', () => console.log('CardElement blurred'));
       } else {
@@ -92,10 +87,22 @@ const PaymentForm: React.FC<{
         setCardError('Unable to load card input. Please refresh the page.');
       }
     } else {
-      console.error('❌ Elements instance not available');
+      console.error('❌ Stripe or Elements instance not available');
       setCardError('Payment system not initialized. Please refresh the page.');
     }
-  }, [elements, stripe, user]);
+
+    return () => {
+      if (elements) {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          cardElement.off('ready');
+          cardElement.off('change');
+          cardElement.off('focus');
+          cardElement.off('blur');
+        }
+      }
+    };
+  }, [stripe, elements, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -352,36 +359,36 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const { user } = useAuth();
   const [plan, setPlan] = useState<StoragePlan | null>(null);
   const [email, setEmail] = useState(user?.email || '');
-  const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
   const [stripeError, setStripeError] = useState<string | null>(null);
 
-  // Initialize Stripe when modal opens
+  // Initialize stripePromise only once
+  const stripePromise = useMemo(() => {
+    const publishableKey = getStripeConfig();
+    if (!publishableKey) {
+      setStripeError('Stripe is not configured. Please contact support.');
+      return null;
+    }
+    console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
+    return loadStripe(publishableKey);
+  }, []); // Empty dependency array to ensure single initialization
+
+  // Handle stripePromise resolution
   useEffect(() => {
-    const initializeStripe = async () => {
-      if (!isOpen) return;
+    if (!isOpen || !stripePromise) return;
 
-      const publishableKey = getStripeConfig();
-      if (!publishableKey) {
-        setStripeError('Stripe is not configured. Please contact support.');
-        return;
-      }
-
-      try {
-        console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-        const stripeInstance = await loadStripe(publishableKey);
-        if (!stripeInstance) {
-          throw new Error('Failed to load Stripe');
-        }
-        setStripePromise(stripeInstance);
-        setStripeError(null);
-        console.log('✅ Stripe loaded successfully');
-      } catch (error) {
-        console.error('❌ Stripe loading error:', error);
+    stripePromise.then((stripe) => {
+      if (!stripe) {
+        console.error('❌ Stripe failed to load');
         setStripeError('Failed to load payment system. Please refresh and try again.');
+      } else {
+        console.log('✅ Stripe loaded successfully');
+        setStripeError(null);
       }
-    };
-    initializeStripe();
-  }, [isOpen]);
+    }).catch((error) => {
+      console.error('❌ Stripe loading error:', error);
+      setStripeError('Failed to load payment system. Please refresh and try again.');
+    });
+  }, [isOpen, stripePromise]);
 
   // Fetch the storage plan details
   useEffect(() => {
@@ -433,33 +440,24 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   if (!isOpen || !plan) return null;
 
-  if (!stripePromise || stripeError) {
+  if (stripeError) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="w-full max-w-md mx-auto my-8">
           <Card className="w-full p-8 text-center">
-            {stripeError ? (
-              <>
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <X className="w-8 h-8 text-red-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment System Error</h3>
-                <p className="text-gray-600 mb-6">{stripeError}</p>
-                <div className="space-y-3">
-                  <Button variant="primary" onClick={() => window.location.reload()}>
-                    Refresh Page
-                  </Button>
-                  <Button variant="outline" onClick={onClose}>
-                    Close
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading secure payment system...</p>
-              </>
-            )}
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment System Error</h3>
+            <p className="text-gray-600 mb-6">{stripeError}</p>
+            <div className="space-y-3">
+              <Button variant="primary" onClick={() => window.location.reload()}>
+                Refresh Page
+              </Button>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </Card>
         </div>
       </div>
