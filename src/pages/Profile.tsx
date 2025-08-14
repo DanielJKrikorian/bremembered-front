@@ -415,7 +415,7 @@ export const Profile: React.FC = () => {
                       disabled={files.length === 0 || downloadingAll}
                       loading={downloadingAll}
                     >
-                      Download All
+                      {currentFolder ? `Download All (${currentFolderFiles.length})` : 'Download All'}
                     </Button>
                     <Button
                       variant="outline"
@@ -479,6 +479,19 @@ export const Profile: React.FC = () => {
                   </div>
                 )}
               </Card>
+
+              {/* Back to Folders Button */}
+              {currentFolder && (
+                <div className="mb-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentFolder(null)}
+                    className="flex items-center space-x-2"
+                  >
+                    <span>← Back to Folders</span>
+                  </Button>
+                </div>
+              )}
 
               {/* Gallery Content */}
               {galleryLoading ? (

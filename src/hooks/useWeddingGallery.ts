@@ -326,8 +326,13 @@ export const useWeddingGallery = () => {
   const downloadAllFiles = async () => {
     setDownloadingAll(true);
     try {
+      // Download files from current folder or all files
+      const filesToDownload = currentFolder 
+        ? files.filter(file => file.file_path.startsWith(currentFolder))
+        : files;
+        
       // Download each file sequentially to avoid overwhelming the browser
-      for (const file of files) {
+      for (const file of filesToDownload) {
         await downloadFile(file);
         // Small delay between downloads
         await new Promise(resolve => setTimeout(resolve, 500));
