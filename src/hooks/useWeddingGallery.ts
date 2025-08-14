@@ -145,8 +145,8 @@ export const useWeddingGallery = () => {
           supabase
             .from('couple_subscriptions')
             .select('*')
-          file_path: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          public_url: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+            .eq('couple_id', coupleData.id)
+            .single(),
           
           supabase
             .from('couple_storage_extensions')
@@ -157,40 +157,6 @@ export const useWeddingGallery = () => {
         if (filesResult.error) throw filesResult.error;
         if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') {
           throw subscriptionResult.error;
-        },
-        {
-          id: 'mock-file-3',
-          vendor_id: 'mock-vendor-1',
-          couple_id: 'mock-couple-1',
-          file_path: 'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          public_url: 'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          file_name: 'wedding-couple-portraits.jpg',
-          file_size: 3145728,
-          upload_date: '2024-01-23T16:00:00Z',
-          expiry_date: '2024-02-22T16:00:00Z',
-          created_at: '2024-01-23T16:00:00Z',
-          vendors: {
-            id: 'mock-vendor-1',
-            name: 'Elegant Moments Photography',
-            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
-          }
-        },
-        {
-          id: 'mock-file-4',
-          vendor_id: 'mock-vendor-2',
-          couple_id: 'mock-couple-1',
-          file_path: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          public_url: 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          file_name: 'wedding-reception-dancing.jpg',
-          file_size: 2621440,
-          upload_date: '2024-01-24T20:00:00Z',
-          expiry_date: '2024-02-23T20:00:00Z',
-          created_at: '2024-01-24T20:00:00Z',
-          vendors: {
-            id: 'mock-vendor-2',
-            name: 'Timeless Studios',
-            profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
-          }
         }
         if (extensionsResult.error) throw extensionsResult.error;
 
