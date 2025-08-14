@@ -294,7 +294,7 @@ export const Profile: React.FC = () => {
                       className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
                     />
                   ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-gray-300 border-dashed flex items-center justify-center mx-auto">
+                    <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-gray-300 border-dashed flex items-center justify-center mx-auto">
                       <User className="w-8 h-8 text-gray-400" />
                     </div>
                   )}
