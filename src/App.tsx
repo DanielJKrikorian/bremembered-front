@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { BookingProvider } from './context/BookingContext';
 import { Header } from './components/common/Header';
+import { Footer } from './components/common/Footer';
 import { Home } from './pages/Home';
 import { SearchResults } from './pages/SearchResults';
 import { ServiceBundle } from './pages/ServiceBundle';
@@ -51,6 +52,7 @@ function App() {
               <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
             </Routes>
           </main>
+          <Footer />
         </div>
       </Router>
     </BookingProvider>
