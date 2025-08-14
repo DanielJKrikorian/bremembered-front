@@ -615,11 +615,6 @@ export const Profile: React.FC = () => {
                         variant="primary"
                         icon={Download}
                         onClick={downloadAllFiles}
-                       onClick={(e) => {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         setIsPaymentModalOpen(true);
-                       }}
                         disabled={downloadingAll}
                       >
                         Download All
@@ -663,7 +658,7 @@ export const Profile: React.FC = () => {
                           )}
                         </div>
                         {(isAccessExpired() || getDaysUntilExpiry() <= 7) && (
-                          <Button variant="primary" size="sm">
+                          <Button variant="primary" size="sm" onClick={() => setIsPaymentModalOpen(true)}>
                             Upgrade for $4.99/month
                           </Button>
                         )}
@@ -726,7 +721,7 @@ export const Profile: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
                             <p className="text-gray-600 mb-4">Subscribe to view and download your wedding photos</p>
-                            <Button variant="primary">
+                            <Button variant="primary" onClick={() => setIsPaymentModalOpen(true)}>
                               Subscribe for $4.99/month
                             </Button>
                           </div>
@@ -823,7 +818,7 @@ export const Profile: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
                             <p className="text-gray-600 mb-4">Subscribe to view and download your wedding videos</p>
-                            <Button variant="primary">
+                            <Button variant="primary" onClick={() => setIsPaymentModalOpen(true)}>
                               Subscribe for $4.99/month
                             </Button>
                           </div>
