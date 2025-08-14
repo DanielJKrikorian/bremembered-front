@@ -3,7 +3,6 @@ import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { useAuth } from '../context/AuthContext';
 import { useCouple, useCouplePreferences } from '../hooks/useCouple';
 import { useBookings } from '../hooks/useBookings';
@@ -49,7 +48,6 @@ export const Profile: React.FC = () => {
   const [selectedVibes, setSelectedVibes] = useState<number[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [preferencesChanged, setPreferencesChanged] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
@@ -654,7 +652,7 @@ export const Profile: React.FC = () => {
                           )}
                         </div>
                         {(isAccessExpired() || getDaysUntilExpiry() <= 7) && (
-                          <Button variant="primary" size="sm" onClick={() => setShowPaymentModal(true)}>
+                          <Button variant="primary" size="sm">
                             Upgrade for $4.99/month
                           </Button>
                         )}
@@ -717,7 +715,7 @@ export const Profile: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
                             <p className="text-gray-600 mb-4">Subscribe to view and download your wedding photos</p>
-                            <Button variant="primary" onClick={() => setShowPaymentModal(true)}>
+                            <Button variant="primary">
                               Subscribe for $4.99/month
                             </Button>
                           </div>
@@ -814,7 +812,7 @@ export const Profile: React.FC = () => {
                             </div>
                             <h4 className="text-lg font-semibold text-gray-900 mb-2">Subscription Required</h4>
                             <p className="text-gray-600 mb-4">Subscribe to view and download your wedding videos</p>
-                            <Button variant="primary" onClick={() => setShowPaymentModal(true)}>
+                            <Button variant="primary">
                               Subscribe for $4.99/month
                             </Button>
                           </div>
@@ -1293,24 +1291,25 @@ export const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Payment Modal */}
-      <StripePaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        amount={499}
-        description="Wedding Gallery Subscription - $4.99/month"
-        onSuccess={() => {
-          setShowPaymentModal(false);
-          // Refresh gallery data
-          window.location.reload();
-        }}
-      />
-
       {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         initialMode="login"
+      />
+
+      {/* Stripe Payment Modal */}
+      <StripePaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          setShowPaymentModal(false);
+          // Refresh gallery data
+          window.location.reload();
+        }}
+        planId="Couple_Capsule"
+        planName="Wedding Gallery Storage"
+        amount={499} // $4.99 in cents
       />
     </div>
   );
