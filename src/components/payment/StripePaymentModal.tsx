@@ -78,6 +78,7 @@ const PaymentForm: React.FC<{
       console.log('CardElement found:', !!cardElement);
     }
   }, [stripe, elements, user]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -255,19 +256,14 @@ const PaymentForm: React.FC<{
               style: {
                 base: {
                   fontSize: '16px',
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontFamily: '"Inter", system-ui, sans-serif',
-                    fontSmoothing: 'antialiased',
-                    iconColor: '#EF4444',
+                  fontSmoothing: 'antialiased',
+                  iconColor: '#EF4444',
                   lineHeight: '24px',
                   '::placeholder': {
                     color: '#9CA3AF',
                     iconColor: '#059669',
                   },
-                },
-                hidePostalCode: false,
-                iconStyle: 'default',
-                disabled: false,
                 },
                 complete: {
                   color: '#059669',
@@ -345,9 +341,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
       
       try {
         console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-        const stripeInstance = loadStripe(publishableKey, {
-          locale: 'en'
-        });
+        const stripeInstance = loadStripe(publishableKey);
         setStripePromise(stripeInstance);
         setStripeError(null);
         
@@ -494,17 +488,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           {/* Payment Form with Stripe Elements */}
           <div className="p-4">
-            <Elements 
-              stripe={stripePromise}
-              options={{
-                fonts: [
-                  {
-                    cssSrc: 'https://fonts.googleapis.com/css?family=Inter:400,500,600'
-                  }
-                ],
-                locale: 'en'
-              }}
-            >
+            <Elements stripe={stripePromise}>
               <PaymentForm
                 plan={plan}
                 email={email}
