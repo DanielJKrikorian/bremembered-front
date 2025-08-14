@@ -631,9 +631,18 @@ export const useLatestReviews = (limit: number = 3) => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetch, setLastFetch] = useState<number>(0);
 
   useEffect(() => {
     const fetchLatestReviews = async () => {
+      // Check if we need to refresh (weekly = 7 days = 604800000 ms)
+      const now = Date.now();
+      const weekInMs = 7 * 24 * 60 * 60 * 1000;
+      
+      if (lastFetch && (now - lastFetch) < weekInMs && reviews.length > 0) {
+        return; // Don't fetch if less than a week has passed and we have data
+      }
+
       if (!isSupabaseConfigured() || !supabase) {
         // Return mock data if Supabase not configured
         const mockReviews = [
@@ -661,6 +670,7 @@ export const useLatestReviews = (limit: number = 3) => {
         ];
         setReviews(mockReviews);
         setLoading(false);
+        setLastFetch(now);
         return;
       }
 
@@ -698,6 +708,7 @@ export const useLatestReviews = (limit: number = 3) => {
         })) || [];
         
         setReviews(transformedReviews);
+        setLastFetch(now);
       } catch (err) {
         console.error('Error fetching latest reviews:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -709,7 +720,7 @@ export const useLatestReviews = (limit: number = 3) => {
     };
 
     fetchLatestReviews();
-  }, [limit]);
+  }, [limit, lastFetch]);
 
   return { reviews, loading, error };
 };
