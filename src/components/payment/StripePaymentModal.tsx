@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import { stripePromise } from '../../lib/stripe';
+import { stripePromise, getStripeConfig } from '../../lib/stripe';
 import { useAuth } from '../../context/AuthContext';
 
 interface StripePaymentModalProps {
@@ -41,12 +41,24 @@ const PaymentForm: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState(user?.email || '');
+  const [stripeConfigured, setStripeConfigured] = useState(false);
+
+  useEffect(() => {
+    const checkStripeConfig = async () => {
+      const config = await getStripeConfig();
+      setStripeConfigured(config.isConfigured);
+      if (!config.isConfigured) {
+        setError('Payment system not configured. Please contact support.');
+      }
+    };
+    checkStripeConfig();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!stripe || !elements || !user) {
-      setError('Payment system not ready. Please try again.');
+    if (!stripe || !elements || !user || !stripeConfigured) {
+      setError('Payment system not ready. Please check your configuration or contact support.');
       return;
     }
 
@@ -153,6 +165,37 @@ const PaymentForm: React.FC<{
         fontSize: '16px',
         color: '#424770',
         fontFamily: 'system-ui, -apple-system, sans-serif',
+        lineHeight: '24px',
+        '::placeholder': {
+          color: '#aab7c4',
+        },
+      },
+      invalid: {
+        color: '#9e2146',
+      },
+    },
+    hidePostalCode: false,
+  };
+
+  if (!stripeConfigured) {
+    return (
+      <div className="p-4">
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-600">
+            Payment system is not configured. Please contact support to complete your subscription.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={onClose}
+        >
+          Close
+        </Button>
+      </div>
+    );
+  }
         '::placeholder': {
           color: '#aab7c4',
         },
@@ -196,7 +239,7 @@ const PaymentForm: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Card Information
           </label>
-          <div className="border border-gray-300 rounded-lg p-4 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white">
+          <div className="border border-gray-300 rounded-lg p-4 focus-within:ring-2 focus-within:ring-rose-500 focus-within:border-transparent bg-white min-h-[44px] flex items-center">
             <CardElement options={cardElementOptions} />
           </div>
         </div>

@@ -1,15 +1,23 @@
 import { loadStripe } from '@stripe/stripe-js';
 
-// Initialize Stripe
-export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+// Initialize Stripe with fallback
+const getStripeKey = () => {
+  const key = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  if (!key || key === 'your_stripe_publishable_key_here') {
+    console.warn('Stripe publishable key not configured');
+    return null;
+  }
+  return key;
+};
+
+export const stripePromise = getStripeKey() ? loadStripe(getStripeKey()!) : null;
 
 export const getStripeConfig = async () => {
   try {
-    // In a real app, you might fetch this from your backend
-    // For now, we'll use environment variables
+    const publishableKey = getStripeKey();
     return {
-      publishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-      isConfigured: !!(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+      publishableKey: publishableKey || '',
+      isConfigured: !!publishableKey
     };
   } catch (error) {
     console.error('Error getting Stripe config:', error);
