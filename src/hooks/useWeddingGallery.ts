@@ -21,6 +21,20 @@ export interface FileUpload {
   };
 }
 
+export interface GalleryFolder {
+  name: string;
+  path: string;
+  fileCount: number;
+  totalSize: number;
+  lastModified: string;
+  vendor?: {
+    id: string;
+    name: string;
+    profile_photo?: string;
+  };
+  previewImage?: string;
+}
+
 export interface CoupleSubscription {
   id: string;
   couple_id: string;
@@ -45,6 +59,8 @@ export interface StorageExtension {
 export const useWeddingGallery = () => {
   const { user, isAuthenticated } = useAuth();
   const [files, setFiles] = useState<FileUpload[]>([]);
+  const [folders, setFolders] = useState<GalleryFolder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<CoupleSubscription | null>(null);
   const [extensions, setExtensions] = useState<StorageExtension[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,12 +209,72 @@ export const useWeddingGallery = () => {
         });
         
         setFiles(processedFiles);
+        
+        // Process folders from files
+        const folderMap = new Map<string, GalleryFolder>();
+        
+        processedFiles.forEach(file => {
+          // Extract folder path (everything before the last slash)
+          const pathParts = file.file_path.split('/');
+          const folderPath = pathParts.slice(0, -1).join('/');
+          const folderName = pathParts[pathParts.length - 2] || 'Root'; // Get the last folder name
+          
+          if (!folderMap.has(folderPath)) {
+            folderMap.set(folderPath, {
+              name: folderName,
+              path: folderPath,
+              fileCount: 0,
+              totalSize: 0,
+              lastModified: file.upload_date,
+              vendor: file.vendors,
+              previewImage: file.public_url
+            });
+          }
+          
+          const folder = folderMap.get(folderPath)!;
+          folder.fileCount++;
+          folder.totalSize += file.file_size;
+          
+          // Update last modified if this file is newer
+          if (new Date(file.upload_date) > new Date(folder.lastModified)) {
+            folder.lastModified = file.upload_date;
+            folder.previewImage = file.public_url;
+          }
+        });
+        
+        setFolders(Array.from(folderMap.values()));
         setSubscription(subscriptionResult.data || null);
         setExtensions(extensionsResult.data || []);
       } catch (err) {
         console.error('Error fetching gallery data:', err);
         // Set mock data as fallback
         setFiles(mockFiles);
+        setFolders([
+          {
+            name: 'Wedding Photos',
+            path: 'wedding-photos',
+            fileCount: 1,
+            totalSize: 2048576,
+            lastModified: '2024-01-20T10:00:00Z',
+            vendor: {
+              id: 'mock-vendor-1',
+              name: 'Elegant Moments Photography'
+            },
+            previewImage: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
+          },
+          {
+            name: 'Wedding Videos',
+            path: 'wedding-videos',
+            fileCount: 1,
+            totalSize: 52428800,
+            lastModified: '2024-01-22T14:00:00Z',
+            vendor: {
+              id: 'mock-vendor-2',
+              name: 'Timeless Studios'
+            },
+            previewImage: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
+          }
+        ]);
         setSubscription(mockSubscription);
         setExtensions([]);
       } finally {
@@ -309,10 +385,24 @@ export const useWeddingGallery = () => {
   const photoFiles = files.filter(file => getFileType(file.file_name) === 'image');
   const videoFiles = files.filter(file => getFileType(file.file_name) === 'video');
 
+  // Filter files by current folder if one is selected
+  const currentFolderFiles = currentFolder 
+    ? files.filter(file => file.file_path.startsWith(currentFolder))
+    : files;
+  
+  const currentFolderPhotoFiles = currentFolderFiles.filter(file => getFileType(file.file_name) === 'image');
+  const currentFolderVideoFiles = currentFolderFiles.filter(file => getFileType(file.file_name) === 'video');
+
   return {
     files,
+    folders,
+    currentFolder,
+    setCurrentFolder,
+    currentFolderFiles,
     photoFiles,
     videoFiles,
+    currentFolderPhotoFiles,
+    currentFolderVideoFiles,
     subscription,
     extensions,
     loading,

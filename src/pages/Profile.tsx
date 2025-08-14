@@ -16,8 +16,14 @@ export const Profile: React.FC = () => {
   const { couple, loading: coupleLoading, updateCouple } = useCouple();
   const { 
     files, 
+    folders,
+    currentFolder,
+    setCurrentFolder,
+    currentFolderFiles,
     photoFiles, 
     videoFiles, 
+    currentFolderPhotoFiles,
+    currentFolderVideoFiles,
     subscription, 
     loading: galleryLoading, 
     downloadFile, 
