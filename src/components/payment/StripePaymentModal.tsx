@@ -302,8 +302,8 @@ const PaymentForm: React.FC<{
           Card Information
         </label>
         <div 
-          className="p-4 border border-gray-300 rounded-lg bg-white relative" 
-          style={{ minHeight: '50px', position: 'relative' }}
+          className="p-4 border border-gray-300 rounded-lg bg-white" 
+          style={{ minHeight: '44px' }}
         >
           <CardElement
             options={{
@@ -329,15 +329,10 @@ const PaymentForm: React.FC<{
               }
             }}
           />
-          {!cardReady && (
-            <div 
-              className="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/90"
-              style={{ zIndex: 1 }}
-            >
-              <div className="text-sm text-gray-500">Loading card input...</div>
-            </div>
-          )}
         </div>
+        {!cardReady && (
+          <p className="text-xs text-gray-500 mt-1">Loading card input...</p>
+        )}
         {cardError && (
           <p className="text-sm text-red-600 mt-1">{cardError}</p>
         )}
@@ -554,14 +549,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 <span>✓ Download anytime</span>
               </div>
             </div>
-          </div>
+                  hidePostalCode: true,
 
           {/* Payment Form with Stripe Elements */}
-          <div className="p-4">
+                      fontSize: '16px',
             <Elements 
-              stripe={stripePromise}
-              options={{
-                fonts: [
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
                   {
                     cssSrc: 'https://fonts.googleapis.com/css?family=Open+Sans',
                   },
@@ -570,9 +563,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   theme: 'stripe',
                   variables: {
                     colorPrimary: '#f43f5e',
-                    fontFamily: 'Open Sans, system-ui, sans-serif',
-                    spacingUnit: '2px',
-                    borderRadius: '4px',
                   }
                 }
               }}
