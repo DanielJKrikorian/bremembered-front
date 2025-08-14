@@ -40,6 +40,7 @@ export const useCouple = () => {
   const [couple, setCouple] = useState<Couple | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
     const fetchCouple = async () => {
@@ -142,7 +143,7 @@ export const useCouple = () => {
     };
 
     fetchCouple();
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, refetchTrigger]);
 
   const updateCouple = async (updates: Partial<Couple>) => {
     if (!couple || !isAuthenticated) {
@@ -175,7 +176,11 @@ export const useCouple = () => {
     }
   };
 
-  return { couple, loading, error, updateCouple };
+  const refetchCouple = () => {
+    setRefetchTrigger(prev => prev + 1);
+  };
+
+  return { couple, loading, error, updateCouple, refetchCouple };
 };
 
 export const useCouplePreferences = () => {
@@ -219,6 +224,9 @@ export const useCouplePreferences = () => {
 
         if (insertError) throw insertError;
       }
+
+       // Return success to trigger refetch
+       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update style preferences');
       throw err;
@@ -263,6 +271,9 @@ export const useCouplePreferences = () => {
 
         if (insertError) throw insertError;
       }
+
+       // Return success to trigger refetch
+       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update vibe preferences');
       throw err;
@@ -307,6 +318,9 @@ export const useCouplePreferences = () => {
 
         if (insertError) throw insertError;
       }
+
+       // Return success to trigger refetch
+       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update language preferences');
       throw err;

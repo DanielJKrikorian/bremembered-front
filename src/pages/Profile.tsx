@@ -13,7 +13,7 @@ import { WeddingTimeline } from '../components/profile/WeddingTimeline';
 
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
-  const { couple, loading: coupleLoading, updateCouple } = useCouple();
+  const { couple, loading: coupleLoading, updateCouple, refetchCouple } = useCouple();
   const { 
     files, 
     folders,
@@ -160,6 +160,8 @@ export const Profile: React.FC = () => {
     
     try {
       await updateStylePreferences(newStyleIds);
+      // Trigger refetch to update UI
+      refetchCouple();
     } catch (error) {
       console.error('Error updating style preferences:', error);
     }
@@ -180,6 +182,8 @@ export const Profile: React.FC = () => {
     
     try {
       await updateVibePreferences(newVibeIds);
+      // Trigger refetch to update UI
+      refetchCouple();
     } catch (error) {
       console.error('Error updating vibe preferences:', error);
     }
@@ -200,6 +204,8 @@ export const Profile: React.FC = () => {
     
     try {
       await updateLanguagePreferences(newLanguageIds);
+      // Trigger refetch to update UI
+      refetchCouple();
     } catch (error) {
       console.error('Error updating language preferences:', error);
     }
