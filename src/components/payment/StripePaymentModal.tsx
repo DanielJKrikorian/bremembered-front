@@ -322,7 +322,7 @@ const PaymentForm: React.FC<{
                 invalid: {
                   color: '#fa755a',
                   iconColor: '#fa755a',
-                }
+                },
                 complete: {
                   color: '#424770',
                 },
