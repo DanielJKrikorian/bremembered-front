@@ -407,7 +407,7 @@ export const MyBookings: React.FC = () => {
                             </span>
                           )}
                         </div>
-                      )}
+                      </div>
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-3">
