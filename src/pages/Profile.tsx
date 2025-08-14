@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield, Upload, Trash2, Palette, Globe, Check } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star, Award, Shield, Upload, Trash2, Palette, Globe, Check, Download, Eye, Video, Users } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
