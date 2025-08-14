@@ -656,7 +656,7 @@ export const usePackageReviews = (packageId: string) => {
               package_id
             )
           `)
-          .eq('bookings.package_id', packageId)
+          .eq('package_id', packageId)
           .not('booking_experience_rating', 'is', null)
           .order('created_at', { ascending: false });
 
