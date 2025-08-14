@@ -653,13 +653,39 @@ export const Profile: React.FC = () => {
                     Select the photography and videography styles you love
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {['Classic', 'Modern', 'Vintage', 'Artistic', 'Candid', 'Editorial', 'Fine Art', 'Documentary'].map((style) => (
-                      <button
-                        key={style}
-                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      >
-                        {style}
-                      </button>
+                    {[
+                      { label: 'Classic', description: 'Timeless and traditional photography' },
+                      { label: 'Modern', description: 'Contemporary and sleek aesthetic' },
+                      { label: 'Vintage', description: 'Nostalgic and romantic feel' },
+                      { label: 'Artistic', description: 'Creative and unique compositions' },
+                      { label: 'Candid', description: 'Natural and spontaneous moments' },
+                      { label: 'Editorial', description: 'Fashion-inspired and dramatic' },
+                      { label: 'Fine Art', description: 'Museum-quality artistic vision' },
+                      { label: 'Documentary', description: 'Storytelling through authentic moments' }
+                    ].map((style) => {
+                      const isSelected = couple?.style_preferences?.some(pref => pref.label === style.label);
+                      return (
+                        <button
+                          key={style.label}
+                          className={`
+                            group relative px-6 py-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500/20
+                            ${isSelected 
+                              ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 text-purple-800 shadow-lg' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 hover:text-purple-700 hover:shadow-md'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
+                          <div className="text-center">
+                            <div className="font-semibold text-lg mb-1">{style.label}</div>
+                            <div className="text-xs opacity-80 leading-tight">{style.description}</div>
+                          </div>
+                        </button>
+                      );
                     ))}
                   </div>
                 </div>
@@ -670,13 +696,39 @@ export const Profile: React.FC = () => {
                     Choose the vibes that match your wedding vision
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {['Romantic', 'Fun', 'Elegant', 'Rustic', 'Boho', 'Modern', 'Traditional', 'Intimate'].map((vibe) => (
-                      <button
-                        key={vibe}
-                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
-                      >
-                        {vibe}
-                      </button>
+                    {[
+                      { label: 'Romantic', description: '💕 Soft, dreamy, and intimate' },
+                      { label: 'Fun', description: '🎉 Energetic and playful celebration' },
+                      { label: 'Elegant', description: '✨ Sophisticated and refined' },
+                      { label: 'Rustic', description: '🌾 Natural and countryside charm' },
+                      { label: 'Boho', description: '🌸 Free-spirited and artistic' },
+                      { label: 'Modern', description: '🏙️ Clean lines and contemporary' },
+                      { label: 'Traditional', description: '👑 Classic and formal ceremony' },
+                      { label: 'Intimate', description: '🤍 Small and meaningful gathering' }
+                    ].map((vibe) => {
+                      const isSelected = couple?.vibe_preferences?.some(pref => pref.label === vibe.label);
+                      return (
+                        <button
+                          key={vibe.label}
+                          className={`
+                            group relative px-6 py-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-pink-500/20
+                            ${isSelected 
+                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-lg' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-md'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute -top-2 -right-2 w-6 h-6 bg-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
+                          <div className="text-center">
+                            <div className="font-semibold text-lg mb-1">{vibe.label}</div>
+                            <div className="text-xs opacity-80 leading-tight">{vibe.description}</div>
+                          </div>
+                        </button>
+                      );
                     ))}
                   </div>
                 </div>
@@ -687,13 +739,27 @@ export const Profile: React.FC = () => {
                     Select languages you'd like your vendors to speak
                   </p>
                   <div className="flex flex-wrap gap-3">
-                    {['English', 'Spanish', 'French', 'Italian', 'Portuguese', 'German', 'Mandarin', 'Japanese'].map((language) => (
-                      <button
-                        key={language}
-                        className="px-4 py-2 rounded-full border-2 border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      >
-                        {language}
-                      </button>
+                    {['English', 'Spanish', 'French', 'Italian', 'Portuguese', 'German', 'Mandarin', 'Japanese'].map((language) => {
+                      const isSelected = couple?.language_preferences?.some(pref => pref.language === language);
+                      return (
+                        <button
+                          key={language}
+                          className={`
+                            relative px-5 py-3 rounded-full border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-emerald-500/20
+                            ${isSelected 
+                              ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-800 shadow-lg' 
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-emerald-300 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-emerald-100 hover:text-emerald-700 hover:shadow-md'
+                            }
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute -top-2 -right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
+                          <span className="font-medium">{language}</span>
+                        </button>
+                      );
                     ))}
                   </div>
                 </div>
