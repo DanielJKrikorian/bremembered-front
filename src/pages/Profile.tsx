@@ -486,7 +486,7 @@ export const Profile: React.FC = () => {
                   <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                   <p className="text-gray-600">Loading your gallery...</p>
                 </div>
-              ) : files.length === 0 ? (
+              ) : !currentFolder && folders.length === 0 ? (
                 <Card className="p-12 text-center">
                   <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">No files yet</h3>
@@ -494,9 +494,84 @@ export const Profile: React.FC = () => {
                     Your vendors will upload photos and videos here after your events
                   </p>
                 </Card>
+              ) : !currentFolder ? (
+                /* Folder View */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-semibold text-gray-900">Browse by Folder</h4>
+                    <p className="text-gray-600">{folders.length} folder{folders.length !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {folders.map((folder) => (
+                      <Card 
+                        key={folder.path} 
+                        className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => setCurrentFolder(folder.path)}
+                      >
+                        <div className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden">
+                          {folder.previewImage ? (
+                            <img
+                              src={folder.previewImage}
+                              alt={folder.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-center">
+                              <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">Folder</p>
+                            </div>
+                          )}
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                            {folder.fileCount} files
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h4 className="font-medium text-gray-900 truncate mb-2">{folder.name}</h4>
+                          <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                            <span>{formatFileSize(folder.totalSize)}</span>
+                            <span>{new Date(folder.lastModified).toLocaleDateString()}</span>
+                          </div>
+                          {folder.vendor && (
+                            <div className="flex items-center space-x-2">
+                              {folder.vendor.profile_photo ? (
+                                <img
+                                  src={folder.vendor.profile_photo}
+                                  alt={folder.vendor.name}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <Camera className="w-3 h-3 text-gray-400" />
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-500 truncate">
+                                By {folder.vendor.name}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              ) : currentFolderFiles.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No files in this folder</h3>
+                  <p className="text-gray-600 mb-6">
+                    This folder appears to be empty or files are still being uploaded.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentFolder(null)}
+                  >
+                    Back to Folders
+                  </Button>
+                </Card>
               ) : (
+                /* File View for Current Folder */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {files.map((file) => (
+                  {currentFolderFiles.map((file) => (
                     <Card key={file.id} className="overflow-hidden">
                       <div className="aspect-video bg-gray-100 flex items-center justify-center">
                         {file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
