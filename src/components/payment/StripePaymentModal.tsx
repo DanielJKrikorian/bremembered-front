@@ -490,17 +490,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           {/* Payment Form with Stripe Elements */}
           <div className="p-4">
-            <Elements 
-              stripe={stripePromise}
-              options={{
-                fonts: [
-                  {
-                    cssSrc: 'https://fonts.googleapis.com/css?family=Inter:400,500,600'
-                  }
-                ],
-                locale: 'en'
-              }}
-            >
+            <Elements stripe={stripePromise}>
               <PaymentForm
                 plan={plan}
                 email={email}
