@@ -79,7 +79,7 @@ const PaymentForm: React.FC<{
       }
 
       // Create subscription
-      const subscriptionResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`, {
+      const subscriptionResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-couple-subscription`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
