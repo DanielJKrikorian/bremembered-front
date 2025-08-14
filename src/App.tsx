@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { BookingProvider } from './context/BookingContext';
+import { AuthProvider } from './context/AuthContext';
 import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
 import { Home } from './pages/Home';
@@ -21,41 +22,40 @@ import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
 
 function App() {
-  // Mock authentication state - in a real app, this would come from context/state management
-  const isAuthenticated = true; // Set to true to show authenticated state
-
   return (
-    <BookingProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Header isAuthenticated={isAuthenticated} />
-          <main>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/search" element={<SearchResults />} />
-              <Route path="/bundle/:id" element={<ServiceBundle />} />
-              <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/my-bookings" element={<MyBookings />} />
-              <Route path="/inspiration" element={<Inspiration />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/profile" element={<Profile />} />
-              
-              {/* Package Details */}
-              <Route path="/package/:id" element={<PackageDetails />} />
-              
-              {/* New Booking Flow Routes */}
-              <Route path="/booking/services" element={<ServiceSelection />} />
-              <Route path="/booking/packages" element={<PackageSelection />} />
-              <Route path="/booking/congratulations" element={<PackageCongratulations />} />
-              <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </Router>
-    </BookingProvider>
+    <AuthProvider>
+      <BookingProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Header />
+            <main>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/search" element={<SearchResults />} />
+                <Route path="/bundle/:id" element={<ServiceBundle />} />
+                <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/my-bookings" element={<MyBookings />} />
+                <Route path="/inspiration" element={<Inspiration />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/profile" element={<Profile />} />
+                
+                {/* Package Details */}
+                <Route path="/package/:id" element={<PackageDetails />} />
+                
+                {/* New Booking Flow Routes */}
+                <Route path="/booking/services" element={<ServiceSelection />} />
+                <Route path="/booking/packages" element={<PackageSelection />} />
+                <Route path="/booking/congratulations" element={<PackageCongratulations />} />
+                <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </Router>
+      </BookingProvider>
+    </AuthProvider>
   );
 }
 
