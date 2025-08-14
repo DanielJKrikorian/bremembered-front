@@ -174,8 +174,8 @@ export const Profile: React.FC = () => {
       
       await Promise.all([
         updateStylePreferences(selectedStyles),
-        updateVibePreferences(selectedVibes)
-        // Note: Language preferences would need a similar table structure
+        updateVibePreferences(selectedVibes),
+        updateLanguagePreferences(selectedLanguages)
       ]);
       
       setPreferencesChanged(false);

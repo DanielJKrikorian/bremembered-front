@@ -263,9 +263,54 @@ export const useCouplePreferences = () => {
     }
   };
 
+  const updateLanguagePreferences = async (languageIds: string[]) => {
+    if (!isAuthenticated || !user || !supabase || !isSupabaseConfigured()) {
+      throw new Error('Authentication required');
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get couple ID
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (coupleError) throw coupleError;
+
+      // Delete existing preferences
+      await supabase
+        .from('couple_language_preferences')
+        .delete()
+        .eq('couple_id', coupleData.id);
+
+      // Insert new preferences
+      if (languageIds.length > 0) {
+        const preferences = languageIds.map(languageId => ({
+          couple_id: coupleData.id,
+          language_id: languageId
+        }));
+
+        const { error: insertError } = await supabase
+          .from('couple_language_preferences')
+          .insert(preferences);
+
+        if (insertError) throw insertError;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update language preferences');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     updateStylePreferences,
     updateVibePreferences,
+    updateLanguagePreferences,
     loading,
     error
   };
