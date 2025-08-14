@@ -3,6 +3,7 @@ import { User, Mail, Phone, MapPin, Calendar, Camera, Edit, Save, X, Heart, Star
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
+import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { useAuth } from '../context/AuthContext';
 import { useCouple, useCouplePreferences } from '../hooks/useCouple';
 import { useBookings } from '../hooks/useBookings';
@@ -543,7 +544,6 @@ export const Profile: React.FC = () => {
                     icon={Calendar}
                   />
                   <Input
-                    label="Guest Count"
                     type="number"
                     value={couple.guest_count?.toString() || ''}
                     onChange={(e) => {
