@@ -724,7 +724,7 @@ export const Profile: React.FC = () => {
                           className={`
                             group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 min-w-[160px]
                             ${isSelected 
-                              ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-100 text-indigo-800 shadow-xl animate-pulse' 
+                              ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-100 text-indigo-800 shadow-xl' 
                               : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-300 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-100 hover:text-indigo-700 hover:shadow-lg cursor-pointer'
                             }
                             ${preferencesLoading ? 'opacity-50 cursor-not-allowed' : ''}
@@ -771,7 +771,7 @@ export const Profile: React.FC = () => {
                           className={`
                             group relative px-6 py-5 rounded-2xl border-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-pink-500/20 min-w-[160px]
                             ${isSelected 
-                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-xl animate-pulse' 
+                              ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-rose-100 text-pink-800 shadow-xl' 
                               : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-br hover:from-pink-50 hover:to-rose-100 hover:text-pink-700 hover:shadow-lg cursor-pointer'
                             }
                             ${preferencesLoading ? 'opacity-50 cursor-not-allowed' : ''}
