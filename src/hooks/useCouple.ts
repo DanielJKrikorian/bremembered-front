@@ -88,6 +88,9 @@ export const useCouple = () => {
             ),
             couple_vibe_preferences(
               vibe_tags(id, label, description)
+            ),
+            couple_language_preferences(
+              languages(id, language)
             )
           `)
           .eq('user_id', user.id)
@@ -121,7 +124,7 @@ export const useCouple = () => {
             ...data,
             style_preferences: data.couple_style_preferences?.map((pref: any) => pref.style_tags) || [],
             vibe_preferences: data.couple_vibe_preferences?.map((pref: any) => pref.vibe_tags) || [],
-            language_preferences: [] // We'll fetch this separately if needed
+            language_preferences: data.couple_language_preferences?.map((pref: any) => pref.languages) || []
           };
           setCouple(coupleWithPreferences);
         }
