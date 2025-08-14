@@ -166,11 +166,25 @@ export const useWeddingGallery = () => {
           let publicUrl = file.public_url;
           
           if (!publicUrl && file.file_path && file.file_name) {
-            // Combine file_path (folder) and file_name to create full storage path
-            const fullStoragePath = `${file.file_path}/${file.file_name}`;
-            publicUrl = getPublicUrl(fullStoragePath);
+            // Construct the full storage path: file_path/file_name
+            const storagePath = `${file.file_path}/${file.file_name}`;
+            
+            // Get public URL from Supabase storage
+            if (supabase && isSupabaseConfigured()) {
+              try {
+                const { data } = supabase.storage
+                  .from('vendor_media')
+                  .getPublicUrl(storagePath);
+                publicUrl = data.publicUrl;
+              } catch (error) {
+                console.warn('Error getting public URL for:', storagePath, error);
+                publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
+              }
+            } else {
+              publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
+            }
           } else if (!publicUrl) {
-            publicUrl = getPublicUrl(file.file_path);
+            publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
           }
           
           return {
