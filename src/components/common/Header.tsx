@@ -136,6 +136,12 @@ export const Header: React.FC = () => {
                         >
                           My Bookings
                         </button>
+                        <button 
+                          onClick={() => navigate('/profile?tab=gallery')}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Wedding Gallery
+                        </button>
                         <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Help Center</a>
                         <hr className="my-1" />
                         <button 
@@ -197,6 +203,12 @@ export const Header: React.FC = () => {
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           My Bookings
+                        </button>
+                        <button 
+                          onClick={() => navigate('/profile?tab=gallery')}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Wedding Gallery
                         </button>
                         <button 
                           onClick={handleSignOut}
