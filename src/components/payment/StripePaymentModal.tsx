@@ -302,8 +302,8 @@ const PaymentForm: React.FC<{
           Card Information
         </label>
         <div 
-          className="p-4 border border-gray-300 rounded-lg bg-white" 
-          style={{ minHeight: '44px' }}
+          className="p-4 border border-gray-300 rounded-lg bg-white relative" 
+          style={{ minHeight: '50px', position: 'relative' }}
         >
           <CardElement
             options={{
