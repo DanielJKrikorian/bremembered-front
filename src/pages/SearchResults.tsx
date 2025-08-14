@@ -758,12 +758,7 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              <span onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/package/${pkg.id}`);
-                              }}>
-                                View Package Details
-                              </span>
+                              View Package Details
                             </Button>
                             <Button variant="outline" size="sm" className="w-full mt-2">
                               Add to Cart
@@ -874,6 +869,7 @@ export const SearchResults: React.FC = () => {
                                   </Button>
                                   <Button 
                                     variant="primary"
+                                    size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(`/package/${pkg.id}`);
