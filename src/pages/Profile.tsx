@@ -507,6 +507,7 @@ export const Profile: React.FC = () => {
                         key={folder.path} 
                         className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
                         onClick={() => setCurrentFolder(folder.path)}
+                        onClick={() => setCurrentFolder(folder.path)}
                       >
                         <div className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden">
                           {folder.previewImage ? (
