@@ -354,9 +354,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
       
       try {
         console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-        const stripeInstance = loadStripe(publishableKey, {
-          locale: 'en'
-        });
+        const stripeInstance = loadStripe(publishableKey);
         setStripePromise(stripeInstance);
         setStripeError(null);
         
