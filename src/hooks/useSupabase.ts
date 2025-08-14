@@ -904,3 +904,65 @@ export const useLeadInformation = () => {
 
   return { leadInfo, updateLeadInfo, loading, error };
 };
+
+export const useTimelineEvents = (coupleId?: string) => {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!coupleId) {
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured() || !supabase) {
+        // Mock data for demo
+        const mockEvents = [
+          {
+            id: 'mock-1',
+            couple_id: coupleId,
+            title: 'Getting Ready',
+            description: 'Hair, makeup, and final preparations',
+            event_date: '2024-08-15',
+            event_time: '10:00',
+            location: 'Bridal Suite',
+            type: 'getting_ready',
+            duration_minutes: 120,
+            is_standard: true,
+            music_notes: 'Upbeat, feel-good songs to get everyone excited',
+            playlist_type: 'playlist',
+            song_requests: ['Good as Hell - Lizzo', 'Confident - Demi Lovato'],
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z'
+          }
+        ];
+        setEvents(mockEvents);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('timeline_events')
+          .select('*')
+          .eq('couple_id', coupleId)
+          .order('event_date', { ascending: true })
+          .order('event_time', { ascending: true });
+
+        if (error) throw error;
+        setEvents(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [coupleId]);
+
+  return { events, loading, error };
+};
