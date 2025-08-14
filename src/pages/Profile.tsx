@@ -60,6 +60,16 @@ export const Profile: React.FC = () => {
     newsletter: true
   });
 
+  const showPaymentModal = () => {
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setIsPaymentModalOpen(false);
+    // Refresh gallery data after successful payment
+    window.location.reload();
+  };
+
   // Initialize preferences when couple data loads
   React.useEffect(() => {
     if (couple) {
@@ -1302,13 +1312,9 @@ export const Profile: React.FC = () => {
 
       {/* Stripe Payment Modal */}
       <StripePaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onSuccess={() => {
-          setShowPaymentModal(false);
-          // Refresh gallery data
-          window.location.reload();
-        }}
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onSuccess={handlePaymentSuccess}
         planId="Couple_Capsule"
         planName="Wedding Gallery Storage"
         amount={499} // $4.99 in cents
