@@ -25,8 +25,8 @@ export const usePhotoUpload = () => {
 
       // Create unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `profile-photos/${fileName}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
@@ -60,9 +60,12 @@ export const usePhotoUpload = () => {
 
     try {
       // Extract file path from URL
-      const urlParts = photoUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-      const filePath = `profile-photos/${fileName}`;
+      const url = new URL(photoUrl);
+      const pathParts = url.pathname.split('/');
+      const bucketIndex = pathParts.indexOf('couple-photos');
+      if (bucketIndex === -1) throw new Error('Invalid photo URL');
+      
+      const filePath = pathParts.slice(bucketIndex + 1).join('/');
 
       const { error } = await supabase.storage
         .from('couple-photos')
