@@ -736,12 +736,12 @@ export const ChatBot: React.FC = () => {
         
         // Fetch recommendations based on service and budget
         const serviceType = leadData.services_interested?.[0];
-        if (serviceType) {
-          const packages = await fetchPackageRecommendations(serviceType, userMessage);
+        if (selectedServiceType && budgetRange) {
+          const packages = await fetchPackageRecommendations(selectedServiceType, budgetRange);
           if (packages.length > 0) {
             setTimeout(() => {
               addBotMessage("I found some great packages that match your preferences! I'll show them to you after we finish collecting your info. 🎉");
-            }, 2000);
+            addBotMessage(`I'm still working on finding the perfect ${selectedServiceType.toLowerCase()} packages for your budget. Our team will reach out with personalized recommendations soon! 💕`);
           }
         }
         break;
@@ -754,10 +754,10 @@ export const ChatBot: React.FC = () => {
 
       case 'phone':
         // Find and show package recommendations immediately
-        const serviceType = leadData.services_interested?.[0];
+        const selectedServiceType = leadData.services_interested?.[0];
         const budgetRange = leadData.budget_range;
         
-        addBotMessage(`Perfect! Thank you ${leadData.name}! 🎉\n\nBased on your preferences, let me find the perfect ${serviceType?.toLowerCase()} packages for you...`);
+        addBotMessage(`Perfect! Thank you ${leadData.name}! 🎉\n\nBased on your preferences, let me find the perfect ${selectedServiceType?.toLowerCase()} packages for you...`);
         
         // Fetch recommendations
         const packages = await fetchPackageRecommendations(serviceType || '', budgetRange || '');
