@@ -758,7 +758,7 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              View Package Details
+                              View Details
                             </Button>
                             <Button 
                               variant="outline" 
@@ -769,7 +769,7 @@ export const SearchResults: React.FC = () => {
                                 navigate(`/package/${pkg.id}`);
                               }}
                             >
-                              Quick Book
+                              View Package Details
                             </Button>
                           </div>
                         </Card>
