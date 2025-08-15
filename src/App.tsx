@@ -20,6 +20,7 @@ import { EventDetails } from './pages/booking/EventDetails';
 import { PackageCongratulations } from './pages/booking/PackageCongratulations';
 import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
+import { VendorOnboarding } from './pages/VendorOnboarding';
 
 function App() {
   return (
@@ -49,6 +50,9 @@ function App() {
                 <Route path="/booking/packages" element={<PackageSelection />} />
                 <Route path="/booking/congratulations" element={<PackageCongratulations />} />
                 <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
+                
+                {/* Vendor Onboarding */}
+                <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
               </Routes>
             </main>
             <Footer />
