@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Upload, X, Check, Camera, Video, Music, Users, Calendar, Shield, FileText, ExternalLink, AlertCircle, Star, Award, Globe, Instagram, Facebook, Twitter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
