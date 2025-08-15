@@ -758,7 +758,7 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              View Details
+                              View Package Details
                             </Button>
                             <Button 
                               variant="outline" 
@@ -766,7 +766,7 @@ export const SearchResults: React.FC = () => {
                               className="w-full mt-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Add to cart functionality can be implemented later
+                                navigate(`/package/${pkg.id}`);
                               }}
                             >
                               Quick Book
@@ -877,7 +877,7 @@ export const SearchResults: React.FC = () => {
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Quick book functionality
+                                      navigate(`/package/${pkg.id}`);
                                     }}
                                   >
                                     Quick Book
@@ -890,7 +890,7 @@ export const SearchResults: React.FC = () => {
                                       navigate(`/package/${pkg.id}`);
                                     }}
                                   >
-                                    View Details
+                                    View Package Details
                                   </Button>
                                 </div>
                               </div>
