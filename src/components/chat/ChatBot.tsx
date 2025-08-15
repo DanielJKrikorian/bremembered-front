@@ -682,7 +682,6 @@ export const ChatBot: React.FC = () => {
           setCurrentStep('completed');
         }
         break;
-        break;
 
       case 'open_conversation':
         // Handle open-ended conversation
@@ -736,12 +735,16 @@ export const ChatBot: React.FC = () => {
         
         // Fetch recommendations based on service and budget
         const serviceType = leadData.services_interested?.[0];
-        if (selectedServiceType && budgetRange) {
-          const packages = await fetchPackageRecommendations(selectedServiceType, budgetRange);
+        if (serviceType && userMessage) {
+          const packages = await fetchPackageRecommendations(serviceType, userMessage);
           if (packages.length > 0) {
             setTimeout(() => {
               addBotMessage("I found some great packages that match your preferences! I'll show them to you after we finish collecting your info. 🎉");
-            addBotMessage(`I'm still working on finding the perfect ${selectedServiceType.toLowerCase()} packages for your budget. Our team will reach out with personalized recommendations soon! 💕`);
+            }, 1000);
+          } else {
+            setTimeout(() => {
+              addBotMessage(`I'm still working on finding the perfect ${serviceType.toLowerCase()} packages for your budget. Our team will reach out with personalized recommendations soon! 💕`);
+            }, 1000);
           }
         }
         break;
@@ -753,6 +756,8 @@ export const ChatBot: React.FC = () => {
         break;
 
       case 'phone':
+        await saveLead({ phone: userMessage });
+        
         // Find and show package recommendations immediately
         const selectedServiceType = leadData.services_interested?.[0];
         const budgetRange = leadData.budget_range;
@@ -760,11 +765,11 @@ export const ChatBot: React.FC = () => {
         addBotMessage(`Perfect! Thank you ${leadData.name}! 🎉\n\nBased on your preferences, let me find the perfect ${selectedServiceType?.toLowerCase()} packages for you...`);
         
         // Fetch recommendations
-        const packages = await fetchPackageRecommendations(serviceType || '', budgetRange || '');
+        const packages = await fetchPackageRecommendations(selectedServiceType || '', budgetRange || '');
         
         if (packages.length > 0) {
           setTimeout(() => {
-            addBotMessage(`Great news! I found some amazing ${serviceType?.toLowerCase()} packages that match your budget and needs:`);
+            addBotMessage(`Great news! I found some amazing ${selectedServiceType?.toLowerCase()} packages that match your budget and needs:`);
             setTimeout(() => {
               showPackageRecommendations(packages);
               addBotMessage(`These packages are perfect for your ${leadData.wedding_date} wedding! Click any package above to view full details and book directly. 💕\n\nNeed help choosing? I'm here to answer any questions!`);
@@ -773,7 +778,7 @@ export const ChatBot: React.FC = () => {
           setCurrentStep('show_recommendations');
         } else {
           setTimeout(() => {
-            addBotMessage(`I'm having trouble finding packages in your exact budget range, but our team will email you personalized recommendations within 24 hours. In the meantime, you can browse all our ${serviceType?.toLowerCase()} packages on our website! 💕`);
+            addBotMessage(`I'm having trouble finding packages in your exact budget range, but our team will email you personalized recommendations within 24 hours. In the meantime, you can browse all our ${selectedServiceType?.toLowerCase()} packages on our website! 💕`);
           }, 1000);
           setCurrentStep('completed');
         }
@@ -812,10 +817,10 @@ export const ChatBot: React.FC = () => {
     
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
-      text: '',
-      isBot: true,
+      type: 'bot' as const,
+      content: '',
       timestamp: new Date(),
-      packages: packagesToShow.slice(0, 3)
+      metadata: { packages: packagesToShow.slice(0, 3) }
     }]);
   };
 
@@ -826,6 +831,16 @@ export const ChatBot: React.FC = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price / 100);
+  };
+
+  const getServicePhoto = (serviceType: string, pkg: any) => {
+    const photos = {
+      'Photography': 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'Videography': 'https://images.pexels.com/photos/1983037/pexels-photo-1983037.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'DJ Services': 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'Coordination': 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400'
+    };
+    return photos[serviceType as keyof typeof photos] || photos['Photography'];
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -986,9 +1001,9 @@ export const ChatBot: React.FC = () => {
                     )}
 
                     {/* Package recommendations display */}
-                    {message.packages && message.packages.length > 0 && (
+                    {message.metadata?.packages && message.metadata.packages.length > 0 && (
                       <div className="space-y-3 mt-3">
-                        {message.packages.map((pkg: any) => (
+                        {message.metadata.packages.map((pkg: any) => (
                           <div key={pkg.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex items-start space-x-3">
                               <img
