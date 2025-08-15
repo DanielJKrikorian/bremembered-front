@@ -758,13 +758,7 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              <span onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                navigate(`/package/${pkg.id}`);
-                              }}>
-                                View Package Details
-                              </span>
+                              View Package Details
                             </Button>
                           </div>
                         </Card>
@@ -867,16 +861,16 @@ export const SearchResults: React.FC = () => {
                                   Click to view full details and book
                                 </div>
                                 <div className="flex space-x-2">
-                                  <button
+                                  <Button
+                                    variant="primary"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       navigate(`/package/${pkg.id}`);
                                     }}
-                                    className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-medium transition-colors"
                                   >
                                     View Package Details
-                                  </button>
+                                  </Button>
                                 </div>
                               </div>
                             </div>
