@@ -550,8 +550,8 @@ export const ChatBot: React.FC = () => {
           setCurrentStep('planning_support');
         } else {
           // For complex or unclear requests, escalate to team member
-          addBotMessage("Let me get you connected with someone who can help with that specific question. Just a few moments, a team member will be right here to help! 👩‍💼\n\nFeel free to continue chatting - they'll join our conversation shortly.");
-          setCurrentStep('team_escalation');
+          addBotMessage("I'd love to connect you with a team member who can help with that specific question. Before I do, could I have your name and email so they can follow up with you properly?");
+          setCurrentStep('escalation_contact_info');
           
           // Save as a support ticket for admin follow-up
           if (supabase && isSupabaseConfigured()) {
@@ -581,17 +581,17 @@ export const ChatBot: React.FC = () => {
           addBotMessage("Great! I can help you make a new booking. You can browse our services and packages right here on the website. Would you like me to show you some popular packages or help you find something specific?");
           setCurrentStep('service_selection');
         } else if (lowerMessage.includes('modify') || lowerMessage.includes('change') || lowerMessage.includes('reschedule')) {
-          addBotMessage("For modifying existing bookings, you can usually make changes through your account dashboard. However, some changes may require vendor approval. Let me connect you with a team member who can help with your specific modification. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("For modifying existing bookings, you can usually make changes through your account dashboard. However, some changes may require vendor approval. Let me connect you with a team member who can help with your specific modification. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else if (lowerMessage.includes('cancel')) {
-          addBotMessage("I understand you may need to cancel a booking. Cancellation policies vary by vendor and timing. Let me get a team member to help you with the cancellation process and any applicable refunds. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("I understand you may need to cancel a booking. Cancellation policies vary by vendor and timing. Let me get a team member to help you with the cancellation process and any applicable refunds. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else if (lowerMessage.includes('status') || lowerMessage.includes('check')) {
           addBotMessage("You can check your booking status in your account dashboard under 'My Bookings'. If you're having trouble accessing it or need specific details, I can get a team member to help you. Would you like me to connect you with someone?");
           setCurrentStep('team_escalation_optional');
         } else {
-          addBotMessage("Let me connect you with a team member who can help with your specific booking question. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("Let me connect you with a team member who can help with your specific booking question. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         }
         break;
 
@@ -599,11 +599,11 @@ export const ChatBot: React.FC = () => {
         if (lowerMessage.includes('method') || lowerMessage.includes('card') || lowerMessage.includes('process')) {
           addBotMessage("We accept all major credit cards through our secure Stripe payment system. Payments are processed immediately and you'll receive confirmation via email. Is there a specific payment method question I can help with?");
         } else if (lowerMessage.includes('refund')) {
-          addBotMessage("Refund policies depend on the vendor and timing of your request. Most vendors offer full refunds for cancellations made 30+ days before your event. Let me connect you with a team member who can review your specific situation. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("Refund policies depend on the vendor and timing of your request. Most vendors offer full refunds for cancellations made 30+ days before your event. Let me connect you with a team member who can review your specific situation. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("For specific billing and payment questions, let me connect you with a team member who can access your account details. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("For specific billing and payment questions, let me connect you with a team member who can access your account details. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         }
         break;
 
@@ -611,24 +611,24 @@ export const ChatBot: React.FC = () => {
         if (lowerMessage.includes('message') || lowerMessage.includes('contact')) {
           addBotMessage("You can message vendors directly through your booking dashboard! Go to 'My Bookings' and click the 'Message' button next to any vendor. They typically respond within 2-4 hours. Need help finding this feature?");
         } else if (lowerMessage.includes('response') || lowerMessage.includes('reply')) {
-          addBotMessage("Vendors typically respond within 2-4 hours during business hours. If it's been longer than 24 hours, let me connect you with a team member who can follow up with them. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("Vendors typically respond within 2-4 hours during business hours. If it's been longer than 24 hours, let me connect you with a team member who can follow up with them. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("For specific vendor issues, let me connect you with a team member who can help resolve this. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("For specific vendor issues, let me connect you with a team member who can help resolve this. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         }
         break;
 
       case 'technical_support':
         if (lowerMessage.includes('login') || lowerMessage.includes('password')) {
-          addBotMessage("For login issues, try:\n\n1. Click 'Forgot Password' on the login page\n2. Check your email for the reset link\n3. Clear your browser cache\n4. Try a different browser\n\nIf these don't work, let me connect you with technical support. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("For login issues, try:\n\n1. Click 'Forgot Password' on the login page\n2. Check your email for the reset link\n3. Clear your browser cache\n4. Try a different browser\n\nIf these don't work, let me connect you with technical support. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else if (lowerMessage.includes('upload') || lowerMessage.includes('photo') || lowerMessage.includes('video')) {
-          addBotMessage("For upload issues, please check:\n\n• File size under 10MB\n• Supported formats: JPG, PNG, MP4, MOV\n• Stable internet connection\n• Try refreshing the page\n\nStill having trouble? Let me get technical support to help. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("For upload issues, please check:\n\n• File size under 10MB\n• Supported formats: JPG, PNG, MP4, MOV\n• Stable internet connection\n• Try refreshing the page\n\nStill having trouble? Let me get technical support to help. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("Let me connect you with our technical support team who can help resolve this issue. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("Let me connect you with our technical support team who can help resolve this issue. Could I have your name and email first?");
+          setCurrentStep('escalation_contact_info');
         }
         break;
 
@@ -646,6 +646,46 @@ export const ChatBot: React.FC = () => {
           setCurrentStep('vendor_recommendations');
         } else {
           addBotMessage("I'd love to help with your planning question! Can you be more specific about what aspect of wedding planning you need guidance on?");
+        }
+        break;
+
+      case 'escalation_contact_info':
+        // Collect contact info for team escalation
+        if (!leadData.name) {
+          // First, get their name
+          setLeadData(prev => ({ ...prev, name: userMessage }));
+          addBotMessage(`Nice to meet you, ${userMessage}! And what's your email address?`);
+        } else if (!leadData.email) {
+          // Then get their email
+          if (isValidEmail(userMessage)) {
+            setLeadData(prev => ({ ...prev, email: userMessage }));
+            addBotMessage(`Perfect! Thank you ${leadData.name}. I'm connecting you with a team member now. Just a few moments, they'll be right here to help! 👩‍💼\n\nFeel free to continue chatting - they'll join our conversation shortly.`);
+            
+            // Save complete lead info for team follow-up
+            if (supabase && isSupabaseConfigured()) {
+              try {
+                await supabase
+                  .from('chat_messages')
+                  .insert([{
+                    session_id: sessionId,
+                    sender_type: 'bot',
+                    message: `ESCALATION READY - Name: ${leadData.name}, Email: ${userMessage}`,
+                    ip_address: userIpAddress,
+                    metadata: { 
+                      type: 'escalation_ready',
+                      customer_name: leadData.name,
+                      customer_email: userMessage,
+                      needs_human_response: true
+                    }
+                  }]);
+              } catch (error) {
+                console.error('Error saving escalation info:', error);
+              }
+            }
+            setCurrentStep('team_escalation');
+          } else {
+            addBotMessage("That doesn't look like a valid email address. Could you please provide your email address so our team can follow up with you?");
+          }
         }
         break;
 
@@ -675,8 +715,8 @@ export const ChatBot: React.FC = () => {
 
       case 'team_escalation_optional':
         if (lowerMessage.includes('yes') || lowerMessage.includes('connect') || lowerMessage.includes('help')) {
-          addBotMessage("Perfect! Let me connect you with a team member who can help. Just a few moments! 👩‍💼");
-          setCurrentStep('team_escalation');
+          addBotMessage("Perfect! Before I connect you with a team member, could I have your name and email?");
+          setCurrentStep('escalation_contact_info');
         } else {
           addBotMessage("No problem! Is there anything else I can help you with today? I'm here for any other questions about your wedding planning! 💕");
           setCurrentStep('completed');
