@@ -550,7 +550,7 @@ export const ChatBot: React.FC = () => {
           setCurrentStep('planning_support');
         } else {
           // For complex or unclear requests, escalate to team member
-          addBotMessage("I'd love to connect you with a team member who can help with that specific question. Before I do, could I have your name and email so they can follow up with you properly?");
+          addBotMessage("I'd love to connect you with a team member who can help with that specific question. Before I do, could I have your name first?");
           setCurrentStep('escalation_contact_info');
           
           // Save as a support ticket for admin follow-up
@@ -581,16 +581,16 @@ export const ChatBot: React.FC = () => {
           addBotMessage("Great! I can help you make a new booking. You can browse our services and packages right here on the website. Would you like me to show you some popular packages or help you find something specific?");
           setCurrentStep('service_selection');
         } else if (lowerMessage.includes('modify') || lowerMessage.includes('change') || lowerMessage.includes('reschedule')) {
-          addBotMessage("For modifying existing bookings, you can usually make changes through your account dashboard. However, some changes may require vendor approval. Let me connect you with a team member who can help with your specific modification. Could I have your name and email first?");
+          addBotMessage("For modifying existing bookings, you can usually make changes through your account dashboard. However, some changes may require vendor approval. Let me connect you with a team member who can help with your specific modification. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         } else if (lowerMessage.includes('cancel')) {
-          addBotMessage("I understand you may need to cancel a booking. Cancellation policies vary by vendor and timing. Let me get a team member to help you with the cancellation process and any applicable refunds. Could I have your name and email first?");
+          addBotMessage("I understand you may need to cancel a booking. Cancellation policies vary by vendor and timing. Let me get a team member to help you with the cancellation process and any applicable refunds. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         } else if (lowerMessage.includes('status') || lowerMessage.includes('check')) {
           addBotMessage("You can check your booking status in your account dashboard under 'My Bookings'. If you're having trouble accessing it or need specific details, I can get a team member to help you. Would you like me to connect you with someone?");
           setCurrentStep('team_escalation_optional');
         } else {
-          addBotMessage("Let me connect you with a team member who can help with your specific booking question. Could I have your name and email first?");
+          addBotMessage("Let me connect you with a team member who can help with your specific booking question. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         }
         break;
@@ -599,10 +599,10 @@ export const ChatBot: React.FC = () => {
         if (lowerMessage.includes('method') || lowerMessage.includes('card') || lowerMessage.includes('process')) {
           addBotMessage("We accept all major credit cards through our secure Stripe payment system. Payments are processed immediately and you'll receive confirmation via email. Is there a specific payment method question I can help with?");
         } else if (lowerMessage.includes('refund')) {
-          addBotMessage("Refund policies depend on the vendor and timing of your request. Most vendors offer full refunds for cancellations made 30+ days before your event. Let me connect you with a team member who can review your specific situation. Could I have your name and email first?");
+          addBotMessage("Refund policies depend on the vendor and timing of your request. Most vendors offer full refunds for cancellations made 30+ days before your event. Let me connect you with a team member who can review your specific situation. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("For specific billing and payment questions, let me connect you with a team member who can access your account details. Could I have your name and email first?");
+          addBotMessage("For specific billing and payment questions, let me connect you with a team member who can access your account details. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         }
         break;
@@ -614,7 +614,7 @@ export const ChatBot: React.FC = () => {
           addBotMessage("Vendors typically respond within 2-4 hours during business hours. If it's been longer than 24 hours, let me connect you with a team member who can follow up with them. Could I have your name and email first?");
           setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("For specific vendor issues, let me connect you with a team member who can help resolve this. Could I have your name and email first?");
+          addBotMessage("For specific vendor issues, let me connect you with a team member who can help resolve this. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         }
         break;
@@ -627,7 +627,7 @@ export const ChatBot: React.FC = () => {
           addBotMessage("For upload issues, please check:\n\n• File size under 10MB\n• Supported formats: JPG, PNG, MP4, MOV\n• Stable internet connection\n• Try refreshing the page\n\nStill having trouble? Let me get technical support to help. Could I have your name and email first?");
           setCurrentStep('escalation_contact_info');
         } else {
-          addBotMessage("Let me connect you with our technical support team who can help resolve this issue. Could I have your name and email first?");
+          addBotMessage("Let me connect you with our technical support team who can help resolve this issue. Could I have your name first?");
           setCurrentStep('escalation_contact_info');
         }
         break;
@@ -715,7 +715,7 @@ export const ChatBot: React.FC = () => {
 
       case 'team_escalation_optional':
         if (lowerMessage.includes('yes') || lowerMessage.includes('connect') || lowerMessage.includes('help')) {
-          addBotMessage("Perfect! Before I connect you with a team member, could I have your name and email?");
+          addBotMessage("Perfect! Before I connect you with a team member, could I have your name first?");
           setCurrentStep('escalation_contact_info');
         } else {
           addBotMessage("No problem! Is there anything else I can help you with today? I'm here for any other questions about your wedding planning! 💕");
