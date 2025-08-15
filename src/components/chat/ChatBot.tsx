@@ -753,18 +753,30 @@ export const ChatBot: React.FC = () => {
         break;
 
       case 'phone':
-        await saveLead({ 
-          phone: userMessage,
-          status: 'completed',
-          message: `Chat conversation completed. Services: ${leadData.services_interested?.join(', ')}, Budget: ${leadData.budget_range}, Wedding Date: ${leadData.wedding_date || 'TBD'}`
-        });
-        setCurrentStep('show_recommendations');
-        addBotMessage("Perfect! 🎉 Let me show you some packages that match your preferences:");
+        // Find and show package recommendations immediately
+        const serviceType = leadData.services_interested?.[0];
+        const budgetRange = leadData.budget_range;
         
-        // Show recommendations
-        setTimeout(() => {
-          showPackageRecommendations();
-        }, 1500);
+        addBotMessage(`Perfect! Thank you ${leadData.name}! 🎉\n\nBased on your preferences, let me find the perfect ${serviceType?.toLowerCase()} packages for you...`);
+        
+        // Fetch recommendations
+        const packages = await fetchPackageRecommendations(serviceType || '', budgetRange || '');
+        
+        if (packages.length > 0) {
+          setTimeout(() => {
+            addBotMessage(`Great news! I found some amazing ${serviceType?.toLowerCase()} packages that match your budget and needs:`);
+            setTimeout(() => {
+              showPackageRecommendations(packages);
+              addBotMessage(`These packages are perfect for your ${leadData.wedding_date} wedding! Click any package above to view full details and book directly. 💕\n\nNeed help choosing? I'm here to answer any questions!`);
+            }, 1000);
+          }, 1000);
+          setCurrentStep('show_recommendations');
+        } else {
+          setTimeout(() => {
+            addBotMessage(`I'm having trouble finding packages in your exact budget range, but our team will email you personalized recommendations within 24 hours. In the meantime, you can browse all our ${serviceType?.toLowerCase()} packages on our website! 💕`);
+          }, 1000);
+          setCurrentStep('completed');
+        }
         break;
 
       case 'recommendations':
@@ -795,30 +807,16 @@ export const ChatBot: React.FC = () => {
     }
   };
 
-  const showPackageRecommendations = () => {
-    if (recommendedPackages.length === 0) {
-      addBotMessage("Our team will reach out with personalized recommendations based on your preferences! In the meantime, feel free to browse our services.");
-      return;
-    }
-
-    recommendedPackages.forEach((pkg, index) => {
-      setTimeout(() => {
-        const packageMessage = `📦 **${pkg.name}**\n💰 ${formatPrice(pkg.price)}\n⏰ ${pkg.hour_amount ? `${pkg.hour_amount} hours` : 'Custom duration'}\n\n${pkg.description}`;
-        
-        addBotMessage(packageMessage, {
-          type: 'package_recommendation',
-          package_id: pkg.id,
-          package_name: pkg.name,
-          package_price: pkg.price
-        });
-      }, index * 1500);
-    });
-
-    setTimeout(() => {
-      addBotMessage("Would you like to view any of these packages in detail? I can also help you find more options! 🌟", {
-        type: 'recommendation_followup'
-      });
-    }, recommendedPackages.length * 1500 + 1000);
+  const showPackageRecommendations = (packages?: any[]) => {
+    const packagesToShow = packages || recommendedPackages;
+    
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      text: '',
+      isBot: true,
+      timestamp: new Date(),
+      packages: packagesToShow.slice(0, 3)
+    }]);
   };
 
   const formatPrice = (price: number) => {
@@ -984,6 +982,64 @@ export const ChatBot: React.FC = () => {
                             <Eye className="w-3 h-3" />
                           </div>
                         </button>
+                      </div>
+                    )}
+
+                    {/* Package recommendations display */}
+                    {message.packages && message.packages.length > 0 && (
+                      <div className="space-y-3 mt-3">
+                        {message.packages.map((pkg: any) => (
+                          <div key={pkg.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start space-x-3">
+                              <img
+                                src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
+                                alt={pkg.name}
+                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-sm mb-1">{pkg.name}</h4>
+                                <p className="text-xs text-gray-600 mb-2 line-clamp-2">{pkg.description}</p>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-lg font-bold text-rose-600">
+                                    {formatPrice(pkg.price)}
+                                  </div>
+                                  <button 
+                                    onClick={() => {
+                                      window.open(`/package/${pkg.id}`, '_blank');
+                                    }}
+                                    className="px-3 py-1 bg-rose-500 text-white rounded-lg text-xs hover:bg-rose-600 transition-colors"
+                                  >
+                                    View Package
+                                  </button>
+                                </div>
+                                {pkg.features && pkg.features.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {pkg.features.slice(0, 2).map((feature: string, index: number) => (
+                                      <span key={index} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">
+                                        {feature}
+                                      </span>
+                                    ))}
+                                    {pkg.features.length > 2 && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+                                        +{pkg.features.length - 2} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="text-center mt-3">
+                          <button 
+                            onClick={() => {
+                              window.open('/search', '_blank');
+                            }}
+                            className="text-xs text-rose-600 hover:text-rose-700 underline"
+                          >
+                            View all {leadData.services_interested?.[0]?.toLowerCase() || 'wedding'} packages →
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
