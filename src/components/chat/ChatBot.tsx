@@ -129,8 +129,8 @@ export const ChatBot: React.FC = () => {
           addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
           setCurrentStep('customer_support');
         } else {
-          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
-          setCurrentStep('greeting');
+          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What are you looking for today?\n\n• Photography packages\n• Videography services\n• DJ & music services\n• Wedding coordination\n• Custom recommendations\n• Just browsing");
+          setCurrentStep('initial_inquiry');
         }
       }, 500);
       return;
@@ -160,6 +160,8 @@ export const ChatBot: React.FC = () => {
         const lastBotMessage = data.filter(msg => msg.sender_type === 'bot').pop();
         if (isAuthenticated) {
           setCurrentStep('customer_support');
+        } else if (lastBotMessage?.message.includes('What are you looking for')) {
+          setCurrentStep('initial_inquiry');
         } else if (lastBotMessage?.message.includes('phone number')) {
           setCurrentStep('phone');
         } else if (lastBotMessage?.message.includes('wedding date')) {
@@ -180,8 +182,8 @@ export const ChatBot: React.FC = () => {
             addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
             setCurrentStep('customer_support');
           } else {
-            addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
-            setCurrentStep('greeting');
+            addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What are you looking for today?\n\n• Photography packages\n• Videography services\n• DJ & music services\n• Wedding coordination\n• Custom recommendations\n• Just browsing");
+            setCurrentStep('initial_inquiry');
           }
         }, 500);
       }
@@ -441,8 +443,64 @@ export const ChatBot: React.FC = () => {
   };
 
   const handleLeadCaptureMessage = async (userMessage: string) => {
+    const lowerMessage = userMessage.toLowerCase();
+    
     // Process the message based on current step
     switch (currentStep) {
+      case 'initial_inquiry':
+        // Handle direct service requests
+        if (lowerMessage.includes('photo')) {
+          const packages = await fetchPackageRecommendations('Photography', '$1,500-$3,000');
+          if (packages.length > 0) {
+            addBotMessage("Perfect! I found some amazing photography packages for you:");
+            setTimeout(() => showPackageRecommendations(), 1000);
+            setCurrentStep('show_recommendations');
+          } else {
+            addBotMessage("I'd love to help you find the perfect photography package! Let me get some quick details to give you the best recommendations. What's your name?");
+            setCurrentStep('greeting');
+          }
+        } else if (lowerMessage.includes('video')) {
+          const packages = await fetchPackageRecommendations('Videography', '$1,500-$3,000');
+          if (packages.length > 0) {
+            addBotMessage("Excellent choice! Here are some beautiful videography packages:");
+            setTimeout(() => showPackageRecommendations(), 1000);
+            setCurrentStep('show_recommendations');
+          } else {
+            addBotMessage("I'd love to help you find the perfect videography package! Let me get some quick details. What's your name?");
+            setCurrentStep('greeting');
+          }
+        } else if (lowerMessage.includes('dj') || lowerMessage.includes('music')) {
+          const packages = await fetchPackageRecommendations('DJ Services', '$800-$2,000');
+          if (packages.length > 0) {
+            addBotMessage("Great! Here are some fantastic DJ and music packages:");
+            setTimeout(() => showPackageRecommendations(), 1000);
+            setCurrentStep('show_recommendations');
+          } else {
+            addBotMessage("I'd love to help you find the perfect DJ services! Let me get some details. What's your name?");
+            setCurrentStep('greeting');
+          }
+        } else if (lowerMessage.includes('coordination') || lowerMessage.includes('planning')) {
+          const packages = await fetchPackageRecommendations('Coordination', '$600-$1,500');
+          if (packages.length > 0) {
+            addBotMessage("Perfect! Here are some excellent coordination packages:");
+            setTimeout(() => showPackageRecommendations(), 1000);
+            setCurrentStep('show_recommendations');
+          } else {
+            addBotMessage("I'd love to help you find the perfect coordination services! Let me get some details. What's your name?");
+            setCurrentStep('greeting');
+          }
+        } else if (lowerMessage.includes('custom') || lowerMessage.includes('recommend')) {
+          addBotMessage("I'd love to give you personalized recommendations! Let me ask a few quick questions to find your perfect match. What's your name?");
+          setCurrentStep('greeting');
+        } else if (lowerMessage.includes('browse') || lowerMessage.includes('browsing')) {
+          addBotMessage("Feel free to browse around! If you need any help finding specific services or have questions, just let me know. I'm here to help make your wedding planning easier! 💕");
+          setCurrentStep('completed');
+        } else {
+          // Fallback - ask for clarification
+          addBotMessage("I'd love to help you! Are you looking for:\n\n📸 Photography\n🎥 Videography\n🎵 DJ/Music services\n👰 Wedding coordination\n💝 Custom recommendations\n\nOr just type what you're looking for!");
+        }
+        break;
+
       case 'greeting':
         await saveLead({ name: userMessage });
         setCurrentStep('email');
@@ -575,6 +633,14 @@ export const ChatBot: React.FC = () => {
       'Access my gallery',
       'Plan my timeline',
       'Contact support'
+    ],
+    initial_inquiry: [
+      'Photography',
+      'Videography',
+      'DJ Services',
+      'Coordination',
+      'Custom recommendations',
+      'Just browsing'
     ],
     services: [
       'Photography',
@@ -734,6 +800,23 @@ export const ChatBot: React.FC = () => {
                 <p className="text-xs text-gray-500 text-center">Quick options:</p>
                 <div className="flex flex-wrap gap-2">
                   {quickReplies.customer_support.map((reply) => (
+                    <button
+                      key={reply}
+                      onClick={() => handleQuickReply(reply)}
+                      className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs hover:bg-rose-200 transition-colors"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'initial_inquiry' && quickReplies.initial_inquiry && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 text-center">What are you looking for?</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickReplies.initial_inquiry.map((reply) => (
                     <button
                       key={reply}
                       onClick={() => handleQuickReply(reply)}
