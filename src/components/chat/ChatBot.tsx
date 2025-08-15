@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, User, Mail, Phone, Calendar, Heart, Check, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, User, Mail, Phone, Calendar, Heart, Check, Bot, Star, Camera, Video, Music, Users as UsersIcon, Package, ArrowRight, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { useCouple } from '../../hooks/useCouple';
 
 interface ChatMessage {
   id: string;
@@ -28,11 +31,25 @@ interface ChatLead {
   updated_at?: string;
 }
 
+interface ServicePackage {
+  id: string;
+  name: string;
+  service_type: string;
+  price: number;
+  description?: string;
+  hour_amount?: number;
+  features?: string[];
+}
+
 export const ChatBot: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const { couple } = useCouple();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [currentStep, setCurrentStep] = useState('greeting');
+  const [chatMode, setChatMode] = useState<'lead_capture' | 'customer_support' | 'recommendations'>('lead_capture');
   const [leadData, setLeadData] = useState<ChatLead>({
     session_id: '',
     ip_address: '',
@@ -41,6 +58,7 @@ export const ChatBot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [userIpAddress, setUserIpAddress] = useState<string>('');
   const [sessionId, setSessionId] = useState<string>('');
+  const [recommendedPackages, setRecommendedPackages] = useState<ServicePackage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Generate session ID
@@ -94,11 +112,26 @@ export const ChatBot: React.FC = () => {
     }
   }, [isOpen, sessionId]);
 
+  // Determine chat mode based on user authentication
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setChatMode('customer_support');
+    } else {
+      setChatMode('lead_capture');
+    }
+  }, [isAuthenticated, user]);
+
   const loadChatHistory = async () => {
     if (!supabase || !isSupabaseConfigured() || !sessionId) {
-      // Start fresh conversation
+      // Start conversation based on user type
       setTimeout(() => {
-        addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+        if (isAuthenticated && user) {
+          addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
+          setCurrentStep('customer_support');
+        } else {
+          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+          setCurrentStep('greeting');
+        }
       }, 500);
       return;
     }
@@ -125,7 +158,9 @@ export const ChatBot: React.FC = () => {
         
         // Determine current step based on last message
         const lastBotMessage = data.filter(msg => msg.sender_type === 'bot').pop();
-        if (lastBotMessage?.message.includes('phone number')) {
+        if (isAuthenticated) {
+          setCurrentStep('customer_support');
+        } else if (lastBotMessage?.message.includes('phone number')) {
           setCurrentStep('phone');
         } else if (lastBotMessage?.message.includes('wedding date')) {
           setCurrentStep('wedding_date');
@@ -141,14 +176,26 @@ export const ChatBot: React.FC = () => {
       } else {
         // Start fresh conversation
         setTimeout(() => {
-          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+          if (isAuthenticated && user) {
+            addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
+            setCurrentStep('customer_support');
+          } else {
+            addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+            setCurrentStep('greeting');
+          }
         }, 500);
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
       // Start fresh conversation on error
       setTimeout(() => {
-        addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+        if (isAuthenticated && user) {
+          addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
+          setCurrentStep('customer_support');
+        } else {
+          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+          setCurrentStep('greeting');
+        }
       }, 500);
     }
   };
@@ -269,6 +316,59 @@ export const ChatBot: React.FC = () => {
     }
   };
 
+  const fetchPackageRecommendations = async (serviceType: string, budget: string) => {
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock recommendations for demo
+      const mockPackages = [
+        {
+          id: 'mock-1',
+          name: 'Premium Wedding Photography',
+          service_type: 'Photography',
+          price: 250000,
+          description: 'Complete wedding day photography with 8 hours of coverage',
+          hour_amount: 8,
+          features: ['8 hours coverage', '500+ edited photos', 'Online gallery', 'Print release']
+        }
+      ];
+      setRecommendedPackages(mockPackages);
+      return mockPackages;
+    }
+
+    try {
+      // Parse budget range
+      let minPrice = 0;
+      let maxPrice = 1000000;
+      
+      if (budget.includes('-')) {
+        const [min, max] = budget.split('-').map(p => parseInt(p.replace(/[^0-9]/g, '')) * 100);
+        minPrice = min || 0;
+        maxPrice = max || 1000000;
+      } else if (budget.toLowerCase().includes('under')) {
+        maxPrice = parseInt(budget.replace(/[^0-9]/g, '')) * 100;
+      } else if (budget.includes('+')) {
+        minPrice = parseInt(budget.replace(/[^0-9]/g, '')) * 100;
+      }
+
+      const { data, error } = await supabase
+        .from('service_packages')
+        .select('id, name, service_type, price, description, hour_amount, features')
+        .eq('service_type', serviceType)
+        .eq('status', 'approved')
+        .gte('price', minPrice)
+        .lte('price', maxPrice)
+        .order('price', { ascending: true })
+        .limit(3);
+
+      if (error) throw error;
+      
+      setRecommendedPackages(data || []);
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      return [];
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!currentInput.trim()) return;
 
@@ -276,6 +376,71 @@ export const ChatBot: React.FC = () => {
     addUserMessage(userMessage);
     setCurrentInput('');
 
+    // Handle different chat modes
+    if (chatMode === 'customer_support') {
+      await handleCustomerSupportMessage(userMessage);
+    } else {
+      await handleLeadCaptureMessage(userMessage);
+    }
+  };
+
+  const handleCustomerSupportMessage = async (userMessage: string) => {
+    const lowerMessage = userMessage.toLowerCase();
+
+    // Check for specific intents
+    if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest') || lowerMessage.includes('package')) {
+      setCurrentStep('recommendations');
+      addBotMessage("I'd love to help you find the perfect wedding services! What type of service are you looking for? (Photography, Videography, DJ, Coordination, etc.)");
+    } else if (lowerMessage.includes('booking') || lowerMessage.includes('my booking')) {
+      addBotMessage("I can help you with your bookings! You can view and manage all your bookings by going to your profile. Would you like me to take you there?", {
+        action: 'navigate',
+        url: '/my-bookings'
+      });
+    } else if (lowerMessage.includes('gallery') || lowerMessage.includes('photos') || lowerMessage.includes('videos')) {
+      addBotMessage("Your wedding gallery is available in your profile! You can view, download, and share all your photos and videos there. Would you like me to take you to your gallery?", {
+        action: 'navigate',
+        url: '/profile?tab=gallery'
+      });
+    } else if (lowerMessage.includes('timeline') || lowerMessage.includes('schedule')) {
+      addBotMessage("You can create and manage your wedding timeline in your profile! It's a great way to organize your special day. Would you like me to show you?", {
+        action: 'navigate',
+        url: '/profile?tab=timeline'
+      });
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
+      addBotMessage("I'm here to help! You can also visit our comprehensive support center for detailed guides and FAQs. Would you like me to take you there?", {
+        action: 'navigate',
+        url: '/support'
+      });
+    } else if (lowerMessage.includes('vendor') || lowerMessage.includes('contact')) {
+      addBotMessage("You can message your vendors directly through your bookings page, or I can help you find new vendors. What would you like to do?");
+    } else {
+      // General customer support
+      addBotMessage("Thanks for reaching out! I've noted your message and our support team will get back to you soon. In the meantime, I can help you with:\n\n• Finding new wedding services\n• Managing your bookings\n• Accessing your wedding gallery\n• Planning your timeline\n\nWhat would you like help with?");
+      
+      // Save as a support ticket
+      if (supabase && isSupabaseConfigured() && user) {
+        try {
+          await supabase
+            .from('chat_messages')
+            .insert([{
+              session_id: sessionId,
+              sender_type: 'user',
+              message: `SUPPORT REQUEST: ${userMessage}`,
+              ip_address: userIpAddress,
+              metadata: { 
+                type: 'support_request',
+                user_id: user.id,
+                couple_id: couple?.id 
+              }
+            }]);
+        } catch (error) {
+          console.error('Error saving support request:', error);
+        }
+      }
+    }
+  };
+
+  const handleLeadCaptureMessage = async (userMessage: string) => {
     // Process the message based on current step
     switch (currentStep) {
       case 'greeting':
@@ -304,6 +469,17 @@ export const ChatBot: React.FC = () => {
         await saveLead({ budget_range: userMessage });
         setCurrentStep('wedding_date');
         addBotMessage("Thanks! When is your wedding date? (You can say 'not sure yet' if you haven't decided) 📅");
+        
+        // Fetch recommendations based on service and budget
+        const serviceType = leadData.services_interested?.[0];
+        if (serviceType) {
+          const packages = await fetchPackageRecommendations(serviceType, userMessage);
+          if (packages.length > 0) {
+            setTimeout(() => {
+              addBotMessage("I found some great packages that match your preferences! I'll show them to you after we finish collecting your info. 🎉");
+            }, 2000);
+          }
+        }
         break;
 
       case 'wedding_date':
@@ -318,22 +494,71 @@ export const ChatBot: React.FC = () => {
           status: 'completed',
           message: `Chat conversation completed. Services: ${leadData.services_interested?.join(', ')}, Budget: ${leadData.budget_range}, Wedding Date: ${leadData.wedding_date || 'TBD'}`
         });
-        setCurrentStep('completed');
-        addBotMessage("Perfect! 🎉 Thank you for chatting with me! Our team will reach out within 24 hours with personalized vendor recommendations. In the meantime, feel free to browse our services!");
+        setCurrentStep('show_recommendations');
+        addBotMessage("Perfect! 🎉 Let me show you some packages that match your preferences:");
         
-        // Auto-close after completion
+        // Show recommendations
         setTimeout(() => {
-          setIsOpen(false);
-        }, 5000);
+          showPackageRecommendations();
+        }, 1500);
+        break;
+
+      case 'recommendations':
+        // Handle service type for recommendations
+        const packages = await fetchPackageRecommendations(userMessage, leadData.budget_range || '$1,000-$3,000');
+        if (packages.length > 0) {
+          addBotMessage(`Great! I found ${packages.length} ${userMessage.toLowerCase()} packages that might be perfect for you:`);
+          setTimeout(() => {
+            showPackageRecommendations();
+          }, 1000);
+        } else {
+          addBotMessage("I don't have any packages available for that service right now, but our team can help you find custom options! They'll reach out soon.");
+        }
         break;
 
       case 'completed':
-        addBotMessage("Thanks again! Our team will be in touch soon. Feel free to browse our website for more inspiration! 💝");
+      case 'show_recommendations':
+        addBotMessage("Thanks for your message! Our team will be in touch soon with more personalized recommendations. Feel free to browse our website for more inspiration! 💝");
         break;
 
       default:
         addBotMessage("I'm here to help you plan your perfect wedding! Let me know what you need assistance with.");
     }
+  };
+
+  const showPackageRecommendations = () => {
+    if (recommendedPackages.length === 0) {
+      addBotMessage("Our team will reach out with personalized recommendations based on your preferences! In the meantime, feel free to browse our services.");
+      return;
+    }
+
+    recommendedPackages.forEach((pkg, index) => {
+      setTimeout(() => {
+        const packageMessage = `📦 **${pkg.name}**\n💰 ${formatPrice(pkg.price)}\n⏰ ${pkg.hour_amount ? `${pkg.hour_amount} hours` : 'Custom duration'}\n\n${pkg.description}`;
+        
+        addBotMessage(packageMessage, {
+          type: 'package_recommendation',
+          package_id: pkg.id,
+          package_name: pkg.name,
+          package_price: pkg.price
+        });
+      }, index * 1500);
+    });
+
+    setTimeout(() => {
+      addBotMessage("Would you like to view any of these packages in detail? I can also help you find more options! 🌟", {
+        type: 'recommendation_followup'
+      });
+    }, recommendedPackages.length * 1500 + 1000);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -344,6 +569,13 @@ export const ChatBot: React.FC = () => {
   };
 
   const quickReplies = {
+    customer_support: [
+      'Find new services',
+      'View my bookings', 
+      'Access my gallery',
+      'Plan my timeline',
+      'Contact support'
+    ],
     services: [
       'Photography',
       'Videography', 
@@ -366,6 +598,16 @@ export const ChatBot: React.FC = () => {
     setTimeout(() => {
       handleSendMessage();
     }, 100);
+  };
+
+  const handleNavigationAction = (url: string) => {
+    navigate(url);
+    setIsOpen(false);
+  };
+
+  const handlePackageView = (packageId: string) => {
+    navigate(`/package/${packageId}`);
+    setIsOpen(false);
   };
 
   return (
@@ -432,10 +674,35 @@ export const ChatBot: React.FC = () => {
                         : 'bg-gray-100 text-gray-900 rounded-bl-sm'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm whitespace-pre-line">{message.content}</p>
                     <p className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
+                    
+                    {/* Action buttons for navigation */}
+                    {message.metadata?.action === 'navigate' && (
+                      <button
+                        onClick={() => handleNavigationAction(message.metadata.url)}
+                        className="mt-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs transition-colors"
+                      >
+                        Take me there →
+                      </button>
+                    )}
+                    
+                    {/* Package recommendation buttons */}
+                    {message.metadata?.type === 'package_recommendation' && (
+                      <div className="mt-2 space-y-2">
+                        <button
+                          onClick={() => handlePackageView(message.metadata.package_id)}
+                          className="block w-full px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-xs transition-colors text-left"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>View Package Details</span>
+                            <Eye className="w-3 h-3" />
+                          </div>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -462,6 +729,23 @@ export const ChatBot: React.FC = () => {
             )}
 
             {/* Quick Replies */}
+            {chatMode === 'customer_support' && currentStep === 'customer_support' && quickReplies.customer_support && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 text-center">Quick options:</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickReplies.customer_support.map((reply) => (
+                    <button
+                      key={reply}
+                      onClick={() => handleQuickReply(reply)}
+                      className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs hover:bg-rose-200 transition-colors"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {currentStep === 'services' && quickReplies.services && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 text-center">Quick replies:</p>
@@ -500,7 +784,7 @@ export const ChatBot: React.FC = () => {
           </div>
 
           {/* Input Area */}
-          {currentStep !== 'completed' && (
+          {currentStep !== 'completed' && currentStep !== 'show_recommendations' && (
             <div className="p-4 border-t border-gray-200">
               <div className="flex space-x-2">
                 <input
@@ -508,7 +792,11 @@ export const ChatBot: React.FC = () => {
                   value={currentInput}
                   onChange={(e) => setCurrentInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
+                  placeholder={
+                    chatMode === 'customer_support' 
+                      ? "Ask me anything about your wedding..." 
+                      : "Type your message..."
+                  }
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
                   disabled={isTyping}
                 />
@@ -524,15 +812,26 @@ export const ChatBot: React.FC = () => {
           )}
 
           {/* Completion Message */}
-          {currentStep === 'completed' && (
+          {(currentStep === 'completed' || currentStep === 'show_recommendations') && (
             <div className="p-4 border-t border-gray-200 bg-green-50">
               <div className="text-center">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Check className="w-5 h-5 text-white" />
                 </div>
                 <p className="text-sm text-green-800 font-medium">
-                  Thanks for chatting! We'll be in touch soon.
+                  {chatMode === 'customer_support' 
+                    ? "I'm here whenever you need help!"
+                    : "Thanks for chatting! We'll be in touch soon."
+                  }
                 </p>
+                {chatMode === 'lead_capture' && (
+                  <button
+                    onClick={() => navigate('/search')}
+                    className="mt-2 text-xs text-green-700 hover:text-green-800 underline"
+                  >
+                    Browse services while you wait →
+                  </button>
+                )}
               </div>
             </div>
           )}
