@@ -532,10 +532,127 @@ export const ChatBot: React.FC = () => {
         break;
 
       case 'customer_support_flow':
-        // Handle customer support inquiries
-        addBotMessage("Thanks for reaching out! I've noted your question and our support team will get back to you soon. In the meantime, I can help you with:\n\n• Finding new wedding services\n• General wedding planning questions\n• Browsing our packages\n\nWhat would you like to explore?");
+        // Handle customer support inquiries with intelligent responses
+        if (lowerMessage.includes('booking') || lowerMessage.includes('book') || lowerMessage.includes('reserve')) {
+          addBotMessage("I can help with booking questions! Are you looking to:\n\n• Make a new booking\n• Modify an existing booking\n• Cancel a booking\n• Check booking status\n• Payment issues\n\nWhat specifically do you need help with?");
+          setCurrentStep('booking_support');
+        } else if (lowerMessage.includes('payment') || lowerMessage.includes('billing') || lowerMessage.includes('charge') || lowerMessage.includes('refund')) {
+          addBotMessage("I can help with payment and billing questions! Common issues I can assist with:\n\n• Payment methods and processing\n• Refund requests\n• Billing questions\n• Payment plan options\n• Subscription management\n\nWhat's your specific payment question?");
+          setCurrentStep('payment_support');
+        } else if (lowerMessage.includes('vendor') || lowerMessage.includes('communicate') || lowerMessage.includes('contact')) {
+          addBotMessage("I can help with vendor communication! Here's what I can assist with:\n\n• How to message vendors through the platform\n• Vendor response times\n• Changing vendor assignments\n• Vendor quality concerns\n• Contract questions\n\nWhat do you need help with regarding vendors?");
+          setCurrentStep('vendor_support');
+        } else if (lowerMessage.includes('technical') || lowerMessage.includes('website') || lowerMessage.includes('app') || lowerMessage.includes('login') || lowerMessage.includes('password')) {
+          addBotMessage("I can help with technical issues! Common problems I can solve:\n\n• Login and password issues\n• Website navigation problems\n• Photo/video upload issues\n• Account settings\n• Browser compatibility\n\nWhat technical issue are you experiencing?");
+          setCurrentStep('technical_support');
+        } else if (lowerMessage.includes('planning') || lowerMessage.includes('timeline') || lowerMessage.includes('advice') || lowerMessage.includes('tips')) {
+          addBotMessage("I'd love to help with wedding planning! I can provide guidance on:\n\n• Creating your wedding timeline\n• Budget planning tips\n• Vendor selection advice\n• Wedding day coordination\n• Planning checklists\n\nWhat aspect of planning do you need help with?");
+          setCurrentStep('planning_support');
+        } else {
+          // For complex or unclear requests, escalate to team member
+          addBotMessage("Let me get you connected with someone who can help with that specific question. Just a few moments, a team member will be right here to help! 👩‍💼\n\nFeel free to continue chatting - they'll join our conversation shortly.");
+          setCurrentStep('team_escalation');
+          
+          // Save as a support ticket for admin follow-up
+          if (supabase && isSupabaseConfigured()) {
+            try {
+              await supabase
+                .from('chat_messages')
+                .insert([{
+                  session_id: sessionId,
+                  sender_type: 'user',
+                  message: `ESCALATED SUPPORT REQUEST: ${userMessage}`,
+                  ip_address: userIpAddress,
+                  metadata: { 
+                    type: 'escalated_support',
+                    category: 'complex_inquiry',
+                    needs_human_response: true
+                  }
+                }]);
+            } catch (error) {
+              console.error('Error saving support request:', error);
+            }
+          }
+        }
+        break;
+
+      case 'booking_support':
+        if (lowerMessage.includes('new') || lowerMessage.includes('make')) {
+          addBotMessage("Great! I can help you make a new booking. You can browse our services and packages right here on the website. Would you like me to show you some popular packages or help you find something specific?");
+          setCurrentStep('service_selection');
+        } else if (lowerMessage.includes('modify') || lowerMessage.includes('change') || lowerMessage.includes('reschedule')) {
+          addBotMessage("For modifying existing bookings, you can usually make changes through your account dashboard. However, some changes may require vendor approval. Let me connect you with a team member who can help with your specific modification. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else if (lowerMessage.includes('cancel')) {
+          addBotMessage("I understand you may need to cancel a booking. Cancellation policies vary by vendor and timing. Let me get a team member to help you with the cancellation process and any applicable refunds. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else if (lowerMessage.includes('status') || lowerMessage.includes('check')) {
+          addBotMessage("You can check your booking status in your account dashboard under 'My Bookings'. If you're having trouble accessing it or need specific details, I can get a team member to help you. Would you like me to connect you with someone?");
+          setCurrentStep('team_escalation_optional');
+        } else {
+          addBotMessage("Let me connect you with a team member who can help with your specific booking question. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        }
+        break;
+
+      case 'payment_support':
+        if (lowerMessage.includes('method') || lowerMessage.includes('card') || lowerMessage.includes('process')) {
+          addBotMessage("We accept all major credit cards through our secure Stripe payment system. Payments are processed immediately and you'll receive confirmation via email. Is there a specific payment method question I can help with?");
+        } else if (lowerMessage.includes('refund')) {
+          addBotMessage("Refund policies depend on the vendor and timing of your request. Most vendors offer full refunds for cancellations made 30+ days before your event. Let me connect you with a team member who can review your specific situation. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else {
+          addBotMessage("For specific billing and payment questions, let me connect you with a team member who can access your account details. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        }
+        break;
+
+      case 'vendor_support':
+        if (lowerMessage.includes('message') || lowerMessage.includes('contact')) {
+          addBotMessage("You can message vendors directly through your booking dashboard! Go to 'My Bookings' and click the 'Message' button next to any vendor. They typically respond within 2-4 hours. Need help finding this feature?");
+        } else if (lowerMessage.includes('response') || lowerMessage.includes('reply')) {
+          addBotMessage("Vendors typically respond within 2-4 hours during business hours. If it's been longer than 24 hours, let me connect you with a team member who can follow up with them. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else {
+          addBotMessage("For specific vendor issues, let me connect you with a team member who can help resolve this. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        }
+        break;
+
+      case 'technical_support':
+        if (lowerMessage.includes('login') || lowerMessage.includes('password')) {
+          addBotMessage("For login issues, try:\n\n1. Click 'Forgot Password' on the login page\n2. Check your email for the reset link\n3. Clear your browser cache\n4. Try a different browser\n\nIf these don't work, let me connect you with technical support. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else if (lowerMessage.includes('upload') || lowerMessage.includes('photo') || lowerMessage.includes('video')) {
+          addBotMessage("For upload issues, please check:\n\n• File size under 10MB\n• Supported formats: JPG, PNG, MP4, MOV\n• Stable internet connection\n• Try refreshing the page\n\nStill having trouble? Let me get technical support to help. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else {
+          addBotMessage("Let me connect you with our technical support team who can help resolve this issue. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        }
+        break;
+
+      case 'planning_support':
+        if (lowerMessage.includes('timeline')) {
+          addBotMessage("Creating a wedding timeline is so important! Here are some tips:\n\n• Start with your ceremony time and work backwards\n• Allow 30 minutes for photos between events\n• Build in buffer time for delays\n• Share timeline with all vendors\n\nWould you like me to show you our timeline planning tool?", {
+            action: 'navigate',
+            url: '/profile?tab=timeline'
+          });
+        } else if (lowerMessage.includes('budget')) {
+          addBotMessage("Budget planning tips:\n\n• Allocate 40-50% for venue and catering\n• 10-15% for photography/videography\n• 8-10% for music and entertainment\n• Always add 10% contingency\n\nWould you like specific budget advice for your situation?");
+          setCurrentStep('budget_advice');
+        } else if (lowerMessage.includes('vendor') || lowerMessage.includes('selection')) {
+          addBotMessage("Great question! Here's how to choose the best vendors:\n\n• Read reviews from real couples\n• Check their portfolio and style\n• Verify they're available on your date\n• Meet them in person or video call\n• Trust your instincts!\n\nWould you like me to show you some highly-rated vendors?");
+          setCurrentStep('vendor_recommendations');
+        } else {
+          addBotMessage("I'd love to help with your planning question! Can you be more specific about what aspect of wedding planning you need guidance on?");
+        }
+        break;
+
+      case 'team_escalation':
+        addBotMessage("Thanks for the additional information! I've added that to your support request. A team member will be with you shortly to help resolve this. Feel free to share any other details while we wait! 💬");
         
-        // Save as a support ticket
+        // Save additional context
         if (supabase && isSupabaseConfigured()) {
           try {
             await supabase
@@ -543,18 +660,28 @@ export const ChatBot: React.FC = () => {
               .insert([{
                 session_id: sessionId,
                 sender_type: 'user',
-                message: `SUPPORT REQUEST: ${userMessage}`,
+                message: `ADDITIONAL CONTEXT: ${userMessage}`,
                 ip_address: userIpAddress,
                 metadata: { 
-                  type: 'support_request',
-                  category: 'general_support'
+                  type: 'escalated_support_context',
+                  needs_human_response: true
                 }
               }]);
           } catch (error) {
-            console.error('Error saving support request:', error);
+            console.error('Error saving additional context:', error);
           }
         }
-        setCurrentStep('completed');
+        break;
+
+      case 'team_escalation_optional':
+        if (lowerMessage.includes('yes') || lowerMessage.includes('connect') || lowerMessage.includes('help')) {
+          addBotMessage("Perfect! Let me connect you with a team member who can help. Just a few moments! 👩‍💼");
+          setCurrentStep('team_escalation');
+        } else {
+          addBotMessage("No problem! Is there anything else I can help you with today? I'm here for any other questions about your wedding planning! 💕");
+          setCurrentStep('completed');
+        }
+        break;
         break;
 
       case 'open_conversation':
