@@ -21,6 +21,7 @@ import { PackageCongratulations } from './pages/booking/PackageCongratulations';
 import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
 import { VendorOnboarding } from './pages/VendorOnboarding';
+import { ChatBot } from './components/chat/ChatBot';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <ChatBot />
           </div>
         </Router>
       </BookingProvider>
