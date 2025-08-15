@@ -786,9 +786,9 @@ export const ChatBot: React.FC = () => {
 
       case 'recommendations':
         // Handle service type for recommendations
-        const packages = await fetchPackageRecommendations(userMessage, leadData.budget_range || '$1,000-$3,000');
-        if (packages.length > 0) {
-          addBotMessage(`Great! I found ${packages.length} ${userMessage.toLowerCase()} packages that might be perfect for you:`);
+        const recommendedPackages = await fetchPackageRecommendations(userMessage, leadData.budget_range || '$1,000-$3,000');
+        if (recommendedPackages.length > 0) {
+          addBotMessage(`Great! I found ${recommendedPackages.length} ${userMessage.toLowerCase()} packages that might be perfect for you:`);
           setTimeout(() => {
             showPackageRecommendations();
           }, 1000);
