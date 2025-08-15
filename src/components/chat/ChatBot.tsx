@@ -129,7 +129,7 @@ export const ChatBot: React.FC = () => {
           addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
           setCurrentStep('customer_support');
         } else {
-          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What are you looking for today?\n\n• Photography packages\n• Videography services\n• DJ & music services\n• Wedding coordination\n• Custom recommendations\n• Just browsing");
+          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! How can I help you today?\n\n• Service packages\n• Customer support\n• Custom recommendations\n• Other");
           setCurrentStep('initial_inquiry');
         }
       }, 500);
@@ -160,7 +160,7 @@ export const ChatBot: React.FC = () => {
         const lastBotMessage = data.filter(msg => msg.sender_type === 'bot').pop();
         if (isAuthenticated) {
           setCurrentStep('customer_support');
-        } else if (lastBotMessage?.message.includes('What are you looking for')) {
+        } else if (lastBotMessage?.message.includes('How can I help you today')) {
           setCurrentStep('initial_inquiry');
         } else if (lastBotMessage?.message.includes('phone number')) {
           setCurrentStep('phone');
@@ -182,7 +182,7 @@ export const ChatBot: React.FC = () => {
             addBotMessage(`Hi ${user.user_metadata?.name || couple?.name || 'there'}! 👋 I'm Ava Luna, your personal wedding assistant. How can I help you today?`);
             setCurrentStep('customer_support');
           } else {
-            addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What are you looking for today?\n\n• Photography packages\n• Videography services\n• DJ & music services\n• Wedding coordination\n• Custom recommendations\n• Just browsing");
+            addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! How can I help you today?\n\n• Service packages\n• Customer support\n• Custom recommendations\n• Other");
             setCurrentStep('initial_inquiry');
           }
         }, 500);
@@ -448,7 +448,41 @@ export const ChatBot: React.FC = () => {
     // Process the message based on current step
     switch (currentStep) {
       case 'initial_inquiry':
-        // Handle direct service requests
+        // Handle main category selection
+        if (lowerMessage.includes('service') || lowerMessage.includes('package')) {
+          addBotMessage("Perfect! What type of wedding service are you looking for?\n\n📸 Photography\n🎥 Videography\n🎵 DJ & Music\n👰 Coordination\n📅 Planning\n💝 Multiple Services");
+          setCurrentStep('service_selection');
+        } else if (lowerMessage.includes('support') || lowerMessage.includes('help')) {
+          addBotMessage("I'm here to help! What do you need assistance with?\n\n• Questions about booking\n• Payment or billing issues\n• Vendor communication\n• Technical problems\n• General wedding planning advice\n\nOr just tell me what's on your mind!");
+          setCurrentStep('customer_support_flow');
+        } else if (lowerMessage.includes('custom') || lowerMessage.includes('recommendation')) {
+          addBotMessage("I'd love to give you personalized recommendations! Let me ask a few quick questions to find your perfect match. What's your name?");
+          setCurrentStep('greeting');
+        } else if (lowerMessage.includes('other')) {
+          addBotMessage("I'm here to help with anything wedding-related! What would you like to know about or discuss?");
+          setCurrentStep('open_conversation');
+        } else {
+          // Try to match their input to a category
+          if (lowerMessage.includes('photo')) {
+            setCurrentStep('service_selection');
+            await handleLeadCaptureMessage('Photography');
+            return;
+          } else if (lowerMessage.includes('video')) {
+            setCurrentStep('service_selection');
+            await handleLeadCaptureMessage('Videography');
+            return;
+          } else if (lowerMessage.includes('dj') || lowerMessage.includes('music')) {
+            setCurrentStep('service_selection');
+            await handleLeadCaptureMessage('DJ Services');
+            return;
+          } else {
+            addBotMessage("I'd love to help! Please choose one of these options:\n\n• Service packages\n• Customer support\n• Custom recommendations\n• Other");
+          }
+        }
+        break;
+
+      case 'service_selection':
+        // Handle specific service requests
         if (lowerMessage.includes('photo')) {
           const packages = await fetchPackageRecommendations('Photography', '$1,500-$3,000');
           if (packages.length > 0) {
@@ -489,15 +523,60 @@ export const ChatBot: React.FC = () => {
             addBotMessage("I'd love to help you find the perfect coordination services! Let me get some details. What's your name?");
             setCurrentStep('greeting');
           }
-        } else if (lowerMessage.includes('custom') || lowerMessage.includes('recommend')) {
-          addBotMessage("I'd love to give you personalized recommendations! Let me ask a few quick questions to find your perfect match. What's your name?");
+        } else if (lowerMessage.includes('multiple') || lowerMessage.includes('several')) {
+          addBotMessage("Wonderful! Multiple services often work better together and can save you money. To give you the best recommendations, let me ask a few quick questions. What's your name?");
           setCurrentStep('greeting');
-        } else if (lowerMessage.includes('browse') || lowerMessage.includes('browsing')) {
-          addBotMessage("Feel free to browse around! If you need any help finding specific services or have questions, just let me know. I'm here to help make your wedding planning easier! 💕");
-          setCurrentStep('completed');
         } else {
-          // Fallback - ask for clarification
-          addBotMessage("I'd love to help you! Are you looking for:\n\n📸 Photography\n🎥 Videography\n🎵 DJ/Music services\n👰 Wedding coordination\n💝 Custom recommendations\n\nOr just type what you're looking for!");
+          addBotMessage("Please choose a specific service:\n\n📸 Photography\n🎥 Videography\n🎵 DJ & Music\n👰 Coordination\n📅 Planning\n💝 Multiple Services");
+        }
+        break;
+
+      case 'customer_support_flow':
+        // Handle customer support inquiries
+        addBotMessage("Thanks for reaching out! I've noted your question and our support team will get back to you soon. In the meantime, I can help you with:\n\n• Finding new wedding services\n• General wedding planning questions\n• Browsing our packages\n\nWhat would you like to explore?");
+        
+        // Save as a support ticket
+        if (supabase && isSupabaseConfigured()) {
+          try {
+            await supabase
+              .from('chat_messages')
+              .insert([{
+                session_id: sessionId,
+                sender_type: 'user',
+                message: `SUPPORT REQUEST: ${userMessage}`,
+                ip_address: userIpAddress,
+                metadata: { 
+                  type: 'support_request',
+                  category: 'general_support'
+                }
+              }]);
+          } catch (error) {
+            console.error('Error saving support request:', error);
+          }
+        }
+        setCurrentStep('completed');
+        break;
+
+      case 'open_conversation':
+        // Handle open-ended conversation
+        if (lowerMessage.includes('photo') || lowerMessage.includes('video') || lowerMessage.includes('dj') || lowerMessage.includes('music') || lowerMessage.includes('coordination')) {
+          addBotMessage("It sounds like you're interested in wedding services! Would you like me to show you some packages, or would you prefer custom recommendations based on your specific needs?");
+          setCurrentStep('service_or_custom');
+        } else {
+          addBotMessage("Thanks for sharing! I've noted your message. Our team can provide more detailed assistance. Would you like me to connect you with someone, or can I help you find wedding services in the meantime?");
+          setCurrentStep('completed');
+        }
+        break;
+
+      case 'service_or_custom':
+        if (lowerMessage.includes('package') || lowerMessage.includes('show')) {
+          addBotMessage("Great! What type of service are you most interested in?\n\n📸 Photography\n🎥 Videography\n🎵 DJ & Music\n👰 Coordination\n📅 Planning");
+          setCurrentStep('service_selection');
+        } else if (lowerMessage.includes('custom') || lowerMessage.includes('recommend')) {
+          addBotMessage("Perfect! I'd love to give you personalized recommendations. What's your name?");
+          setCurrentStep('greeting');
+        } else {
+          addBotMessage("Would you like to see our service packages or get custom recommendations based on your specific needs?");
         }
         break;
 
@@ -576,7 +655,12 @@ export const ChatBot: React.FC = () => {
 
       case 'completed':
       case 'show_recommendations':
-        addBotMessage("Thanks for your message! Our team will be in touch soon with more personalized recommendations. Feel free to browse our website for more inspiration! 💝");
+        if (lowerMessage.includes('help') || lowerMessage.includes('question')) {
+          addBotMessage("I'm happy to help! What do you need assistance with?");
+          setCurrentStep('customer_support_flow');
+        } else {
+          addBotMessage("Thanks for your message! Our team will be in touch soon with more personalized recommendations. Feel free to browse our website for more inspiration! 💝");
+        }
         break;
 
       default:
@@ -635,12 +719,18 @@ export const ChatBot: React.FC = () => {
       'Contact support'
     ],
     initial_inquiry: [
+      'Service packages',
+      'Customer support',
+      'Custom recommendations',
+      'Other'
+    ],
+    service_selection: [
       'Photography',
       'Videography',
-      'DJ Services',
+      'DJ & Music',
       'Coordination',
-      'Custom recommendations',
-      'Just browsing'
+      'Planning',
+      'Multiple Services'
     ],
     services: [
       'Photography',
@@ -817,6 +907,23 @@ export const ChatBot: React.FC = () => {
                 <p className="text-xs text-gray-500 text-center">What are you looking for?</p>
                 <div className="flex flex-wrap gap-2">
                   {quickReplies.initial_inquiry.map((reply) => (
+                    <button
+                      key={reply}
+                      onClick={() => handleQuickReply(reply)}
+                      className="px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs hover:bg-rose-200 transition-colors"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'service_selection' && quickReplies.service_selection && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 text-center">What service are you looking for?</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickReplies.service_selection.map((reply) => (
                     <button
                       key={reply}
                       onClick={() => handleQuickReply(reply)}
