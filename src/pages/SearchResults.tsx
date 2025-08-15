@@ -297,3 +297,6 @@ export const SearchResults: React.FC = () => {
           <p className="text-gray-600">Loading packages...</p>
         </div>
       </div>
+    )
+  }
+}
