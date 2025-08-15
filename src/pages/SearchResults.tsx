@@ -476,6 +476,15 @@ export const SearchResults: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Custom Package Button */}
+            <Button
+              variant="primary"
+              onClick={() => navigate('/booking/services')}
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg"
+            >
+              Create Custom Package
+            </Button>
+            
             {/* Sort Dropdown */}
             <div className="relative">
               <select
