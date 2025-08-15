@@ -758,7 +758,13 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              View Package Details
+                              <span onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigate(`/package/${pkg.id}`);
+                              }}>
+                                View Package Details
+                              </span>
                             </Button>
                           </div>
                         </Card>
@@ -863,13 +869,14 @@ export const SearchResults: React.FC = () => {
                                 <div className="flex space-x-2">
                                   <Button
                                     variant="primary"
-                                    onClick={(e) => {
+                                  >
+                                    <span onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       navigate(`/package/${pkg.id}`);
-                                    }}
-                                  >
-                                    View Package Details
+                                    }}>
+                                      View Package Details
+                                    </span>
                                   </Button>
                                 </div>
                               </div>
