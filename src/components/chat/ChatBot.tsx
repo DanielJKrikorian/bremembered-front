@@ -6,13 +6,15 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface ChatMessage {
   id: string;
-  type: 'bot' | 'user';
+  type: 'bot' | 'user' | 'admin';
   content: string;
   timestamp: Date;
+  metadata?: any;
 }
 
 interface ChatLead {
   id?: string;
+  session_id: string;
   ip_address: string;
   name?: string;
   email?: string;
@@ -32,31 +34,52 @@ export const ChatBot: React.FC = () => {
   const [currentInput, setCurrentInput] = useState('');
   const [currentStep, setCurrentStep] = useState('greeting');
   const [leadData, setLeadData] = useState<ChatLead>({
+    session_id: '',
     ip_address: '',
     status: 'active'
   });
   const [isTyping, setIsTyping] = useState(false);
   const [userIpAddress, setUserIpAddress] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get user's IP address
+  // Generate session ID
+  const generateSessionId = () => {
+    return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Get user's IP address and initialize session
   useEffect(() => {
-    const getIpAddress = async () => {
+    const initializeChat = async () => {
       try {
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const ip = data.ip || `session_${Date.now()}`;
+        const newSessionId = generateSessionId();
+        
         setUserIpAddress(ip);
-        setLeadData(prev => ({ ...prev, ip_address: ip }));
+        setSessionId(newSessionId);
+        setLeadData(prev => ({ 
+          ...prev, 
+          ip_address: ip,
+          session_id: newSessionId
+        }));
       } catch (error) {
         console.error('Error getting IP address:', error);
         const fallbackId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newSessionId = generateSessionId();
+        
         setUserIpAddress(fallbackId);
-        setLeadData(prev => ({ ...prev, ip_address: fallbackId }));
+        setSessionId(newSessionId);
+        setLeadData(prev => ({ 
+          ...prev, 
+          ip_address: fallbackId,
+          session_id: newSessionId
+        }));
       }
     };
 
-    getIpAddress();
+    initializeChat();
   }, []);
 
   // Auto-scroll to bottom
@@ -64,35 +87,124 @@ export const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize chat when opened
+  // Load existing messages when chat opens
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && sessionId && messages.length === 0) {
+      loadChatHistory();
+    }
+  }, [isOpen, sessionId]);
+
+  const loadChatHistory = async () => {
+    if (!supabase || !isSupabaseConfigured() || !sessionId) {
+      // Start fresh conversation
       setTimeout(() => {
-        addBotMessage("Hi there! 👋 I'm here to help you plan your perfect wedding! What's your name?");
+        addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+      }, 500);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Load existing conversation
+        const chatMessages = data.map(msg => ({
+          id: msg.id,
+          type: msg.sender_type as 'bot' | 'user' | 'admin',
+          content: msg.message,
+          timestamp: new Date(msg.created_at),
+          metadata: msg.metadata
+        }));
+        setMessages(chatMessages);
+        
+        // Determine current step based on last message
+        const lastBotMessage = data.filter(msg => msg.sender_type === 'bot').pop();
+        if (lastBotMessage?.message.includes('phone number')) {
+          setCurrentStep('phone');
+        } else if (lastBotMessage?.message.includes('wedding date')) {
+          setCurrentStep('wedding_date');
+        } else if (lastBotMessage?.message.includes('budget')) {
+          setCurrentStep('budget');
+        } else if (lastBotMessage?.message.includes('services')) {
+          setCurrentStep('services');
+        } else if (lastBotMessage?.message.includes('email')) {
+          setCurrentStep('email');
+        } else {
+          setCurrentStep('greeting');
+        }
+      } else {
+        // Start fresh conversation
+        setTimeout(() => {
+          addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      // Start fresh conversation on error
+      setTimeout(() => {
+        addBotMessage("Hi there! 👋 I'm Ava Luna, your personal wedding assistant! What's your name?");
       }, 500);
     }
-  }, [isOpen]);
+  };
 
-  const addBotMessage = (content: string) => {
+  const saveMessageToDatabase = async (message: string, senderType: 'user' | 'bot' | 'admin', metadata?: any) => {
+    if (!supabase || !isSupabaseConfigured() || !sessionId) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert([{
+          session_id: sessionId,
+          sender_type: senderType,
+          message: message,
+          lead_id: leadData.id || null,
+          ip_address: userIpAddress,
+          metadata: metadata || {}
+        }]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  };
+
+  const addBotMessage = (content: string, metadata?: any) => {
     setIsTyping(true);
     setTimeout(() => {
-      setMessages(prev => [...prev, {
+      const newMessage = {
         id: Date.now().toString(),
-        type: 'bot',
+        type: 'bot' as const,
         content,
-        timestamp: new Date()
-      }]);
+        timestamp: new Date(),
+        metadata
+      };
+      setMessages(prev => [...prev, newMessage]);
       setIsTyping(false);
+      
+      // Save to database
+      saveMessageToDatabase(content, 'bot', metadata);
     }, 1000);
   };
 
   const addUserMessage = (content: string) => {
-    setMessages(prev => [...prev, {
+    const newMessage = {
       id: Date.now().toString(),
-      type: 'user',
+      type: 'user' as const,
       content,
       timestamp: new Date()
-    }]);
+    };
+    setMessages(prev => [...prev, newMessage]);
+    
+    // Save to database
+    saveMessageToDatabase(content, 'user');
   };
 
   const saveLead = async (updates: Partial<ChatLead>) => {
@@ -129,9 +241,10 @@ export const ChatBot: React.FC = () => {
           .eq('id', existingLead.id);
 
         if (error) throw error;
+        setLeadData(prev => ({ ...prev, id: existingLead.id }));
       } else {
         // Create new lead
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('leads')
           .insert([{
             name: updatedLead.name || 'Chat User',
@@ -144,9 +257,12 @@ export const ChatBot: React.FC = () => {
             lead_source: 'Chatbot',
             source: userIpAddress,
             status: 'Pending'
-          }]);
+          }])
+          .select('id')
+          .single();
 
         if (error) throw error;
+        setLeadData(prev => ({ ...prev, id: data.id }));
       }
     } catch (error) {
       console.error('Error saving lead:', error);
@@ -271,12 +387,17 @@ export const ChatBot: React.FC = () => {
           {/* Header */}
           <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot className="w-6 h-6" />
+              <div className="relative">
+                <img
+                  src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400"
+                  alt="Ava Luna"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
+                />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
               </div>
               <div>
-                <h3 className="font-semibold">Wedding Assistant</h3>
-                <p className="text-xs text-rose-100">Here to help plan your perfect day</p>
+                <h3 className="font-semibold">Ava Luna</h3>
+                <p className="text-xs text-rose-100">Wedding Assistant • Online</p>
               </div>
             </div>
             <button
@@ -294,17 +415,28 @@ export const ChatBot: React.FC = () => {
                 key={message.id}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[80%] p-3 rounded-2xl ${
-                    message.type === 'user'
-                      ? 'bg-rose-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                <div className="flex items-end space-x-2 max-w-[80%]">
+                  {message.type === 'bot' && (
+                    <img
+                      src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400"
+                      alt="Ava Luna"
+                      className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                    />
+                  )}
+                  <div
+                    className={`p-3 rounded-2xl ${
+                      message.type === 'user'
+                        ? 'bg-rose-500 text-white rounded-br-sm'
+                        : message.type === 'admin'
+                        ? 'bg-blue-500 text-white rounded-bl-sm'
+                        : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -312,11 +444,18 @@ export const ChatBot: React.FC = () => {
             {/* Typing Indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 text-gray-900 p-3 rounded-2xl">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="flex items-end space-x-2">
+                  <img
+                    src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400"
+                    alt="Ava Luna"
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div className="bg-gray-100 text-gray-900 p-3 rounded-2xl rounded-bl-sm">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
