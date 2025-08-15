@@ -654,7 +654,7 @@ export const ChatBot: React.FC = () => {
         if (!leadData.name) {
           // First, get their name
           setLeadData(prev => ({ ...prev, name: userMessage }));
-          addBotMessage(`Nice to meet you, ${userMessage}! And what's your email address?`);
+          addBotMessage(`Nice to meet you, ${userMessage}! What's your email address?`);
         } else if (!leadData.email) {
           // Then get their email
           if (isValidEmail(userMessage)) {
