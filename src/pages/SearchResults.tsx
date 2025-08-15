@@ -758,17 +758,6 @@ export const SearchResults: React.FC = () => {
                             )}
 
                             <Button variant="primary" size="sm" className="w-full">
-                              View Details
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full mt-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/package/${pkg.id}`);
-                              }}
-                            >
                               View Package Details
                             </Button>
                           </div>
@@ -872,16 +861,6 @@ export const SearchResults: React.FC = () => {
                                   Click to view full details and book
                                 </div>
                                 <div className="flex space-x-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/package/${pkg.id}`);
-                                    }}
-                                  >
-                                    Quick Book
-                                  </Button>
                                   <Button 
                                     variant="primary"
                                     size="sm"
