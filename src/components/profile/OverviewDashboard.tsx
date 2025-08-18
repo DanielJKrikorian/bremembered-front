@@ -404,7 +404,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
             <button
-              onClick={() => navigate('/profile?tab=messages')}
+              onClick={() => onTabChange?.('messages')}
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
               View All
