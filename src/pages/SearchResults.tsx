@@ -24,6 +24,11 @@ export const SearchResults: React.FC = () => {
     coverage: [] as string[]
   });
 
+  // Scroll to top when component mounts or location changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+
   // Get all service packages with current filters
   const { packages, loading, error } = useServicePackages(
     undefined, // Don't filter by single service type
