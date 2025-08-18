@@ -202,6 +202,167 @@ export const useConversations = () => {
   return { conversations, loading, error };
 };
 
+export const useBookedVendors = () => {
+  const { user, isAuthenticated } = useAuth();
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchBookedVendors = async () => {
+      if (!isAuthenticated || !user) {
+        setVendors([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock vendors for demo
+        const mockVendors = [
+          {
+            id: 'mock-vendor-1',
+            user_id: 'mock-vendor-user-1',
+            name: 'Elegant Moments Photography',
+            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            service_type: 'Photography'
+          },
+          {
+            id: 'mock-vendor-2',
+            user_id: 'mock-vendor-user-2',
+            name: 'Perfect Harmony Events',
+            profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
+            service_type: 'Coordination'
+          }
+        ];
+        setVendors(mockVendors);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Get couple ID first
+        const { data: coupleData, error: coupleError } = await supabase
+          .from('couples')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (coupleError) throw coupleError;
+
+        // Get vendors from bookings
+        const { data, error } = await supabase
+          .from('bookings')
+          .select(`
+            vendors!inner(
+              id,
+              user_id,
+              name,
+              profile_photo
+            ),
+            service_type
+          `)
+          .eq('couple_id', coupleData.id)
+          .eq('status', 'confirmed');
+
+        if (error) throw error;
+
+        // Extract unique vendors
+        const uniqueVendors = Array.from(
+          new Map(
+            (data || []).map(booking => [
+              booking.vendors.id,
+              {
+                ...booking.vendors,
+                service_type: booking.service_type
+              }
+            ])
+          ).values()
+        );
+
+        setVendors(uniqueVendors);
+      } catch (err) {
+        console.error('Error fetching booked vendors:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch vendors');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConversations();
+  }, [user, isAuthenticated]);
+
+  return { vendors, loading, error };
+};
+
+export const useCreateConversation = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createConversation = async (vendorUserId: string): Promise<Conversation | null> => {
+    if (!user || !vendorUserId) return null;
+
+    setLoading(true);
+    setError(null);
+
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock conversation creation
+      const mockConversation: Conversation = {
+        id: `mock-conv-${Date.now()}`,
+        is_group: false,
+        name: null,
+        participant_ids: [user.id, vendorUserId],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        unread_count: 0
+      };
+      setLoading(false);
+      return mockConversation;
+    }
+
+    try {
+      // Check if conversation already exists
+      const { data: existingConv, error: searchError } = await supabase
+        .from('conversations')
+        .select('*')
+        .contains('participant_ids', [user.id])
+        .contains('participant_ids', [vendorUserId])
+        .single();
+
+      if (searchError && searchError.code !== 'PGRST116') {
+        throw searchError;
+      }
+
+      if (existingConv) {
+        setLoading(false);
+        return existingConv;
+      }
+
+      // Create new conversation
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert([{
+          is_group: false,
+          participant_ids: [user.id, vendorUserId]
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setLoading(false);
+      return data;
+    } catch (err) {
+      console.error('Error creating conversation:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create conversation');
+      setLoading(false);
+      return null;
+    }
+  };
+
+  return { createConversation, loading, error };
+};
+
 export const useMessages = (conversationId: string) => {
   const { user, isAuthenticated } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
