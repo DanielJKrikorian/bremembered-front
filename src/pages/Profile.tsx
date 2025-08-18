@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
 import { useCouplePreferences, useStyleTags, useVibeTags, useLanguages } from '../hooks/useCouple';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
+import { useConversations } from '../hooks/useMessaging';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { WeddingTimeline } from '../components/profile/WeddingTimeline';
+import { ConversationList } from '../components/messaging/ConversationList';
+import { ChatWindow } from '../components/messaging/ChatWindow';
 
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -42,9 +45,11 @@ export const Profile: React.FC = () => {
   const { styleTags } = useStyleTags();
   const { vibeTags } = useVibeTags();
   const { languages } = useLanguages();
+  const { conversations, loading: conversationsLoading } = useConversations();
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'timeline' | 'gallery' | 'preferences' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'timeline' | 'gallery' | 'messages' | 'preferences' | 'settings'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -84,7 +89,7 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['profile', 'timeline', 'gallery', 'preferences', 'settings'].includes(tab)) {
+    if (tab && ['profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
       setActiveTab(tab as any);
     }
   }, []);
@@ -268,6 +273,7 @@ export const Profile: React.FC = () => {
     { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
+    { key: 'messages', label: 'Messages', icon: MessageCircle },
     { key: 'preferences', label: 'Preferences', icon: Heart },
     { key: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -702,6 +708,40 @@ export const Profile: React.FC = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'messages' && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Messages</h3>
+                  <p className="text-gray-600 mt-1">
+                    Chat with your wedding vendors
+                  </p>
+                </div>
+                {selectedConversation && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedConversation(null)}
+                  >
+                    Back to Conversations
+                  </Button>
+                )}
+              </div>
+
+              {selectedConversation ? (
+                <ChatWindow
+                  conversation={selectedConversation}
+                  onBack={() => setSelectedConversation(null)}
+                />
+              ) : (
+                <ConversationList
+                  conversations={conversations}
+                  loading={conversationsLoading}
+                  onConversationSelect={setSelectedConversation}
+                />
+              )}
+            </Card>
           )}
 
           {activeTab === 'preferences' && (
