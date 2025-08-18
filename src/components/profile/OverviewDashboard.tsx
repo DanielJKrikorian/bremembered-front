@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, AlertTriangle, MessageCircle, User, Camera, Heart, Star } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -22,6 +23,7 @@ interface TodoItem {
 }
 
 export const OverviewDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { couple } = useCouple();
   const { conversations } = useConversations();
@@ -403,12 +405,7 @@ export const OverviewDashboard: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('tab', 'messages');
-                window.history.pushState({}, '', url.toString());
-                window.location.reload();
-              }}
+              onClick={() => navigate('/profile?tab=messages')}
             >
               View All
             </Button>
@@ -625,12 +622,7 @@ export const OverviewDashboard: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('tab', 'gallery');
-                window.history.pushState({}, '', url.toString());
-                window.location.reload();
-              }}
+              onClick={() => navigate('/profile?tab=gallery')}
             >
               View Gallery
             </Button>
@@ -656,12 +648,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('tab', 'timeline');
-              window.history.pushState({}, '', url.toString());
-              window.location.reload();
-            }}
+            onClick={() => navigate('/profile?tab=timeline')}
           >
             <Calendar className="w-6 h-6 mb-2" />
             <span>Update Timeline</span>
@@ -669,12 +656,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('tab', 'messages');
-              window.history.pushState({}, '', url.toString());
-              window.location.reload();
-            }}
+            onClick={() => navigate('/profile?tab=messages')}
           >
             <MessageCircle className="w-6 h-6 mb-2" />
             <span>Message Vendors</span>
@@ -682,12 +664,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('tab', 'gallery');
-              window.history.pushState({}, '', url.toString());
-              window.location.reload();
-            }}
+            onClick={() => navigate('/profile?tab=gallery')}
           >
             <Camera className="w-6 h-6 mb-2" />
             <span>View Gallery</span>
