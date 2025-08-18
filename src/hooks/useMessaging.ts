@@ -162,9 +162,6 @@ export const useConversations = () => {
                 .single();
 
               if (vendorData) {
-                // Get vendor's email from auth.users
-                const { data: userData } = await supabase.auth.admin.getUserById(otherParticipantId);
-                
                 // Get vendor's service type from bookings
                 const { data: bookingData } = await supabase
                   .from('bookings')
@@ -179,7 +176,7 @@ export const useConversations = () => {
                   profile_photo: vendorData.profile_photo,
                   role: 'vendor' as const,
                   phone: vendorData.phone,
-                  email: userData?.user?.email,
+                  email: undefined, // Email not available from client-side
                   service_type: bookingData?.service_type
                 };
               } else {
