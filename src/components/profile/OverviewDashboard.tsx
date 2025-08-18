@@ -41,6 +41,10 @@ export const OverviewDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleTabNavigation = (tab: string) => {
+    navigate(`/profile?tab=${tab}`);
+  };
+
   useEffect(() => {
     if (couple?.wedding_date) {
       try {
