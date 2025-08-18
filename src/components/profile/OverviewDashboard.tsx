@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -21,8 +20,11 @@ interface TodoItem {
   updated_at: string;
 }
 
-export const OverviewDashboard: React.FC = () => {
-  const navigate = useNavigate();
+interface OverviewDashboardProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChange }) => {
   const { user } = useAuth();
   const { couple } = useCouple();
   const { conversations } = useConversations();
@@ -615,7 +617,7 @@ export const OverviewDashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Photos</h3>
             <button
-              onClick={() => navigate('/profile?tab=gallery')}
+              onClick={() => onTabChange?.('gallery')}
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
               View Gallery
@@ -640,21 +642,21 @@ export const OverviewDashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => navigate('/profile?tab=timeline')}
+            onClick={() => onTabChange?.('timeline')}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Calendar className="w-6 h-6 mb-2" />
             <span>Update Timeline</span>
           </button>
           <button
-            onClick={() => navigate('/profile?tab=messages')}
+            onClick={() => onTabChange?.('messages')}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <MessageCircle className="w-6 h-6 mb-2" />
             <span>Message Vendors</span>
           </button>
           <button
-            onClick={() => navigate('/profile?tab=gallery')}
+            onClick={() => onTabChange?.('gallery')}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Camera className="w-6 h-6 mb-2" />

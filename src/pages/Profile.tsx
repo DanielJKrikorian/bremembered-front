@@ -385,7 +385,7 @@ export const Profile: React.FC = () => {
         {/* Tab Content */}
         <div className="space-y-6">
           {activeTab === 'overview' && (
-            <OverviewDashboard />
+            <OverviewDashboard onTabChange={handleTabChange} />
           )}
 
           {activeTab === 'profile' && (
