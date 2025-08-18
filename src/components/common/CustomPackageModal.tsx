@@ -367,10 +367,8 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
     switch (currentStep) {
       case 1: return preferences.selectedServices.length > 0;
       case 2: return preferences.selectedServices.every(service => preferences.hours[service]);
-      case 3: return !preferences.selectedServices.includes('Photography') || 
-                    preferences.selectedServices.filter(s => s === 'Photography').every(service => preferences.photoCount[service]);
-      case 4: return !preferences.selectedServices.includes('Videography') || 
-                    preferences.selectedServices.filter(s => s === 'Videography').every(service => preferences.videoLength[service]);
+      case 3: return true; // Always allow proceeding from step 3
+      case 4: return true; // Always allow proceeding from step 4
       case 5: return preferences.style.length > 0;
       case 6: return preferences.budget !== '';
       default: return false;
@@ -557,31 +555,42 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
                         <h5 className="text-lg font-semibold text-gray-900">{service}</h5>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {hourOptions.map((option) => {
-                          const isSelected = preferences.hours[service] === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              onClick={() => handleHoursChange(service, option.value)}
-                              className={`
-                                relative p-4 rounded-lg border-2 transition-all text-center
-                                ${isSelected 
-                                  ? 'border-amber-500 bg-amber-50' 
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                }
-                              `}
-                            >
-                              {isSelected && (
-                                <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                                  <Check className="w-3 h-3 text-white" />
-                                </div>
-                              )}
-                              <div className="font-bold text-gray-900 mb-1">{option.label}</div>
-                              <p className="text-xs text-gray-600">{option.description}</p>
-                            </button>
-                          );
-                        })}
+                      <div className="bg-gray-50 rounded-xl p-6">
+                        <div className="text-center mb-4">
+                          <div className="text-3xl font-bold text-amber-600 mb-2">
+                            {preferences.hours[service] || 6} hours
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Drag the slider to select your preferred coverage duration
+                          </p>
+                        </div>
+                        
+                        <div className="px-4">
+                          <input
+                            type="range"
+                            min="2"
+                            max="16"
+                            value={preferences.hours[service] || 6}
+                            onChange={(e) => handleHoursChange(service, parseInt(e.target.value))}
+                            className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                            style={{
+                              background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${((preferences.hours[service] || 6) - 2) / 14 * 100}%, #e5e7eb ${((preferences.hours[service] || 6) - 2) / 14 * 100}%, #e5e7eb 100%)`
+                            }}
+                          />
+                          <div className="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>2 hours</span>
+                            <span>16 hours</span>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4 text-center">
+                          <p className="text-sm text-gray-600">
+                            {preferences.hours[service] <= 4 && "Perfect for intimate ceremonies and elopements"}
+                            {preferences.hours[service] >= 5 && preferences.hours[service] <= 8 && "Great for traditional wedding coverage"}
+                            {preferences.hours[service] >= 9 && preferences.hours[service] <= 12 && "Comprehensive full-day documentation"}
+                            {preferences.hours[service] >= 13 && "Complete extended celebration coverage"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -591,118 +600,166 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
           )}
 
           {/* Step 3: Photo Count (Photography only) */}
-          {currentStep === 3 && preferences.selectedServices.includes('Photography') && (
+          {currentStep === 3 && (
             <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Image className="w-8 h-8 text-emerald-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                  How many photos do you want?
-                </h4>
-                <p className="text-gray-600">
-                  Choose the number of edited photos you'd like to receive
-                </p>
-              </div>
-
-              <div className="space-y-8">
-                {preferences.selectedServices.filter(s => s === 'Photography').map((service) => (
-                  <div key={service} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {photoCountOptions.map((option) => {
-                        const isSelected = preferences.photoCount[service] === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => handlePhotoCountChange(service, option.value)}
-                            className={`
-                              relative p-4 rounded-lg border-2 transition-all text-center
-                              ${isSelected 
-                                ? 'border-emerald-500 bg-emerald-50' 
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }
-                            `}
-                          >
-                            {isSelected && (
-                              <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                                <Check className="w-3 h-3 text-white" />
-                              </div>
-                            )}
-                            <div className="font-bold text-gray-900 mb-1">{option.label}</div>
-                            <p className="text-xs text-gray-600">{option.description}</p>
-                          </button>
-                        );
-                      })}
+              {preferences.selectedServices.includes('Photography') ? (
+                <>
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Image className="w-8 h-8 text-emerald-600" />
                     </div>
-
-                    {/* Raw Photos Option */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <label className="flex items-center space-x-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={preferences.rawPhotos[service] || false}
-                          onChange={(e) => handleRawPhotosToggle(service, e.target.checked)}
-                          className="text-blue-500 focus:ring-blue-500 rounded"
-                        />
-                        <div>
-                          <span className="font-medium text-blue-900">Include raw/unedited photos</span>
-                          <p className="text-sm text-blue-700">Get access to all unedited photos from your wedding day</p>
-                        </div>
-                      </label>
-                    </div>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      How many photos do you want?
+                    </h4>
+                    <p className="text-gray-600">
+                      Choose the number of edited photos you'd like to receive
+                    </p>
                   </div>
-                ))}
-              </div>
+
+                  <div className="space-y-8">
+                    {preferences.selectedServices.filter(s => s === 'Photography').map((service) => (
+                      <div key={service} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {photoCountOptions.map((option) => {
+                            const isSelected = preferences.photoCount[service] === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                onClick={() => handlePhotoCountChange(service, option.value)}
+                                className={`
+                                  relative p-4 rounded-lg border-2 transition-all text-center
+                                  ${isSelected 
+                                    ? 'border-emerald-500 bg-emerald-50' 
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                  }
+                                `}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                                <div className="font-bold text-gray-900 mb-1">{option.label}</div>
+                                <p className="text-xs text-gray-600">{option.description}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Raw Photos Option */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <label className="flex items-center space-x-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={preferences.rawPhotos[service] || false}
+                              onChange={(e) => handleRawPhotosToggle(service, e.target.checked)}
+                              className="text-blue-500 focus:ring-blue-500 rounded"
+                            />
+                            <div>
+                              <span className="font-medium text-blue-900">Include raw/unedited photos</span>
+                              <p className="text-sm text-blue-700">Get access to all unedited photos from your wedding day</p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                /* Skip photography step if not selected */
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <ArrowRight className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h4 className="text-xl font-bold text-gray-900 mb-3">
+                    Skipping Photo Preferences
+                  </h4>
+                  <p className="text-gray-600 mb-6">
+                    Photography not selected, moving to next step...
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={() => setCurrentStep(4)}
+                    icon={ArrowRight}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Step 4: Video Length (Videography only) */}
-          {currentStep === 4 && preferences.selectedServices.includes('Videography') && (
+          {currentStep === 4 && (
             <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Video className="w-8 h-8 text-purple-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-gray-900 mb-3">
-                  What type of video do you want?
-                </h4>
-                <p className="text-gray-600">
-                  Choose the style and length of your wedding video
-                </p>
-              </div>
-
-              <div className="space-y-8">
-                {preferences.selectedServices.filter(s => s === 'Videography').map((service) => (
-                  <div key={service} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {videoLengthOptions.map((option) => {
-                        const isSelected = preferences.videoLength[service] === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => handleVideoLengthChange(service, option.value)}
-                            className={`
-                              relative p-4 rounded-lg border-2 transition-all text-center
-                              ${isSelected 
-                                ? 'border-purple-500 bg-purple-50' 
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }
-                            `}
-                          >
-                            {isSelected && (
-                              <div className="absolute top-2 right-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
-                                <Check className="w-3 h-3 text-white" />
-                              </div>
-                            )}
-                            <div className="font-bold text-gray-900 mb-1">{option.label}</div>
-                            <p className="text-xs text-gray-600">{option.description}</p>
-                          </button>
-                        );
-                      })}
+              {preferences.selectedServices.includes('Videography') ? (
+                <>
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Video className="w-8 h-8 text-purple-600" />
                     </div>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-3">
+                      What type of video do you want?
+                    </h4>
+                    <p className="text-gray-600">
+                      Choose the style and length of your wedding video
+                    </p>
                   </div>
-                ))}
-              </div>
+
+                  <div className="space-y-8">
+                    {preferences.selectedServices.filter(s => s === 'Videography').map((service) => (
+                      <div key={service} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {videoLengthOptions.map((option) => {
+                            const isSelected = preferences.videoLength[service] === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                onClick={() => handleVideoLengthChange(service, option.value)}
+                                className={`
+                                  relative p-4 rounded-lg border-2 transition-all text-center
+                                  ${isSelected 
+                                    ? 'border-purple-500 bg-purple-50' 
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                  }
+                                `}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                                <div className="font-bold text-gray-900 mb-1">{option.label}</div>
+                                <p className="text-xs text-gray-600">{option.description}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                /* Skip videography step if not selected */
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <ArrowRight className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h4 className="text-xl font-bold text-gray-900 mb-3">
+                    Skipping Video Preferences
+                  </h4>
+                  <p className="text-gray-600 mb-6">
+                    Videography not selected, moving to style preferences...
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={() => setCurrentStep(5)}
+                    icon={ArrowRight}
+                  >
+                    Continue to Style Preferences
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
