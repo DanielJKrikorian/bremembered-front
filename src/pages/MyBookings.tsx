@@ -373,9 +373,18 @@ export const MyBookings: React.FC = () => {
                               <span>{booking.vendors.years_experience} years experience</span>
                             </div>
                           </div>
-                          <Button variant="outline" icon={MessageCircle} size="sm">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log('Vendor Message button clicked!', booking);
+                              handleMessageVendor(booking);
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
+                          >
+                            <MessageCircle className="w-4 h-4 mr-2" />
                             Message
-                          </Button>
+                          </button>
                         </div>
                       )}
 
