@@ -102,9 +102,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             <h3 className="font-semibold text-gray-900">
               {conversation.other_participant?.name || 'Unknown Contact'}
             </h3>
-            {conversation.other_participant?.role === 'vendor' && (
-              <p className="text-sm text-gray-600">Wedding Vendor</p>
-            )}
+            <div className="space-y-1">
+              {conversation.other_participant?.role === 'vendor' && (
+                <div className="text-sm text-gray-600">
+                  <p className="font-medium">
+                    {conversation.other_participant.service_type || 'Wedding'} Vendor
+                  </p>
+                  <div className="flex flex-col space-y-1 text-xs">
+                    {conversation.other_participant.phone && (
+                      <span>📞 {conversation.other_participant.phone}</span>
+                    )}
+                    {conversation.other_participant.email && (
+                      <span>✉️ {conversation.other_participant.email}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-2">

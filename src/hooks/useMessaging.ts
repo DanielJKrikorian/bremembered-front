@@ -26,6 +26,9 @@ export interface Conversation {
     name: string;
     profile_photo?: string;
     role: 'vendor' | 'couple';
+    phone?: string;
+    email?: string;
+    service_type?: string;
   };
 }
 
@@ -73,7 +76,10 @@ export const useConversations = () => {
               id: 'mock-vendor-1',
               name: 'Elegant Moments Photography',
               profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-              role: 'vendor'
+              role: 'vendor',
+              phone: '(555) 123-4567',
+              email: 'contact@elegantmoments.com',
+              service_type: 'Photography'
             }
           },
           {
@@ -96,7 +102,10 @@ export const useConversations = () => {
               id: 'mock-vendor-2',
               name: 'Perfect Harmony Events',
               profile_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
-              role: 'vendor'
+              role: 'vendor',
+              phone: '(555) 987-6543',
+              email: 'hello@perfectharmony.com',
+              service_type: 'Coordination'
             }
           }
         ];
@@ -148,16 +157,30 @@ export const useConversations = () => {
               // Try to get vendor info first
               const { data: vendorData } = await supabase
                 .from('vendors')
-                .select('id, name, profile_photo')
+                .select('id, name, profile_photo, phone')
                 .eq('user_id', otherParticipantId)
                 .single();
 
               if (vendorData) {
+                // Get vendor's email from auth.users
+                const { data: userData } = await supabase.auth.admin.getUserById(otherParticipantId);
+                
+                // Get vendor's service type from bookings
+                const { data: bookingData } = await supabase
+                  .from('bookings')
+                  .select('service_type')
+                  .eq('vendor_id', vendorData.id)
+                  .limit(1)
+                  .single();
+
                 otherParticipant = {
                   id: vendorData.id,
                   name: vendorData.name,
                   profile_photo: vendorData.profile_photo,
-                  role: 'vendor' as const
+                  role: 'vendor' as const,
+                  phone: vendorData.phone,
+                  email: userData?.user?.email,
+                  service_type: bookingData?.service_type
                 };
               } else {
                 // Try to get couple info
