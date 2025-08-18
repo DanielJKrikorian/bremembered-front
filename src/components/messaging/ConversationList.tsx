@@ -3,6 +3,7 @@ import { MessageCircle, User, Clock, ChevronRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Conversation } from '../../hooks/useMessaging';
+import { useAuth } from '../../context/AuthContext';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -15,6 +16,8 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   loading,
   onConversationSelect
 }) => {
+  const { user } = useAuth();
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
