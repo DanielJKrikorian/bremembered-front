@@ -274,7 +274,13 @@ export const Home: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate('/booking/services')}
+                  onClick={() => navigate('/search', {
+                    state: {
+                      filters: {
+                        serviceTypes: [service.title]
+                      }
+                    }
+                  })}
                 >
                   Browse <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
