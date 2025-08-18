@@ -455,6 +455,8 @@ export const MyBookings: React.FC = () => {
                           size="sm"
                           onClick={() => navigate(`/package/${booking.service_packages?.id || booking.id}`)}
                         >
+                          View Details
+                        </Button>
                         <Button 
                           variant="outline" 
                           icon={Eye} 
