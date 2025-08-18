@@ -14,6 +14,7 @@ import { WeddingTimeline } from '../components/profile/WeddingTimeline';
 import { ConversationList } from '../components/messaging/ConversationList';
 import { ChatWindow } from '../components/messaging/ChatWindow';
 import { Conversation } from '../hooks/useMessaging';
+import { OverviewDashboard } from '../components/profile/OverviewDashboard';
 
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -51,6 +52,7 @@ export const Profile: React.FC = () => {
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<'profile' | 'timeline' | 'gallery' | 'messages' | 'preferences' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'preferences' | 'settings'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -90,11 +92,11 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
+    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
-      // Default to timeline instead of profile
-      setActiveTab('timeline');
+      // Default to overview
+      setActiveTab('overview');
     }
 
     // Check if we should auto-select a conversation
@@ -302,6 +304,7 @@ export const Profile: React.FC = () => {
   }
 
   const tabs = [
+    { key: 'overview', label: 'Overview', icon: Calendar },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
     { key: 'messages', label: 'Messages', icon: MessageCircle },
@@ -382,6 +385,10 @@ export const Profile: React.FC = () => {
 
         {/* Tab Content */}
         <div className="space-y-6">
+          {activeTab === 'overview' && (
+            <OverviewDashboard />
+          )}
+
           {activeTab === 'profile' && (
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
