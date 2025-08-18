@@ -289,10 +289,7 @@ export const OverviewDashboard: React.FC = () => {
   };
 
   const handleTabNavigation = (tab: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    window.history.pushState({}, '', url.toString());
-    window.location.reload();
+    navigate(`/profile?tab=${tab}`);
   };
 
   // Get recent conversations (last 3)
