@@ -85,8 +85,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       {conversations.map((conversation) => (
         <Card 
           key={conversation.id} 
-          className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-          onClick={() => onConversationSelect(conversation)}
+          className="p-4 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-50"
+          onClick={(e) => {
+            e.preventDefault();
+            console.log('Clicking conversation:', conversation.id);
+            onConversationSelect(conversation);
+          }}
         >
           <div className="flex items-center space-x-4">
             {/* Avatar */}
