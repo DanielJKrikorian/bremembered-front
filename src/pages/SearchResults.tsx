@@ -317,8 +317,19 @@ export const SearchResults: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Wedding Services</h1>
-          <p className="text-gray-600">Find the perfect vendors for your special day</p>
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Wedding Services</h1>
+              <p className="text-gray-600">Find the perfect vendors for your special day</p>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/booking/services')}
+              className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg"
+            >
+              Create Custom Package
+            </Button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -478,15 +489,6 @@ export const SearchResults: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Custom Package Button */}
-            <Button
-              variant="primary"
-              onClick={() => navigate('/booking/services')}
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg"
-            >
-              Create Custom Package
-            </Button>
-            
             {/* Sort Dropdown */}
             <div className="relative">
               <select
