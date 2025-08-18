@@ -142,28 +142,20 @@ export const MyBookings: React.FC = () => {
   };
 
   const handleMessageVendor = async (booking: any) => {
-    if (!booking.vendors?.id) {
-      console.error('No vendor id found for booking:', booking);
+    if (!booking.vendors?.user_id) {
+      console.error('No vendor user_id found for booking:', booking);
       return;
     }
 
     try {
-      // For now, just navigate to messages tab - the vendor lookup will be handled there
+      const conversation = await createConversation(booking.vendors.user_id);
+      
       navigate('/profile?tab=messages', {
         state: {
-          targetVendorId: booking.vendors.id,
+          selectedConversationId: conversation.id,
           vendor: booking.vendors
         }
       });
-      if (conversation) {
-        // Navigate to messages tab with this conversation
-        navigate('/profile?tab=messages', {
-          state: {
-            selectedConversationId: conversation.id,
-            vendor: booking.vendors
-          }
-        });
-      }
     } catch (error) {
       console.error('Error creating conversation:', error);
       // Fallback: just go to messages tab
