@@ -311,13 +311,10 @@ export const useMessages = (conversationId: string) => {
       await supabase
         .from('messages')
         .update({ 
-          read_by: supabase.rpc('array_append', { 
-            array_col: 'read_by', 
-            new_element: user.id 
-          })
+          read_by: supabase.raw('read_by || ?', [JSON.stringify([user.id])])
         })
         .eq('conversation_id', conversationId)
-        .not('read_by', 'cs', `{${user.id}}`);
+        .not('read_by', 'cs', `["${user.id}"]`);
     } catch (err) {
       console.error('Error marking messages as read:', err);
     }
