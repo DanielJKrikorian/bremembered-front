@@ -140,6 +140,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 
                 {/* Message Bubble */}
                 <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                    isOwnMessage
                       ? 'bg-rose-500 text-white'
                       : 'bg-white text-gray-900 border border-gray-200'
                   }`}>
