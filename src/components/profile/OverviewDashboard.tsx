@@ -24,7 +24,6 @@ interface TodoItem {
 
 export const OverviewDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { couple } = useCouple();
   const { conversations } = useConversations();
