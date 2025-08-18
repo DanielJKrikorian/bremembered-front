@@ -83,72 +83,75 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   return (
     <div className="space-y-3">
       {conversations.map((conversation) => (
-        <Card 
+        <div
           key={conversation.id} 
-          className="p-4 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-50"
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             console.log('Clicking conversation:', conversation.id);
             onConversationSelect(conversation);
           }}
+          className="cursor-pointer"
         >
-          <div className="flex items-center space-x-4">
-            {/* Avatar */}
-            <div className="relative">
-              {conversation.other_participant?.profile_photo ? (
-                <img
-                  src={conversation.other_participant.profile_photo}
-                  alt={conversation.other_participant.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-6 h-6 text-gray-400" />
-                </div>
-              )}
-              {conversation.unread_count && conversation.unread_count > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">
-                    {conversation.unread_count > 9 ? '9+' : conversation.unread_count}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Conversation Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <h4 className="font-semibold text-gray-900 truncate">
-                  {conversation.other_participant?.name || 'Unknown Contact'}
-                </h4>
-                <div className="flex items-center space-x-2">
-                  {conversation.other_participant?.role === 'vendor' && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
-                      Vendor
+          <Card className="p-4 hover:shadow-md transition-shadow hover:bg-gray-50">
+            <div className="flex items-center space-x-4">
+              {/* Avatar */}
+              <div className="relative">
+                {conversation.other_participant?.profile_photo ? (
+                  <img
+                    src={conversation.other_participant.profile_photo}
+                    alt={conversation.other_participant.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+                {conversation.unread_count && conversation.unread_count > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
+                    <span className="text-xs text-white font-bold">
+                      {conversation.unread_count > 9 ? '9+' : conversation.unread_count}
                     </span>
-                  )}
-                  <span className="text-xs text-gray-500">
-                    {conversation.last_message && formatTimestamp(conversation.last_message.timestamp)}
-                  </span>
-                </div>
+                  </div>
+                )}
               </div>
-              
-              {conversation.last_message && (
-                <p className={`text-sm truncate ${
-                  conversation.unread_count && conversation.unread_count > 0 
-                    ? 'text-gray-900 font-medium' 
-                    : 'text-gray-600'
-                }`}>
-                  {conversation.last_message.sender_id === user?.id ? 'You: ' : ''}
-                  {truncateMessage(conversation.last_message.message_text)}
-                </p>
-              )}
-            </div>
 
-            {/* Arrow */}
-            <ChevronRight className="w-5 h-5 text-gray-400" />
-          </div>
-        </Card>
+              {/* Conversation Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="font-semibold text-gray-900 truncate">
+                    {conversation.other_participant?.name || 'Unknown Contact'}
+                  </h4>
+                  <div className="flex items-center space-x-2">
+                    {conversation.other_participant?.role === 'vendor' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
+                        Vendor
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">
+                      {conversation.last_message && formatTimestamp(conversation.last_message.timestamp)}
+                    </span>
+                  </div>
+                </div>
+                
+                {conversation.last_message && (
+                  <p className={`text-sm truncate ${
+                    conversation.unread_count && conversation.unread_count > 0 
+                      ? 'text-gray-900 font-medium' 
+                      : 'text-gray-600'
+                  }`}>
+                    {conversation.last_message.sender_id === user?.id ? 'You: ' : ''}
+                    {truncateMessage(conversation.last_message.message_text)}
+                  </p>
+                )}
+              </div>
+
+              {/* Arrow */}
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Card>
+        </div>
       ))}
     </div>
   );

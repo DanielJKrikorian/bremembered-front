@@ -712,35 +712,42 @@ export const Profile: React.FC = () => {
           )}
 
           {activeTab === 'messages' && (
-            <div className="space-y-6">
+            <>
               {selectedConversation ? (
-                <Card className="p-0 overflow-hidden">
-                  <ChatWindow
-                    conversation={selectedConversation}
-                    onBack={() => setSelectedConversation(null)}
-                  />
-                </Card>
+                <div className="space-y-6">
+                  <Card className="p-0 overflow-hidden">
+                    <ChatWindow
+                      conversation={selectedConversation}
+                      onBack={() => {
+                        console.log('Going back to conversation list');
+                        setSelectedConversation(null);
+                      }}
+                    />
+                  </Card>
+                </div>
               ) : (
-                <Card className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">Messages</h3>
-                      <p className="text-gray-600 mt-1">
-                        Chat with your wedding vendors
-                      </p>
+                <div className="space-y-6">
+                  <Card className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">Messages</h3>
+                        <p className="text-gray-600 mt-1">
+                          Chat with your wedding vendors
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <ConversationList
-                    conversations={conversations}
-                    loading={conversationsLoading}
-                    onConversationSelect={(conversation) => {
-                      console.log('Conversation selected:', conversation);
-                      setSelectedConversation(conversation);
-                    }}
-                  />
-                </Card>
+                    <ConversationList
+                      conversations={conversations}
+                      loading={conversationsLoading}
+                      onConversationSelect={(conversation) => {
+                        console.log('Profile: Conversation selected:', conversation);
+                        setSelectedConversation(conversation);
+                      }}
+                    />
+                  </Card>
+                </div>
               )}
-            </div>
+            </>
           )}
 
           {activeTab === 'preferences' && (
