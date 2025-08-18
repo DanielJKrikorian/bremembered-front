@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Send, User, Clock, Check, CheckCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { useMessages, Conversation, Message } from '../../hooks/useMessaging';
+import { useMessages, Conversation } from '../../hooks/useMessaging';
 import { useAuth } from '../../context/AuthContext';
 
 interface ChatWindowProps {

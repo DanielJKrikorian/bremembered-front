@@ -13,6 +13,7 @@ import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { WeddingTimeline } from '../components/profile/WeddingTimeline';
 import { ConversationList } from '../components/messaging/ConversationList';
 import { ChatWindow } from '../components/messaging/ChatWindow';
+import { Conversation } from '../hooks/useMessaging';
 
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -46,7 +47,7 @@ export const Profile: React.FC = () => {
   const { vibeTags } = useVibeTags();
   const { languages } = useLanguages();
   const { conversations, loading: conversationsLoading } = useConversations();
-  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<'profile' | 'timeline' | 'gallery' | 'messages' | 'preferences' | 'settings'>('profile');

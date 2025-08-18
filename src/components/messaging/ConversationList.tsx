@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, User, Clock, ChevronRight } from 'lucide-react';
+import { MessageCircle, User, ChevronRight } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Conversation } from '../../hooks/useMessaging';
@@ -135,7 +135,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     ? 'text-gray-900 font-medium' 
                     : 'text-gray-600'
                 }`}>
-                  {conversation.last_message.sender_id === user.id ? 'You: ' : ''}
+                  {conversation.last_message.sender_id === user?.id ? 'You: ' : ''}
                   {truncateMessage(conversation.last_message.message_text)}
                 </p>
               )}
