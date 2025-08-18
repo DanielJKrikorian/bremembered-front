@@ -292,10 +292,6 @@ export const OverviewDashboard: React.FC = () => {
     });
   };
 
-  const handleTabNavigation = (tab: string) => {
-    navigate(`/profile?tab=${tab}`);
-  };
-
   // Get recent conversations (last 3)
   const recentConversations = conversations.slice(0, 3);
 
