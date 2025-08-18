@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, AlertTriangle, MessageCircle, User, Camera, Heart, Star } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -41,9 +40,6 @@ export const OverviewDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const handleTabNavigation = (tab: string) => {
-    navigate(`/profile?tab=${tab}`);
-  };
 
   useEffect(() => {
     if (couple?.wedding_date) {
@@ -406,13 +402,12 @@ export const OverviewDashboard: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleTabNavigation('messages')}
+            <button
+              onClick={() => navigate('/profile?tab=messages')}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
               View All
-            </Button>
+            </button>
           </div>
 
           {recentConversations.length === 0 ? (
@@ -463,14 +458,13 @@ export const OverviewDashboard: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Wedding Todo List</h3>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Plus}
+            <button
               onClick={() => setIsAddingTodo(true)}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-rose-500 border border-transparent rounded-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
+              <Plus className="w-4 h-4 mr-1" />
               Add Task
-            </Button>
+            </button>
           </div>
 
           {isAddingTodo && (
@@ -496,26 +490,24 @@ export const OverviewDashboard: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => {
                     setIsAddingTodo(false);
                     setNewTodo('');
                     setNewTodoDate('');
                     setNewTodoTime('');
                   }}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
                 >
                   Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
+                </button>
+                <button
                   onClick={addTodo}
                   disabled={!newTodo.trim()}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-rose-500 border border-transparent rounded-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Task
-                </Button>
+                </button>
               </div>
             </div>
           )}
@@ -623,13 +615,12 @@ export const OverviewDashboard: React.FC = () => {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Photos</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleTabNavigation('gallery')}
+            <button
+              onClick={() => navigate('/profile?tab=gallery')}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
               View Gallery
-            </Button>
+            </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {recentPhotos.map((file) => (
@@ -649,30 +640,27 @@ export const OverviewDashboard: React.FC = () => {
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            className="h-16 flex-col"
-            onClick={() => handleTabNavigation('timeline')}
+          <button
+            onClick={() => navigate('/profile?tab=timeline')}
+            className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Calendar className="w-6 h-6 mb-2" />
             <span>Update Timeline</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-16 flex-col"
-            onClick={() => handleTabNavigation('messages')}
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=messages')}
+            className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <MessageCircle className="w-6 h-6 mb-2" />
             <span>Message Vendors</span>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-16 flex-col"
-            onClick={() => handleTabNavigation('gallery')}
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=gallery')}
+            className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Camera className="w-6 h-6 mb-2" />
             <span>View Gallery</span>
-          </Button>
+          </button>
         </div>
       </Card>
 
