@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MessageCircle, User, ChevronRight, Plus } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { NewMessageModal } from './NewMessageModal';
 import { Conversation, useBookedVendors, useCreateConversation } from '../../hooks/useMessaging';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,20 +18,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   onConversationSelect
 }) => {
   const { user } = useAuth();
-  const { vendors: bookedVendors, loading: vendorsLoading } = useBookedVendors();
-  const { createConversation, loading: creatingConversation } = useCreateConversation();
-  const [showVendorList, setShowVendorList] = useState(false);
+  const { vendors: bookedVendors } = useBookedVendors();
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
 
-  const handleStartConversation = async (vendorUserId: string) => {
-    try {
-      const conversation = await createConversation(vendorUserId);
-      if (conversation) {
-        setShowVendorList(false);
-        onConversationSelect(conversation);
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
+  const handleConversationCreated = (conversation: any) => {
+    // If there's an initial message, we'll handle sending it in the chat window
+    onConversationSelect(conversation);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -86,7 +79,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             <Button
               variant="primary"
               icon={Plus}
-              onClick={() => setShowVendorList(true)}
+              onClick={() => setShowNewMessageModal(true)}
               size="sm"
             >
               New Message
@@ -94,80 +87,32 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           )}
         </div>
         
-        {showVendorList ? (
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-gray-900">Message a Vendor</h4>
-              <Button
-                variant="ghost"
-                onClick={() => setShowVendorList(false)}
-                size="sm"
-              >
-                Cancel
-              </Button>
-            </div>
-            {vendorsLoading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin w-6 h-6 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p className="text-gray-600 text-sm">Loading vendors...</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {bookedVendors.map((vendor) => (
-                  <div
-                    key={vendor.id}
-                    onClick={() => handleStartConversation(vendor.user_id)}
-                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    {vendor.profile_photo ? (
-                      <img
-                        src={vendor.profile_photo}
-                        alt={vendor.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <h5 className="font-medium text-gray-900">{vendor.name}</h5>
-                      <p className="text-sm text-gray-600">{vendor.service_type}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        ) : (
-          <Card className="p-12 text-center">
-            <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No conversations yet</h3>
-            <p className="text-gray-600 mb-6">
-              {bookedVendors.length > 0 
-                ? 'Start a conversation with one of your booked vendors'
-                : 'Once you book services, you\'ll be able to message your vendors directly here.'
-              }
-            </p>
-            {bookedVendors.length > 0 ? (
-              <Button 
-                variant="primary"
-                icon={Plus}
-                onClick={() => setShowVendorList(true)}
-              >
-                Start New Conversation
-              </Button>
-            ) : (
-              <Button 
-                variant="primary"
-                onClick={() => window.location.href = '/search'}
-              >
-                Browse Services
-              </Button>
-            )}
-          </Card>
-        )}
+        <Card className="p-12 text-center">
+          <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No conversations yet</h3>
+          <p className="text-gray-600 mb-6">
+            {bookedVendors.length > 0 
+              ? 'Start a conversation with one of your booked vendors'
+              : 'Once you book services, you\'ll be able to message your vendors directly here.'
+            }
+          </p>
+          {bookedVendors.length > 0 ? (
+            <Button 
+              variant="primary"
+              icon={Plus}
+              onClick={() => setShowNewMessageModal(true)}
+            >
+              Start New Conversation
+            </Button>
+          ) : (
+            <Button 
+              variant="primary"
+              onClick={() => window.location.href = '/search'}
+            >
+              Browse Services
+            </Button>
+          )}
+        </Card>
       </div>
     );
   }
@@ -180,61 +125,13 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           <Button
             variant="primary"
             icon={Plus}
-            onClick={() => setShowVendorList(true)}
+            onClick={() => setShowNewMessageModal(true)}
             size="sm"
           >
             New Message
           </Button>
         )}
       </div>
-
-      {showVendorList && (
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-gray-900">Message a Vendor</h4>
-            <Button
-              variant="ghost"
-              onClick={() => setShowVendorList(false)}
-              size="sm"
-            >
-              Cancel
-            </Button>
-          </div>
-          {vendorsLoading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin w-6 h-6 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-              <p className="text-gray-600 text-sm">Loading vendors...</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {bookedVendors.map((vendor) => (
-                <div
-                  key={vendor.id}
-                  onClick={() => handleStartConversation(vendor.user_id)}
-                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  {vendor.profile_photo ? (
-                    <img
-                      src={vendor.profile_photo}
-                      alt={vendor.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="w-5 h-5 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">{vendor.name}</h5>
-                    <p className="text-sm text-gray-600">{vendor.service_type}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
 
       <div className="space-y-3">
         {conversations.map((conversation) => (
@@ -298,6 +195,13 @@ export const ConversationList: React.FC<ConversationListProps> = ({
           </div>
         ))}
       </div>
+
+      {/* New Message Modal */}
+      <NewMessageModal
+        isOpen={showNewMessageModal}
+        onClose={() => setShowNewMessageModal(false)}
+        onConversationCreated={handleConversationCreated}
+      />
     </div>
   );
 };

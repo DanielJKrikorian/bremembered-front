@@ -27,10 +27,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [messages]);
 
-  // Mark messages as read when conversation opens
+  // Send initial message if provided
   useEffect(() => {
-    // Disabled for now - will implement email notifications instead
-  }, [conversation.id, markAsRead]);
+    if ((conversation as any).initialMessage && messages.length === 0) {
+      const initialMsg = (conversation as any).initialMessage;
+      sendMessage(initialMsg);
+    }
+  }, [conversation, messages.length, sendMessage]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
