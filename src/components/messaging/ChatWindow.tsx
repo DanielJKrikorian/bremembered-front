@@ -29,7 +29,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Mark messages as read when conversation opens
   useEffect(() => {
-    markAsRead();
+    // Disabled for now - will implement email notifications instead
   }, [conversation.id, markAsRead]);
 
   const handleSendMessage = async (e: React.FormEvent) => {

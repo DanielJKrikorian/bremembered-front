@@ -108,13 +108,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     <User className="w-6 h-6 text-gray-400" />
                   </div>
                 )}
-                {conversation.unread_count && conversation.unread_count > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs text-white font-bold">
-                      {conversation.unread_count > 9 ? '9+' : conversation.unread_count}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Conversation Info */}
@@ -137,9 +130,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 
                 {conversation.last_message && (
                   <p className={`text-sm truncate ${
-                    conversation.unread_count && conversation.unread_count > 0 
-                      ? 'text-gray-900 font-medium' 
-                      : 'text-gray-600'
+                    'text-gray-600'
                   }`}>
                     {conversation.last_message.sender_id === user?.id ? 'You: ' : ''}
                     {truncateMessage(conversation.last_message.message_text)}

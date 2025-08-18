@@ -137,11 +137,8 @@ export const useConversations = () => {
               .single();
 
             // Get unread count
-            const { count: unreadCount } = await supabase
-              .from('messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('conversation_id', conv.id)
-              .not('read_by', 'cs', `{${user.id}}`);
+            // Disabled unread count for now
+            const unreadCount = 0;
 
             // Get other participant info
             const otherParticipantId = conv.participant_ids.find((id: string) => id !== user.id);
@@ -184,7 +181,7 @@ export const useConversations = () => {
             return {
               ...conv,
               last_message: lastMessageData,
-              unread_count: unreadCount || 0,
+              unread_count: 0,
               other_participant: otherParticipant
             };
           })
@@ -302,22 +299,8 @@ export const useMessages = (conversationId: string) => {
   };
 
   const markAsRead = async () => {
-    if (!user || !conversationId) return;
-
-    if (!supabase || !isSupabaseConfigured()) return;
-
-    try {
-      // Mark all unread messages as read
-      await supabase
-        .from('messages')
-        .update({
-          read_by: `array_append(read_by, '${user.id}')`
-        })
-        .eq('conversation_id', conversationId)
-        .not('read_by', 'cs', `["${user.id}"]`);
-    } catch (err) {
-      console.error('Error marking messages as read:', err);
-    }
+    // Disabled for now - will implement email notifications instead
+    return;
   };
 
   return { messages, loading, error, sendMessage, markAsRead };
