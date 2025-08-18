@@ -155,12 +155,6 @@ export const MyBookings: React.FC = () => {
           vendor: booking.vendors
         }
       });
-    } catch (error) {
-      console.error('Error navigating to messages:', error);
-      // Fallback: just go to messages tab
-      navigate('/profile?tab=messages');
-    }
-  };
       if (conversation) {
         // Navigate to messages tab with this conversation
         navigate('/profile?tab=messages', {
@@ -472,7 +466,6 @@ export const MyBookings: React.FC = () => {
                           variant="outline" 
                           icon={Eye} 
                           size="sm"
-                          onClick={() => handleMessageVendor(booking)}
                           onClick={() => navigate('/profile?tab=gallery')}
                         >
                           View Gallery
