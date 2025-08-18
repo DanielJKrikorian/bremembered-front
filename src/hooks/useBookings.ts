@@ -29,6 +29,7 @@ export interface Booking {
     profile_photo?: string;
     rating?: number;
     years_experience: number;
+    user_id: string;
   };
   service_packages?: {
     id: string;
@@ -149,7 +150,8 @@ export const useBookings = () => {
               name,
               profile_photo,
               rating,
-              years_experience
+              years_experience,
+              user_id
             ),
             service_packages(
               id,
