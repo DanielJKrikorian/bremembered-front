@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, AlertTriangle, MessageCircle, User, Camera, Heart, Star } from 'lucide-react';
+import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../ui/Card';
@@ -39,7 +39,6 @@ export const OverviewDashboard: React.FC = () => {
   const [daysUntilWedding, setDaysUntilWedding] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
 
   useEffect(() => {
     if (couple?.wedding_date) {
