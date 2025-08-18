@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
+import { CustomPackageModal } from '../components/common/CustomPackageModal';
 import { useServicePackages } from '../hooks/useSupabase';
 import { ServicePackage } from '../types/booking';
 
@@ -14,6 +15,7 @@ export const SearchResults: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCustomPackageModal, setShowCustomPackageModal] = useState(false);
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
     eventTypes: [] as string[],
@@ -334,7 +336,7 @@ export const SearchResults: React.FC = () => {
             </div>
             <Button
               variant="primary"
-              onClick={() => navigate('/booking/services')}
+              onClick={() => setShowCustomPackageModal(true)}
               className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg"
             >
               Create Custom Package
@@ -851,6 +853,12 @@ export const SearchResults: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Custom Package Modal */}
+      <CustomPackageModal
+        isOpen={showCustomPackageModal}
+        onClose={() => setShowCustomPackageModal(false)}
+      />
     </div>
   );
 };
