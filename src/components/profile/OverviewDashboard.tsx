@@ -288,6 +288,13 @@ export const OverviewDashboard: React.FC = () => {
     });
   };
 
+  const handleTabNavigation = (tab: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState({}, '', url.toString());
+    window.location.reload();
+  };
+
   // Get recent conversations (last 3)
   const recentConversations = conversations.slice(0, 3);
 
@@ -405,7 +412,7 @@ export const OverviewDashboard: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/profile?tab=messages')}
+              onClick={() => handleTabNavigation('messages')}
             >
               View All
             </Button>
@@ -622,7 +629,7 @@ export const OverviewDashboard: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/profile?tab=gallery')}
+              onClick={() => handleTabNavigation('gallery')}
             >
               View Gallery
             </Button>
@@ -648,7 +655,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => navigate('/profile?tab=timeline')}
+            onClick={() => handleTabNavigation('timeline')}
           >
             <Calendar className="w-6 h-6 mb-2" />
             <span>Update Timeline</span>
@@ -656,7 +663,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => navigate('/profile?tab=messages')}
+            onClick={() => handleTabNavigation('messages')}
           >
             <MessageCircle className="w-6 h-6 mb-2" />
             <span>Message Vendors</span>
@@ -664,7 +671,7 @@ export const OverviewDashboard: React.FC = () => {
           <Button
             variant="outline"
             className="h-16 flex-col"
-            onClick={() => navigate('/profile?tab=gallery')}
+            onClick={() => handleTabNavigation('gallery')}
           >
             <Camera className="w-6 h-6 mb-2" />
             <span>View Gallery</span>
