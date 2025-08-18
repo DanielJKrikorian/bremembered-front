@@ -92,6 +92,9 @@ export const Profile: React.FC = () => {
     const tab = urlParams.get('tab');
     if (tab && ['profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
       setActiveTab(tab as any);
+    } else {
+      // Default to timeline instead of profile
+      setActiveTab('timeline');
     }
 
     // Check if we should auto-select a conversation
@@ -299,11 +302,11 @@ export const Profile: React.FC = () => {
   }
 
   const tabs = [
-    { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
     { key: 'messages', label: 'Messages', icon: MessageCircle },
     { key: 'preferences', label: 'Preferences', icon: Heart },
+    { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'settings', label: 'Settings', icon: Settings }
   ];
 
