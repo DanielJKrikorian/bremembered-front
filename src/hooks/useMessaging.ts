@@ -311,7 +311,7 @@ export const useMessages = (conversationId: string) => {
       await supabase
         .from('messages')
         .update({
-          read_by: supabase.sql`array_append(read_by, ${user.id})`
+          read_by: `array_append(read_by, '${user.id}')`
         })
         .eq('conversation_id', conversationId)
         .not('read_by', 'cs', `["${user.id}"]`);
