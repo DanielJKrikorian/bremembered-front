@@ -310,11 +310,11 @@ export const useMessages = (conversationId: string) => {
       // Mark all unread messages as read
       await supabase
         .from('messages')
-        .update({ 
-          read_by: supabase.raw('read_by || ?', [JSON.stringify([user.id])])
+        .update({
+          read_by: `read_by || '[\"${user.id}\"]'::jsonb`
         })
         .eq('conversation_id', conversationId)
-        .not('read_by', 'cs', `["${user.id}"]`);
+        .not('read_by', 'cs', `{${user.id}}`);
     } catch (err) {
       console.error('Error marking messages as read:', err);
     }
