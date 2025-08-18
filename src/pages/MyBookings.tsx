@@ -451,7 +451,7 @@ export const MyBookings: React.FC = () => {
                           icon={Eye} 
                           size="sm"
                           onClick={() => handleMessageVendor(booking)}
-                          onClick={() => navigate('/profile?tab=gallery')}
+                          onClick={() => handleMessageVendor(booking)}
                         >
                           View Gallery
                         </Button>
