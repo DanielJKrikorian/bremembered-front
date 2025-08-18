@@ -173,13 +173,12 @@ export const Home: React.FC = () => {
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => {
+                  onClick={(e) => {
                     navigate('/search');
                     // Scroll to top after navigation
                     setTimeout(() => {
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }, 100);
-                  }}
                     e.preventDefault();
                     e.stopPropagation();
                     setShowBookingModal(true);
