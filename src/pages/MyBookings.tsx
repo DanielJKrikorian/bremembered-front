@@ -455,32 +455,24 @@ export const MyBookings: React.FC = () => {
                           size="sm"
                           onClick={() => navigate(`/package/${booking.service_packages?.id || booking.id}`)}
                         >
-                          View Details
-                        </Button>
-                        <Button variant="outline" icon={Download} size="sm">
-                          Download Contract
-                        </Button>
                         <Button 
                           variant="outline" 
                           icon={Eye} 
                           size="sm"
-                          onClick={() => handleMessageVendor(booking)}
+                          onClick={() => navigate('/profile?tab=gallery')}
                         >
                           View Gallery
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          icon={MessageCircle} 
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
+                        <button
+                          onClick={() => {
                             console.log('Message button clicked!', booking);
                             handleMessageVendor(booking);
                           }}
+                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
                         >
+                          <MessageCircle className="w-4 h-4 mr-2" />
                           Message Vendor
-                        </Button>
+                        </button>
                         {booking.status === 'confirmed' && (
                           booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
                         ) && (
