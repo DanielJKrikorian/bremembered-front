@@ -472,7 +472,12 @@ export const MyBookings: React.FC = () => {
                           variant="outline" 
                           icon={MessageCircle} 
                           size="sm"
-                          onClick={() => handleMessageVendor(booking)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Message button clicked!', booking);
+                            handleMessageVendor(booking);
+                          }}
                         >
                           Message Vendor
                         </Button>
