@@ -142,14 +142,27 @@ export const MyBookings: React.FC = () => {
   };
 
   const handleMessageVendor = async (booking: any) => {
+    console.log('handleMessageVendor called with booking:', booking);
+    console.log('Vendor user_id:', booking.vendors?.user_id);
+    
     if (!booking.vendors?.user_id) {
       console.error('No vendor user_id found for booking:', booking);
+      alert('Unable to message vendor - missing vendor information');
       return;
     }
 
     try {
+      console.log('Creating conversation with vendor user_id:', booking.vendors.user_id);
       const conversation = await createConversation(booking.vendors.user_id);
+      console.log('Conversation created:', conversation);
       
+      if (!conversation) {
+        console.error('Failed to create conversation');
+        alert('Failed to create conversation with vendor');
+        return;
+      }
+      
+      console.log('Navigating to messages tab with conversation:', conversation.id);
       navigate('/profile?tab=messages', {
         state: {
           selectedConversationId: conversation.id,
@@ -158,6 +171,7 @@ export const MyBookings: React.FC = () => {
       });
     } catch (error) {
       console.error('Error creating conversation:', error);
+      alert('Error creating conversation: ' + (error instanceof Error ? error.message : 'Unknown error'));
       // Fallback: just go to messages tab
       navigate('/profile?tab=messages');
     }
