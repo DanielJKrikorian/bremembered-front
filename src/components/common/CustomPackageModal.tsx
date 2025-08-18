@@ -345,7 +345,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
     
     setTimeout(() => {
       setIsMatching(false);
-      setCurrentStep(7); // Results step
+      setCurrentStep(8); // Results step
     }, 2000);
   };
 
@@ -353,7 +353,9 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
     if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     } else if (currentStep === 6) {
-      findMatchingPackages();
+      setCurrentStep(7); // Go to matching step
+    } else if (currentStep === 7) {
+      findMatchingPackages(); // Start matching process
     }
   };
 
@@ -371,6 +373,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
       case 4: return true; // Always allow proceeding from step 4
       case 5: return preferences.style.length > 0;
       case 6: return preferences.budget !== '';
+      case 7: return true; // Matching step
       default: return false;
     }
   };
@@ -451,7 +454,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
         </div>
 
         {/* Progress Bar */}
-        {currentStep <= 6 && (
+        {currentStep <= 7 && !isMatching && (
           <div className="px-6 py-4 bg-gray-50">
             <div className="flex items-center justify-center space-x-2">
               {[1, 2, 3, 4, 5, 6].map((step) => (
@@ -916,6 +919,59 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
             </div>
           )}
 
+          {/* Step 7: Ready to Match */}
+          {currentStep === 7 && !isMatching && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  Ready to Find Your Perfect Package?
+                </h2>
+                <p className="text-gray-600 text-lg mb-8">
+                  We'll analyze your preferences to find the best wedding packages for you
+                </p>
+                
+                {/* Summary of selections */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                  <h3 className="font-semibold text-gray-900 mb-4">Your Selections Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Services</h4>
+                      <div className="space-y-1">
+                        {preferences.selectedServices.map(service => (
+                          <div key={service} className="flex items-center space-x-2">
+                            <Check className="w-3 h-3 text-green-600" />
+                            <span className="text-sm">{service} ({preferences.hours[service]}h)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Preferences</h4>
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <div>Budget: {budgetOptions.find(b => b.value === preferences.budget)?.label}</div>
+                        <div>Style: {preferences.style.join(', ') || 'Any'}</div>
+                        <div>Vibe: {preferences.vibe.join(', ') || 'Any'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleNext}
+                  icon={Sparkles}
+                  className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
+                >
+                  Find My Perfect Packages ✨
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Matching Step */}
           {isMatching && (
             <div className="text-center py-12">
@@ -942,8 +998,8 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
             </div>
           )}
 
-          {/* Step 7: Results */}
-          {currentStep === 7 && (
+          {/* Step 8: Results */}
+          {currentStep === 8 && (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -998,7 +1054,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
                         }
                       `}>
                         {isTopMatch && (
-                          <div className="absolute top-4 left-4 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          <div className="absolute top-4 right-4 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
                             🏆 Best Match
                           </div>
                         )}
@@ -1086,7 +1142,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
           )}
 
           {/* Navigation Buttons */}
-          {currentStep <= 6 && !isMatching && (
+          {currentStep <= 7 && !isMatching && (
             <div className="flex justify-between items-center pt-8 border-t border-gray-200">
               <Button
                 variant="outline"
@@ -1098,9 +1154,9 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
               
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-2">
-                  Step {currentStep} of 6
+                  Step {currentStep} of {currentStep <= 6 ? '6' : '7'}
                 </p>
-                {currentStep === 6 && (
+                {currentStep === 7 && (
                   <p className="text-xs text-gray-400">
                     We'll find packages that match your preferences
                   </p>
@@ -1113,7 +1169,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
                 disabled={!canProceed()}
                 icon={ArrowRight}
               >
-                {currentStep === 6 ? 'Find My Packages' : 'Continue'}
+                {currentStep === 7 ? 'Find My Packages' : 'Continue'}
               </Button>
             </div>
           )}
