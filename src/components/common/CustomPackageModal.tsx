@@ -1053,13 +1053,16 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
                           : 'border-gray-200 bg-white'
                         }
                       `}>
-                        {isTopMatch && (
-                          <div className="absolute top-4 right-4 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
-                            🏆 Best Match
-                          </div>
-                        )}
                         
                         <div className="p-6">
+                          {index === 0 && (
+                            <div className="mb-4">
+                              <span className="inline-flex items-center bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                🏆 Best Match
+                              </span>
+                            </div>
+                          )}
+                          
                           <div className="flex items-start space-x-6">
                             <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center flex-shrink-0">
                               <ServiceIcon className="w-8 h-8 text-rose-600" />
