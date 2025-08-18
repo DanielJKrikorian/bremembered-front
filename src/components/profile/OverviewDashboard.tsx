@@ -45,10 +45,6 @@ export const OverviewDashboard: React.FC = () => {
     navigate(`/profile?tab=${tab}`);
   };
 
-  const handleTabNavigation = (tab: string) => {
-    navigate(`/profile?tab=${tab}`);
-  };
-
   useEffect(() => {
     if (couple?.wedding_date) {
       try {
