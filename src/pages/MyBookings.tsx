@@ -362,14 +362,6 @@ export const MyBookings: React.FC = () => {
                           <Button variant="outline" icon={MessageCircle} size="sm">
                             Message
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            icon={MessageCircle} 
-                            size="sm"
-                            onClick={() => handleMessageVendor(booking)}
-                          >
-                            Message
-                          </Button>
                         </div>
                       )}
 
@@ -458,6 +450,7 @@ export const MyBookings: React.FC = () => {
                           variant="outline" 
                           icon={Eye} 
                           size="sm"
+                          onClick={() => handleMessageVendor(booking)}
                           onClick={() => navigate('/profile?tab=gallery')}
                         >
                           View Gallery
