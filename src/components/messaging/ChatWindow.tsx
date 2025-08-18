@@ -22,7 +22,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages]);
 
   // Mark messages as read when conversation opens
@@ -123,30 +125,41 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           messages.map((message) => {
             const isOwnMessage = message.sender_id === user?.id;
+            const senderName = isOwnMessage 
+              ? 'You' 
+              : conversation.other_participant?.name || 'Unknown';
+            
             return (
-              <div
-                key={message.id}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  isOwnMessage
-                    ? 'bg-rose-500 text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                }`}>
-                  <p className="text-sm leading-relaxed">{message.message_text}</p>
-                  <div className={`flex items-center justify-end space-x-1 mt-1 ${
-                    isOwnMessage ? 'text-rose-100' : 'text-gray-500'
+              <div key={message.id} className="space-y-1">
+                {/* Sender Name */}
+                <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                  <span className="text-xs text-gray-500 px-2">
+                    {senderName}
+                  </span>
+                </div>
+                
+                {/* Message Bubble */}
+                <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-white text-gray-900 border border-gray-200'
                   }`}>
-                    <span className="text-xs">
-                      {formatMessageTime(message.timestamp)}
-                    </span>
-                    {isOwnMessage && (
-                      isMessageRead(message) ? (
-                        <CheckCheck className="w-3 h-3" />
-                      ) : (
-                        <Check className="w-3 h-3" />
-                      )
-                    )}
+                    <p className="text-sm leading-relaxed">{message.message_text}</p>
+                    <div className={`flex items-center justify-end space-x-1 mt-1 ${
+                      isOwnMessage
+                        ? 'text-rose-100' 
+                        : 'text-gray-500'
+                    }`}>
+                      <span className="text-xs">
+                        {formatMessageTime(message.timestamp)}
+                      </span>
+                      {isOwnMessage && (
+                        isMessageRead(message) ? (
+                          <CheckCheck className="w-3 h-3" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,7 +177,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
             disabled={sending}
           />
           <Button
@@ -173,7 +186,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             icon={Send}
             disabled={!newMessage.trim() || sending}
             loading={sending}
-            className="rounded-full px-4"
+            className="rounded-full px-4 flex-shrink-0"
           >
           </Button>
         </div>
