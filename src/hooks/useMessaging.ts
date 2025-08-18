@@ -288,7 +288,7 @@ export const useBookedVendors = () => {
       }
     };
 
-    fetchConversations();
+    fetchBookedVendors();
   }, [user, isAuthenticated]);
 
   return { vendors, loading, error };
