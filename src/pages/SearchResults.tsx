@@ -43,6 +43,11 @@ export const SearchResults: React.FC = () => {
     if (location.state?.filters) {
       setFilters(prev => ({ ...prev, ...location.state.filters }));
     }
+    
+    // Scroll to top when coming from navigation with filters
+    if (location.state?.filters) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, [location.state]);
 
   // Filter packages by search term and additional filters
