@@ -450,10 +450,17 @@ export const MyBookings: React.FC = () => {
                           variant="outline" 
                           icon={Eye} 
                           size="sm"
-                          onClick={() => handleMessageVendor(booking)}
-                          onClick={() => handleMessageVendor(booking)}
+                          onClick={() => navigate('/profile?tab=gallery')}
                         >
                           View Gallery
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          icon={MessageCircle} 
+                          size="sm"
+                          onClick={() => handleMessageVendor(booking)}
+                        >
+                          Message Vendor
                         </Button>
                         {booking.status === 'confirmed' && (
                           booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
