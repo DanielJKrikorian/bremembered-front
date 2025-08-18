@@ -6,11 +6,13 @@ import { Card } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../hooks/useBookings';
 import { AuthModal } from '../components/auth/AuthModal';
+import { useCreateConversation } from '../hooks/useMessaging';
 
 export const MyBookings: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { bookings, loading, error } = useBookings();
+  const { createConversation } = useCreateConversation();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -137,6 +139,31 @@ export const MyBookings: React.FC = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(price / 100);
+  };
+
+  const handleMessageVendor = async (booking: any) => {
+    if (!booking.vendors?.user_id) {
+      console.error('No vendor user_id found for booking:', booking);
+      return;
+    }
+
+    try {
+      // Create or find existing conversation with this vendor
+      const conversation = await createConversation(booking.vendors.user_id);
+      if (conversation) {
+        // Navigate to messages tab with this conversation
+        navigate('/profile?tab=messages', {
+          state: {
+            selectedConversationId: conversation.id,
+            vendor: booking.vendors
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      // Fallback: just go to messages tab
+      navigate('/profile?tab=messages');
+    }
   };
 
   return (
@@ -338,6 +365,14 @@ export const MyBookings: React.FC = () => {
                           <Button variant="outline" icon={MessageCircle} size="sm">
                             Message
                           </Button>
+                          <Button 
+                            variant="outline" 
+                            icon={MessageCircle} 
+                            size="sm"
+                            onClick={() => handleMessageVendor(booking)}
+                          >
+                            Message
+                          </Button>
                         </div>
                       )}
 
@@ -426,6 +461,7 @@ export const MyBookings: React.FC = () => {
                           variant="outline" 
                           icon={Eye} 
                           size="sm"
+                          onClick={() => handleMessageVendor(booking)}
                           onClick={() => navigate('/profile?tab=gallery')}
                         >
                           View Gallery

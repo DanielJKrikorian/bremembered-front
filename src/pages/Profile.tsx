@@ -93,7 +93,35 @@ export const Profile: React.FC = () => {
     if (tab && ['profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
       setActiveTab(tab as any);
     }
+
+    // Check if we should auto-select a conversation
+    if (tab === 'messages' && location.state?.selectedConversationId) {
+      const targetConversationId = location.state.selectedConversationId;
+      // Find the conversation once conversations are loaded
+      const findAndSelectConversation = () => {
+        const conversation = conversations.find(c => c.id === targetConversationId);
+        if (conversation) {
+          setSelectedConversation(conversation);
+        }
+      };
+      
+      // If conversations are already loaded, select immediately
+      if (!conversationsLoading && conversations.length > 0) {
+        findAndSelectConversation();
+      }
+    }
   }, []);
+
+  // Auto-select conversation when conversations load
+  React.useEffect(() => {
+    if (!conversationsLoading && location.state?.selectedConversationId && !selectedConversation) {
+      const targetConversationId = location.state.selectedConversationId;
+      const conversation = conversations.find(c => c.id === targetConversationId);
+      if (conversation) {
+        setSelectedConversation(conversation);
+      }
+    }
+  }, [conversationsLoading, conversations, location.state?.selectedConversationId, selectedConversation]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as any);

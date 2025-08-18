@@ -23,6 +23,7 @@ export interface Conversation {
   unread_count?: number;
   other_participant?: {
     id: string;
+    user_id?: string;
     name: string;
     profile_photo?: string;
     role: 'vendor' | 'couple';
