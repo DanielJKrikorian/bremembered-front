@@ -56,6 +56,16 @@ export const Header: React.FC = () => {
                 Browse Services
               </button>
               <button 
+                onClick={() => navigate('/blog')}
+                className={`transition-colors ${
+                  isActive('/blog') 
+                    ? 'text-rose-600 font-medium' 
+                    : 'text-gray-700 hover:text-rose-600'
+                }`}
+              >
+                Blog
+              </button>
+              <button 
                 onClick={() => navigate('/inspiration')}
                 className={`transition-colors ${
                   isActive('/inspiration') 
@@ -188,6 +198,12 @@ export const Header: React.FC = () => {
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
                       Browse Services
+                    </button>
+                    <button 
+                      onClick={() => navigate('/blog')}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      Blog
                     </button>
                     <button 
                       onClick={() => navigate('/inspiration')}

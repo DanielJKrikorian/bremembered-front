@@ -22,6 +22,8 @@ import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
 import { VendorOnboarding } from './pages/VendorOnboarding';
 import { ChatBot } from './components/chat/ChatBot';
+import { Blog } from './pages/Blog';
+import { BlogPost } from './pages/BlogPost';
 
 function App() {
   return (
@@ -42,6 +44,10 @@ function App() {
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/profile" element={<Profile />} />
+                
+                {/* Blog Routes */}
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
                 
                 {/* Package Details */}
                 <Route path="/package/:id" element={<PackageDetails />} />
