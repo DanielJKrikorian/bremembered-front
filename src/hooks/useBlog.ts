@@ -192,17 +192,7 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
       try {
         let query = supabase
           .from('blog_posts')
-          .select(`
-            *,
-            blog_categories!inner(
-              id,
-              name,
-              slug,
-              description,
-              color,
-              post_count
-            )
-          `)
+          .select('*')
           .eq('status', 'published')
           .order('published_at', { ascending: false });
 
@@ -227,13 +217,24 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
         }
 
         const { data, error } = await query;
-
+        
         if (error) throw error;
 
-        // Transform data to include category info
-        const transformedPosts = (data || []).map(post => ({
+        // Fetch categories separately
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('blog_categories')
+          .select('*');
+
+        if (categoriesError) throw categoriesError;
+
+        const categoriesMap = new Map(
+          (categoriesData || []).map(cat => [cat.slug, cat])
+        );
+
+        // Transform data to manually include category info
+        const transformedPosts: BlogPost[] = (data || []).map(post => ({
           ...post,
-          category_info: post.blog_categories
+          category_info: categoriesMap.get(post.category)
         }));
 
         setPosts(transformedPosts);
@@ -344,27 +345,28 @@ Remember that the cheapest option isn't always the best value. Consider the phot
       try {
         const { data, error } = await supabase
           .from('blog_posts')
-          .select(`
-            *,
-            blog_categories!inner(
-              id,
-              name,
-              slug,
-              description,
-              color,
-              post_count
-            )
-          `)
+          .select('*')
           .eq('slug', slug)
           .eq('status', 'published')
           .single();
 
         if (error) throw error;
 
-        // Transform data to include category info
+        // Fetch category separately
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('blog_categories')
+          .select('*')
+          .eq('slug', data.category)
+          .single();
+
+        if (categoryError) {
+          console.warn('Could not fetch category:', categoryError);
+        }
+
+        // Transform data to manually include category info
         const transformedPost = {
           ...data,
-          category_info: data.blog_categories
+          category_info: categoryData
         };
 
         setPost(transformedPost);
