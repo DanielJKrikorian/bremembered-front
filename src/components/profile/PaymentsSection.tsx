@@ -38,6 +38,7 @@ interface PaymentRecord {
 interface VendorPaymentInput {
   vendor_id: string;
   booking_id: string;
+  booking_id: string;
   amount: number;
   tip: number;
   vendor_name: string;
@@ -64,6 +65,7 @@ const PaymentModal: React.FC<{
         .map(booking => ({
           vendor_id: booking.vendor_id,
           booking_id: booking.id,
+          booking_id: booking.id,
           amount: booking.remaining_balance / 100, // Convert from cents
           tip: 0,
           vendor_name: booking.vendor_name
@@ -72,24 +74,24 @@ const PaymentModal: React.FC<{
     }
   }, [isOpen, bookings]);
 
-  const handleTipChange = (vendorId: string, value: string) => {
+  const handleTipChange = (vendorId: string, bookingId: string, value: string) => {
     const numValue = parseFloat(value) || 0;
     setVendorPayments(prev =>
       prev.map(vp => 
-        vp.vendor_id === vendorId 
+        vp.vendor_id === vendorId && vp.booking_id === bookingId
           ? { ...vp, tip: Math.round(numValue * 100) / 100 }
           : vp
       )
     );
   };
 
-  const handlePercentageSelect = (vendorId: string, percentage: number) => {
-    const vendorPayment = vendorPayments.find(vp => vp.vendor_id === vendorId);
+  const handlePercentageSelect = (vendorId: string, bookingId: string, percentage: number) => {
+    const vendorPayment = vendorPayments.find(vp => vp.vendor_id === vendorId && vp.booking_id === bookingId);
     if (vendorPayment) {
       const tipAmount = (vendorPayment.amount * percentage) / 100;
       setVendorPayments(prev =>
         prev.map(vp => 
-          vp.vendor_id === vendorId 
+          vp.vendor_id === vendorId && vp.booking_id === bookingId
             ? { ...vp, tip: Math.round(tipAmount * 100) / 100 }
             : vp
         )
@@ -206,9 +208,9 @@ const PaymentModal: React.FC<{
           <div className="space-y-4">
             <h4 className="font-semibold text-gray-900">Payment Breakdown</h4>
             {vendorPayments.map((vp) => {
-              const booking = bookings.find(b => b.vendor_id === vp.vendor_id);
+              const booking = bookings.find(b => b.vendor_id === vp.vendor_id && b.id === vp.booking_id);
               return (
-                <div key={vp.vendor_id} className="border border-gray-200 rounded-lg p-4">
+                <div key={`${vp.vendor_id}-${vp.booking_id}`} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center space-x-3 mb-4">
                     {booking?.vendor_photo ? (
                       <img
@@ -223,6 +225,7 @@ const PaymentModal: React.FC<{
                     )}
                     <div>
                       <h5 className="font-medium text-gray-900">{vp.vendor_name}</h5>
+                      <p className="text-sm text-gray-600">{booking?.package_name}</p>
                       <p className="text-sm text-gray-600">{booking?.service_type}</p>
                     </div>
                   </div>
@@ -248,7 +251,7 @@ const PaymentModal: React.FC<{
                               type="button"
                               onClick={(e) => {
                                 e.preventDefault();
-                                handlePercentageSelect(vp.vendor_id, percentage);
+                                handlePercentageSelect(vp.vendor_id, vp.booking_id, percentage);
                               }}
                               className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
                             >
@@ -261,7 +264,7 @@ const PaymentModal: React.FC<{
                           step="0.01"
                           min="0"
                           value={vp.tip.toFixed(2)}
-                          onChange={(e) => handleTipChange(vp.vendor_id, e.target.value)}
+                          onChange={(e) => handleTipChange(vp.vendor_id, vp.booking_id, e.target.value)}
                           placeholder="Custom tip amount"
                           icon={DollarSign}
                         />
@@ -271,7 +274,7 @@ const PaymentModal: React.FC<{
 
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">Total for {vp.vendor_name}:</span>
+                      <span className="font-medium text-gray-900">Total for this service:</span>
                       <span className="text-lg font-bold text-gray-900">
                         ${(vp.amount + vp.tip).toFixed(2)}
                       </span>
