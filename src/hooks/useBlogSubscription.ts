@@ -37,16 +37,14 @@ export const useBlogSubscription = () => {
     }
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('blog_subscriptions')
         .insert([{
           email: email.toLowerCase().trim(),
           name: name?.trim() || null,
           subscription_source: source,
           status: 'active'
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
