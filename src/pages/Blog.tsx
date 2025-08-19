@@ -106,7 +106,10 @@ export const Blog: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Featured Article */}
                 <div className="lg:col-span-2">
-                  <Card className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer" onClick={() => navigate(`/blog/${featuredPosts[0].slug}`)}>
+                  <Card 
+                    className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer" 
+                    onClick={() => navigate(`/blog/${featuredPosts[0].slug}`)}
+                  >
                     <div className="aspect-video relative">
                       <img
                         src={featuredPosts[0].featured_image}
@@ -157,7 +160,7 @@ export const Blog: React.FC = () => {
                   {featuredPosts.slice(1, 3).map((post) => (
                     <Card 
                       key={post.id} 
-                      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" 
+                      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
                       onClick={() => navigate(`/blog/${post.slug}`)}
                     >
                       <div className="flex">
@@ -386,7 +389,7 @@ export const Blog: React.FC = () => {
                   
                   <h3 className={`font-bold text-gray-900 mb-3 hover:text-rose-600 transition-colors ${
                     viewMode === 'list' ? 'text-xl' : 'text-lg'
-                  } group-hover:text-rose-600`}>
+                   } group-hover:text-rose-600 cursor-pointer`}>
                     {post.title}
                   </h3>
                   
