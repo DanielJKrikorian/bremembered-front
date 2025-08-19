@@ -15,6 +15,7 @@ import { ConversationList } from '../components/messaging/ConversationList';
 import { ChatWindow } from '../components/messaging/ChatWindow';
 import { Conversation } from '../hooks/useMessaging';
 import { OverviewDashboard } from '../components/profile/OverviewDashboard';
+import { PaymentsSection } from '../components/profile/PaymentsSection';
 
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -51,7 +52,7 @@ export const Profile: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'preferences' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -91,7 +92,7 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'preferences', 'settings'].includes(tab)) {
+    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'preferences', 'settings'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
       // Default to overview
@@ -309,6 +310,7 @@ export const Profile: React.FC = () => {
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
     { key: 'messages', label: 'Messages', icon: MessageCircle },
+    { key: 'payments', label: 'Payments', icon: CreditCard },
     { key: 'preferences', label: 'Preferences', icon: Heart },
     { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'settings', label: 'Settings', icon: Settings }
@@ -787,6 +789,10 @@ export const Profile: React.FC = () => {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === 'payments' && (
+            <PaymentsSection />
           )}
 
           {activeTab === 'preferences' && (
