@@ -107,7 +107,7 @@ export const Blog: React.FC = () => {
                 {/* Main Featured Article */}
                 <div className="lg:col-span-2">
                   <Card 
-                    className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer" 
+                    className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
                     onClick={() => navigate(`/blog/${featuredPosts[0].slug}`)}
                   >
                     <div className="aspect-video relative">
