@@ -1096,12 +1096,6 @@ export const PaymentsSection: React.FC = () => {
                 )}
                 <Button
                   variant="outline"
-                  icon={Receipt}
-                >
-                  View Invoice
-                </Button>
-                <Button
-                  variant="outline"
                   icon={Download}
                 >
                   Download Receipt
