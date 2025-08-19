@@ -454,7 +454,7 @@ export const PaymentsSection: React.FC = () => {
           venues(
             name
           ),
-          payments(
+          payments!payments_booking_id_fkey(
             id,
             amount,
             payment_type,
