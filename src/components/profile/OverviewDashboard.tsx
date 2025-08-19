@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart } from 'lucide-react';
+import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart, CreditCard, DollarSign } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
@@ -18,6 +19,20 @@ interface TodoItem {
   due_time: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface BookingBalance {
+  id: string;
+  vendor_name: string;
+  vendor_id: string;
+  vendor_photo?: string;
+  service_type: string;
+  package_name: string;
+  total_amount: number;
+  paid_amount: number;
+  remaining_balance: number;
+  event_date?: string;
+  status: string;
 }
 
 interface OverviewDashboardProps {
@@ -41,6 +56,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   const [daysUntilWedding, setDaysUntilWedding] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentBalances, setPaymentBalances] = useState<BookingBalance[]>([]);
+  const [paymentLoading, setPaymentLoading] = useState(true);
 
   useEffect(() => {
     if (couple?.wedding_date) {
@@ -57,6 +74,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   useEffect(() => {
     if (user?.id) {
       fetchTodos();
+      fetchPaymentBalances();
     }
   }, [user]);
 
@@ -120,6 +138,91 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       setError(err instanceof Error ? err.message : 'Failed to fetch todos');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchPaymentBalances = async () => {
+    if (!couple?.id) {
+      setPaymentLoading(false);
+      return;
+    }
+
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock data for demo
+      const mockBalances: BookingBalance[] = [
+        {
+          id: 'mock-booking-1',
+          vendor_name: 'Elegant Moments Photography',
+          vendor_id: 'mock-vendor-1',
+          vendor_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+          service_type: 'Photography',
+          package_name: 'Premium Wedding Photography',
+          total_amount: 250000,
+          paid_amount: 125000,
+          remaining_balance: 125000,
+          event_date: '2024-08-15',
+          status: 'confirmed'
+        }
+      ];
+      setPaymentBalances(mockBalances);
+      setPaymentLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          amount,
+          service_type,
+          status,
+          vendors!inner(
+            id,
+            name,
+            profile_photo
+          ),
+          service_packages(
+            name
+          ),
+          events(
+            start_time
+          ),
+          payments!payments_booking_id_fkey(
+            amount,
+            status
+          )
+        `)
+        .eq('couple_id', couple.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const processedBalances: BookingBalance[] = (data || []).map(booking => {
+        const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
+        const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const remainingBalance = Math.max(0, booking.amount - paidAmount);
+
+        return {
+          id: booking.id,
+          vendor_name: booking.vendors.name,
+          vendor_id: booking.vendors.id,
+          vendor_photo: booking.vendors.profile_photo,
+          service_type: booking.service_type,
+          package_name: booking.service_packages?.name || booking.service_type,
+          total_amount: booking.amount,
+          paid_amount: paidAmount,
+          remaining_balance: remainingBalance,
+          event_date: booking.events?.start_time,
+          status: booking.status
+        };
+      });
+
+      setPaymentBalances(processedBalances);
+    } catch (err) {
+      console.error('Error fetching payment balances:', err);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -297,6 +400,19 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
   ).slice(0, 6);
 
+  // Calculate payment totals
+  const totalOutstanding = paymentBalances.reduce((sum, booking) => sum + booking.remaining_balance, 0);
+  const outstandingCount = paymentBalances.filter(b => b.remaining_balance > 0).length;
+
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount / 100);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -397,6 +513,79 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           </div>
         </Card>
       </div>
+
+      {/* Payment Overview */}
+      {!paymentLoading && totalOutstanding > 0 && (
+        <Card className="p-6 bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                  Outstanding Payments
+                </h3>
+                <p className="text-gray-600">
+                  You have {outstandingCount} payment{outstandingCount !== 1 ? 's' : ''} pending
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-600 mb-2">
+                {formatPrice(totalOutstanding)}
+              </div>
+              <Button
+                variant="primary"
+                icon={CreditCard}
+                onClick={() => onTabChange?.('payments')}
+              >
+                Make Payment
+              </Button>
+            </div>
+          </div>
+          
+          {/* Outstanding Payments List */}
+          <div className="mt-6 space-y-3">
+            <h4 className="font-medium text-gray-900">Pending Payments:</h4>
+            {paymentBalances
+              .filter(booking => booking.remaining_balance > 0)
+              .slice(0, 3)
+              .map((booking) => (
+                <div key={booking.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
+                  <div className="flex items-center space-x-3">
+                    {booking.vendor_photo ? (
+                      <img
+                        src={booking.vendor_photo}
+                        alt={booking.vendor_name}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <User className="w-4 h-4 text-gray-400" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{booking.package_name}</p>
+                      <p className="text-xs text-gray-600">{booking.vendor_name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-red-600 text-sm">
+                      {formatPrice(booking.remaining_balance)}
+                    </p>
+                    <p className="text-xs text-gray-500">due</p>
+                  </div>
+                </div>
+              ))}
+            {paymentBalances.filter(b => b.remaining_balance > 0).length > 3 && (
+              <p className="text-sm text-gray-600 text-center">
+                +{paymentBalances.filter(b => b.remaining_balance > 0).length - 3} more pending payments
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Messages */}
