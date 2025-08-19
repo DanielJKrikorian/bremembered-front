@@ -163,10 +163,10 @@ export const BlogPost: React.FC = () => {
             </button>
             <ChevronRight className="w-4 h-4" />
             <button 
-              onClick={() => navigate('/blog')}
+              onClick={() => navigate('/inspiration')}
               className="hover:text-rose-600 transition-colors"
             >
-              Blog
+              Inspiration
             </button>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-medium truncate">{post.title}</span>
@@ -180,9 +180,9 @@ export const BlogPost: React.FC = () => {
           <Button 
             variant="ghost" 
             icon={ArrowLeft} 
-            onClick={() => navigate('/blog')}
+            onClick={() => navigate('/inspiration')}
           >
-            Back to Blog
+            Back to Inspiration
           </Button>
         </div>
 
@@ -267,7 +267,7 @@ export const BlogPost: React.FC = () => {
                 {post.tags.map((tag) => (
                   <button
                     key={tag}
-                    onClick={() => navigate('/blog', { state: { searchTerm: tag } })}
+                    onClick={() => navigate('/inspiration', { state: { searchTerm: tag } })}
                     className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                   >
                     {tag}
@@ -417,7 +417,7 @@ export const BlogPost: React.FC = () => {
         {/* Newsletter Signup */}
         <section className="mt-16">
           <NewsletterSignup 
-            source="blog_post"
+            source="inspiration_post"
             title="Love This Article?"
             description="Get more wedding inspiration and expert tips delivered to your inbox every week."
           />

@@ -45,9 +45,8 @@ function App() {
                 <Route path="/support" element={<Support />} />
                 <Route path="/profile" element={<Profile />} />
                 
-                {/* Blog Routes */}
-                <Route path="/blog" element={<Blog />} />
-                <Route path="/blog/:slug" element={<BlogPost />} />
+                {/* Inspiration Routes */}
+                <Route path="/inspiration/:slug" element={<BlogPost />} />
                 
                 {/* Package Details */}
                 <Route path="/package/:id" element={<PackageDetails />} />
