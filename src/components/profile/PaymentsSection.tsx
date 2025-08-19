@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye, X, FileText } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { CreditCard, DollarSign, Clock, CheckCircle, AlertCircle, User } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
