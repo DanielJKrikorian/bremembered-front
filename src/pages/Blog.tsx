@@ -107,8 +107,7 @@ export const Blog: React.FC = () => {
                 {/* Main Featured Article */}
                 <div className="lg:col-span-2">
                   <Card 
-                    className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/blog/${featuredPosts[0].slug}`)}
+                    className="overflow-hidden hover:shadow-xl transition-shadow"
                   >
                     <div className="aspect-video relative">
                       <img
@@ -151,6 +150,15 @@ export const Blog: React.FC = () => {
                         </div>
                         <span>{formatDate(featuredPosts[0].published_at || featuredPosts[0].created_at)}</span>
                       </div>
+                      <div className="mt-4">
+                        <Button
+                          variant="primary"
+                          onClick={() => navigate(`/blog/${featuredPosts[0].slug}`)}
+                          className="w-full"
+                        >
+                          Read Article
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 </div>
@@ -160,8 +168,7 @@ export const Blog: React.FC = () => {
                   {featuredPosts.slice(1, 3).map((post) => (
                     <Card 
                       key={post.id} 
-                      className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/blog/${post.slug}`)}
+                      className="overflow-hidden hover:shadow-lg transition-shadow"
                     >
                       <div className="flex">
                         <img
@@ -183,6 +190,16 @@ export const Blog: React.FC = () => {
                             <span className="mx-2">•</span>
                             <Eye className="w-3 h-3 mr-1" />
                             <span>{formatNumber(post.view_count)}</span>
+                          </div>
+                          <div className="mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/blog/${post.slug}`)}
+                              className="w-full"
+                            >
+                              Read More
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -356,10 +373,9 @@ export const Blog: React.FC = () => {
             {posts.map((post) => (
               <Card 
                 key={post.id} 
-                className={`overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group ${
+                className={`overflow-hidden hover:shadow-xl transition-shadow group ${
                   viewMode === 'list' ? 'flex' : ''
                 }`}
-                onClick={() => navigate(`/blog/${post.slug}`)}
               >
                 <div className={viewMode === 'list' ? 'w-64 flex-shrink-0' : 'aspect-video'}>
                   <img
@@ -415,7 +431,7 @@ export const Blog: React.FC = () => {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
@@ -432,6 +448,14 @@ export const Blog: React.FC = () => {
                     </div>
                     <span>{formatDate(post.published_at || post.created_at)}</span>
                   </div>
+                  
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate(`/blog/${post.slug}`)}
+                    className="w-full"
+                  >
+                    Read Article
+                  </Button>
                 </div>
               </Card>
             ))}
