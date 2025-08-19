@@ -246,7 +246,10 @@ const PaymentModal: React.FC<{
                             <button
                               key={percentage}
                               type="button"
-                              onClick={() => handlePercentageSelect(vp.vendor_id, percentage)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handlePercentageSelect(vp.vendor_id, percentage);
+                              }}
                               className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
                             >
                               {percentage}%
