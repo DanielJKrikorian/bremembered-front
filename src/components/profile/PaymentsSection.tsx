@@ -84,9 +84,9 @@ const PaymentModal: React.FC<{
   };
 
   const handlePercentageSelect = (vendorId: string, percentage: number) => {
-    const vendor = vendorPayments.find(vp => vp.vendor_id === vendorId);
-    if (vendor) {
-      const tipAmount = (vendor.amount * percentage) / 100;
+    const vendorPayment = vendorPayments.find(vp => vp.vendor_id === vendorId);
+    if (vendorPayment) {
+      const tipAmount = (vendorPayment.amount * percentage) / 100;
       setVendorPayments(prev =>
         prev.map(vp => 
           vp.vendor_id === vendorId 
