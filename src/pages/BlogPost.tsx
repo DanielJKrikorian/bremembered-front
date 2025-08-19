@@ -15,6 +15,11 @@ export const BlogPost: React.FC = () => {
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
 
+  // Scroll to top when component mounts or slug changes
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [slug]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
