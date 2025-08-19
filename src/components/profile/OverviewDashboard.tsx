@@ -74,9 +74,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   useEffect(() => {
     if (user?.id) {
       fetchTodos();
-      fetchPaymentBalances();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (couple?.id) {
+      fetchPaymentBalances();
+    }
+  }, [couple]);
 
   const fetchTodos = async () => {
     if (!user?.id) {
@@ -160,6 +165,32 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           total_amount: 250000,
           paid_amount: 125000,
           remaining_balance: 125000,
+          event_date: '2024-08-15',
+          status: 'confirmed'
+        },
+        {
+          id: 'mock-booking-2',
+          vendor_name: 'Perfect Harmony Events',
+          vendor_id: 'mock-vendor-2',
+          vendor_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
+          service_type: 'Coordination',
+          package_name: 'Day-of Coordination',
+          total_amount: 80000,
+          paid_amount: 40000,
+          remaining_balance: 40000,
+          event_date: '2024-08-15',
+          status: 'confirmed'
+        },
+        {
+          id: 'mock-booking-3',
+          vendor_name: 'Timeless Studios',
+          vendor_id: 'mock-vendor-3',
+          vendor_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400',
+          service_type: 'Videography',
+          package_name: 'Cinematic Wedding Video',
+          total_amount: 180000,
+          paid_amount: 90000,
+          remaining_balance: 90000,
           event_date: '2024-08-15',
           status: 'confirmed'
         }
@@ -515,7 +546,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       </div>
 
       {/* Payment Overview */}
-      {!paymentLoading && totalOutstanding > 0 && (
+      {!paymentLoading && paymentBalances.length > 0 && totalOutstanding > 0 && (
         <Card className="p-6 bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -540,7 +571,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
                 icon={CreditCard}
                 onClick={() => onTabChange?.('payments')}
               >
-                Make Payment
+                Pay Now
               </Button>
             </div>
           </div>
