@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music, MessageCircle } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music, MessageCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
