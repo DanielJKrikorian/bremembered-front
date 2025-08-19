@@ -44,6 +44,287 @@ interface VendorPaymentInput {
   vendor_name: string;
 }
 
+const SinglePaymentModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  booking: BookingBalance;
+  onSuccess: () => void;
+}> = ({ isOpen, onClose, booking, onSuccess }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tip, setTip] = useState(0);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (stripe && elements) {
+      const cardElement = elements.getElement(CardElement);
+      if (cardElement) {
+        cardElement.on('ready', () => setCardReady(true));
+        cardElement.on('change', (event) => {
+          setCardError(event.error ? event.error.message : null);
+        });
+      }
+    }
+
+    return () => {
+      if (elements) {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          cardElement.off('ready');
+          cardElement.off('change');
+        }
+      }
+    };
+  }, [stripe, elements]);
+
+  const handlePercentageSelect = (percentage: number) => {
+    const tipAmount = (booking.remaining_balance / 100 * percentage) / 100;
+    setTip(Math.round(tipAmount * 100) / 100);
+  };
+
+  const totalPayment = (booking.remaining_balance / 100) + tip;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements || !user) {
+      setError('Payment system not ready');
+      return;
+    }
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setError('Card information not found');
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the terms');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            amount: Math.round(totalPayment * 100), // Convert to cents
+            currency: 'usd',
+            vendor_payments: [{
+              vendor_id: booking.vendor_id,
+              booking_id: booking.id,
+              amount: booking.remaining_balance,
+              tip: Math.round(tip * 100), // Convert to cents
+              vendor_name: booking.vendor_name
+            }]
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const { client_secret } = data;
+
+      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(client_secret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: user.user_metadata?.name || 'Wedding Customer',
+          },
+        },
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Payment failed');
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        onSuccess();
+        onClose();
+      } else {
+        throw new Error('Payment was not completed successfully');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">Pay {booking.vendor_name}</h3>
+          <p className="text-gray-600 mt-1">{booking.package_name}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {/* Vendor Info */}
+          <div className="flex items-center space-x-3">
+            {booking.vendor_photo ? (
+              <img
+                src={booking.vendor_photo}
+                alt={booking.vendor_name}
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                <User className="w-6 h-6 text-gray-400" />
+              </div>
+            )}
+            <div>
+              <h4 className="font-medium text-gray-900">{booking.vendor_name}</h4>
+              <p className="text-sm text-gray-600">{booking.service_type}</p>
+            </div>
+          </div>
+
+          {/* Payment Amount */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-600">Remaining Balance:</span>
+              <span className="text-lg font-semibold text-gray-900">
+                ${(booking.remaining_balance / 100).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Tip Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Add Tip (Optional)
+            </label>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                {[10, 15, 20].map(percentage => (
+                  <button
+                    key={percentage}
+                    type="button"
+                    onClick={() => handlePercentageSelect(percentage)}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                  >
+                    {percentage}%
+                  </button>
+                ))}
+              </div>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={tip.toFixed(2)}
+                onChange={(e) => setTip(parseFloat(e.target.value) || 0)}
+                placeholder="Custom tip amount"
+                icon={DollarSign}
+              />
+            </div>
+          </div>
+
+          {/* Total */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-blue-900">Total Payment:</span>
+              <span className="text-xl font-bold text-blue-900">
+                ${totalPayment.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* Card Element */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Information
+            </label>
+            <div className="p-4 border border-gray-300 rounded-lg bg-white">
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#1f2937',
+                      '::placeholder': {
+                        color: '#6b7280',
+                      },
+                    },
+                    invalid: {
+                      color: '#dc2626',
+                    },
+                  },
+                }}
+              />
+            </div>
+            {cardError && (
+              <p className="text-sm text-red-600 mt-1">{cardError}</p>
+            )}
+          </div>
+
+          {/* Terms */}
+          <div>
+            <label className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 text-rose-500 focus:ring-rose-500"
+                required
+              />
+              <span className="text-xs text-gray-600">
+                I agree to process this payment securely through Stripe.
+              </span>
+            </label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading || !stripe || !elements || !agreedToTerms || !cardReady}
+              loading={loading}
+              className="flex-1"
+            >
+              {loading ? 'Processing...' : `Pay $${totalPayment.toFixed(2)}`}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+};
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const PaymentModal: React.FC<{
@@ -366,6 +647,8 @@ export const PaymentsSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSinglePaymentModal, setShowSinglePaymentModal] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<BookingBalance | null>(null);
   const [selectedTab, setSelectedTab] = useState<'outstanding' | 'paid' | 'all'>('outstanding');
 
   useEffect(() => {
@@ -509,6 +792,11 @@ export const PaymentsSection: React.FC = () => {
 
   const handlePaymentSuccess = () => {
     fetchBookingBalances(); // Refresh data
+  };
+
+  const handleSinglePayment = (booking: BookingBalance) => {
+    setSelectedBookingForPayment(booking);
+    setShowSinglePaymentModal(true);
   };
 
   const formatPrice = (amount: number) => {
@@ -796,13 +1084,15 @@ export const PaymentsSection: React.FC = () => {
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
                 {booking.remaining_balance > 0 && (
-                  <Button
-                    variant="primary"
-                    icon={CreditCard}
-                    onClick={() => setShowPaymentModal(true)}
-                  >
-                    Pay {formatPrice(booking.remaining_balance)}
-                  </Button>
+                  <>
+                    <Button
+                      variant="primary"
+                      icon={CreditCard}
+                      onClick={() => handleSinglePayment(booking)}
+                    >
+                      Pay {formatPrice(booking.remaining_balance)}
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="outline"
@@ -839,6 +1129,17 @@ export const PaymentsSection: React.FC = () => {
           bookings={bookings.filter(b => b.remaining_balance > 0)}
           onSuccess={handlePaymentSuccess}
         />
+        {selectedBookingForPayment && (
+          <SinglePaymentModal
+            isOpen={showSinglePaymentModal}
+            onClose={() => {
+              setShowSinglePaymentModal(false);
+              setSelectedBookingForPayment(null);
+            }}
+            booking={selectedBookingForPayment}
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
       </Elements>
     </div>
   );
