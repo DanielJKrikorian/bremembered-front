@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useBlogPost, useRelatedPosts, useBlogPostLike } from '../hooks/useBlog';
+import { NewsletterSignup } from '../components/blog/NewsletterSignup';
 
 export const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -415,32 +416,11 @@ export const BlogPost: React.FC = () => {
 
         {/* Newsletter Signup */}
         <section className="mt-16">
-          <Card className="p-8 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
-            <div className="text-center max-w-2xl mx-auto">
-              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-8 h-8 text-rose-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                Never Miss Wedding Inspiration
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Get the latest wedding tips, real stories, and vendor spotlights delivered to your inbox weekly.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-                <Button variant="primary" size="lg">
-                  Subscribe
-                </Button>
-              </div>
-              <p className="text-sm text-gray-500 mt-3">
-                Join 10,000+ couples planning their perfect day. Unsubscribe anytime.
-              </p>
-            </div>
-          </Card>
+          <NewsletterSignup 
+            source="blog_post"
+            title="Love This Article?"
+            description="Get more wedding inspiration and expert tips delivered to your inbox every week."
+          />
         </section>
       </div>
     </div>
