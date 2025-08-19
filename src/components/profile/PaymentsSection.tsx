@@ -371,7 +371,6 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, booking })
 interface VendorPaymentInput {
   vendor_id: string;
   booking_id: string;
-  booking_id: string;
   amount: number;
   tip: number;
   vendor_name: string;
@@ -679,7 +678,6 @@ const PaymentModal: React.FC<{
         .map(booking => ({
           vendor_id: booking.vendor_id,
           booking_id: booking.id,
-          booking_id: booking.id,
           amount: booking.remaining_balance / 100, // Convert from cents
           tip: 0,
           vendor_name: booking.vendor_name
@@ -980,16 +978,6 @@ export const PaymentsSection: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
@@ -1063,6 +1051,83 @@ export const PaymentsSection: React.FC = () => {
               id: 'payment-2',
               amount: 80000,
               payment_type: 'Full Payment',
+              created_at: '2024-02-01T14:30:00Z',
+              tip: 8000, // $80 tip
+              status: 'succeeded'
+            }
+          ]
+        },
+        {
+          id: 'mock-booking-3',
+          vendor_name: 'Blooming Elegance Florals',
+          vendor_id: 'mock-vendor-3',
+          vendor_photo: 'https://images.pexels.com/photos/1070850/pexels-photo-1070850.jpeg?auto=compress&cs=tinysrgb&w=400',
+          service_type: 'Florals',
+          package_name: 'Bridal & Ceremony Flowers',
+          total_amount: 120000, // $1,200 in cents
+          paid_amount: 60000, // $600 deposit
+          remaining_balance: 60000, // $600 remaining
+          event_date: '2024-08-15',
+          venue_name: 'Sunset Gardens',
+          status: 'confirmed',
+          payments: [
+            {
+              id: 'payment-3',
+              amount: 60000,
+              payment_type: 'Deposit',
+              created_at: '2024-01-20T09:15:00Z',
+              status: 'succeeded'
+            }
+          ]
+        }
+      ];
+
+      setBookings(mockBookings);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch booking balances from Supabase
+      const { data, error: fetchError } = await supabase
+        .from('booking_balances')
+        .select(`
+          *,
+          payments:payment_records(*)
+        `)
+        .eq('couple_id', couple.id)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setBookings(data || []);
+    } catch (err) {
+      console.error('Error fetching booking balances:', err);
+      setError('Failed to load payment information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    fetchBookingBalances();
+  };
+
+  const handleSinglePayment = (booking: BookingBalance) => {
+    setSelectedBookingForPayment(booking);
+    setShowSinglePaymentModal(true);
+  };
+
+  const handleViewInvoice = (booking: BookingBalance) => {
+    setSelectedBookingForInvoice(booking);
+    setShowInvoiceModal(true);
+  };
+
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
