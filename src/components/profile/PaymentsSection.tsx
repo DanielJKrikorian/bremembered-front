@@ -812,8 +812,8 @@ export const PaymentsSection: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
       doc.text('B. Remembered', 105, 45, { align: 'center' });
-      doc.text('Wedding Booking Platform', 105, 52, { align: 'center' });
-      doc.text('hello@bremembered.io', 105, 59, { align: 'center' });
+      doc.text('The Smarter Way to Book Your Big Day!', 105, 52, { align: 'center' });
+      doc.text('info@bremembered.io', 105, 59, { align: 'center' });
 
       // Receipt details
       let yPos = 80;
@@ -910,7 +910,7 @@ export const PaymentsSection: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text('Thank you for choosing B. Remembered for your special day!', 105, yPos, { align: 'center' });
-      doc.text('For questions about this receipt, contact hello@bremembered.io', 105, yPos + 7, { align: 'center' });
+      doc.text('For questions about this receipt, contact info@bremembered.io', 105, yPos + 7, { align: 'center' });
 
       // Save the PDF
       const fileName = `Receipt_${booking.vendor_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
