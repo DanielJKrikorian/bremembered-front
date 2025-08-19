@@ -234,6 +234,7 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
         // Transform data to manually include category info
         const transformedPosts: BlogPost[] = (data || []).map(post => ({
           ...post,
+          tags: post.tags || [],
           category_info: categoriesMap.get(post.category)
         }));
 
@@ -366,6 +367,7 @@ Remember that the cheapest option isn't always the best value. Consider the phot
         // Transform data to manually include category info
         const transformedPost = {
           ...data,
+          tags: data.tags || [],
           category_info: categoryData
         };
 
