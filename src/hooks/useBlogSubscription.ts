@@ -43,7 +43,7 @@ export const useBlogSubscription = () => {
           email: email.toLowerCase().trim(),
           name: name?.trim() || null,
           subscription_source: source,
-          status: 'active'
+          status: 'subscribed'
         }]);
 
       if (error) {
@@ -115,7 +115,7 @@ export const useBlogSubscription = () => {
         .from('blog_subscriptions')
         .select('*')
         .eq('email', email.toLowerCase().trim())
-        .eq('status', 'active')
+        .eq('status', 'subscribed')
         .single();
 
       if (error && error.code !== 'PGRST116') {
