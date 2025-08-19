@@ -501,6 +501,16 @@ export const MyBookings: React.FC = () => {
                             Leave Review
                           </Button>
                         )}
+                        {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => navigate('/profile?tab=payments')}
+                          >
+                            Make Payment
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
