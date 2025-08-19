@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye, X, FileText } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { jsPDF } from 'jspdf';
+import { CreditCard, DollarSign, Clock, CheckCircle, AlertCircle, User } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -1065,103 +1064,6 @@ export const PaymentsSection: React.FC = () => {
               id: 'payment-2',
               amount: 80000,
               payment_type: 'Full Payment',
-              created_at: '2024-01-20T14:00:00Z',
-              tip: 8000, // $80 tip
-              status: 'succeeded'
-            }
-          ]
-        }
-      ];
-      setBookings(mockBookings);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Fetch bookings with payment information
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          amount,
-          service_type,
-          status,
-          booking_intent_id,
-          vendors!inner(
-            id,
-            name,
-            profile_photo
-          ),
-          service_packages(
-            name
-          ),
-          events(
-            start_time
-          ),
-          venues(
-            name
-          ),
-          payments!payments_booking_id_fkey(
-            id,
-            amount,
-            payment_type,
-            created_at,
-            tip,
-            status
-          )
-        `)
-        .eq('couple_id', couple.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Process bookings to calculate balances
-      const processedBookings: BookingBalance[] = (data || []).map(booking => {
-        const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
-        const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const remainingBalance = Math.max(0, booking.amount - paidAmount);
-
-        return {
-          id: booking.id,
-          vendor_name: booking.vendors.name,
-          vendor_id: booking.vendors.id,
-          vendor_photo: booking.vendors.profile_photo,
-          service_type: booking.service_type,
-          package_name: booking.service_packages?.name || booking.service_type,
-          total_amount: booking.amount,
-          paid_amount: paidAmount,
-          remaining_balance: remainingBalance,
-          event_date: booking.events?.start_time,
-          venue_name: booking.venues?.name,
-          status: booking.status,
-          payments: successfulPayments,
-          booking_intent_id: booking.booking_intent_id
-        };
-      });
-
-      setBookings(processedBookings);
-    } catch (err) {
-      console.error('Error fetching booking balances:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch payment information');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePaymentSuccess = () => {
-    fetchBookingBalances(); // Refresh data
-  };
-
-  const handleSinglePayment = (booking: BookingBalance) => {
-    setSelectedBookingForPayment(booking);
-    setShowSinglePaymentModal(true);
-  };
-
-  const handleViewInvoice = (booking: BookingBalance) => {
-    setSelectedBookingForInvoice(booking);
-    setShowInvoiceModal(true);
-  };
-
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
