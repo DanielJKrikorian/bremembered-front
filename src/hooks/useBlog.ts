@@ -358,7 +358,7 @@ Remember that the cheapest option isn't always the best value. Consider the phot
           .from('blog_categories')
           .select('*')
           .eq('slug', data.category)
-          .single();
+          .maybeSingle();
 
         if (categoryError) {
           console.warn('Could not fetch category:', categoryError);
