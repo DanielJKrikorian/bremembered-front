@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye, X, FileText } from 'lucide-react';
+import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -34,342 +35,9 @@ interface PaymentRecord {
   status: string;
 }
 
-interface InvoiceModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  booking: BookingBalance;
-}
-
-const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, booking }) => {
-  const { couple } = useCouple();
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount / 100);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const downloadInvoicePDF = () => {
-    setIsDownloading(true);
-    
-    try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      // Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(24);
-      doc.text('INVOICE', 105, 25, { align: 'center' });
-
-      // Company info
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('B. Remembered', 20, 45);
-      doc.text('Wedding Booking Platform', 20, 52);
-      doc.text('hello@bremembered.io', 20, 59);
-
-      // Invoice details
-      doc.setFont('helvetica', 'bold');
-      doc.text('Invoice Details:', 20, 75);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Invoice #: BR-${booking.id.slice(-8).toUpperCase()}`, 20, 85);
-      doc.text(`Date: ${formatDate(new Date().toISOString())}`, 20, 92);
-      doc.text(`Due Date: ${booking.event_date ? formatDate(booking.event_date) : 'Upon booking'}`, 20, 99);
-
-      // Bill to
-      doc.setFont('helvetica', 'bold');
-      doc.text('Bill To:', 20, 115);
-      doc.setFont('helvetica', 'normal');
-      doc.text(couple?.name || 'Wedding Couple', 20, 125);
-      if (couple?.email) {
-        doc.text(couple.email, 20, 132);
-      }
-      if (couple?.phone) {
-        doc.text(couple.phone, 20, 139);
-      }
-
-      // Service provider
-      doc.setFont('helvetica', 'bold');
-      doc.text('Service Provider:', 120, 115);
-      doc.setFont('helvetica', 'normal');
-      doc.text(booking.vendor_name, 120, 125);
-      doc.text(booking.service_type, 120, 132);
-
-      // Service details
-      doc.setFont('helvetica', 'bold');
-      doc.text('SERVICE DETAILS', 20, 160);
-      
-      // Table header
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, 170, 170, 10, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Description', 25, 177);
-      doc.text('Amount', 160, 177);
-
-      // Service line
-      doc.setFont('helvetica', 'normal');
-      doc.text(booking.package_name, 25, 190);
-      doc.text(booking.service_type, 25, 197);
-      doc.text(formatPrice(booking.total_amount), 160, 190);
-
-      // Event details if available
-      if (booking.event_date) {
-        doc.text(`Event Date: ${formatDate(booking.event_date)}`, 25, 207);
-      }
-      if (booking.venue_name) {
-        doc.text(`Venue: ${booking.venue_name}`, 25, 214);
-      }
-
-      // Payment summary
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('PAYMENT SUMMARY', 20, 235);
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.text('Service Total:', 120, 250);
-      doc.text(formatPrice(booking.total_amount), 160, 250);
-      
-      if (booking.paid_amount > 0) {
-        doc.text('Amount Paid:', 120, 260);
-        doc.text(`-${formatPrice(booking.paid_amount)}`, 160, 260);
-        
-        doc.setFont('helvetica', 'bold');
-        doc.text('Balance Due:', 120, 270);
-        doc.text(formatPrice(booking.remaining_balance), 160, 270);
-      }
-
-      // Footer
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text('Thank you for choosing B. Remembered for your special day!', 105, 280, { align: 'center' });
-      doc.text('Questions? Contact us at hello@bremembered.io or (555) 123-WEDDING', 105, 287, { align: 'center' });
-
-      // Save the PDF
-      doc.save(`Invoice_${booking.vendor_name.replace(/\s+/g, '_')}_${booking.id.slice(-6)}.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">Invoice</h3>
-            <p className="text-gray-600 mt-1">#{booking.id.slice(-8).toUpperCase()}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Invoice Header */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Bill To:</h4>
-              <div className="text-sm text-gray-600">
-                <p className="font-medium">{couple?.name || 'Wedding Couple'}</p>
-                {couple?.email && <p>{couple.email}</p>}
-                {couple?.phone && <p>{couple.phone}</p>}
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Service Provider:</h4>
-              <div className="flex items-center space-x-3">
-                {booking.vendor_photo ? (
-                  <img
-                    src={booking.vendor_photo}
-                    alt={booking.vendor_name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-400" />
-                  </div>
-                )}
-                <div className="text-sm">
-                  <p className="font-medium text-gray-900">{booking.vendor_name}</p>
-                  <p className="text-gray-600">{booking.service_type}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Service Details */}
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-4">Service Details</h4>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h5 className="text-lg font-medium text-gray-900">{booking.package_name}</h5>
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-600">Service Type:</p>
-                  <p className="font-medium">{booking.service_type}</p>
-                </div>
-                {booking.event_date && (
-                  <div>
-                    <p className="text-gray-600">Event Date:</p>
-                    <p className="font-medium">{formatDate(booking.event_date)}</p>
-                  </div>
-                )}
-                {booking.venue_name && (
-                  <div>
-                    <p className="text-gray-600">Venue:</p>
-                    <p className="font-medium">{booking.venue_name}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-gray-600">Booking Date:</p>
-                  <p className="font-medium">{formatDate(new Date().toISOString())}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Summary */}
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-4">Payment Summary</h4>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <div className="flex justify-between items-center font-medium text-gray-900">
-                  <span>Description</span>
-                  <span>Amount</span>
-                </div>
-              </div>
-              <div className="px-4 py-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">{booking.package_name}</span>
-                  <span className="font-medium">{formatPrice(booking.total_amount)}</span>
-                </div>
-              </div>
-              
-              {booking.paid_amount > 0 && (
-                <>
-                  <div className="px-4 py-3 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Amount Paid</span>
-                      <span className="font-medium text-green-600">-{formatPrice(booking.paid_amount)}</span>
-                    </div>
-                  </div>
-                  <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-900">Balance Due</span>
-                      <span className="font-bold text-lg text-red-600">{formatPrice(booking.remaining_balance)}</span>
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {booking.remaining_balance === 0 && (
-                <div className="px-4 py-3 border-t border-gray-200 bg-green-50">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-green-900">Status</span>
-                    <span className="font-bold text-green-600">PAID IN FULL</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Payment History */}
-          {booking.payments.length > 0 && (
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Payment History</h4>
-              <div className="space-y-2">
-                {booking.payments.map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <Check className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{payment.payment_type}</p>
-                        <p className="text-sm text-gray-600">
-                          {formatDate(payment.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
-                        {formatPrice(payment.amount)}
-                      </p>
-                      {payment.tip && (
-                        <p className="text-sm text-green-600">
-                          +{formatPrice(payment.tip)} tip
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex space-x-3 pt-4 border-t border-gray-200">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              icon={Download}
-              onClick={downloadInvoicePDF}
-              disabled={isDownloading}
-              loading={isDownloading}
-              className="flex-1"
-            >
-              {isDownloading ? 'Generating...' : 'Download PDF'}
-            </Button>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-500 pt-4 border-t border-gray-200">
-            <p>Thank you for choosing B. Remembered for your special day!</p>
-            <p className="mt-1">Questions? Contact us at hello@bremembered.io</p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
-
 interface VendorPaymentInput {
   vendor_id: string;
+  booking_id: string;
   booking_id: string;
   amount: number;
   tip: number;
@@ -678,6 +346,7 @@ const PaymentModal: React.FC<{
         .map(booking => ({
           vendor_id: booking.vendor_id,
           booking_id: booking.id,
+          booking_id: booking.id,
           amount: booking.remaining_balance / 100, // Convert from cents
           tip: 0,
           vendor_name: booking.vendor_name
@@ -974,17 +643,6 @@ const PaymentModal: React.FC<{
 export const PaymentsSection: React.FC = () => {
   const { user } = useAuth();
   const { couple } = useCouple();
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const [bookings, setBookings] = useState<BookingBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -992,8 +650,6 @@ export const PaymentsSection: React.FC = () => {
   const [showSinglePaymentModal, setShowSinglePaymentModal] = useState(false);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<BookingBalance | null>(null);
   const [selectedTab, setSelectedTab] = useState<'outstanding' | 'paid' | 'all'>('outstanding');
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [selectedBookingForInvoice, setSelectedBookingForInvoice] = useState<BookingBalance | null>(null);
 
   useEffect(() => {
     if (couple?.id) {
@@ -1051,81 +707,96 @@ export const PaymentsSection: React.FC = () => {
               id: 'payment-2',
               amount: 80000,
               payment_type: 'Full Payment',
-              created_at: '2024-02-01T14:30:00Z',
+              created_at: '2024-01-20T14:00:00Z',
               tip: 8000, // $80 tip
-              status: 'succeeded'
-            }
-          ]
-        },
-        {
-          id: 'mock-booking-3',
-          vendor_name: 'Blooming Elegance Florals',
-          vendor_id: 'mock-vendor-3',
-          vendor_photo: 'https://images.pexels.com/photos/1070850/pexels-photo-1070850.jpeg?auto=compress&cs=tinysrgb&w=400',
-          service_type: 'Florals',
-          package_name: 'Bridal & Ceremony Flowers',
-          total_amount: 120000, // $1,200 in cents
-          paid_amount: 60000, // $600 deposit
-          remaining_balance: 60000, // $600 remaining
-          event_date: '2024-08-15',
-          venue_name: 'Sunset Gardens',
-          status: 'confirmed',
-          payments: [
-            {
-              id: 'payment-3',
-              amount: 60000,
-              payment_type: 'Deposit',
-              created_at: '2024-01-20T09:15:00Z',
               status: 'succeeded'
             }
           ]
         }
       ];
-
       setBookings(mockBookings);
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch booking balances from Supabase
-      const { data, error: fetchError } = await supabase
-        .from('booking_balances')
+      // Fetch bookings with payment information
+      const { data, error } = await supabase
+        .from('bookings')
         .select(`
-          *,
-          payments:payment_records(*)
+          id,
+          amount,
+          service_type,
+          status,
+          booking_intent_id,
+          vendors!inner(
+            id,
+            name,
+            profile_photo
+          ),
+          service_packages(
+            name
+          ),
+          events(
+            start_time
+          ),
+          venues(
+            name
+          ),
+          payments!payments_booking_id_fkey(
+            id,
+            amount,
+            payment_type,
+            created_at,
+            tip,
+            status
+          )
         `)
         .eq('couple_id', couple.id)
         .order('created_at', { ascending: false });
 
-      if (fetchError) {
-        throw fetchError;
-      }
+      if (error) throw error;
 
-      setBookings(data || []);
+      // Process bookings to calculate balances
+      const processedBookings: BookingBalance[] = (data || []).map(booking => {
+        const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
+        const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const remainingBalance = Math.max(0, booking.amount - paidAmount);
+
+        return {
+          id: booking.id,
+          vendor_name: booking.vendors.name,
+          vendor_id: booking.vendors.id,
+          vendor_photo: booking.vendors.profile_photo,
+          service_type: booking.service_type,
+          package_name: booking.service_packages?.name || booking.service_type,
+          total_amount: booking.amount,
+          paid_amount: paidAmount,
+          remaining_balance: remainingBalance,
+          event_date: booking.events?.start_time,
+          venue_name: booking.venues?.name,
+          status: booking.status,
+          payments: successfulPayments,
+          booking_intent_id: booking.booking_intent_id
+        };
+      });
+
+      setBookings(processedBookings);
     } catch (err) {
       console.error('Error fetching booking balances:', err);
-      setError('Failed to load payment information');
+      setError(err instanceof Error ? err.message : 'Failed to fetch payment information');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePaymentSuccess = () => {
-    fetchBookingBalances();
+    fetchBookingBalances(); // Refresh data
   };
 
   const handleSinglePayment = (booking: BookingBalance) => {
     setSelectedBookingForPayment(booking);
     setShowSinglePaymentModal(true);
-  };
-
-  const handleViewInvoice = (booking: BookingBalance) => {
-    setSelectedBookingForInvoice(booking);
-    setShowInvoiceModal(true);
   };
 
   const formatPrice = (amount: number) => {
@@ -1144,6 +815,16 @@ export const PaymentsSection: React.FC = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   const filteredBookings = bookings.filter(booking => {
@@ -1416,7 +1097,6 @@ export const PaymentsSection: React.FC = () => {
                 <Button
                   variant="outline"
                   icon={Receipt}
-                  onClick={() => handleViewInvoice(booking)}
                 >
                   View Invoice
                 </Button>
@@ -1458,16 +1138,6 @@ export const PaymentsSection: React.FC = () => {
             }}
             booking={selectedBookingForPayment}
             onSuccess={handlePaymentSuccess}
-          />
-        )}
-        {selectedBookingForInvoice && (
-          <InvoiceModal
-            isOpen={showInvoiceModal}
-            onClose={() => {
-              setShowInvoiceModal(false);
-              setSelectedBookingForInvoice(null);
-            }}
-            booking={selectedBookingForInvoice}
           />
         )}
       </Elements>
