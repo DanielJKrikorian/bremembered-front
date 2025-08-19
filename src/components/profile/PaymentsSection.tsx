@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { jsPDF } from 'jspdf';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -794,6 +795,133 @@ export const PaymentsSection: React.FC = () => {
     fetchBookingBalances(); // Refresh data
   };
 
+  const handleDownloadReceipt = (booking: BookingBalance) => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(24);
+      doc.text('PAYMENT RECEIPT', 105, 30, { align: 'center' });
+
+      // Company info
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.text('B. Remembered', 105, 45, { align: 'center' });
+      doc.text('Wedding Booking Platform', 105, 52, { align: 'center' });
+      doc.text('hello@bremembered.io', 105, 59, { align: 'center' });
+
+      // Receipt details
+      let yPos = 80;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('RECEIPT DETAILS', 20, yPos);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      
+      // Booking information
+      doc.text(`Receipt Date: ${new Date().toLocaleDateString()}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Booking ID: ${booking.id.substring(0, 8).toUpperCase()}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Service: ${booking.package_name}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Vendor: ${booking.vendor_name}`, 20, yPos);
+      yPos += 7;
+      if (booking.event_date) {
+        doc.text(`Event Date: ${formatDate(booking.event_date)}`, 20, yPos);
+        yPos += 7;
+      }
+      if (booking.venue_name) {
+        doc.text(`Venue: ${booking.venue_name}`, 20, yPos);
+        yPos += 7;
+      }
+
+      yPos += 10;
+
+      // Payment summary
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('PAYMENT SUMMARY', 20, yPos);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      
+      // Draw a table-like structure
+      doc.text('Description', 20, yPos);
+      doc.text('Amount', 150, yPos);
+      yPos += 7;
+      
+      // Draw line
+      doc.line(20, yPos, 190, yPos);
+      yPos += 7;
+      
+      doc.text(`Total Package Amount`, 20, yPos);
+      doc.text(formatPrice(booking.total_amount), 150, yPos);
+      yPos += 7;
+      
+      doc.text(`Amount Paid`, 20, yPos);
+      doc.text(formatPrice(booking.paid_amount), 150, yPos);
+      yPos += 7;
+      
+      doc.text(`Remaining Balance`, 20, yPos);
+      doc.text(formatPrice(booking.remaining_balance), 150, yPos);
+      yPos += 10;
+
+      // Payment history
+      if (booking.payments.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('PAYMENT HISTORY', 20, yPos);
+        yPos += 10;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        
+        booking.payments.forEach((payment) => {
+          if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+          }
+          
+          doc.text(`${payment.payment_type}`, 20, yPos);
+          doc.text(`${formatDate(payment.created_at)}`, 80, yPos);
+          doc.text(formatPrice(payment.amount), 150, yPos);
+          yPos += 7;
+          
+          if (payment.tip && payment.tip > 0) {
+            doc.text(`  + Tip`, 20, yPos);
+            doc.text(formatPrice(payment.tip), 150, yPos);
+            yPos += 7;
+          }
+          yPos += 3;
+        });
+      }
+
+      // Footer
+      yPos = Math.max(yPos + 20, 250);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Thank you for choosing B. Remembered for your special day!', 105, yPos, { align: 'center' });
+      doc.text('For questions about this receipt, contact hello@bremembered.io', 105, yPos + 7, { align: 'center' });
+
+      // Save the PDF
+      const fileName = `Receipt_${booking.vendor_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      // You could add a toast notification here for error handling
+    }
+  };
+
   const handleSinglePayment = (booking: BookingBalance) => {
     setSelectedBookingForPayment(booking);
     setShowSinglePaymentModal(true);
@@ -1097,6 +1225,7 @@ export const PaymentsSection: React.FC = () => {
                 <Button
                   variant="outline"
                   icon={Download}
+                  onClick={() => handleDownloadReceipt(booking)}
                 >
                   Download Receipt
                 </Button>
