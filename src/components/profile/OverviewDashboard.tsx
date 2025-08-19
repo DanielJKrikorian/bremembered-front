@@ -851,6 +851,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
             <Camera className="w-6 h-6 mb-2" />
             <span>View Gallery</span>
           </button>
+          <button
+            onClick={() => onTabChange?.('payments')}
+            className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
+          >
+            <CreditCard className="w-6 h-6 mb-2" />
+            <span>Manage Payments</span>
+          </button>
         </div>
       </Card>
 
