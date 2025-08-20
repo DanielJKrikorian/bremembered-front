@@ -114,8 +114,6 @@ export const VendorApplication: React.FC = () => {
     );
   };
 
-  const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
-
   const serviceOptions = [
     'Photography',
     'Videography', 
