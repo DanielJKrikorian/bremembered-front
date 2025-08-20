@@ -1383,8 +1383,8 @@ export const VendorApplication = () => {
       {/* File Upload Modal */}
       {uploadModalConfig2 && (
         <FileUploadModal
-          isOpen={showUploadModal}
-          onClose={() => setShowUploadModal(false)}
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
           onFileSelect={uploadModalConfig2.onUpload || (() => {})}
           title={uploadModalConfig2.title}
           description={uploadModalConfig2.description}
