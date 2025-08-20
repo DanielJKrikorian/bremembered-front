@@ -599,7 +599,7 @@ export const VendorApplication: React.FC = () => {
                 <Input
                   label="Street Address"
                   value={formData.address.street}
-                  onChange={(e) => handleInputChange('address.street', e.target.value)}
+                  onChange={(e) => handleInputChange('address', { ...formData.address, street: e.target.value })}
                   placeholder="123 Main Street"
                   icon={MapPin}
                   required
@@ -608,7 +608,7 @@ export const VendorApplication: React.FC = () => {
               <Input
                 label="City"
                 value={formData.address.city}
-                onChange={(e) => handleInputChange('address.city', e.target.value)}
+                onChange={(e) => handleInputChange('address', { ...formData.address, city: e.target.value })}
                 placeholder="Boston"
                 required
               />
@@ -616,7 +616,7 @@ export const VendorApplication: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
                 <select
                   value={formData.address.state}
-                  onChange={(e) => handleInputChange('address.state', e.target.value)}
+                  onChange={(e) => handleInputChange('address', { ...formData.address, state: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                   required
                 >
@@ -629,7 +629,7 @@ export const VendorApplication: React.FC = () => {
               <Input
                 label="ZIP Code"
                 value={formData.address.zip}
-                onChange={(e) => handleInputChange('address.zip', e.target.value)}
+                onChange={(e) => handleInputChange('address', { ...formData.address, zip: e.target.value })}
                 placeholder="02101"
                 required
               />
