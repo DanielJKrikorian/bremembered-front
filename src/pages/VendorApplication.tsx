@@ -61,6 +61,7 @@ export const VendorApplication: React.FC = () => {
     multiple: boolean;
     onUpload: (files: File[]) => void;
   } | null>(null);
+  const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
   
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -85,7 +86,6 @@ export const VendorApplication: React.FC = () => {
 
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<any[]>([]);
-  const { serviceAreas } = useServiceAreas();
 
   // Update available regions when states change
   useEffect(() => {
