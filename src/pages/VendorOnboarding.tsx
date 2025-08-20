@@ -70,11 +70,11 @@ export const VendorOnboarding: React.FC = () => {
           <Button 
             variant="secondary" 
             size="lg" 
-            className="bg-white text-rose-600 hover:bg-gray-50 shadow-xl"
+            className="bg-white text-navy-900 hover:bg-gray-50 shadow-xl"
             onClick={handleBecomeVendor}
             icon={ArrowRight}
           >
-            Become a Vendor
+            Apply Now
           </Button>
         </div>
       </section>
@@ -462,11 +462,11 @@ export const VendorOnboarding: React.FC = () => {
               <Button 
                 variant="secondary" 
                 size="lg" 
-                className="bg-white text-rose-600 hover:bg-gray-50 shadow-xl"
+                className="bg-white text-navy-900 hover:bg-gray-50 shadow-xl"
                 onClick={handleBecomeVendor}
                 icon={ArrowRight}
               >
-                Become a Vendor
+                Apply Now
               </Button>
               <Button 
                 variant="outline" 
