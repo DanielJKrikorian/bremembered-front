@@ -42,6 +42,14 @@ export const VendorApplication: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadModalConfig, setUploadModalConfig] = useState({
+    title: '',
+    description: '',
+    acceptedTypes: '',
+    uploadType: 'work' as 'profile' | 'license' | 'work',
+    multiple: false
+  });
   const [success, setSuccess] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [licenseFiles, setLicenseFiles] = useState<{ front: File | null; back: File | null }>({
@@ -63,6 +71,17 @@ export const VendorApplication: React.FC = () => {
   } | null>(null);
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
   
+  const openUploadModal = (config: {
+    title: string;
+    description: string;
+    acceptedTypes: string;
+    uploadType: 'profile' | 'license' | 'work';
+    multiple?: boolean;
+  }) => {
+    setUploadModalConfig(config);
+    setIsUploadModalOpen(true);
+  };
+
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
     phone: '',
