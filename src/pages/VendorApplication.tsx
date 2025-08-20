@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useServiceAreas } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { FileUploadModal } from '../components/vendor/FileUploadModal';
 
 interface GearItem {
   gear_type: string;
@@ -42,6 +43,14 @@ export const VendorApplication: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalConfig, setUploadModalConfig] = useState({
+    title: '',
+    description: '',
+    acceptedTypes: '',
+    field: '',
+    uploadType: 'profile' as 'profile' | 'license' | 'work'
+  });
   
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -188,6 +197,22 @@ export const VendorApplication: React.FC = () => {
       ...prev,
       work_links: prev.work_links.filter((_, i) => i !== index)
     }));
+  };
+
+  const openUploadModal = (field: string, title: string, description: string, acceptedTypes: string, uploadType: 'profile' | 'license' | 'work') => {
+    setUploadModalConfig({
+      title,
+      description,
+      acceptedTypes,
+      field,
+      uploadType
+    });
+    setShowUploadModal(true);
+  };
+
+  const handleModalFileSelect = (file: File) => {
+    handleFileUpload(uploadModalConfig.field, file);
+    setShowUploadModal(false);
   };
 
   const uploadFile = async (file: File, path: string): Promise<string> => {
@@ -713,12 +738,25 @@ export const VendorApplication: React.FC = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleFileUpload('profile_photo', e.target.files?.[0] || null)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
+                            handleFileUpload('profile_photo', file);
+                          }
+                        }}
                         className="hidden"
                         id="profile-photo"
                       />
                       <label htmlFor="profile-photo">
-                        <Button variant="outline" size="sm" as="span">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
+                          }}
+                        >
                           Choose File
                         </Button>
                       </label>
@@ -750,12 +788,25 @@ export const VendorApplication: React.FC = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleFileUpload('drivers_license_front', e.target.files?.[0] || null)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
+                            handleFileUpload('drivers_license_front', file);
+                          }
+                        }}
                         className="hidden"
                         id="license-front"
                       />
                       <label htmlFor="license-front">
-                        <Button variant="outline" size="sm" as="span">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
+                          }}
+                        >
                           Choose File
                         </Button>
                       </label>
@@ -787,12 +838,25 @@ export const VendorApplication: React.FC = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleFileUpload('drivers_license_back', e.target.files?.[0] || null)}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
+                            handleFileUpload('drivers_license_back', file);
+                          }
+                        }}
                         className="hidden"
                         id="license-back"
                       />
                       <label htmlFor="license-back">
-                        <Button variant="outline" size="sm" as="span">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
+                          }}
+                        >
                           Choose File
                         </Button>
                       </label>
@@ -920,13 +984,22 @@ export const VendorApplication: React.FC = () => {
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    files.forEach(file => handleFileUpload('work_samples', file));
+                    files.forEach(file => {
+                      openUploadModal('work_samples', 'Upload Work Sample', 'Upload a sample of your work', 'image/*,video/*', 'work');
+                      handleFileUpload('work_samples', file);
+                    });
                   }}
                   className="hidden"
                   id="work-samples"
                 />
                 <label htmlFor="work-samples">
-                  <Button variant="outline" as="span">
+                  <Button 
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openUploadModal('work_samples', 'Upload Work Samples', 'Upload samples of your work (photos or videos)', 'image/*,video/*', 'work');
+                    }}
+                  >
                     Choose Files
                   </Button>
                 </label>
@@ -1121,6 +1194,20 @@ export const VendorApplication: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* File Upload Modal */}
+      <FileUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onFileSelect={handleModalFileSelect}
+        title={uploadModalConfig.title}
+        description={uploadModalConfig.description}
+        acceptedTypes={uploadModalConfig.acceptedTypes}
+        uploadType={uploadModalConfig.uploadType}
+        currentFile={uploadModalConfig.field === 'profile_photo' ? formData.profile_photo : 
+                    uploadModalConfig.field === 'drivers_license_front' ? formData.drivers_license_front :
+                    uploadModalConfig.field === 'drivers_license_back' ? formData.drivers_license_back : null}
+      />
     </div>
   );
 };
