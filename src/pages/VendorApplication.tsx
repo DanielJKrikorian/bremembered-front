@@ -1,398 +1,509 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Upload, X, Check, AlertCircle, User, Mail, Phone, MapPin, Globe, FileText, Camera, Video, Building, Award, GraduationCap, Shield, Users, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, ArrowRight, Upload, X, Plus, Minus, User, Phone, Mail, MapPin, Camera, FileText, Link, Award, Check, AlertCircle, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { FileUploadModal } from '../components/vendor/FileUploadModal';
 import { useServiceAreas } from '../hooks/useSupabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { FileUploadModal } from '../components/vendor/FileUploadModal';
 
-interface FormData {
-  // Basic Information
-  email: string;
-  business_name: string;
-  contact_name: string;
+interface GearItem {
+  gear_type: string;
+  brand: string;
+  model: string;
+  year: string;
+  condition: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+}
+
+interface ApplicationData {
+  name: string;
   phone: string;
-  website: string;
-  
-  // Business Address
-  street_address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  country: string;
-  
-  // Service Information
-  service_types: string[];
-  years_experience: number;
-  specialties: string[];
-  business_description: string;
-  
-  // Portfolio
-  portfolio_links: string[];
-  
-  // Social Media
-  instagram: string;
-  facebook: string;
-  twitter: string;
-  other_social: string;
-  
-  // Equipment (will be populated based on service types)
-  equipment: Record<string, any>;
-  
-  // Legal
-  insurance_verified: boolean;
-  background_check_consent: boolean;
-  work_ownership_declared: boolean;
-  terms_accepted: boolean;
+  email: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  service_locations: string[];
+  services_applying_for: string[];
+  gear: GearItem[];
+  profile_photo: File | null;
+  drivers_license_front: File | null;
+  drivers_license_back: File | null;
+  description: string;
+  work_links: string[];
+  work_samples: File[];
 }
 
 export const VendorApplication: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
-    email: '',
-    business_name: '',
-    contact_name: '',
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [licenseFiles, setLicenseFiles] = useState<{ front: File | null; back: File | null }>({
+    front: null,
+    back: null
+  });
+  const [workSampleFiles, setWorkSampleFiles] = useState<File[]>([]);
+  const [uploadingWorkSamples, setUploadingWorkSamples] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalConfig, setUploadModalConfig] = useState<{
+    title: string;
+    description: string;
+    acceptedTypes: string;
+    maxSize: number;
+    uploadType: 'profile' | 'license' | 'work';
+    multiple: boolean;
+    onUpload: (files: File[]) => void;
+  } | null>(null);
+  
+  const [formData, setFormData] = useState<ApplicationData>({
+    name: '',
     phone: '',
-    website: '',
-    street_address: '',
-    city: '',
-    state: '',
-    zip_code: '',
-    country: 'United States',
-    service_types: [],
-    years_experience: 0,
-    specialties: [],
-    business_description: '',
-    portfolio_links: [],
-    instagram: '',
-    facebook: '',
-    twitter: '',
-    other_social: '',
-    equipment: {},
-    insurance_verified: false,
-    background_check_consent: false,
-    work_ownership_declared: false,
-    terms_accepted: false
+    email: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      zip: ''
+    },
+    service_locations: [],
+    services_applying_for: [],
+    gear: [],
+    profile_photo: null,
+    drivers_license_front: null,
+    drivers_license_back: null,
+    description: '',
+    work_links: [''],
+    work_samples: []
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showFileUpload, setShowFileUpload] = useState(false);
-  const [uploadType, setUploadType] = useState<'profile' | 'license' | 'work'>('work');
-  const [workSampleFiles, setWorkSampleFiles] = useState<File[]>([]);
-  const [insuranceFiles, setInsuranceFiles] = useState<File[]>([]);
-  const [idVerificationFile, setIdVerificationFile] = useState<File | null>(null);
-  const [businessDocumentFiles, setBusinessDocumentFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [availableRegions, setAvailableRegions] = useState<any[]>([]);
+  const { serviceAreas } = useServiceAreas();
 
-  const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
+  // Update available regions when states change
+  useEffect(() => {
+    if (selectedStates.length > 0) {
+      const regions = serviceAreas.filter(area => selectedStates.includes(area.state));
+      setAvailableRegions(regions);
+      
+      // Remove any selected regions that are no longer available
+      setFormData(prev => ({
+        ...prev,
+        serviceAreas: prev.serviceAreas.filter(regionId => 
+          regions.some(region => region.id === regionId)
+        )
+      }));
+    } else {
+      setAvailableRegions([]);
+      setFormData(prev => ({ ...prev, serviceAreas: [] }));
+    }
+  }, [selectedStates, serviceAreas]);
+
+  const handleStateToggle = (state: string) => {
+    setSelectedStates(prev => 
+      prev.includes(state)
+        ? prev.filter(s => s !== state)
+        : [...prev, state]
+    );
+  };
 
   const serviceOptions = [
     'Photography',
-    'Videography',
+    'Videography', 
     'DJ Services',
     'Live Musician',
     'Coordination',
     'Planning'
   ];
 
-  const stateOptions = [
-    'MA', 'RI', 'NH', 'CT', 'ME', 'VT'
+  const gearTypes = [
+    'Camera Body',
+    'Camera Lens',
+    'Lighting Equipment',
+    'Audio Equipment',
+    'Video Equipment',
+    'DJ Equipment',
+    'Other'
   ];
 
-  const specialtyOptions = {
-    Photography: ['Wedding Photography', 'Engagement Sessions', 'Bridal Portraits', 'Destination Weddings', 'Elopements', 'Fine Art Photography', 'Photojournalistic Style', 'Traditional Photography'],
-    Videography: ['Wedding Films', 'Highlight Reels', 'Ceremony Coverage', 'Reception Coverage', 'Drone Footage', 'Same-Day Edits', 'Documentary Style', 'Cinematic Style'],
-    'DJ Services': ['Wedding Reception DJ', 'Ceremony Music', 'Cocktail Hour Music', 'MC Services', 'Sound System Setup', 'Lighting Services', 'Special Effects', 'Karaoke'],
-    'Live Musician': ['Ceremony Music', 'Cocktail Hour Performance', 'Reception Entertainment', 'Acoustic Guitar', 'Piano', 'String Quartet', 'Jazz Band', 'Solo Vocalist'],
-    Coordination: ['Day-of Coordination', 'Month-of Coordination', 'Timeline Management', 'Vendor Coordination', 'Emergency Management', 'Setup Coordination', 'Breakdown Management'],
-    Planning: ['Full Wedding Planning', 'Partial Planning', 'Venue Selection', 'Vendor Selection', 'Budget Management', 'Design Consultation', 'Timeline Creation', 'Guest Management']
-  };
+  const conditionOptions: GearItem['condition'][] = ['Excellent', 'Good', 'Fair', 'Poor'];
 
-  const equipmentChecklists = {
-    Photography: [
-      'Professional DSLR/Mirrorless cameras (2+ bodies)',
-      'Professional lenses (24-70mm, 70-200mm, 85mm)',
-      'External flash units and diffusers',
-      'Backup memory cards and batteries',
-      'Tripods and monopods',
-      'Reflectors and lighting equipment'
-    ],
-    Videography: [
-      'Professional video cameras (2+ bodies)',
-      'Professional lenses and stabilizers',
-      'Audio recording equipment (wireless mics)',
-      'Backup storage and batteries',
-      'Tripods and gimbals',
-      'Lighting equipment for video'
-    ],
-    'DJ Services': [
-      'Professional DJ controller/mixer',
-      'High-quality speakers and subwoofers',
-      'Wireless microphones (2+ systems)',
-      'Backup equipment (controller, laptop)',
-      'Professional lighting system',
-      'Cable management and power distribution'
-    ],
-    'Live Musician': [
-      'Professional instruments',
-      'Amplification system',
-      'Microphones and audio equipment',
-      'Music stands and accessories',
-      'Backup instruments/equipment',
-      'Power and cable management'
-    ],
-    Coordination: [
-      'Professional planning software/tools',
-      'Communication devices (radios/phones)',
-      'Emergency kit and supplies',
-      'Timeline and vendor contact lists',
-      'Backup plans and contingencies',
-      'Professional attire and identification'
-    ],
-    Planning: [
-      'Professional planning software',
-      'Design and mood board tools',
-      'Vendor database and contacts',
-      'Budget tracking systems',
-      'Timeline management tools',
-      'Client communication platforms'
-    ]
-  };
+  const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
-  const handleInputChange = (field: string, value: string | number | boolean | string[]) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
   };
 
-  const handleServiceTypeToggle = (serviceType: string) => {
-    const newServiceTypes = formData.service_types.includes(serviceType)
-      ? formData.service_types.filter(s => s !== serviceType)
-      : [...formData.service_types, serviceType];
-    
-    handleInputChange('service_types', newServiceTypes);
-    
-    // Update equipment checklist
-    const newEquipment = { ...formData.equipment };
-    if (newServiceTypes.includes(serviceType) && !newEquipment[serviceType]) {
-      newEquipment[serviceType] = {};
-    } else if (!newServiceTypes.includes(serviceType)) {
-      delete newEquipment[serviceType];
-    }
-    handleInputChange('equipment', newEquipment);
+  const handleServiceLocationToggle = (locationId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      service_locations: prev.service_locations.includes(locationId)
+        ? prev.service_locations.filter(id => id !== locationId)
+        : [...prev.service_locations, locationId]
+    }));
   };
 
-  const handleSpecialtyToggle = (specialty: string) => {
-    const newSpecialties = formData.specialties.includes(specialty)
-      ? formData.specialties.filter(s => s !== specialty)
-      : [...formData.specialties, specialty];
-    
-    handleInputChange('specialties', newSpecialties);
+  const handleServiceToggle = (service: string) => {
+    setFormData(prev => ({
+      ...prev,
+      services_applying_for: prev.services_applying_for.includes(service)
+        ? prev.services_applying_for.filter(s => s !== service)
+        : [...prev.services_applying_for, service]
+    }));
   };
 
-  const handleEquipmentToggle = (serviceType: string, equipment: string) => {
-    const newEquipment = { ...formData.equipment };
-    if (!newEquipment[serviceType]) {
-      newEquipment[serviceType] = {};
-    }
-    
-    newEquipment[serviceType][equipment] = !newEquipment[serviceType][equipment];
-    handleInputChange('equipment', newEquipment);
+  const handleGearChange = (index: number, field: keyof GearItem, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      gear: prev.gear.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
   };
 
-  const handleStateToggle = (state: string) => {
-    const newStates = selectedStates.includes(state)
-      ? selectedStates.filter(s => s !== state)
-      : [...selectedStates, state];
-    
-    setSelectedStates(newStates);
-    
-    // Remove regions from deselected states
-    if (!newStates.includes(state)) {
-      const stateRegions = serviceAreas
-        .filter(area => area.state === state)
-        .map(area => area.region);
-      
-      setSelectedRegions(prev => prev.filter(region => !stateRegions.includes(region)));
-    }
+  const addGearItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      gear: [...prev.gear, {
+        gear_type: '',
+        brand: '',
+        model: '',
+        year: '',
+        condition: 'Good'
+      }]
+    }));
   };
 
-  const handleRegionToggle = (region: string) => {
-    const newRegions = selectedRegions.includes(region)
-      ? selectedRegions.filter(r => r !== region)
-      : [...selectedRegions, region];
-    
-    setSelectedRegions(newRegions);
+  const removeGearItem = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      gear: prev.gear.filter((_, i) => i !== index)
+    }));
   };
 
-  const addPortfolioLink = () => {
-    handleInputChange('portfolio_links', [...formData.portfolio_links, '']);
-  };
-
-  const updatePortfolioLink = (index: number, value: string) => {
-    const newLinks = [...formData.portfolio_links];
-    newLinks[index] = value;
-    handleInputChange('portfolio_links', newLinks);
-  };
-
-  const removePortfolioLink = (index: number) => {
-    const newLinks = formData.portfolio_links.filter((_, i) => i !== index);
-    handleInputChange('portfolio_links', newLinks);
-  };
-
-  const handleFileUpload = (files: File[]) => {
-    switch (uploadType) {
-      case 'work':
-        setWorkSampleFiles(prev => [...prev, ...files]);
-        break;
-      case 'license':
-        setInsuranceFiles(prev => [...prev, ...files]);
-        break;
-      case 'profile':
-        if (files[0]) {
-          setIdVerificationFile(files[0]);
-        }
-        break;
+  const handleFileUpload = (field: string, file: File | null) => {
+    if (field === 'work_samples' && file) {
+      setFormData(prev => ({
+        ...prev,
+        work_samples: [...prev.work_samples, file]
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: file }));
     }
   };
 
   const removeWorkSample = (index: number) => {
-    setWorkSampleFiles(prev => prev.filter((_, i) => i !== index));
+    setFormData(prev => ({
+      ...prev,
+      work_samples: prev.work_samples.filter((_, i) => i !== index)
+    }));
   };
 
-  const removeInsuranceFile = (index: number) => {
-    setInsuranceFiles(prev => prev.filter((_, i) => i !== index));
+  const handleWorkLinkChange = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      work_links: prev.work_links.map((link, i) => i === index ? value : link)
+    }));
   };
 
-  const validateStep = (step: number): boolean => {
-    const newErrors: Record<string, string> = {};
+  const addWorkLink = () => {
+    setFormData(prev => ({
+      ...prev,
+      work_links: [...prev.work_links, '']
+    }));
+  };
 
-    switch (step) {
-      case 1:
-        if (!formData.email) newErrors.email = 'Email is required';
-        if (!formData.business_name) newErrors.business_name = 'Business name is required';
-        if (!formData.contact_name) newErrors.contact_name = 'Contact name is required';
-        if (!formData.phone) newErrors.phone = 'Phone number is required';
-        break;
-      case 2:
-        if (!formData.street_address) newErrors.street_address = 'Street address is required';
-        if (!formData.city) newErrors.city = 'City is required';
-        if (!formData.state) newErrors.state = 'State is required';
-        if (!formData.zip_code) newErrors.zip_code = 'ZIP code is required';
-        break;
-      case 3:
-        if (formData.service_types.length === 0) newErrors.service_types = 'At least one service type is required';
-        if (formData.years_experience < 1) newErrors.years_experience = 'Years of experience is required';
-        if (!formData.business_description) newErrors.business_description = 'Business description is required';
-        break;
-      case 4:
-        if (selectedStates.length === 0) newErrors.service_areas = 'At least one state is required';
-        if (selectedRegions.length === 0) newErrors.service_regions = 'At least one region is required';
-        break;
-      case 5:
-        if (workSampleFiles.length === 0 && formData.portfolio_links.length === 0) {
-          newErrors.portfolio = 'At least one work sample or portfolio link is required';
-        }
-        break;
-      case 6:
-        // Equipment validation
-        for (const serviceType of formData.service_types) {
-          const serviceEquipment = formData.equipment[serviceType] || {};
-          const checkedItems = Object.values(serviceEquipment).filter(Boolean).length;
-          if (checkedItems < 3) {
-            newErrors[`equipment_${serviceType}`] = `Please select at least 3 equipment items for ${serviceType}`;
-          }
-        }
-        break;
-      case 7:
-        if (!formData.background_check_consent) newErrors.background_check_consent = 'Background check consent is required';
-        if (!formData.work_ownership_declared) newErrors.work_ownership_declared = 'Work ownership declaration is required';
-        if (!formData.terms_accepted) newErrors.terms_accepted = 'Terms acceptance is required';
-        break;
+  const removeWorkLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      work_links: prev.work_links.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleProfileUpload = () => {
+    setShowUploadModal(true);
+    setUploadModalConfig({
+      title: 'Upload Profile Photo',
+      description: 'Upload a professional headshot or business photo',
+      acceptedTypes: 'image/*',
+      maxSize: 10,
+      uploadType: 'profile',
+      multiple: false,
+      onUpload: (files) => setSelectedFile(files[0])
+    });
+  };
+
+  const handleLicenseUpload = (side: 'front' | 'back') => {
+    setShowUploadModal(true);
+    setUploadModalConfig({
+      title: `Upload Driver's License (${side})`,
+      description: `Upload a clear photo of the ${side} of your driver's license`,
+      acceptedTypes: 'image/*',
+      maxSize: 10,
+      uploadType: 'license',
+      multiple: false,
+      onUpload: (files) => setLicenseFiles(prev => ({ ...prev, [side]: files[0] }))
+    });
+  };
+
+  const handleWorkSampleUpload = () => {
+    setShowUploadModal(true);
+    setUploadModalConfig({
+      title: 'Upload Work Samples',
+      description: 'Upload multiple photos and videos showcasing your best work (up to 10 files)',
+      acceptedTypes: 'image/*,video/*',
+      maxSize: uploadType === 'work' ? (file.type.startsWith('video/') ? 500 : 25) : 50,
+      uploadType: 'work',
+      multiple: true,
+      onUpload: handleWorkSampleFilesSelect
+    });
+  };
+
+  const handleWorkSampleFilesSelect = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    // Validate total file count
+    const totalFiles = workSampleFiles.length + files.length;
+    if (totalFiles > 10) {
+      setError('You can upload a maximum of 10 work sample files');
+      return;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 7));
-    }
-  };
-
-  const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-  };
-
-  const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
-
-    setIsSubmitting(true);
-    setUploading(true);
-
+    setUploadingWorkSamples(true);
+    setUploadProgress(0);
+    
     try {
-      // Simulate file upload progress
-      for (let i = 0; i <= 100; i += 10) {
-        setUploadProgress(i);
+      const uploadedFiles: File[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate individual file size based on type
+        const maxSize = file.type.startsWith('video/') ? 500 : 25; // 500MB for videos, 25MB for photos
+        if (file.size > maxSize * 1024 * 1024) {
+          throw new Error(`${file.name} is too large. ${file.type.startsWith('video/') ? 'Videos' : 'Photos'} must be under ${maxSize}MB`);
+        }
+        
+        uploadedFiles.push(file);
+        
+        // Update progress
+        const progress = Math.round(((i + 1) / files.length) * 100);
+        setUploadProgress(progress);
+        
+        // Small delay to show progress
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Success - redirect to confirmation
-      navigate('/vendor-application-success');
-    } catch (error) {
-      console.error('Error submitting application:', error);
-      setErrors({ submit: 'Failed to submit application. Please try again.' });
+      
+      setWorkSampleFiles(prev => [...prev, ...uploadedFiles]);
+      setShowUploadModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
-      setIsSubmitting(false);
-      setUploading(false);
+      setUploadingWorkSamples(false);
       setUploadProgress(0);
     }
   };
 
-  const getFileIcon = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) {
-      return Camera;
-    } else if (['mp4', 'mov', 'avi', 'mkv'].includes(extension || '')) {
-      return Video;
+  const uploadFile = async (file: File, path: string): Promise<string> => {
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock upload for demo
+      return `mock-uploads/${path}`;
     }
-    return FileText;
+
+    const { data, error } = await supabase.storage
+      .from('vendor-applications')
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) throw error;
+    return data.path;
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      setError('Please upload a profile photo');
+      return;
+    }
+
+    if (!licenseFiles.front || !licenseFiles.back) {
+      setError('Please upload both sides of your driver\'s license');
+      return;
+    }
+
+    // Validate work samples
+    if (workSampleFiles.length === 0) {
+      setError('Please upload at least one work sample');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Upload files first
+      const uploadPromises: Promise<string>[] = [];
+      const filePaths: Record<string, string> = {};
+
+      if (formData.profile_photo) {
+        const path = `${Date.now()}-profile-${formData.profile_photo.name}`;
+        uploadPromises.push(uploadFile(formData.profile_photo, path).then(p => filePaths.profile_photo = p));
+      }
+
+      if (formData.drivers_license_front) {
+        const path = `${Date.now()}-license-front-${formData.drivers_license_front.name}`;
+        uploadPromises.push(uploadFile(formData.drivers_license_front, path).then(p => filePaths.drivers_license_front = p));
+      }
+
+      if (formData.drivers_license_back) {
+        const path = `${Date.now()}-license-back-${formData.drivers_license_back.name}`;
+        uploadPromises.push(uploadFile(formData.drivers_license_back, path).then(p => filePaths.drivers_license_back = p));
+      }
+
+      // Upload work samples
+      const workSamplePaths: string[] = [];
+      for (let i = 0; i < formData.work_samples.length; i++) {
+        const file = formData.work_samples[i];
+        const path = `${Date.now()}-work-${i}-${file.name}`;
+        uploadPromises.push(uploadFile(file, path).then(p => workSamplePaths.push(p)));
+      }
+
+      await Promise.all(uploadPromises);
+
+      // Prepare application data
+      const applicationData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        service_locations: formData.service_locations,
+        services_applying_for: formData.services_applying_for,
+        gear: formData.gear,
+        profile_photo: filePaths.profile_photo || null,
+        drivers_license_front: filePaths.drivers_license_front || null,
+        drivers_license_back: filePaths.drivers_license_back || null,
+        description: formData.description,
+        work_links: formData.work_links.filter(link => link.trim() !== ''),
+        work_samples: workSamplePaths,
+        status: 'pending'
+      };
+
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock submission for demo
+        console.log('Mock application submitted:', applicationData);
+        setSuccess(true);
+        return;
+      }
+
+      // Submit to database
+      const { error: submitError } = await supabase
+        .from('vendor_applications')
+        .insert([applicationData]);
+
+      if (submitError) throw submitError;
+
+      setSuccess(true);
+    } catch (err) {
+      console.error('Error submitting application:', err);
+      setError(err instanceof Error ? err.message : 'Failed to submit application');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stepTitles = {
-    1: 'Basic Information',
-    2: 'Business Address',
-    3: 'Service Information',
-    4: 'Service Areas',
-    5: 'Portfolio & Work Samples',
-    6: 'Equipment & Resources',
-    7: 'Legal & Verification'
+  const canProceedStep = () => {
+    switch (currentStep) {
+      case 1:
+        return formData.name && formData.phone && formData.email && 
+               formData.address.street && formData.address.city && 
+               formData.address.state && formData.address.zip;
+      case 2:
+        return selectedStates.length > 0 && formData.service_locations.length > 0;
+      case 3:
+        return formData.services_applying_for.length > 0;
+      case 4:
+        return formData.gear.length > 0 && formData.gear.every(item => 
+          item.gear_type && item.brand && item.model && item.year && item.condition
+        );
+      case 5:
+        return formData.profile_photo && formData.drivers_license_front && formData.drivers_license_back;
+      case 6:
+        return formData.description.length >= 50;
+      case 7:
+        return formData.work_links.some(link => link.trim() !== '') || formData.work_samples.length > 0;
+      case 8:
+        const needsPhotos = formData.services_applying_for.includes('Photography');
+        const needsVideos = formData.services_applying_for.includes('Videography');
+        
+        if (needsPhotos && formData.work_samples.length < 10) return false;
+        if (needsVideos && formData.work_samples.length < 5) return false;
+        if (!needsPhotos && !needsVideos) return true;
+        
+        return formData.work_samples.length > 0;
+      default:
+        return false;
+    }
   };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return 'Personal Information';
+      case 2: return 'Service Locations';
+      case 3: return 'Services You Offer';
+      case 4: return 'Equipment & Gear';
+      case 5: return 'Photo & ID Upload';
+      case 6: return 'About You';
+      case 7: return 'Portfolio Links';
+      case 8: return 'Work Samples';
+      case 9: return 'Review & Submit';
+      default: return '';
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-12 text-center max-w-2xl">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check className="w-10 h-10 text-green-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Application Submitted Successfully!
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            Thank you for applying to join the B. Remembered vendor network. We'll review your application and get back to you within 1-2 hours.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
+            <ul className="text-sm text-blue-800 space-y-1 text-left">
+              <li>• Our team will review your application within 1-2 hours</li>
+              <li>• We'll verify your credentials and portfolio</li>
+              <li>• If approved, you'll receive setup instructions via email</li>
+              <li>• You'll gain access to our vendor dashboard and start receiving leads</li>
+            </ul>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button variant="primary" onClick={() => navigate('/')}>
+              Back to Home
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/vendor-onboarding')}>
+              Learn More About B. Remembered
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -403,22 +514,22 @@ export const VendorApplication: React.FC = () => {
             <Button 
               variant="ghost" 
               icon={ArrowLeft} 
-              onClick={() => navigate('/vendor-onboarding')}
+              onClick={() => currentStep === 1 ? navigate('/vendor-onboarding') : setCurrentStep(currentStep - 1)}
             >
               Back
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Vendor Application</h1>
-              <p className="text-gray-600 mt-1">{stepTitles[currentStep as keyof typeof stepTitles]}</p>
+              <p className="text-gray-600 mt-1">{getStepTitle()}</p>
             </div>
           </div>
 
           {/* Progress Steps */}
           <div className="flex items-center justify-center space-x-2 mb-8 overflow-x-auto">
-            {[1, 2, 3, 4, 5, 6, 7].map((step) => (
-              <div key={step} className="flex items-center flex-shrink-0">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((step) => (
+              <div key={step} className="flex items-center">
                 <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
+                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all flex-shrink-0
                   ${currentStep >= step 
                     ? 'bg-rose-500 text-white shadow-lg' 
                     : 'bg-gray-200 text-gray-600'
@@ -426,7 +537,7 @@ export const VendorApplication: React.FC = () => {
                 `}>
                   {currentStep > step ? <Check className="w-4 h-4" /> : step}
                 </div>
-                {step < 7 && (
+                {step < 9 && (
                   <div className={`w-8 h-1 mx-1 rounded-full transition-all ${
                     currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
                   }`} />
@@ -436,349 +547,144 @@ export const VendorApplication: React.FC = () => {
           </div>
         </div>
 
-        {/* Step Content */}
-        <Card className="p-8">
-          {/* Step 1: Basic Information */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Tell us about your business
-                </h2>
-                <p className="text-gray-600">
-                  Let's start with some basic information about you and your business
-                </p>
-              </div>
+        {error && (
+          <Card className="p-4 mb-6 bg-red-50 border border-red-200">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          </Card>
+        )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Step 1: Personal Information */}
+        {currentStep === 1 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Personal Information</h2>
+              <p className="text-gray-600">Let's start with your basic contact information</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Full Name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="John Smith"
+                icon={User}
+                required
+              />
+              <Input
+                label="Phone Number"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="(555) 123-4567"
+                icon={Phone}
+                required
+              />
+              <div className="md:col-span-2">
                 <Input
                   label="Email Address"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="your.email@example.com"
+                  placeholder="john@example.com"
                   icon={Mail}
-                  error={errors.email}
                   required
-                />
-                <Input
-                  label="Business Name"
-                  value={formData.business_name}
-                  onChange={(e) => handleInputChange('business_name', e.target.value)}
-                  placeholder="Your Photography Studio"
-                  icon={Building}
-                  error={errors.business_name}
-                  required
-                />
-                <Input
-                  label="Contact Name"
-                  value={formData.contact_name}
-                  onChange={(e) => handleInputChange('contact_name', e.target.value)}
-                  placeholder="Your full name"
-                  icon={User}
-                  error={errors.contact_name}
-                  required
-                />
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="(555) 123-4567"
-                  icon={Phone}
-                  error={errors.phone}
-                  required
-                />
-                <div className="md:col-span-2">
-                  <Input
-                    label="Website (Optional)"
-                    type="url"
-                    value={formData.website}
-                    onChange={(e) => handleInputChange('website', e.target.value)}
-                    placeholder="https://yourwebsite.com"
-                    icon={Globe}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Business Address */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-8 h-8 text-emerald-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Business Address
-                </h2>
-                <p className="text-gray-600">
-                  Where is your business located?
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <Input
-                    label="Street Address"
-                    value={formData.street_address}
-                    onChange={(e) => handleInputChange('street_address', e.target.value)}
-                    placeholder="123 Main Street"
-                    icon={MapPin}
-                    error={errors.street_address}
-                    required
-                  />
-                </div>
-                <Input
-                  label="City"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Boston"
-                  error={errors.city}
-                  required
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 ${
-                      errors.state ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    required
-                  >
-                    <option value="">Select State</option>
-                    {stateOptions.map((state) => (
-                      <option key={state} value={state}>{state}</option>
-                    ))}
-                  </select>
-                  {errors.state && <p className="text-sm text-red-600 mt-1">{errors.state}</p>}
-                </div>
-                <Input
-                  label="ZIP Code"
-                  value={formData.zip_code}
-                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                  placeholder="02101"
-                  error={errors.zip_code}
-                  required
-                />
-                <Input
-                  label="Country"
-                  value={formData.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                  placeholder="United States"
-                  disabled
                 />
               </div>
-            </div>
-          )}
-
-          {/* Step 3: Service Information */}
-          {currentStep === 3 && (
-            <div className="space-y-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Service Information
-                </h2>
-                <p className="text-gray-600">
-                  What services do you provide?
-                </p>
+              <div className="md:col-span-2">
+                <Input
+                  label="Street Address"
+                  value={formData.address.street}
+                  onChange={(e) => handleInputChange('address.street', e.target.value)}
+                  placeholder="123 Main Street"
+                  icon={MapPin}
+                  required
+                />
               </div>
-
-              {/* Service Types */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Service Types <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {serviceOptions.map((service) => (
-                    <div
-                      key={service}
-                      onClick={() => handleServiceTypeToggle(service)}
-                      className={`
-                        relative p-4 rounded-lg border-2 cursor-pointer transition-all
-                        ${formData.service_types.includes(service)
-                          ? 'border-rose-500 bg-rose-50' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }
-                      `}
-                    >
-                      {formData.service_types.includes(service) && (
-                        <div className="absolute top-3 right-3 w-5 h-5 bg-rose-500 rounded-full flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <h3 className="font-medium text-gray-900">{service}</h3>
-                    </div>
-                  ))}
-                </div>
-                {errors.service_types && <p className="text-sm text-red-600 mt-2">{errors.service_types}</p>}
-              </div>
-
-              {/* Years of Experience */}
               <Input
-                label="Years of Experience"
-                type="number"
-                value={formData.years_experience.toString()}
-                onChange={(e) => handleInputChange('years_experience', parseInt(e.target.value) || 0)}
-                placeholder="5"
-                min="0"
-                icon={Clock}
-                error={errors.years_experience}
+                label="City"
+                value={formData.address.city}
+                onChange={(e) => handleInputChange('address.city', e.target.value)}
+                placeholder="Boston"
                 required
               />
-
-              {/* Specialties */}
-              {formData.service_types.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
-                    Specialties (Optional)
-                  </label>
-                  <div className="space-y-4">
-                    {formData.service_types.map((serviceType) => (
-                      <div key={serviceType}>
-                        <h4 className="font-medium text-gray-900 mb-3">{serviceType}</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {(specialtyOptions[serviceType as keyof typeof specialtyOptions] || []).map((specialty) => (
-                            <div
-                              key={specialty}
-                              onClick={() => handleSpecialtyToggle(specialty)}
-                              className={`
-                                relative p-3 rounded-lg border cursor-pointer transition-all text-sm
-                                ${formData.specialties.includes(specialty)
-                                  ? 'border-purple-500 bg-purple-50 text-purple-800' 
-                                  : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'
-                                }
-                              `}
-                            >
-                              {formData.specialties.includes(specialty) && (
-                                <div className="absolute top-1 right-1 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
-                                  <Check className="w-2 h-2 text-white" />
-                                </div>
-                              )}
-                              {specialty}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Business Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={formData.business_description}
-                  onChange={(e) => handleInputChange('business_description', e.target.value)}
-                  placeholder="Tell us about your business, your approach, and what makes you unique..."
-                  rows={4}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 ${
-                    errors.business_description ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <select
+                  value={formData.address.state}
+                  onChange={(e) => handleInputChange('address.state', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                   required
-                />
-                {errors.business_description && <p className="text-sm text-red-600 mt-1">{errors.business_description}</p>}
-              </div>
-
-              {/* Social Media */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Social Media (Optional)
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Instagram"
-                    value={formData.instagram}
-                    onChange={(e) => handleInputChange('instagram', e.target.value)}
-                    placeholder="@yourbusiness"
-                  />
-                  <Input
-                    label="Facebook"
-                    value={formData.facebook}
-                    onChange={(e) => handleInputChange('facebook', e.target.value)}
-                    placeholder="facebook.com/yourbusiness"
-                  />
-                  <Input
-                    label="Twitter"
-                    value={formData.twitter}
-                    onChange={(e) => handleInputChange('twitter', e.target.value)}
-                    placeholder="@yourbusiness"
-                  />
-                  <Input
-                    label="Other"
-                    value={formData.other_social}
-                    onChange={(e) => handleInputChange('other_social', e.target.value)}
-                    placeholder="Other social media links"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Service Areas */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-8 h-8 text-amber-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Service Areas
-                </h2>
-                <p className="text-gray-600">
-                  Which states and regions do you serve?
-                </p>
-              </div>
-
-              {/* State Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  States You Serve <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {stateOptions.map((state) => (
-                    <div
-                      key={state}
-                      onClick={() => handleStateToggle(state)}
-                      className={`
-                        relative p-4 rounded-lg border-2 cursor-pointer transition-all text-center
-                        ${selectedStates.includes(state)
-                          ? 'border-amber-500 bg-amber-50' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }
-                      `}
-                    >
-                      {selectedStates.includes(state) && (
-                        <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <h3 className="font-medium text-gray-900">{state}</h3>
-                    </div>
+                >
+                  <option value="">Select State</option>
+                  {states.map((state) => (
+                    <option key={state} value={state}>{state}</option>
                   ))}
+                </select>
+              </div>
+              <Input
+                label="ZIP Code"
+                value={formData.address.zip}
+                onChange={(e) => handleInputChange('address.zip', e.target.value)}
+                placeholder="02101"
+                required
+              />
+            </div>
+          </Card>
+        )}
+
+        {/* Step 2: Service Locations */}
+        {currentStep === 2 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MapPin className="w-8 h-8 text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Service Locations</h2>
+              <p className="text-gray-600">First select the states you serve, then choose specific regions within those states</p>
+            </div>
+
+            <div className="space-y-8">
+              {/* Step 1: Select States */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Step 1: Select States You Serve</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {states.map((state) => {
+                    const isSelected = selectedStates.includes(state);
+                    return (
+                      <div
+                        key={state}
+                        onClick={() => handleStateToggle(state)}
+                        className={`
+                          relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
+                          ${isSelected 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="w-2 h-2 text-white" />
+                          </div>
+                        )}
+                        <h4 className="font-medium text-gray-900 text-sm">{state}</h4>
+                      </div>
+                    );
+                  })}
                 </div>
-                {errors.service_areas && <p className="text-sm text-red-600 mt-2">{errors.service_areas}</p>}
               </div>
 
-              {/* Region Selection */}
+              {/* Step 2: Select Regions within Selected States */}
               {selectedStates.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
-                    Regions You Serve <span className="text-red-500">*</span>
-                  </label>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Step 2: Select Regions in {selectedStates.join(', ')}
+                  </h3>
                   {serviceAreasLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -787,453 +693,679 @@ export const VendorApplication: React.FC = () => {
                   ) : (
                     <div className="space-y-6">
                       {selectedStates.map((state) => {
-                        const stateRegions = serviceAreas.filter(area => area.state === state);
-                        if (stateRegions.length === 0) return null;
+                        const stateAreas = serviceAreas.filter(area => area.state === state);
+                        if (stateAreas.length === 0) return null;
                         
                         return (
                           <div key={state}>
-                            <h4 className="font-medium text-gray-900 mb-3">{state} Regions</h4>
+                            <h4 className="font-medium text-gray-800 mb-3">{state} Regions</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {stateRegions.map((area) => (
-                                <div
-                                  key={area.id}
-                                  onClick={() => handleRegionToggle(area.region)}
-                                  className={`
-                                    relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
-                                    ${selectedRegions.includes(area.region)
-                                      ? 'border-emerald-500 bg-emerald-50' 
-                                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                                    }
-                                  `}
-                                >
-                                  {selectedRegions.includes(area.region) && (
-                                    <div className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                                      <Check className="w-2 h-2 text-white" />
-                                    </div>
-                                  )}
-                                  <h5 className="font-medium text-gray-900 text-sm">{area.region}</h5>
-                                </div>
-                              ))}
+                              {stateAreas.map((area) => {
+                                const isSelected = formData.service_locations.includes(area.id);
+                                return (
+                                  <div
+                                    key={area.id}
+                                    onClick={() => handleServiceLocationToggle(area.id)}
+                                    className={`
+                                      relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
+                                      ${isSelected 
+                                        ? 'border-emerald-500 bg-emerald-50' 
+                                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                                      }
+                                    `}
+                                  >
+                                    {isSelected && (
+                                      <div className="absolute top-2 right-2 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <Check className="w-2 h-2 text-white" />
+                                      </div>
+                                    )}
+                                    <h5 className="font-medium text-gray-900 text-sm">{area.region}</h5>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   )}
-                  {errors.service_regions && <p className="text-sm text-red-600 mt-2">{errors.service_regions}</p>}
                 </div>
               )}
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Step 5: Portfolio & Work Samples */}
-          {currentStep === 5 && (
-            <div className="space-y-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Camera className="w-8 h-8 text-rose-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Portfolio & Work Samples
-                </h2>
-                <p className="text-gray-600">
-                  Show us your best work
-                </p>
+        {/* Step 3: Services */}
+        {currentStep === 3 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8 text-purple-600" />
               </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Services You Offer</h2>
+              <p className="text-gray-600">Select all the wedding services you want to provide</p>
+            </div>
 
-              {/* Work Sample Files */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Upload Work Samples <span className="text-red-500">*</span>
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload your best photos and videos. Photos up to 25MB, videos up to 500MB. Maximum 10 files.
-                </p>
-                
-                {workSampleFiles.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="font-medium text-gray-900 mb-3">Selected Files ({workSampleFiles.length}/10)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto">
-                      {workSampleFiles.map((file, index) => {
-                        const FileIcon = getFileIcon(file.name);
-                        return (
-                          <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <FileIcon className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{file.name}</p>
-                              <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
-                            </div>
-                            <button
-                              onClick={() => removeWorkSample(index)}
-                              className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        );
-                      })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {serviceOptions.map((service) => {
+                const isSelected = formData.services_applying_for.includes(service);
+                return (
+                  <div
+                    key={service}
+                    onClick={() => handleServiceToggle(service)}
+                    className={`
+                      relative p-6 rounded-lg border-2 cursor-pointer transition-all text-center
+                      ${isSelected 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-3 right-3 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <h4 className="font-medium text-gray-900">{service}</h4>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Step 4: Equipment & Gear */}
+        {currentStep === 4 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Camera className="w-8 h-8 text-amber-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Equipment & Gear</h2>
+              <p className="text-gray-600">List your professional equipment and gear</p>
+            </div>
+
+            <div className="space-y-6">
+              {formData.gear.map((item, index) => (
+                <div key={index} className="p-6 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">Equipment #{index + 1}</h4>
+                    <Button
+                      variant="ghost"
+                      icon={X}
+                      size="sm"
+                      onClick={() => removeGearItem(index)}
+                      className="text-red-500 hover:text-red-700"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                      <select
+                        value={item.gear_type}
+                        onChange={(e) => handleGearChange(index, 'gear_type', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        required
+                      >
+                        <option value="">Select Type</option>
+                        {gearTypes.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <Input
+                      label="Brand"
+                      value={item.brand}
+                      onChange={(e) => handleGearChange(index, 'brand', e.target.value)}
+                      placeholder="Canon"
+                      required
+                    />
+                    <Input
+                      label="Model"
+                      value={item.model}
+                      onChange={(e) => handleGearChange(index, 'model', e.target.value)}
+                      placeholder="EOS R5"
+                      required
+                    />
+                    <Input
+                      label="Year"
+                      value={item.year}
+                      onChange={(e) => handleGearChange(index, 'year', e.target.value)}
+                      placeholder="2023"
+                      required
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
+                      <select
+                        value={item.condition}
+                        onChange={(e) => handleGearChange(index, 'condition', e.target.value as GearItem['condition'])}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        required
+                      >
+                        {conditionOptions.map((condition) => (
+                          <option key={condition} value={condition}>{condition}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setUploadType('work');
-                      setShowFileUpload(true);
-                    }}
-                    disabled={workSampleFiles.length >= 10}
-                    className="flex-1"
-                  >
-                    {workSampleFiles.length === 0 ? 'Upload Work Samples' : 'Add More Files'}
-                  </Button>
-                  {workSampleFiles.length > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setWorkSampleFiles([])}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      Clear All Files
-                    </Button>
-                  )}
                 </div>
-                {errors.portfolio && <p className="text-sm text-red-600 mt-2">{errors.portfolio}</p>}
-              </div>
+              ))}
 
-              {/* Portfolio Links */}
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  icon={Plus}
+                  onClick={addGearItem}
+                >
+                  Add Equipment
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 5: Photo & ID Upload */}
+        {currentStep === 5 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-rose-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Photo & ID Upload</h2>
+              <p className="text-gray-600">Upload your profile photo and driver's license for verification</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Profile Photo */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Portfolio Links (Optional)
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Add links to your online portfolio, website galleries, or social media
-                </p>
-                
-                <div className="space-y-3">
-                  {formData.portfolio_links.map((link, index) => (
-                    <div key={index} className="flex space-x-3">
-                      <Input
-                        placeholder="https://yourportfolio.com"
-                        value={link}
-                        onChange={(e) => updatePortfolioLink(index, e.target.value)}
-                        className="flex-1"
+                <label className="block text-sm font-medium text-gray-700 mb-4">Profile Photo</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  {formData.profile_photo ? (
+                    <div className="space-y-3">
+                      <img
+                        src={URL.createObjectURL(formData.profile_photo)}
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full object-cover mx-auto"
                       />
+                      <p className="text-sm text-gray-600">{formData.profile_photo.name}</p>
                       <Button
                         variant="outline"
-                        onClick={() => removePortfolioLink(index)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        size="sm"
+                        onClick={() => handleFileUpload('profile_photo', null)}
                       >
-                        <X className="w-4 h-4" />
+                        Remove
                       </Button>
                     </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    onClick={addPortfolioLink}
-                    disabled={formData.portfolio_links.length >= 5}
-                  >
-                    Add Portfolio Link
-                  </Button>
+                  ) : (
+                    <div>
+                      <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-600 mb-4">Upload a professional headshot</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
+                            handleFileUpload('profile_photo', file);
+                          }
+                        }}
+                        className="hidden"
+                        id="profile-photo"
+                      />
+                      <label htmlFor="profile-photo">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
+                          }}
+                        >
+                          Choose File
+                        </Button>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Driver's License Front */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-4">Driver's License (Front)</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  {formData.drivers_license_front ? (
+                    <div className="space-y-3">
+                      <FileText className="w-12 h-12 text-green-600 mx-auto" />
+                      <p className="text-sm text-gray-600">{formData.drivers_license_front.name}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleFileUpload('drivers_license_front', null)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-600 mb-4">Upload front of license</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
+                            handleFileUpload('drivers_license_front', file);
+                          }
+                        }}
+                        className="hidden"
+                        id="license-front"
+                      />
+                      <label htmlFor="license-front">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
+                          }}
+                        >
+                          Choose File
+                        </Button>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Driver's License Back */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-4">Driver's License (Back)</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  {formData.drivers_license_back ? (
+                    <div className="space-y-3">
+                      <FileText className="w-12 h-12 text-green-600 mx-auto" />
+                      <p className="text-sm text-gray-600">{formData.drivers_license_back.name}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleFileUpload('drivers_license_back', null)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-600 mb-4">Upload back of license</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
+                            handleFileUpload('drivers_license_back', file);
+                          }
+                        }}
+                        className="hidden"
+                        id="license-back"
+                      />
+                      <label htmlFor="license-back">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
+                          }}
+                        >
+                          Choose File
+                        </Button>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Step 6: Equipment & Resources */}
-          {currentStep === 6 && (
-            <div className="space-y-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-8 h-8 text-indigo-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Equipment & Resources
-                </h2>
-                <p className="text-gray-600">
-                  Tell us about your professional equipment
+        {/* Step 6: About You */}
+        {currentStep === 6 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-indigo-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">About You</h2>
+              <p className="text-gray-600">Tell us about yourself and your experience</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description (minimum 50 characters)
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Tell us about your experience, style, and what makes you unique as a wedding vendor..."
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                required
+              />
+              <div className="flex justify-between mt-2">
+                <p className="text-sm text-gray-500">
+                  {formData.description.length}/50 minimum characters
+                </p>
+                <p className="text-sm text-gray-500">
+                  {formData.description.length}/1000 characters
                 </p>
               </div>
+            </div>
+          </Card>
+        )}
 
-              {formData.service_types.map((serviceType) => (
-                <div key={serviceType}>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    {serviceType} Equipment
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Select all equipment you own and use professionally (minimum 3 required)
-                  </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {(equipmentChecklists[serviceType as keyof typeof equipmentChecklists] || []).map((equipment) => (
-                      <div
-                        key={equipment}
-                        onClick={() => handleEquipmentToggle(serviceType, equipment)}
-                        className={`
-                          relative p-3 rounded-lg border cursor-pointer transition-all text-sm
-                          ${formData.equipment[serviceType]?.[equipment]
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-800' 
-                            : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'
-                          }
-                        `}
-                      >
-                        {formData.equipment[serviceType]?.[equipment] && (
-                          <div className="absolute top-2 right-2 w-4 h-4 bg-indigo-500 rounded-full flex items-center justify-center">
-                            <Check className="w-2 h-2 text-white" />
-                          </div>
-                        )}
-                        {equipment}
-                      </div>
-                    ))}
+        {/* Step 7: Portfolio Links */}
+        {currentStep === 7 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Link className="w-8 h-8 text-cyan-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Portfolio Links</h2>
+              <p className="text-gray-600">Share links to your online portfolio, website, or social media</p>
+            </div>
+
+            <div className="space-y-4">
+              {formData.work_links.map((link, index) => (
+                <div key={index} className="flex items-center space-x-3">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="https://yourwebsite.com or https://instagram.com/yourhandle"
+                      value={link}
+                      onChange={(e) => handleWorkLinkChange(index, e.target.value)}
+                      icon={Link}
+                    />
                   </div>
-                  
-                  {errors[`equipment_${serviceType}`] && (
-                    <p className="text-sm text-red-600 mt-2">{errors[`equipment_${serviceType}`]}</p>
+                  {formData.work_links.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      icon={X}
+                      size="sm"
+                      onClick={() => removeWorkLink(index)}
+                      className="text-red-500 hover:text-red-700"
+                    />
                   )}
                 </div>
               ))}
+              
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  icon={Plus}
+                  onClick={addWorkLink}
+                >
+                  Add Another Link
+                </Button>
+              </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Step 7: Legal & Verification */}
-          {currentStep === 7 && (
-            <div className="space-y-8">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                  Legal & Verification
-                </h2>
-                <p className="text-gray-600">
-                  Final steps to complete your application
-                </p>
+        {/* Step 8: Work Samples */}
+        {currentStep === 8 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-green-600" />
               </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
+              <div className="text-gray-600">
+                Upload photos (up to 25MB) and videos (up to 500MB) showcasing your best work (maximum 10 files)
+              </div>
+            </div>
 
-              {/* Insurance Documents */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Insurance Documentation (Optional but Recommended)
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload your business insurance, liability insurance, or equipment insurance documents
-                </p>
-                
-                {insuranceFiles.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Insurance Files</h4>
-                    <div className="space-y-2">
-                      {insuranceFiles.map((file, index) => (
-                        <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{file.name}</p>
-                            <p className="text-sm text-gray-600">{formatFileSize(file.size)}</p>
+            <div className="space-y-6">
+              {workSampleFiles.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Selected Files ({workSampleFiles.length}/10)</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {workSampleFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            file.type.startsWith('video/') ? 'bg-purple-100' : 'bg-blue-100'
+                          }`}>
+                            {file.type.startsWith('video/') ? (
+                              <Video className="w-4 h-4 text-purple-600" />
+                            ) : (
+                              <Camera className="w-4 h-4 text-blue-600" />
+                            )}
                           </div>
-                          <button
-                            onClick={() => removeInsuranceFile(index)}
-                            className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setUploadType('license');
-                    setShowFileUpload(true);
-                  }}
-                >
-                  Upload Insurance Documents
-                </Button>
-              </div>
-
-              {/* ID Verification */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  ID Verification (Optional)
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload a government-issued ID for identity verification
-                </p>
-                
-                {idVerificationFile && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{idVerificationFile.name}</p>
-                        <p className="text-sm text-gray-600">{formatFileSize(idVerificationFile.size)}</p>
+                        <button
+                          type="button"
+                          onClick={() => removeWorkSample(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setIdVerificationFile(null)}
-                        className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setUploadType('profile');
-                    setShowFileUpload(true);
-                  }}
-                >
-                  Upload ID Document
-                </Button>
-              </div>
-
-              {/* Legal Agreements */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Legal Agreements</h3>
-                
-                <div className="space-y-4">
-                  <label className="flex items-start space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.background_check_consent}
-                      onChange={(e) => handleInputChange('background_check_consent', e.target.checked)}
-                      className="mt-1 text-rose-500 focus:ring-rose-500"
-                      required
-                    />
-                    <span className="text-sm text-gray-700">
-                      I consent to a background check as part of the vendor verification process. <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                  {errors.background_check_consent && <p className="text-sm text-red-600">{errors.background_check_consent}</p>}
-
-                  <label className="flex items-start space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.work_ownership_declared}
-                      onChange={(e) => handleInputChange('work_ownership_declared', e.target.checked)}
-                      className="mt-1 text-rose-500 focus:ring-rose-500"
-                      required
-                    />
-                    <span className="text-sm text-gray-700">
-                      I declare that all work samples and portfolio items are my own original work or I have proper rights to use them. <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                  {errors.work_ownership_declared && <p className="text-sm text-red-600">{errors.work_ownership_declared}</p>}
-
-                  <label className="flex items-start space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.terms_accepted}
-                      onChange={(e) => handleInputChange('terms_accepted', e.target.checked)}
-                      className="mt-1 text-rose-500 focus:ring-rose-500"
-                      required
-                    />
-                    <span className="text-sm text-gray-700">
-                      I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Vendor Agreement</a>. <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                  {errors.terms_accepted && <p className="text-sm text-red-600">{errors.terms_accepted}</p>}
-                </div>
-              </div>
-
-              {/* Upload Progress */}
-              {uploading && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-                    </div>
-                    <h4 className="font-medium text-blue-900 mb-2">Uploading Files...</h4>
-                    <div className="w-full bg-blue-200 rounded-full h-3 mb-4">
-                      <div 
-                        className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-blue-800">{uploadProgress}% complete</p>
+                    ))}
                   </div>
                 </div>
               )}
+              
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleWorkSampleUpload}
+                  disabled={workSampleFiles.length >= 10 || uploadingWorkSamples}
+                  className="flex-1"
+                >
+                  {workSampleFiles.length === 0 ? 'Upload Work Samples' : 'Add More Files'}
+                </Button>
+                {workSampleFiles.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setWorkSampleFiles([])}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              
+              {workSampleFiles.length >= 10 && (
+                <p className="text-sm text-amber-600 mt-2">
+                  Maximum of 10 files reached. Remove files to add different ones.
+                </p>
+              )}
+            </div>
+          </Card>
+        )}
 
-              {/* Submit Button */}
+        {/* Step 9: Review & Submit */}
+        {currentStep === 9 && (
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Review & Submit</h2>
+              <p className="text-gray-600">Please review your application before submitting</p>
+            </div>
+
+            <div className="space-y-6">
+              {/* Personal Info */}
+              <div className="p-6 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-4">Personal Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Name:</span>
+                    <span className="ml-2 font-medium">{formData.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Phone:</span>
+                    <span className="ml-2 font-medium">{formData.phone}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Email:</span>
+                    <span className="ml-2 font-medium">{formData.email}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Address:</span>
+                    <span className="ml-2 font-medium">
+                      {formData.address.street}, {formData.address.city}, {formData.address.state} {formData.address.zip}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Services & Locations */}
+              <div className="p-6 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-4">Services & Locations</h3>
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-gray-600">Services:</span>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.services_applying_for.map((service) => (
+                        <span key={service} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Service Locations:</span>
+                    <span className="ml-2 font-medium">{formData.service_locations.length} areas selected</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Equipment */}
+              <div className="p-6 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-4">Equipment ({formData.gear.length} items)</h3>
+                <div className="space-y-2">
+                  {formData.gear.slice(0, 3).map((item, index) => (
+                    <div key={index} className="text-sm">
+                      <span className="font-medium">{item.brand} {item.model}</span>
+                      <span className="text-gray-600 ml-2">({item.year}, {item.condition})</span>
+                    </div>
+                  ))}
+                  {formData.gear.length > 3 && (
+                    <p className="text-sm text-gray-500">+{formData.gear.length - 3} more items</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Files */}
+              <div className="p-6 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-gray-900 mb-4">Uploaded Files</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Profile Photo:</span>
+                    <span className="ml-2 font-medium text-green-600">
+                      {formData.profile_photo ? '✓ Uploaded' : '✗ Missing'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">License Front:</span>
+                    <span className="ml-2 font-medium text-green-600">
+                      {formData.drivers_license_front ? '✓ Uploaded' : '✗ Missing'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">License Back:</span>
+                    <span className="ml-2 font-medium text-green-600">
+                      {formData.drivers_license_back ? '✓ Uploaded' : '✗ Missing'}
+                    </span>
+                  </div>
+                  <div className="md:col-span-3">
+                    <span className="text-gray-600">Work Samples:</span>
+                    <span className="ml-2 font-medium">{formData.work_samples.length} files uploaded</span>
+                  </div>
+                  <div className="md:col-span-3">
+                    <span className="text-gray-600">Portfolio Links:</span>
+                    <span className="ml-2 font-medium">
+                      {formData.work_links.filter(link => link.trim() !== '').length} links provided
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="text-center">
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || uploading}
-                  loading={isSubmitting}
-                  className="px-8"
+                  loading={loading}
+                  disabled={!canProceedStep()}
+                  className="px-12"
                 >
-                  {isSubmitting ? 'Submitting Application...' : 'Submit Application'}
+                  Submit Application
                 </Button>
-                {errors.submit && <p className="text-sm text-red-600 mt-2">{errors.submit}</p>}
+                <p className="text-sm text-gray-500 mt-4">
+                  By submitting, you agree to our Terms of Service and Privacy Policy
+                </p>
               </div>
             </div>
-          )}
+          </Card>
+        )}
 
-          {/* Navigation */}
-          {currentStep < 7 && (
-            <div className="flex justify-between pt-8 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 1}
-              >
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleNext}
-              >
-                Continue
-              </Button>
-            </div>
-          )}
-        </Card>
+        {/* Navigation */}
+        {currentStep < 9 && (
+          <div className="flex justify-between mt-8">
+            <Button
+              variant="outline"
+              onClick={() => currentStep === 1 ? navigate('/vendor-onboarding') : setCurrentStep(currentStep - 1)}
+            >
+              {currentStep === 1 ? 'Back to Info' : 'Previous'}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => setCurrentStep(currentStep + 1)}
+              disabled={!canProceedStep()}
+              icon={ArrowRight}
+            >
+              {currentStep === 8 ? 'Review Application' : 'Continue'}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* File Upload Modal */}
-      <FileUploadModal
-        isOpen={showFileUpload}
-        onClose={() => setShowFileUpload(false)}
-        onFileSelect={handleFileUpload}
-        title={
-          uploadType === 'work' ? 'Upload Work Samples' :
-          uploadType === 'license' ? 'Upload Insurance Documents' :
-          'Upload ID Verification'
-        }
-        description={
-          uploadType === 'work' ? 'Upload your best photos and videos to showcase your work' :
-          uploadType === 'license' ? 'Upload insurance or business license documents' :
-          'Upload a government-issued ID for verification'
-        }
-        acceptedTypes={
-          uploadType === 'work' ? 'image/*,video/*' :
-          uploadType === 'license' ? '.pdf,.doc,.docx,image/*' :
-          'image/*,.pdf'
-        }
-        maxSize={
-          uploadType === 'work' ? 500 : // 500MB for work samples (videos)
-          uploadType === 'license' ? 10 :
-          5
-        }
-        currentFiles={
-          uploadType === 'work' ? workSampleFiles :
-          uploadType === 'license' ? insuranceFiles :
-          idVerificationFile ? [idVerificationFile] : []
-        }
-        uploadType={uploadType}
-        multiple={uploadType !== 'profile'}
-        uploading={uploading}
-        uploadProgress={uploadProgress}
-      />
+      {uploadModalConfig && (
+        <FileUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onFileSelect={uploadModalConfig.onUpload}
+          title={uploadModalConfig.title}
+          description={uploadModalConfig.description}
+          acceptedTypes={uploadModalConfig.acceptedTypes}
+          maxSize={uploadModalConfig.maxSize}
+          currentFiles={
+            uploadModalConfig.uploadType === 'profile' ? (selectedFile ? [selectedFile] : []) :
+            uploadModalConfig.uploadType === 'work' ? workSampleFiles :
+            []
+          }
+          uploadType={uploadModalConfig.uploadType}
+          multiple={uploadModalConfig.multiple}
+          uploading={uploadingWorkSamples}
+          uploadProgress={uploadProgress}
+        />
+      )}
     </div>
   );
 };
