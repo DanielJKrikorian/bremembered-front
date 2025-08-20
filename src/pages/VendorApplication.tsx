@@ -51,6 +51,7 @@ export const VendorApplication = () => {
     uploadType: 'work' as 'profile' | 'license' | 'work',
     multiple: false
   });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [success, setSuccess] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [licenseFiles, setLicenseFiles] = useState<{ front: File | null; back: File | null }>({
@@ -164,6 +165,39 @@ export const VendorApplication = () => {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileSelect = (files: File[]) => {
+    setSelectedFiles(files);
+    
+    // Convert files to file paths for form data
+    const filePaths = files.map(file => file.name);
+    
+    // Update form data based on upload type
+    switch (uploadModalConfig.uploadType) {
+      case 'profile':
+        setFormData(prev => ({
+          ...prev,
+          id_verification_document: filePaths[0] || ''
+        }));
+        break;
+      case 'license':
+        setFormData(prev => ({
+          ...prev,
+          business_documents: [...prev.business_documents, ...filePaths]
+        }));
+        break;
+      case 'work':
+        setFormData(prev => ({
+          ...prev,
+          work_samples: [...prev.work_samples, ...filePaths]
+        }));
+        break;
+    }
+    
+    // Close modal after file selection
+    setIsUploadModalOpen(false);
+    setSelectedFiles([]);
   };
 
   const handleAddressChange = (field: string, value: string) => {
@@ -1385,7 +1419,7 @@ export const VendorApplication = () => {
         <FileUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          onFileSelect={uploadModalConfig2.onUpload || (() => {})}
+          onFileSelect={handleFileSelect}
           title={uploadModalConfig2.title}
           description={uploadModalConfig2.description}
           acceptedTypes={uploadModalConfig2.acceptedTypes}
@@ -1399,6 +1433,7 @@ export const VendorApplication = () => {
           multiple={uploadModalConfig2.multiple}
           uploading={uploadingWorkSamples}
           uploadProgress={uploadProgress}
+          currentFiles={selectedFiles}
         />
       )}
     </div>
