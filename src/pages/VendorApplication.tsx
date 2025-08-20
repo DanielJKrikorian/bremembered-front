@@ -200,11 +200,13 @@ export const VendorApplication = () => {
     const filePaths = files.map(file => file.name);
     
     // Update form data based on upload type
-    switch (uploadModalConfig.uploadType) {
+    switch (uploadModalConfig2.uploadType) {
       case 'profile':
-    // This function is no longer used since we switched to direct file inputs
-    // All file handling is now done in handleDirectFileSelect
-    setSelectedFiles([]);
+        // This function is no longer used since we switched to direct file inputs
+        // All file handling is now done in handleDirectFileSelect
+        setSelectedFiles([]);
+        break;
+    }
   };
 
   const handleAddressChange = (field: string, value: string) => {
@@ -1440,7 +1442,6 @@ export const VendorApplication = () => {
           multiple={uploadModalConfig2.multiple}
           uploading={uploadingWorkSamples}
           uploadProgress={uploadProgress}
-          currentFiles={selectedFiles}
         />
       )}
     </div>
