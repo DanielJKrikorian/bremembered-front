@@ -91,7 +91,7 @@ export const VendorOnboarding: React.FC = () => {
           <Card className="p-8 md:p-12 mb-12">
             <div className="prose prose-lg max-w-none">
               <p className="text-xl text-gray-700 leading-relaxed mb-6">
-                B. Remembered is a nationwide wedding services platform connecting couples with trusted, pre-vetted vendors across photography, videography, DJ, and coordination. Our vision is to make wedding planning simple, transparent, and stress-free — while helping vendors grow their businesses with reliable bookings and the support they deserve.
+                B. Remembered is a nationwide wedding services platform connecting couples with trusted, pre-vetted vendors across photography, videography, DJ, coordination, planning, and live musicians. Our vision is to make wedding planning simple, transparent, and stress-free — while helping vendors grow their businesses with reliable bookings and the support they deserve.
               </p>
               
               <p className="text-lg text-gray-600 leading-relaxed mb-8">
@@ -118,6 +118,14 @@ export const VendorOnboarding: React.FC = () => {
                     Vendors gain access to a steady stream of bookings, automation tools, and full customer support from our team.
                   </p>
                 </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <p className="text-center text-blue-800 font-medium">
+                  <span className="inline-flex items-center">
+                    ✨ More services coming soon! We're constantly expanding to serve more wedding professionals.
+                  </span>
+                </p>
               </div>
             </div>
           </Card>
@@ -355,12 +363,34 @@ export const VendorOnboarding: React.FC = () => {
             ].map((service, index) => (
               <Card key={index} className="p-6 text-center hover:shadow-xl transition-shadow">
                 <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
+              },
+              { 
+                icon: Calendar, 
+                title: 'Planning', 
+                description: 'Full-service wedding planning from start to finish', 
+                color: 'bg-blue-100 text-blue-600',
+                features: ['Venue selection', 'Vendor sourcing', 'Budget management']
+              },
+              { 
+                icon: Music, 
+                title: 'Live Musicians', 
+                description: 'Live music for ceremonies and receptions', 
+                color: 'bg-indigo-100 text-indigo-600',
+                features: ['Ceremony music', 'Cocktail hour', 'Reception entertainment']
                   <service.icon className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">{service.title}</h3>
                 <p className="text-gray-600 text-sm">{service.description}</p>
               </Card>
             ))}
+          </div>
+          
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-rose-500 to-amber-500 text-white px-6 py-3 rounded-full">
+              <Sparkles className="w-5 h-5" />
+              <span className="font-semibold">More services coming soon!</span>
+              <Sparkles className="w-5 h-5" />
+            </div>
           </div>
         </section>
 
