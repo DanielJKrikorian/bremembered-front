@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Star, Users, Shield, DollarSign, Clock, Award, CheckCircle, Heart, Camera, Music, Calendar, TrendingUp, Zap, Target } from 'lucide-react';
+import { ArrowRight, Star, Users, Shield, DollarSign, Clock, Award, CheckCircle, Heart, Camera, Music, Calendar, TrendingUp, Zap, Target, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -359,24 +359,22 @@ export const VendorOnboarding: React.FC = () => {
                 title: 'Coordination', 
                 description: 'Wedding planners and day-of coordinators',
                 color: 'from-purple-500 to-indigo-500'
-              }
-            ].map((service, index) => (
-              <Card key={index} className="p-6 text-center hover:shadow-xl transition-shadow">
-                <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
               },
               { 
                 icon: Calendar, 
                 title: 'Planning', 
                 description: 'Full-service wedding planning from start to finish', 
-                color: 'bg-blue-100 text-blue-600',
-                features: ['Venue selection', 'Vendor sourcing', 'Budget management']
+                color: 'from-blue-500 to-cyan-500'
               },
               { 
                 icon: Music, 
                 title: 'Live Musicians', 
                 description: 'Live music for ceremonies and receptions', 
-                color: 'bg-indigo-100 text-indigo-600',
-                features: ['Ceremony music', 'Cocktail hour', 'Reception entertainment']
+                color: 'from-indigo-500 to-purple-500'
+              }
+            ].map((service, index) => (
+              <Card key={index} className="p-6 text-center hover:shadow-xl transition-shadow">
+                <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
                   <service.icon className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">{service.title}</h3>
