@@ -77,7 +77,11 @@ export const VendorApplication = () => {
       multiple: false,
       onUpload: (files: File[]) => {}
     });
-    setIsUploadModalOpen(true);
+    // Direct file input - no modal needed
+    const inputId = type === 'profile' ? 'profile-photo-input' : 
+                   type === 'license' ? 'id-verification-input' : 
+                   'work-samples-input';
+    document.getElementById(inputId)?.click();
   };
 
   const [formData, setFormData] = useState<ApplicationData>({
