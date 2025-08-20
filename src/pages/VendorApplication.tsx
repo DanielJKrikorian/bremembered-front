@@ -141,26 +141,6 @@ export const VendorApplication: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddressChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      business_address: {
-        ...prev.business_address,
-        [field]: value
-      }
-    }));
-  };
-
-  const handleSocialMediaChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      social_media: {
-        ...prev.social_media,
-        [field]: value
-      }
-    }));
-  };
-
   const handleServiceLocationToggle = (locationId: string) => {
     setFormData(prev => ({
       ...prev,
