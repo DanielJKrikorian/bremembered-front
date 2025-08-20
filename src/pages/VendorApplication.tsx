@@ -51,19 +51,19 @@ interface ApplicationData {
     title: string;
     description: string;
     acceptedTypes: string;
-    maxSize: number;
-    uploadType: 'profile' | 'license' | 'work';
-    multiple: boolean;
-    onUpload: (files: File[]) => void;
-  } | null>(null);
-  const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
-  
-  const openUploadModal = (config: {
-    title: string;
-    description: string;
-    acceptedTypes: string;
     uploadType: 'profile' | 'license' | 'work';
     multiple?: boolean;
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadModalConfig, setUploadModalConfig] = useState({
+    title: '',
+    description: '',
+    acceptedTypes: '',
+    uploadType: 'work' as 'profile' | 'license' | 'work',
+    multiple: false,
+    onFileSelect: (files: File[]) => {}
+  });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   }) => {
     setUploadModalConfig(config);
     setIsUploadModalOpen(true);
