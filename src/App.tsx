@@ -59,6 +59,7 @@ function App() {
                 
                 {/* Vendor Onboarding */}
                 <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+                <Route path="/vendor-application" element={<VendorApplication />} />
               </Routes>
             </main>
             <Footer />
