@@ -202,27 +202,8 @@ export const VendorApplication = () => {
     // Update form data based on upload type
     switch (uploadModalConfig.uploadType) {
       case 'profile':
-        setFormData(prev => ({
-          ...prev,
-          id_verification_document: filePaths[0] || ''
-        }));
-        break;
-      case 'license':
-        setFormData(prev => ({
-          ...prev,
-          business_documents: [...prev.business_documents, ...filePaths]
-        }));
-        break;
-      case 'work':
-        setFormData(prev => ({
-          ...prev,
-          work_samples: [...prev.work_samples, ...filePaths]
-        }));
-        break;
-    }
-    
-    // Close modal after file selection
-    setIsUploadModalOpen(false);
+    // This function is no longer used since we switched to direct file inputs
+    // All file handling is now done in handleDirectFileSelect
     setSelectedFiles([]);
   };
 
