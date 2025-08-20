@@ -29,19 +29,6 @@ interface ApplicationData {
   service_locations: string[];
   services_applying_for: string[];
   gear: GearItem[];
-  profile_photo: File | null;
-  drivers_license_front: File | null;
-  drivers_license_back: File | null;
-  description: string;
-  work_links: string[];
-  work_samples: File[];
-}
-
-export const VendorApplication: React.FC = () => {
-  const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalConfig, setUploadModalConfig] = useState({
     title: '',
