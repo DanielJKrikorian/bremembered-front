@@ -21,6 +21,7 @@ import { PackageCongratulations } from './pages/booking/PackageCongratulations';
 import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
 import { VendorOnboarding } from './pages/VendorOnboarding';
+import { VendorApplication } from './pages/VendorApplication';
 import { ChatBot } from './components/chat/ChatBot';
 import { Blog } from './pages/Blog';
 import { BlogPost } from './pages/BlogPost';
