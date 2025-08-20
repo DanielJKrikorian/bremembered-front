@@ -194,27 +194,8 @@ export const VendorApplication = () => {
   const handleFileSelect = (files: File[]) => {
     setSelectedFiles(files);
     
-    // Update form data based on upload type
-    if (uploadModalConfig.uploadType === 'work') {
-      setFormData(prev => ({
-        ...prev,
-        work_samples: [...prev.work_samples, ...files.map(file => file.name)]
-      }));
-    } else if (uploadModalConfig.uploadType === 'license') {
-      setFormData(prev => ({
-        ...prev,
-        business_documents: [...prev.business_documents, ...files.map(file => file.name)]
-      }));
-    } else if (uploadModalConfig.uploadType === 'profile') {
-      setFormData(prev => ({
-        ...prev,
-        id_verification_document: files[0]?.name || ''
-      }));
-    }
-    
-    setSelectedFiles(files);
-    setIsUploadModalOpen(false);
-    
+    // This function is no longer used since we switched to direct file inputs
+    // The handleDirectFileSelect function handles the file selection now
     // Convert files to file paths for form data
     const filePaths = files.map(file => file.name);
     
