@@ -115,7 +115,7 @@ export const Footer: React.FC = () => {
                   size="sm"
                   icon={Users}
                   className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500"
-                  onClick={() => window.open('https://app.bremembered.io/signup', '_blank')}
+                  onClick={() => navigate('/vendor-onboarding')}
                 >
                   Join the Team
                 </Button>
