@@ -6,13 +6,16 @@ import { Card } from '../ui/Card';
 interface FileUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onFileSelect: (file: File) => void;
+  onFileSelect: (files: File[]) => void;
   title: string;
   description: string;
   acceptedTypes: string;
   maxSize?: number; // in MB
-  currentFile?: File | null;
+  currentFiles?: File[];
   uploadType: 'profile' | 'license' | 'work';
+  multiple?: boolean;
+  uploading?: boolean;
+  uploadProgress?: number;
 }
 
 export const FileUploadModal: React.FC<FileUploadModalProps> = ({
@@ -23,8 +26,11 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
   description,
   acceptedTypes,
   maxSize = 10,
-  currentFile,
-  uploadType
+  currentFiles = [],
+  uploadType,
+  multiple = false,
+  uploading = false,
+  uploadProgress = 0
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +51,8 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   const validateFile = (file: File): string | null => {
     // Check file size
-    if (file.size > maxSize * 1024 * 1024) {
+    const maxSizeBytes = maxSize * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
       return `File size must be less than ${maxSize}MB`;
     }
 
@@ -65,16 +72,27 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     return null;
   };
 
-  const handleFileSelect = (file: File) => {
-    const validationError = validateFile(file);
-    if (validationError) {
-      setError(validationError);
-      return;
+  const handleFileSelect = (files: File[]) => {
+    const validFiles: File[] = [];
+    let hasError = false;
+
+    for (const file of files) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        hasError = true;
+        break;
+      }
+      validFiles.push(file);
     }
 
-    setError(null);
-    onFileSelect(file);
-    onClose();
+    if (!hasError && validFiles.length > 0) {
+      setError(null);
+      onFileSelect(validFiles);
+      if (!multiple) {
+        onClose();
+      }
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -83,8 +101,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
+    if (multiple) {
+      handleFileSelect(files);
+    } else if (files.length > 0) {
+      handleFileSelect([files[0]]);
     }
   };
 
@@ -100,8 +120,10 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
+    if (multiple) {
+      handleFileSelect(files);
+    } else if (files.length > 0) {
+      handleFileSelect([files[0]]);
     }
   };
 
@@ -135,23 +157,45 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             </div>
           )}
 
-          {currentFile ? (
+          {uploading ? (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+              </div>
+              <h4 className="font-medium text-gray-900 mb-2">Uploading Files...</h4>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-600">{uploadProgress}% complete</p>
+            </div>
+          ) : currentFiles.length > 0 ? (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-green-600" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">File Selected</h4>
-              <p className="text-sm text-gray-600 mb-4">{currentFile.name}</p>
-              <p className="text-xs text-gray-500 mb-6">
-                Size: {(currentFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
+              <h4 className="font-medium text-gray-900 mb-2">
+                {currentFiles.length} File{currentFiles.length !== 1 ? 's' : ''} Selected
+              </h4>
+              <div className="space-y-2 mb-4">
+                {currentFiles.map((file, index) => (
+                  <div key={index} className="text-sm text-gray-600">
+                    <p className="font-medium">{file.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                ))}
+              </div>
               <div className="flex space-x-3">
                 <Button
                   variant="outline"
                   onClick={handleButtonClick}
                   className="flex-1"
                 >
-                  Choose Different File
+                  {multiple ? 'Add More Files' : 'Choose Different File'}
                 </Button>
                 <Button
                   variant="primary"
@@ -179,13 +223,13 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             >
               <Icon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h4 className="text-lg font-medium text-gray-900 mb-2">
-                {dragActive ? 'Drop file here' : 'Upload File'}
+                {dragActive ? 'Drop files here' : `Upload ${multiple ? 'Files' : 'File'}`}
               </h4>
               <p className="text-gray-600 mb-4">
-                Drag and drop your file here, or click to browse
+                Drag and drop your {multiple ? 'files' : 'file'} here, or click to browse
               </p>
               <Button variant="outline">
-                Choose File
+                Choose {multiple ? 'Files' : 'File'}
               </Button>
               <p className="text-xs text-gray-500 mt-4">
                 Accepted formats: {acceptedTypes}<br />
@@ -198,6 +242,7 @@ export const FileUploadModal: React.FC<FileUploadModalProps> = ({
             ref={fileInputRef}
             type="file"
             accept={acceptedTypes}
+            multiple={multiple}
             onChange={handleFileInputChange}
             className="hidden"
           />
