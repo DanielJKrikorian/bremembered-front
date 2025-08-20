@@ -29,6 +29,20 @@ interface ApplicationData {
   service_locations: string[];
   services_applying_for: string[];
   gear: GearItem[];
+  profile_photo: File | null;
+  drivers_license_front: File | null;
+  drivers_license_back: File | null;
+  description: string;
+  work_links: string[];
+  work_samples: File[];
+}
+
+export const VendorApplication = () => {
+  const navigate = useNavigate();
+  const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadModalConfig, setUploadModalConfig] = useState({
     title: '',
@@ -47,25 +61,30 @@ interface ApplicationData {
   const [uploadingWorkSamples, setUploadingWorkSamples] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadModalConfig, setUploadModalConfig] = useState<{
+  const [uploadModalConfig2, setUploadModalConfig2] = useState<{
     title: string;
     description: string;
     acceptedTypes: string;
     uploadType: 'profile' | 'license' | 'work';
     multiple?: boolean;
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadModalConfig, setUploadModalConfig] = useState({
+    maxSize?: number;
+    onUpload?: (files: File[]) => void;
+  }>({
     title: '',
     description: '',
     acceptedTypes: '',
-    uploadType: 'work' as 'profile' | 'license' | 'work',
-    multiple: false,
-    onFileSelect: (files: File[]) => {}
+    uploadType: 'work'
   });
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  }) => {
-    setUploadModalConfig(config);
+
+  const openUploadModal = (field: string, title: string, description: string, acceptedTypes: string, uploadType: 'profile' | 'license' | 'work', config?: any) => {
+    setUploadModalConfig2({
+      title,
+      description,
+      acceptedTypes,
+      uploadType,
+      multiple: false,
+      onUpload: (files: File[]) => {}
+    });
     setIsUploadModalOpen(true);
   };
 
@@ -102,13 +121,13 @@ interface ApplicationData {
       // Remove any selected regions that are no longer available
       setFormData(prev => ({
         ...prev,
-        serviceAreas: prev.serviceAreas.filter(regionId => 
+        service_locations: prev.service_locations.filter(regionId => 
           regions.some(region => region.id === regionId)
         )
       }));
     } else {
       setAvailableRegions([]);
-      setFormData(prev => ({ ...prev, serviceAreas: [] }));
+      setFormData(prev => ({ ...prev, service_locations: [] }));
     }
   }, [selectedStates, serviceAreas]);
 
@@ -245,7 +264,7 @@ interface ApplicationData {
 
   const handleProfileUpload = () => {
     setShowUploadModal(true);
-    setUploadModalConfig({
+    setUploadModalConfig2({
       title: 'Upload Profile Photo',
       description: 'Upload a professional headshot or business photo',
       acceptedTypes: 'image/*',
@@ -258,7 +277,7 @@ interface ApplicationData {
 
   const handleLicenseUpload = (side: 'front' | 'back') => {
     setShowUploadModal(true);
-    setUploadModalConfig({
+    setUploadModalConfig2({
       title: `Upload Driver's License (${side})`,
       description: `Upload a clear photo of the ${side} of your driver's license`,
       acceptedTypes: 'image/*',
@@ -271,11 +290,11 @@ interface ApplicationData {
 
   const handleWorkSampleUpload = () => {
     setShowUploadModal(true);
-    setUploadModalConfig({
+    setUploadModalConfig2({
       title: 'Upload Work Samples',
       description: 'Upload multiple photos and videos showcasing your best work (up to 10 files)',
       acceptedTypes: 'image/*,video/*',
-      maxSize: uploadType === 'work' ? (file.type.startsWith('video/') ? 500 : 25) : 50,
+      maxSize: 500,
       uploadType: 'work',
       multiple: true,
       onUpload: handleWorkSampleFilesSelect
@@ -1362,22 +1381,22 @@ interface ApplicationData {
       </div>
 
       {/* File Upload Modal */}
-      {uploadModalConfig && (
+      {uploadModalConfig2 && (
         <FileUploadModal
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
-          onFileSelect={uploadModalConfig.onUpload}
-          title={uploadModalConfig.title}
-          description={uploadModalConfig.description}
-          acceptedTypes={uploadModalConfig.acceptedTypes}
-          maxSize={uploadModalConfig.maxSize}
+          onFileSelect={uploadModalConfig2.onUpload || (() => {})}
+          title={uploadModalConfig2.title}
+          description={uploadModalConfig2.description}
+          acceptedTypes={uploadModalConfig2.acceptedTypes}
+          maxSize={uploadModalConfig2.maxSize || 50}
           currentFiles={
-            uploadModalConfig.uploadType === 'profile' ? (selectedFile ? [selectedFile] : []) :
-            uploadModalConfig.uploadType === 'work' ? workSampleFiles :
+            uploadModalConfig2.uploadType === 'profile' ? (selectedFile ? [selectedFile] : []) :
+            uploadModalConfig2.uploadType === 'work' ? workSampleFiles :
             []
           }
-          uploadType={uploadModalConfig.uploadType}
-          multiple={uploadModalConfig.multiple}
+          uploadType={uploadModalConfig2.uploadType}
+          multiple={uploadModalConfig2.multiple}
           uploading={uploadingWorkSamples}
           uploadProgress={uploadProgress}
         />
