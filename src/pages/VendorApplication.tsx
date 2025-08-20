@@ -1221,31 +1221,6 @@ export const VendorApplication = () => {
                             </p>
                           </div>
                         </div>
-                        
-                        {/* Display uploaded work samples */}
-                        {formData.work_samples.length > 0 && (
-                          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <h4 className="font-medium text-green-900 mb-2">Uploaded Work Samples ({formData.work_samples.length})</h4>
-                            <div className="space-y-2">
-                              {formData.work_samples.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
-                                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const newFiles = formData.work_samples.filter((_, i) => i !== index);
-                                      setFormData(prev => ({ ...prev, work_samples: newFiles }));
-                                    }}
-                                    className="text-red-600 hover:text-red-700 text-sm"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
                         <button
                           type="button"
                           onClick={() => removeWorkSample(index)}
@@ -1262,51 +1237,6 @@ export const VendorApplication = () => {
               <div className="flex space-x-3">
                 <Button
                   type="button"
-                        
-                        {/* Display uploaded business documents */}
-                        {formData.business_documents.length > 0 && (
-                          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <h4 className="font-medium text-green-900 mb-2">Uploaded Documents ({formData.business_documents.length})</h4>
-                            <div className="space-y-2">
-                              {formData.business_documents.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
-                                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                                  <button
-                                    type="button"
-                      
-                      {/* Display uploaded ID document */}
-                      {formData.id_verification_document && (
-                        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                          <h4 className="font-medium text-green-900 mb-2">Uploaded ID Document</h4>
-                          <div className="flex items-center justify-between p-2 bg-white rounded border">
-                            <span className="text-sm text-gray-700 truncate">{formData.id_verification_document.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData(prev => ({ ...prev, id_verification_document: null }));
-                              }}
-                              className="text-red-600 hover:text-red-700 text-sm"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                                    onClick={() => {
-                                      const newFiles = formData.business_documents.filter((_, i) => i !== index);
-                                      setFormData(prev => ({ ...prev, business_documents: newFiles }));
-                                    }}
-                                    className="text-red-600 hover:text-red-700 text-sm"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
                   variant="outline"
                   onClick={handleWorkSampleUpload}
                   disabled={workSampleFiles.length >= 10 || uploadingWorkSamples}
