@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Upload, X, Plus, Minus, User, Phone, Mail, MapPin, Camera, FileText, Link, Award, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, ArrowRight, Upload, X, Plus, Minus, User, Phone, Mail, MapPin, Camera, FileText, Link, Award, Check, AlertCircle, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -43,14 +43,24 @@ export const VendorApplication: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadModalConfig, setUploadModalConfig] = useState({
-    title: '',
-    description: '',
-    acceptedTypes: '',
-    field: '',
-    uploadType: 'profile' as 'profile' | 'license' | 'work'
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [licenseFiles, setLicenseFiles] = useState<{ front: File | null; back: File | null }>({
+    front: null,
+    back: null
   });
+  const [workSampleFiles, setWorkSampleFiles] = useState<File[]>([]);
+  const [uploadingWorkSamples, setUploadingWorkSamples] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalConfig, setUploadModalConfig] = useState<{
+    title: string;
+    description: string;
+    acceptedTypes: string;
+    maxSize: number;
+    uploadType: 'profile' | 'license' | 'work';
+    multiple: boolean;
+    onUpload: (files: File[]) => void;
+  } | null>(null);
   
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -74,6 +84,35 @@ export const VendorApplication: React.FC = () => {
   });
 
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [availableRegions, setAvailableRegions] = useState<any[]>([]);
+  const { serviceAreas } = useServiceAreas();
+
+  // Update available regions when states change
+  useEffect(() => {
+    if (selectedStates.length > 0) {
+      const regions = serviceAreas.filter(area => selectedStates.includes(area.state));
+      setAvailableRegions(regions);
+      
+      // Remove any selected regions that are no longer available
+      setFormData(prev => ({
+        ...prev,
+        serviceAreas: prev.serviceAreas.filter(regionId => 
+          regions.some(region => region.id === regionId)
+        )
+      }));
+    } else {
+      setAvailableRegions([]);
+      setFormData(prev => ({ ...prev, serviceAreas: [] }));
+    }
+  }, [selectedStates, serviceAreas]);
+
+  const handleStateToggle = (state: string) => {
+    setSelectedStates(prev => 
+      prev.includes(state)
+        ? prev.filter(s => s !== state)
+        : [...prev, state]
+    );
+  };
 
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
 
@@ -101,18 +140,7 @@ export const VendorApplication: React.FC = () => {
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
   const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof ApplicationData],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleServiceLocationToggle = (locationId: string) => {
@@ -122,28 +150,6 @@ export const VendorApplication: React.FC = () => {
         ? prev.service_locations.filter(id => id !== locationId)
         : [...prev.service_locations, locationId]
     }));
-  };
-
-  const handleStateToggle = (state: string) => {
-    setSelectedStates(prev => {
-      const newStates = prev.includes(state)
-        ? prev.filter(s => s !== state)
-        : [...prev, state];
-      
-      // If removing a state, also remove all service locations in that state
-      if (!newStates.includes(state)) {
-        const stateAreaIds = serviceAreas
-          .filter(area => area.state === state)
-          .map(area => area.id);
-        
-        setFormData(prevData => ({
-          ...prevData,
-          service_locations: prevData.service_locations.filter(id => !stateAreaIds.includes(id))
-        }));
-      }
-      
-      return newStates;
-    });
   };
 
   const handleServiceToggle = (service: string) => {
@@ -223,20 +229,92 @@ export const VendorApplication: React.FC = () => {
     }));
   };
 
-  const openUploadModal = (field: string, title: string, description: string, acceptedTypes: string, uploadType: 'profile' | 'license' | 'work') => {
-    setUploadModalConfig({
-      title,
-      description,
-      acceptedTypes,
-      field,
-      uploadType
-    });
+  const handleProfileUpload = () => {
     setShowUploadModal(true);
+    setUploadModalConfig({
+      title: 'Upload Profile Photo',
+      description: 'Upload a professional headshot or business photo',
+      acceptedTypes: 'image/*',
+      maxSize: 10,
+      uploadType: 'profile',
+      multiple: false,
+      onUpload: (files) => setSelectedFile(files[0])
+    });
   };
 
-  const handleModalFileSelect = (file: File) => {
-    handleFileUpload(uploadModalConfig.field, file);
-    setShowUploadModal(false);
+  const handleLicenseUpload = (side: 'front' | 'back') => {
+    setShowUploadModal(true);
+    setUploadModalConfig({
+      title: `Upload Driver's License (${side})`,
+      description: `Upload a clear photo of the ${side} of your driver's license`,
+      acceptedTypes: 'image/*',
+      maxSize: 10,
+      uploadType: 'license',
+      multiple: false,
+      onUpload: (files) => setLicenseFiles(prev => ({ ...prev, [side]: files[0] }))
+    });
+  };
+
+  const handleWorkSampleUpload = () => {
+    setShowUploadModal(true);
+    setUploadModalConfig({
+      title: 'Upload Work Samples',
+      description: 'Upload multiple photos and videos showcasing your best work (up to 10 files)',
+      acceptedTypes: 'image/*,video/*',
+      maxSize: uploadType === 'work' ? (file.type.startsWith('video/') ? 500 : 25) : 50,
+      uploadType: 'work',
+      multiple: true,
+      onUpload: handleWorkSampleFilesSelect
+    });
+  };
+
+  const handleWorkSampleFilesSelect = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    // Validate total file count
+    const totalFiles = workSampleFiles.length + files.length;
+    if (totalFiles > 10) {
+      setError('You can upload a maximum of 10 work sample files');
+      return;
+    }
+
+    setUploadingWorkSamples(true);
+    setUploadProgress(0);
+    
+    try {
+      const uploadedFiles: File[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate individual file size based on type
+        const maxSize = file.type.startsWith('video/') ? 500 : 25; // 500MB for videos, 25MB for photos
+        if (file.size > maxSize * 1024 * 1024) {
+          throw new Error(`${file.name} is too large. ${file.type.startsWith('video/') ? 'Videos' : 'Photos'} must be under ${maxSize}MB`);
+        }
+        
+        uploadedFiles.push(file);
+        
+        // Update progress
+        const progress = Math.round(((i + 1) / files.length) * 100);
+        setUploadProgress(progress);
+        
+        // Small delay to show progress
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      setWorkSampleFiles(prev => [...prev, ...uploadedFiles]);
+      setShowUploadModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploadingWorkSamples(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const removeWorkSample = (index: number) => {
+    setWorkSampleFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const uploadFile = async (file: File, path: string): Promise<string> => {
@@ -256,7 +334,25 @@ export const VendorApplication: React.FC = () => {
     return data.path;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      setError('Please upload a profile photo');
+      return;
+    }
+
+    if (!licenseFiles.front || !licenseFiles.back) {
+      setError('Please upload both sides of your driver\'s license');
+      return;
+    }
+
+    // Validate work samples
+    if (workSampleFiles.length === 0) {
+      setError('Please upload at least one work sample');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -555,7 +651,7 @@ export const VendorApplication: React.FC = () => {
                 <MapPin className="w-8 h-8 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Service Locations</h2>
-              <p className="text-gray-600">First select the states you serve, then choose specific regions</p>
+              <p className="text-gray-600">First select the states you serve, then choose specific regions within those states</p>
             </div>
 
             <div className="space-y-8">
@@ -1034,88 +1130,73 @@ export const VendorApplication: React.FC = () => {
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
               <div className="text-gray-600">
-                {formData.services_applying_for.includes('Photography') && (
-                  <p className="mb-2">Photography: Upload 10 of your best wedding photos</p>
-                )}
-                {formData.services_applying_for.includes('Videography') && (
-                  <p className="mb-2">Videography: Upload 5 of your best wedding video samples</p>
-                )}
-                {!formData.services_applying_for.includes('Photography') && !formData.services_applying_for.includes('Videography') && (
-                  <p>Upload samples of your work (photos or videos)</p>
-                )}
+                Upload photos (up to 25MB) and videos (up to 500MB) showcasing your best work (maximum 10 files)
               </div>
             </div>
 
             <div className="space-y-6">
-              {/* Upload Area */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">
-                  Drag and drop files here, or click to select
-                </p>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    files.forEach(file => {
-                      openUploadModal('work_samples', 'Upload Work Sample', 'Upload a sample of your work', 'image/*,video/*', 'work');
-                      handleFileUpload('work_samples', file);
-                    });
-                  }}
-                  className="hidden"
-                  id="work-samples"
-                />
-                <label htmlFor="work-samples">
-                  <Button 
-                    variant="outline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openUploadModal('work_samples', 'Upload Work Samples', 'Upload samples of your work (photos or videos)', 'image/*,video/*', 'work');
-                    }}
-                  >
-                    Choose Files
-                  </Button>
-                </label>
-                <p className="text-xs text-gray-500 mt-2">
-                  Accepted formats: JPG, PNG, MP4, MOV (max 50MB per file)
-                </p>
-              </div>
-
-              {/* Uploaded Files */}
-              {formData.work_samples.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-4">
-                    Uploaded Files ({formData.work_samples.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {formData.work_samples.map((file, index) => (
-                      <div key={index} className="relative p-4 border border-gray-200 rounded-lg bg-white">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-                          <Button
-                            variant="ghost"
-                            icon={X}
-                            size="sm"
-                            onClick={() => removeWorkSample(index)}
-                            className="text-red-500 hover:text-red-700"
-                          />
+              {workSampleFiles.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Selected Files ({workSampleFiles.length}/10)</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {workSampleFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            file.type.startsWith('video/') ? 'bg-purple-100' : 'bg-blue-100'
+                          }`}>
+                            {file.type.startsWith('video/') ? (
+                              <Video className="w-4 h-4 text-purple-600" />
+                            ) : (
+                              <Camera className="w-4 h-4 text-blue-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                        {file.type.startsWith('image/') && (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt="Work sample"
-                            className="w-full h-24 object-cover rounded mt-2"
-                          />
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeWorkSample(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+              
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleWorkSampleUpload}
+                  disabled={workSampleFiles.length >= 10 || uploadingWorkSamples}
+                  className="flex-1"
+                >
+                  {workSampleFiles.length === 0 ? 'Upload Work Samples' : 'Add More Files'}
+                </Button>
+                {workSampleFiles.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setWorkSampleFiles([])}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              
+              {workSampleFiles.length >= 10 && (
+                <p className="text-sm text-amber-600 mt-2">
+                  Maximum of 10 files reached. Remove files to add different ones.
+                </p>
               )}
             </div>
           </Card>
@@ -1271,18 +1352,26 @@ export const VendorApplication: React.FC = () => {
       </div>
 
       {/* File Upload Modal */}
-      <FileUploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onFileSelect={handleModalFileSelect}
-        title={uploadModalConfig.title}
-        description={uploadModalConfig.description}
-        acceptedTypes={uploadModalConfig.acceptedTypes}
-        uploadType={uploadModalConfig.uploadType}
-        currentFile={uploadModalConfig.field === 'profile_photo' ? formData.profile_photo : 
-                    uploadModalConfig.field === 'drivers_license_front' ? formData.drivers_license_front :
-                    uploadModalConfig.field === 'drivers_license_back' ? formData.drivers_license_back : null}
-      />
+      {uploadModalConfig && (
+        <FileUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onFileSelect={uploadModalConfig.onUpload}
+          title={uploadModalConfig.title}
+          description={uploadModalConfig.description}
+          acceptedTypes={uploadModalConfig.acceptedTypes}
+          maxSize={uploadModalConfig.maxSize}
+          currentFiles={
+            uploadModalConfig.uploadType === 'profile' ? (selectedFile ? [selectedFile] : []) :
+            uploadModalConfig.uploadType === 'work' ? workSampleFiles :
+            []
+          }
+          uploadType={uploadModalConfig.uploadType}
+          multiple={uploadModalConfig.multiple}
+          uploading={uploadingWorkSamples}
+          uploadProgress={uploadProgress}
+        />
+      )}
     </div>
   );
 };
