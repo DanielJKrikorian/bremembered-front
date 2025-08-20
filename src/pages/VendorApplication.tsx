@@ -44,13 +44,6 @@ export const VendorApplication = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadModalConfig, setUploadModalConfig] = useState({
-    title: '',
-    description: '',
-    acceptedTypes: '',
-    uploadType: 'work' as 'profile' | 'license' | 'work',
-    multiple: false
-  });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [success, setSuccess] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -167,7 +160,39 @@ export const VendorApplication = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleDirectFileSelect = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    uploadType: 'work' | 'business' | 'id'
+  ) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Update form data based on upload type
+    if (uploadType === 'work') {
+      const fileNames = files.map(file => file.name);
+      setFormData(prev => ({
+        ...prev,
+        work_samples: [...prev.work_samples, ...fileNames]
+      }));
+    } else if (uploadType === 'business') {
+      const fileNames = files.map(file => file.name);
+      setFormData(prev => ({
+        ...prev,
+        business_documents: [...prev.business_documents, ...fileNames]
+      }));
+    } else if (uploadType === 'id') {
+      setFormData(prev => ({
+        ...prev,
+        id_verification_document: files[0]?.name || ''
+      }));
+    }
+
+    // Reset the input value so the same file can be selected again
+    event.target.value = '';
+  };
+
   const handleFileSelect = (files: File[]) => {
+    setSelectedFiles(files);
     
     // Update form data based on upload type
     if (uploadModalConfig.uploadType === 'work') {
