@@ -330,8 +330,32 @@ export const VendorApplication: React.FC = () => {
     6: 'Legal & Compliance'
   };
 
-  const canProceed = () => {
-    return validateStep(currentStep);
+  const isCurrentStepValid = (): boolean => {
+    switch (currentStep) {
+      case 1:
+        return !!(formData.email && formData.business_name && formData.contact_name && formData.phone);
+      case 2:
+        return !!(formData.business_address.street_address && 
+                 formData.business_address.city && 
+                 formData.business_address.state && 
+                 formData.business_address.zip_code);
+      case 3:
+        return !!(formData.service_types.length > 0 && 
+                 formData.years_experience >= 1 && 
+                 formData.business_description);
+      case 4:
+        return formData.portfolio_links.filter(link => link.trim()).length > 0;
+      case 5:
+        return !!(formData.work_samples.length > 0 && 
+                 formData.insurance_verified && 
+                 formData.id_verification_document);
+      case 6:
+        return !!(formData.background_check_consent && 
+                 formData.work_ownership_declared && 
+                 formData.terms_accepted);
+      default:
+        return false;
+    }
   };
 
   return (
@@ -1041,7 +1065,7 @@ export const VendorApplication: React.FC = () => {
                 <Button 
                   variant="primary" 
                   onClick={handleNext}
-                  disabled={!canProceed()}
+                  disabled={!isCurrentStepValid()}
                   icon={ArrowRight}
                 >
                   Next Step
@@ -1051,7 +1075,7 @@ export const VendorApplication: React.FC = () => {
                   variant="primary" 
                   onClick={handleSubmit}
                   loading={isSubmitting}
-                  disabled={!canProceed()}
+                  disabled={!isCurrentStepValid()}
                   icon={Check}
                   size="lg"
                 >
