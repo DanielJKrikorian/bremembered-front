@@ -43,8 +43,6 @@ export const VendorApplication = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [success, setSuccess] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [licenseFiles, setLicenseFiles] = useState<{ front: File | null; back: File | null }>({
@@ -160,7 +158,7 @@ export const VendorApplication = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleDirectFileSelect = (
+  const handleFileSelect = (
     event: React.ChangeEvent<HTMLInputElement>,
     uploadType: 'work' | 'business' | 'id'
   ) => {
@@ -189,24 +187,6 @@ export const VendorApplication = () => {
 
     // Reset the input value so the same file can be selected again
     event.target.value = '';
-  };
-
-  const handleFileSelect = (files: File[]) => {
-    setSelectedFiles(files);
-    
-    // This function is no longer used since we switched to direct file inputs
-    // The handleDirectFileSelect function handles the file selection now
-    // Convert files to file paths for form data
-    const filePaths = files.map(file => file.name);
-    
-    // Update form data based on upload type
-    switch (uploadModalConfig2.uploadType) {
-      case 'profile':
-        // This function is no longer used since we switched to direct file inputs
-        // All file handling is now done in handleDirectFileSelect
-        setSelectedFiles([]);
-        break;
-    }
   };
 
   const handleAddressChange = (field: string, value: string) => {
@@ -1426,8 +1406,8 @@ export const VendorApplication = () => {
       {/* File Upload Modal */}
       {uploadModalConfig2 && (
         <FileUploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
           onFileSelect={handleFileSelect}
           title={uploadModalConfig2.title}
           description={uploadModalConfig2.description}
