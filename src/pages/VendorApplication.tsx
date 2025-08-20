@@ -162,31 +162,60 @@ export const VendorApplication = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileSelect = (
+  const handleFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
-    uploadType: 'work' | 'business' | 'id'
+    uploadType: 'profile' | 'license_front' | 'license_back' | 'work' | 'business' | 'id' | 'insurance'
   ) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
     // Update form data based on upload type
-    if (uploadType === 'work') {
-      const fileNames = files.map(file => file.name);
-      setFormData(prev => ({
-        ...prev,
-        work_samples: [...prev.work_samples, ...fileNames]
-      }));
-    } else if (uploadType === 'business') {
-      const fileNames = files.map(file => file.name);
-      setFormData(prev => ({
-        ...prev,
-        business_documents: [...prev.business_documents, ...fileNames]
-      }));
-    } else if (uploadType === 'id') {
-      setFormData(prev => ({
-        ...prev,
-        id_verification_document: files[0]?.name || ''
-      }));
+    switch (uploadType) {
+      case 'profile':
+        setFormData(prev => ({
+          ...prev,
+          profile_photo: files[0]?.name || ''
+        }));
+        break;
+      case 'license_front':
+        setFormData(prev => ({
+          ...prev,
+          drivers_license_front: files[0]?.name || ''
+        }));
+        break;
+      case 'license_back':
+        setFormData(prev => ({
+          ...prev,
+          drivers_license_back: files[0]?.name || ''
+        }));
+        break;
+      case 'work':
+        const workFileNames = files.map(file => file.name);
+        setFormData(prev => ({
+          ...prev,
+          work_samples: [...prev.work_samples, ...workFileNames]
+        }));
+        break;
+      case 'business':
+        const businessFileNames = files.map(file => file.name);
+        setFormData(prev => ({
+          ...prev,
+          business_documents: [...prev.business_documents, ...businessFileNames]
+        }));
+        break;
+      case 'id':
+        setFormData(prev => ({
+          ...prev,
+          id_verification_document: files[0]?.name || ''
+        }));
+        break;
+      case 'insurance':
+        const insuranceFileNames = files.map(file => file.name);
+        setFormData(prev => ({
+          ...prev,
+          insurance_documents: [...prev.insurance_documents, ...insuranceFileNames]
+        }));
+        break;
     }
 
     // Reset the input value so the same file can be selected again
@@ -248,17 +277,6 @@ export const VendorApplication = () => {
       ...prev,
       gear: prev.gear.filter((_, i) => i !== index)
     }));
-  };
-
-  const handleFileUpload = (field: string, file: File | null) => {
-    if (field === 'work_samples' && file) {
-      setFormData(prev => ({
-        ...prev,
-        work_samples: [...prev.work_samples, file]
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: file }));
-    }
   };
 
   const removeWorkSample = (index: number) => {
