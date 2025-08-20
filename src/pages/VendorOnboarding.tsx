@@ -462,7 +462,7 @@ export const VendorOnboarding: React.FC = () => {
               <Button 
                 variant="secondary" 
                 size="lg" 
-                className="bg-white text-navy-900 hover:bg-gray-50 shadow-xl"
+                className="border-2 border-white text-white bg-transparent hover:bg-white hover:text-gray-900 shadow-xl"
                 onClick={handleBecomeVendor}
                 icon={ArrowRight}
               >
