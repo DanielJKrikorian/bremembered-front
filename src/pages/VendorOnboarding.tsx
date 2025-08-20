@@ -9,49 +9,8 @@ export const VendorOnboarding: React.FC = () => {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   const handleBecomeVendor = () => {
-    setShowQuestionnaire(true);
-    // Scroll to questionnaire section
-    setTimeout(() => {
-      const questionnaireSection = document.getElementById('questionnaire-section');
-      if (questionnaireSection) {
-        questionnaireSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
+    navigate('/vendor-application');
   };
-
-  if (showQuestionnaire) {
-    return (
-      <div id="questionnaire-section" className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <Card className="p-8 text-center">
-            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Users className="w-10 h-10 text-rose-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Vendor Application Questionnaire
-            </h2>
-            <p className="text-gray-600 mb-8">
-              This is where the vendor application form will be implemented.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                variant="outline"
-                onClick={() => setShowQuestionnaire(false)}
-              >
-                Back to Information
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => navigate('/vendor-application')}
-              >
-                Continue to Application
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
