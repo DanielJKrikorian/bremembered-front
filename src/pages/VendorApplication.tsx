@@ -311,10 +311,6 @@ export const VendorApplication: React.FC = () => {
     }
   };
 
-  const removeWorkSample = (index: number) => {
-    setWorkSampleFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
   const uploadFile = async (file: File, path: string): Promise<string> => {
     if (!supabase || !isSupabaseConfigured()) {
       // Mock upload for demo
