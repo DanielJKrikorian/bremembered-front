@@ -116,7 +116,7 @@ export const Footer: React.FC = () => {
                   icon={Users}
                   className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500"
                   onClick={() => {
-                    navigate('/vendor-onboarding');
+                    navigate('/vendor-application');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >

@@ -73,6 +73,8 @@ export const VendorApplication: React.FC = () => {
     work_samples: []
   });
 
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
 
   const serviceOptions = [
@@ -120,6 +122,28 @@ export const VendorApplication: React.FC = () => {
         ? prev.service_locations.filter(id => id !== locationId)
         : [...prev.service_locations, locationId]
     }));
+  };
+
+  const handleStateToggle = (state: string) => {
+    setSelectedStates(prev => {
+      const newStates = prev.includes(state)
+        ? prev.filter(s => s !== state)
+        : [...prev, state];
+      
+      // If removing a state, also remove all service locations in that state
+      if (!newStates.includes(state)) {
+        const stateAreaIds = serviceAreas
+          .filter(area => area.state === state)
+          .map(area => area.id);
+        
+        setFormData(prevData => ({
+          ...prevData,
+          service_locations: prevData.service_locations.filter(id => !stateAreaIds.includes(id))
+        }));
+      }
+      
+      return newStates;
+    });
   };
 
   const handleServiceToggle = (service: string) => {
@@ -314,7 +338,7 @@ export const VendorApplication: React.FC = () => {
                formData.address.street && formData.address.city && 
                formData.address.state && formData.address.zip;
       case 2:
-        return formData.service_locations.length > 0;
+        return selectedStates.length > 0 && formData.service_locations.length > 0;
       case 3:
         return formData.services_applying_for.length > 0;
       case 4:
@@ -531,42 +555,93 @@ export const VendorApplication: React.FC = () => {
                 <MapPin className="w-8 h-8 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Service Locations</h2>
-              <p className="text-gray-600">Select the areas where you're willing to provide services</p>
+              <p className="text-gray-600">First select the states you serve, then choose specific regions</p>
             </div>
 
-            {serviceAreasLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p className="text-gray-600">Loading service areas...</p>
+            <div className="space-y-8">
+              {/* Step 1: Select States */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Step 1: Select States You Serve</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {states.map((state) => {
+                    const isSelected = selectedStates.includes(state);
+                    return (
+                      <div
+                        key={state}
+                        onClick={() => handleStateToggle(state)}
+                        className={`
+                          relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
+                          ${isSelected 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="w-2 h-2 text-white" />
+                          </div>
+                        )}
+                        <h4 className="font-medium text-gray-900 text-sm">{state}</h4>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
-                {serviceAreas.map((area) => {
-                  const isSelected = formData.service_locations.includes(area.id);
-                  return (
-                    <div
-                      key={area.id}
-                      onClick={() => handleServiceLocationToggle(area.id)}
-                      className={`
-                        relative p-4 rounded-lg border-2 cursor-pointer transition-all text-center
-                        ${isSelected 
-                          ? 'border-emerald-500 bg-emerald-50' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }
-                      `}
-                    >
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <h4 className="font-medium text-gray-900">{area.region}</h4>
-                      <p className="text-sm text-gray-600">{area.state}</p>
+
+              {/* Step 2: Select Regions within Selected States */}
+              {selectedStates.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Step 2: Select Regions in {selectedStates.join(', ')}
+                  </h3>
+                  {serviceAreasLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-gray-600">Loading regions...</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  ) : (
+                    <div className="space-y-6">
+                      {selectedStates.map((state) => {
+                        const stateAreas = serviceAreas.filter(area => area.state === state);
+                        if (stateAreas.length === 0) return null;
+                        
+                        return (
+                          <div key={state}>
+                            <h4 className="font-medium text-gray-800 mb-3">{state} Regions</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {stateAreas.map((area) => {
+                                const isSelected = formData.service_locations.includes(area.id);
+                                return (
+                                  <div
+                                    key={area.id}
+                                    onClick={() => handleServiceLocationToggle(area.id)}
+                                    className={`
+                                      relative p-3 rounded-lg border-2 cursor-pointer transition-all text-center
+                                      ${isSelected 
+                                        ? 'border-emerald-500 bg-emerald-50' 
+                                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                                      }
+                                    `}
+                                  >
+                                    {isSelected && (
+                                      <div className="absolute top-2 right-2 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                                        <Check className="w-2 h-2 text-white" />
+                                      </div>
+                                    )}
+                                    <h5 className="font-medium text-gray-900 text-sm">{area.region}</h5>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </Card>
         )}
 
