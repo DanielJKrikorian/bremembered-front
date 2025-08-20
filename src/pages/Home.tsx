@@ -574,9 +574,9 @@ export const Home: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="lg" 
-              className="bg-white border-white text-rose-600 hover:bg-gray-50 hover:text-rose-700"
+              className="border-white text-white hover:bg-white hover:text-rose-600"
               onClick={() => navigate('/booking/services')}
             >
               Browse Services
