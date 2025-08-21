@@ -456,6 +456,8 @@ export const VendorApplication = () => {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
       return;
+    }
+    
     try {
       setFrontLicenseUploading(true);
       setFrontLicenseUploadProgress(0);
@@ -471,7 +473,7 @@ export const VendorApplication = () => {
         });
       }, 200);
       
-      const photoUrl = await uploadPhoto(file, user?.id || '', 'vendor-documents', 10);
+      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-documents', 10);
       if (photoUrl) {
         setFrontLicense(file);
         setFrontLicenseUploadProgress(100);
@@ -521,6 +523,8 @@ export const VendorApplication = () => {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
       return;
+    }
+    
     try {
       setBackLicenseUploading(true);
       setBackLicenseUploadProgress(0);
@@ -536,7 +540,7 @@ export const VendorApplication = () => {
         });
       }, 200);
       
-      const photoUrl = await uploadPhoto(file, user?.id || '', 'vendor-documents', 10);
+      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-documents', 10);
       if (photoUrl) {
         setBackLicense(file);
         setBackLicenseUploadProgress(100);
