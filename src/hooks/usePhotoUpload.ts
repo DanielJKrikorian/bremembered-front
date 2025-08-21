@@ -7,7 +7,7 @@ export const usePhotoUpload = () => {
 
   const uploadPhoto = async (
     file: File, 
-    userId: string, 
+    userId: string | null | undefined, 
     bucketName: string = 'couple-photos',
     maxFileSizeMB: number = 5,
     folder?: string
@@ -20,6 +20,15 @@ export const usePhotoUpload = () => {
     setError(null);
 
     try {
+      // Generate a valid user identifier
+      let validUserId: string;
+      if (userId && userId !== 'user?.id' && userId !== 'undefined') {
+        validUserId = userId;
+      } else {
+        // Generate anonymous session ID for unauthenticated users
+        validUserId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
       // Validate file
       if (!file.type.startsWith('image/')) {
         throw new Error('Please select an image or video file');
@@ -32,14 +41,14 @@ export const usePhotoUpload = () => {
       // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = folder ? `${folder}/${userId}/${fileName}` : `${userId}/${fileName}`;
+      const filePath = folder ? `${folder}/${validUserId}/${fileName}` : `${validUserId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: true
         });
 
       if (uploadError) throw uploadError;
