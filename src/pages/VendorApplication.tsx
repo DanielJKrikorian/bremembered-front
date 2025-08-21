@@ -351,9 +351,7 @@ export const VendorApplication = () => {
         // Simulate upload for demo
         for (let i = 0; i <= 100; i += 10) {
           setUploadProgress(prev => ({ ...prev, profile: i }));
-        'vendor-applications',
-        5,
-        'profile-photos'
+        }
         return;
       }
 
@@ -562,9 +560,15 @@ export const VendorApplication = () => {
     setUploading(prev => ({ ...prev, work_samples: true }));
     setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
     
-        'vendor-applications',
-        10,
-        'license-documents'
+    try {
+      const uploadPromises = files.map(file => 
+        uploadPhoto(
+          file,
+          applicationId,
+          'vendor-applications',
+          file.type.startsWith('video/') ? 500 : 25,
+          'work-samples'
+        )
       );
       const urls = await Promise.all(uploadPromises);
       
@@ -730,10 +734,8 @@ export const VendorApplication = () => {
         return selectedStates.length > 0 && formData.service_locations.length > 0;
       case 3:
         return formData.services_applying_for.length > 0;
-          'vendor-applications',
-          file.type.startsWith('video/') ? 500 : 25,
-          'work-samples'
-        );
+      case 4:
+        return true; // Optional step
       case 5:
         return step5Valid;
       case 6:
