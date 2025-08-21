@@ -13,6 +13,8 @@ interface LicenseUploadProps {
   uploadingBack?: boolean;
   uploadProgressFront?: number;
   uploadProgressBack?: number;
+  successFront?: boolean;
+  successBack?: boolean;
 }
 
 export const LicenseUpload: React.FC<LicenseUploadProps> = ({
@@ -25,7 +27,9 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
   uploadingFront = false,
   uploadingBack = false,
   uploadProgressFront = 0,
-  uploadProgressBack = 0
+  uploadProgressBack = 0,
+  successFront = false,
+  successBack = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -48,6 +52,27 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                     ></div>
                   </div>
                   <p className="text-xs text-blue-600">{uploadProgressFront}% complete</p>
+                </div>
+              ) : successFront ? (
+                <div className="space-y-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <Check className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="text-sm text-green-600 font-medium">✓ Upload successful!</p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-gray-900">{frontLicense.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {(frontLicense.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onRemoveFront}
+                    icon={X}
+                  >
+                    Remove
+                  </Button>
                 </div>
               ) : (
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
@@ -122,6 +147,27 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                     ></div>
                   </div>
                   <p className="text-xs text-blue-600">{uploadProgressBack}% complete</p>
+                </div>
+              ) : successBack ? (
+                <div className="space-y-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <Check className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="text-sm text-green-600 font-medium">✓ Upload successful!</p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-gray-900">{backLicense.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {(backLicense.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onRemoveBack}
+                    icon={X}
+                  >
+                    Remove
+                  </Button>
                 </div>
               ) : (
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">

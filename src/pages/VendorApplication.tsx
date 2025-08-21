@@ -65,6 +65,12 @@ export const VendorApplication = () => {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
+  const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
+  const [backLicenseUploading, setBackLicenseUploading] = useState(false);
+  const [frontLicenseProgress, setFrontLicenseProgress] = useState(0);
+  const [backLicenseProgress, setBackLicenseProgress] = useState(0);
+  const [frontLicenseSuccess, setFrontLicenseSuccess] = useState(false);
+  const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
   const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
@@ -443,6 +449,10 @@ export const VendorApplication = () => {
       return;
     }
     
+    setFrontLicenseUploading(true);
+    setFrontLicenseProgress(0);
+    setFrontLicenseSuccess(false);
+    
     try {
       setFrontLicenseUploading(true);
       setFrontLicenseUploadProgress(0);
@@ -458,6 +468,17 @@ export const VendorApplication = () => {
         });
       }, 200);
       
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setFrontLicenseProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+      
       const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-applications', 10);
       if (photoUrl) {
         setFrontLicense(file);
@@ -469,10 +490,25 @@ export const VendorApplication = () => {
           setFrontLicenseUploadProgress(0);
         }, 500);
       }
+      
+      clearInterval(progressInterval);
+      setFrontLicenseProgress(100);
+      
+      setFrontLicense(file);
+      setFormData(prev => ({ ...prev, drivers_license_front: photoUrl }));
+      setFrontLicenseSuccess(true);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setFrontLicenseSuccess(false);
+      }, 3000);
     } catch (error) {
       console.error('Error uploading front license:', error);
       setFrontLicenseUploading(false);
       setFrontLicenseUploadProgress(0);
+      setError(error instanceof Error ? error.message : 'Failed to upload front license');
+    } finally {
+      setFrontLicenseUploading(false);
     }
 
     event.target.value = '';
@@ -499,6 +535,10 @@ export const VendorApplication = () => {
       return;
     }
     
+    setBackLicenseUploading(true);
+    setBackLicenseProgress(0);
+    setBackLicenseSuccess(false);
+    
     try {
       setBackLicenseUploading(true);
       setBackLicenseUploadProgress(0);
@@ -514,6 +554,17 @@ export const VendorApplication = () => {
         });
       }, 200);
       
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setBackLicenseProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+      
       const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-applications', 10);
       if (photoUrl) {
         setBackLicense(file);
@@ -525,10 +576,25 @@ export const VendorApplication = () => {
           setBackLicenseUploadProgress(0);
         }, 500);
       }
+      
+      clearInterval(progressInterval);
+      setBackLicenseProgress(100);
+      
+      setBackLicense(file);
+      setFormData(prev => ({ ...prev, drivers_license_back: photoUrl }));
+      setBackLicenseSuccess(true);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setBackLicenseSuccess(false);
+      }, 3000);
     } catch (error) {
       console.error('Error uploading back license:', error);
       setBackLicenseUploading(false);
       setBackLicenseUploadProgress(0);
+      setError(error instanceof Error ? error.message : 'Failed to upload back license');
+    } finally {
+      setBackLicenseUploading(false);
     }
 
     event.target.value = '';
@@ -1174,16 +1240,18 @@ export const VendorApplication = () => {
               />
 
               <LicenseUpload
-                frontLicense={formData.drivers_license_front}
-                backLicense={formData.drivers_license_back}
+                frontLicense={frontLicense}
+                backLicense={backLicense}
                 onFrontSelect={handleLicenseFrontSelect}
                 onBackSelect={handleLicenseBackSelect}
-                onRemoveFront={removeLicenseFront}
-                onRemoveBack={removeLicenseBack}
-                uploadingFront={uploading.license_front}
-                uploadingBack={uploading.license_back}
-                uploadProgressFront={Math.round(uploadProgress.license_front || 0)}
-                uploadProgressBack={Math.round(uploadProgress.license_back || 0)}
+                onRemoveFront={() => setFrontLicense(null)}
+                onRemoveBack={() => setBackLicense(null)}
+                uploadingFront={frontLicenseUploading}
+                uploadingBack={backLicenseUploading}
+                uploadProgressFront={frontLicenseProgress}
+                uploadProgressBack={backLicenseProgress}
+                successFront={frontLicenseSuccess}
+                successBack={backLicenseSuccess}
               />
             </div>
           </Card>
