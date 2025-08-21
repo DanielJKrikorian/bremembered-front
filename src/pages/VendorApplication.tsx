@@ -363,6 +363,13 @@ export const VendorApplication = () => {
   };
 
   const canProceedStep = () => {
+    console.log('=== VALIDATION DEBUG ===');
+    console.log('Current step:', currentStep);
+    console.log('Profile photo:', formData.profile_photo);
+    console.log('License front:', formData.drivers_license_front);
+    console.log('License back:', formData.drivers_license_back);
+    console.log('Can proceed step 5:', !!formData.profile_photo && !!formData.drivers_license_front && !!formData.drivers_license_back);
+    
     switch (currentStep) {
       case 1:
         return formData.name && formData.phone && formData.email && 
@@ -377,7 +384,12 @@ export const VendorApplication = () => {
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
         return formData.work_samples.length > 0;
-        return !!formData.profile_photo && !!formData.drivers_license_front && !!formData.drivers_license_back;
+        // Check if all three files are uploaded
+        const hasProfilePhoto = formData.profile_photo !== null;
+        const hasFrontLicense = formData.drivers_license_front !== null;
+        const hasBackLicense = formData.drivers_license_back !== null;
+        console.log('Step 5 validation:', { hasProfilePhoto, hasFrontLicense, hasBackLicense });
+        return hasProfilePhoto && hasFrontLicense && hasBackLicense;
         return !!formData.profile_photo && 
                !!formData.drivers_license_front && 
                !!formData.drivers_license_back &&
