@@ -434,7 +434,7 @@ export const VendorApplication = () => {
     setFrontLicenseUploadProgress(0);
 
     // Simulate progress
-    const progressInterval = setInterval(() => {
+      const photoUrl = await uploadPhoto(file, user.id, 'vendor-applications', 10, 'license-documents');
       setFrontLicenseUploadProgress(prev => {
         if (prev >= 90) {
           clearInterval(progressInterval);
@@ -501,7 +501,7 @@ export const VendorApplication = () => {
     setBackLicenseUploadProgress(0);
 
     // Simulate progress
-    const progressInterval = setInterval(() => {
+      const photoUrl = await uploadPhoto(file, user.id, 'vendor-applications', 10, 'license-documents');
       setBackLicenseUploadProgress(prev => {
         if (prev >= 90) {
           clearInterval(progressInterval);

@@ -9,7 +9,8 @@ export const usePhotoUpload = () => {
     file: File, 
     userId: string, 
     bucketName: string = 'couple-photos',
-    maxFileSizeMB: number = 5
+    maxFileSizeMB: number = 5,
+    folder?: string
   ): Promise<string | null> => {
     if (!supabase || !isSupabaseConfigured()) {
       throw new Error('Photo upload requires Supabase configuration');
@@ -31,7 +32,7 @@ export const usePhotoUpload = () => {
       // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
+      const filePath = folder ? `${folder}/${userId}/${fileName}` : `${userId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
