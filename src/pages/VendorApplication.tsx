@@ -404,6 +404,12 @@ export const VendorApplication = () => {
         );
       case 5:
         return step5Valid;
+      case 6:
+        return formData.description.trim().length >= 50;
+      case 7:
+        return formData.work_links.some(link => link.trim() !== '');
+      case 8:
+        return formData.work_samples.length > 0;
         return formData.work_samples.length > 0;
         return !!profilePhoto && !!frontLicense && !!backLicense;
         return !!formData.profile_photo && 
