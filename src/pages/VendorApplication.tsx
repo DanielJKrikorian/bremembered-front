@@ -70,9 +70,11 @@ export const VendorApplication = () => {
   const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
   const [frontLicenseUploadProgress, setFrontLicenseUploadProgress] = useState(0);
   const [frontLicenseSuccess, setFrontLicenseSuccess] = useState(false);
+  const [frontLicenseProgress, setFrontLicenseProgress] = useState(0);
   const [backLicenseUploading, setBackLicenseUploading] = useState(false);
   const [backLicenseUploadProgress, setBackLicenseUploadProgress] = useState(0);
   const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
+  const [backLicenseProgress, setBackLicenseProgress] = useState(0);
   const [step5Valid, setStep5Valid] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: [],
