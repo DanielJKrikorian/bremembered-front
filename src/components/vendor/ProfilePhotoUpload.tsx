@@ -17,6 +17,8 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
   uploading = false,
   uploadProgress = 0
 }) => {
+  const imageUrl = profilePhoto ? URL.createObjectURL(profilePhoto) : '';
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-4">Profile Photo *</label>
@@ -26,7 +28,7 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
             {uploading ? (
               <div className="relative w-24 h-24 rounded-full mx-auto border-4 border-white shadow-lg overflow-hidden">
                 <img
-                  src={URL.createObjectURL(profilePhoto)}
+                  src={imageUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
@@ -40,7 +42,7 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
               </div>
             ) : (
               <img
-                src={URL.createObjectURL(profilePhoto)}
+                src={imageUrl}
                 alt="Profile"
                 className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
               />
