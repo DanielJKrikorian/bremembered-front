@@ -456,34 +456,36 @@ export const VendorApplication = () => {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
       return;
-    }
-    
-    setFrontLicense(file);
-    setError(null);
-    
-    // Upload immediately
-    setUploading(prev => ({ ...prev, license_front: true }));
-    setUploadProgress(prev => ({ ...prev, license_front: 0 }));
-    
     try {
-      const url = await uploadFileToStorage(file, 'license-documents', 'license_front');
-      if (url) {
-        setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: url }));
-        setFormData(prev => ({ ...prev, drivers_license_front: file }));
+      setFrontLicenseUploading(true);
+      setFrontLicenseUploadProgress(0);
+      
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setFrontLicenseUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + Math.random() * 20;
+        });
+      }, 200);
+      
+      const photoUrl = await uploadPhoto(file, user?.id || '', 'vendor-documents', 10);
+      if (photoUrl) {
+        setFrontLicense(file);
         setFrontLicenseUploadProgress(100);
+        
+        // Clear progress after a short delay
+        setTimeout(() => {
+          setFrontLicenseUploading(false);
+          setFrontLicenseUploadProgress(0);
+        }, 500);
       }
     } catch (error) {
-      console.error('Error uploading license front:', error);
-      setError('Failed to upload license front. Please try again.');
-    } finally {
-      clearInterval(progressInterval);
-      setTimeout(() => {
-        setFrontLicenseUploading(false);
-        setFrontLicenseUploadProgress(0);
-      }, 500);
-    } finally {
-      setUploading(prev => ({ ...prev, license_front: false }));
-      setUploadProgress(prev => ({ ...prev, license_front: 0 }));
+      console.error('Error uploading front license:', error);
+      setFrontLicenseUploading(false);
+      setFrontLicenseUploadProgress(0);
     }
 
     event.target.value = '';
@@ -519,34 +521,36 @@ export const VendorApplication = () => {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
       return;
-    }
-    
-    setBackLicense(file);
-    setError(null);
-    
-    // Upload immediately
-    setUploading(prev => ({ ...prev, license_back: true }));
-    setUploadProgress(prev => ({ ...prev, license_back: 0 }));
-    
     try {
-      const url = await uploadFileToStorage(file, 'license-documents', 'license_back');
-      if (url) {
-        setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: url }));
-        setFormData(prev => ({ ...prev, drivers_license_back: file }));
+      setBackLicenseUploading(true);
+      setBackLicenseUploadProgress(0);
+      
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setBackLicenseUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + Math.random() * 20;
+        });
+      }, 200);
+      
+      const photoUrl = await uploadPhoto(file, user?.id || '', 'vendor-documents', 10);
+      if (photoUrl) {
+        setBackLicense(file);
         setBackLicenseUploadProgress(100);
+        
+        // Clear progress after a short delay
+        setTimeout(() => {
+          setBackLicenseUploading(false);
+          setBackLicenseUploadProgress(0);
+        }, 500);
       }
     } catch (error) {
-      console.error('Error uploading license back:', error);
-      setError('Failed to upload license back. Please try again.');
-    } finally {
-      clearInterval(progressInterval);
-      setTimeout(() => {
-        setBackLicenseUploading(false);
-        setBackLicenseUploadProgress(0);
-      }, 500);
-    } finally {
-      setUploading(prev => ({ ...prev, license_back: false }));
-      setUploadProgress(prev => ({ ...prev, license_back: 0 }));
+      console.error('Error uploading back license:', error);
+      setBackLicenseUploading(false);
+      setBackLicenseUploadProgress(0);
     }
 
     event.target.value = '';
