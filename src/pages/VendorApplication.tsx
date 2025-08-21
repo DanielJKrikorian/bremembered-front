@@ -50,12 +50,10 @@ export const VendorApplication = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  // Add state to track file uploads for reactivity
-  const [uploadedFiles, setUploadedFiles] = useState({
-    profilePhoto: false,
-    licenseFront: false,
-    licenseBack: false
-  });
+  // Separate state for uploaded files to ensure reactivity
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [frontLicense, setFrontLicense] = useState<File | null>(null);
+  const [backLicense, setBackLicense] = useState<File | null>(null);
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -81,7 +79,6 @@ export const VendorApplication = () => {
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<any[]>([]);
 
-  const [fileUploadTrigger, setFileUploadTrigger] = useState(0);
   // Update available regions when states change
   useEffect(() => {
     if (selectedStates.length > 0) {
@@ -219,12 +216,12 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    const file = files[0];
+    setProfilePhoto(file);
     setFormData(prev => ({
       ...prev,
-      profile_photo: files[0] || null
+      profile_photo: file
     }));
-    setUploadedFiles(prev => ({ ...prev, profilePhoto: true }));
-    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -233,12 +230,12 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    const file = files[0];
+    setFrontLicense(file);
     setFormData(prev => ({
       ...prev,
-      drivers_license_front: files[0] || null
+      drivers_license_front: file
     }));
-    setUploadedFiles(prev => ({ ...prev, licenseFront: true }));
-    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -247,12 +244,12 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    const file = files[0];
+    setBackLicense(file);
     setFormData(prev => ({
       ...prev,
-      drivers_license_back: files[0] || null
+      drivers_license_back: file
     }));
-    setUploadedFiles(prev => ({ ...prev, licenseBack: true }));
-    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -270,30 +267,27 @@ export const VendorApplication = () => {
   };
 
   const removeProfilePhoto = () => {
+    setProfilePhoto(null);
     setFormData(prev => ({
       ...prev,
       profile_photo: null
     }));
-    setUploadedFiles(prev => ({ ...prev, profilePhoto: false }));
-    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeLicenseFront = () => {
+    setFrontLicense(null);
     setFormData(prev => ({
       ...prev,
       drivers_license_front: null
     }));
-    setUploadedFiles(prev => ({ ...prev, licenseFront: false }));
-    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeLicenseBack = () => {
+    setBackLicense(null);
     setFormData(prev => ({
       ...prev,
       drivers_license_back: null
     }));
-    setUploadedFiles(prev => ({ ...prev, licenseBack: false }));
-    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeWorkSample = (index: number) => {
@@ -383,13 +377,6 @@ export const VendorApplication = () => {
   };
 
   const canProceedStep = () => {
-    console.log('=== VALIDATION DEBUG ===');
-    console.log('Current step:', currentStep);
-    console.log('Profile photo:', formData.profile_photo);
-    console.log('License front:', formData.drivers_license_front);
-    console.log('License back:', formData.drivers_license_back);
-    console.log('Can proceed step 5:', !!formData.profile_photo && !!formData.drivers_license_front && !!formData.drivers_license_back);
-    
     switch (currentStep) {
       case 1:
         return formData.name && formData.phone && formData.email && 
@@ -404,7 +391,7 @@ export const VendorApplication = () => {
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
         return formData.work_samples.length > 0;
-        return uploadedFiles.profilePhoto && uploadedFiles.licenseFront && uploadedFiles.licenseBack;
+        return !!profilePhoto && !!frontLicense && !!backLicense;
         return !!formData.profile_photo && 
                !!formData.drivers_license_front && 
                !!formData.drivers_license_back &&
@@ -1102,7 +1089,7 @@ export const VendorApplication = () => {
             <Button
               variant="primary"
               onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={!canProceedStep()}
+              disabled={!canProceedStep() || (currentStep === 5 && (!profilePhoto || !frontLicense || !backLicense))}
               icon={ArrowRight}
             >
               {currentStep === 8 ? 'Review Application' : 'Continue'}
