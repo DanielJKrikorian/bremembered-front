@@ -65,12 +65,6 @@ export const VendorApplication = () => {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
-  const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
-  const [backLicenseUploading, setBackLicenseUploading] = useState(false);
-  const [frontLicenseProgress, setFrontLicenseProgress] = useState(0);
-  const [backLicenseProgress, setBackLicenseProgress] = useState(0);
-  const [frontLicenseSuccess, setFrontLicenseSuccess] = useState(false);
-  const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
   const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
