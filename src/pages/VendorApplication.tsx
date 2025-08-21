@@ -362,14 +362,16 @@ export const VendorApplication = () => {
         return formData.gear.length > 0 && formData.gear.every(item => 
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
-      case 5:
-        return formData.profile_photo && formData.drivers_license_front && formData.drivers_license_back;
-      case 6:
-        return formData.description.length >= 50;
-      case 7:
-        return formData.work_links.some(link => link.trim() !== '') || formData.work_samples.length > 0;
-      case 8:
         return formData.work_samples.length > 0;
+      case 9:
+        return !!formData.profile_photo && 
+               !!formData.drivers_license_front && 
+               !!formData.drivers_license_back &&
+               formData.work_samples.length > 0 &&
+               formData.description.length >= 50 &&
+               formData.services_applying_for.length > 0 &&
+               formData.service_locations.length > 0 &&
+               formData.gear.length > 0;
       default:
         return false;
     }
