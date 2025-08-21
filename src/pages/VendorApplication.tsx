@@ -67,6 +67,10 @@ export const VendorApplication = () => {
   const [backLicense, setBackLicense] = useState<File | null>(null);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
+  const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
+  const [frontLicenseUploadProgress, setFrontLicenseUploadProgress] = useState(0);
+  const [backLicenseUploading, setBackLicenseUploading] = useState(false);
+  const [backLicenseUploadProgress, setBackLicenseUploadProgress] = useState(0);
   const [step5Valid, setStep5Valid] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: []
@@ -426,6 +430,20 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    setFrontLicenseUploading(true);
+    setFrontLicenseUploadProgress(0);
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setFrontLicenseUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + Math.random() * 20;
+      });
+    }, 200);
+
     const file = files[0];
     
     // Validate file size (10MB limit for documents)
@@ -452,10 +470,17 @@ export const VendorApplication = () => {
       if (url) {
         setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_front: file }));
+        setFrontLicenseUploadProgress(100);
       }
     } catch (error) {
       console.error('Error uploading license front:', error);
       setError('Failed to upload license front. Please try again.');
+    } finally {
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setFrontLicenseUploading(false);
+        setFrontLicenseUploadProgress(0);
+      }, 500);
     } finally {
       setUploading(prev => ({ ...prev, license_front: false }));
       setUploadProgress(prev => ({ ...prev, license_front: 0 }));
@@ -467,6 +492,20 @@ export const VendorApplication = () => {
   const handleLicenseBackSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
+
+    setBackLicenseUploading(true);
+    setBackLicenseUploadProgress(0);
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setBackLicenseUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + Math.random() * 20;
+      });
+    }, 200);
 
     const file = files[0];
     
@@ -494,10 +533,17 @@ export const VendorApplication = () => {
       if (url) {
         setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_back: file }));
+        setBackLicenseUploadProgress(100);
       }
     } catch (error) {
       console.error('Error uploading license back:', error);
       setError('Failed to upload license back. Please try again.');
+    } finally {
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setBackLicenseUploading(false);
+        setBackLicenseUploadProgress(0);
+      }, 500);
     } finally {
       setUploading(prev => ({ ...prev, license_back: false }));
       setUploadProgress(prev => ({ ...prev, license_back: 0 }));
@@ -1264,6 +1310,10 @@ export const VendorApplication = () => {
               onClearAll={clearAllWorkSamples}
               maxFiles={10}
               uploading={uploading.work_samples}
+              uploadingFront={frontLicenseUploading}
+              uploadingBack={backLicenseUploading}
+              uploadProgressFront={frontLicenseUploadProgress}
+              uploadProgressBack={backLicenseUploadProgress}
             />
           </Card>
         )}
