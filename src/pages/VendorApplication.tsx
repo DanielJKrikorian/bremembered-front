@@ -920,21 +920,45 @@ export const VendorApplication = () => {
     setError(null);
     try {
       const applicationData = {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock submission for demo
+        console.log('Mock application submitted - Supabase not configured');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setSuccess(true);
+        return;
+      }
+
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
-        address: formData.address,
+        business_address: formData.address,
         service_locations: formData.service_locations,
         services_applying_for: formData.services_applying_for,
-        gear: formData.gear,
+        equipment: { gear: formData.gear },
         profile_photo: uploadedFiles.profile_photo_url,
-        drivers_license_front: uploadedFiles.drivers_license_front_url,
-        drivers_license_back: uploadedFiles.drivers_license_back_url,
-        description: formData.description,
+        id_verification_document: uploadedFiles.drivers_license_front_url,
+        business_description: formData.description,
         work_links: formData.work_links.filter((link) => link.trim() !== ''),
         work_samples: uploadedFiles.work_sample_urls,
-      };
-      console.log('Mock application submitted:', applicationData);
+        portfolio_links: formData.work_links.filter(link => link.trim() !== ''),
+        years_experience: 5, // Default value - could be added to form
+        insurance_verified: false,
+        background_check_consent: true,
+        terms_accepted: true,
+        status: 'pending'
+      // Insert into vendor_leads table
+      const { data, error } = await supabase
+        .from('vendor_leads')
+        .insert([applicationData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error(error.message || 'Failed to submit application to database');
+      }
+
+      console.log('Application successfully saved to database:', data);
       await new Promise((resolve) => setTimeout(resolve, 2000));
       setSuccess(true);
     } catch (err) {
