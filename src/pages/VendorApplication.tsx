@@ -11,6 +11,12 @@ import { TermsModal } from '../components/vendor/TermsModal';
 import { useServiceAreas } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+interface FileUploadResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
 interface GearItem {
   gear_type: string;
   brand: string;
@@ -55,6 +61,8 @@ export const VendorApplication = () => {
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
   const [step5Valid, setStep5Valid] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -316,6 +324,106 @@ export const VendorApplication = () => {
     }));
   };
 
+  // File upload utility function
+  const uploadFileToStorage = async (file: File, folder: string, fileName?: string): Promise<FileUploadResult> => {
+    if (!supabase || !isSupabaseConfigured()) {
+      return { success: true, url: `mock-url/${file.name}` };
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const uploadFileName = fileName || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `${folder}/${uploadFileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      return { success: true, url: publicUrl };
+    } catch (error) {
+      console.error('Upload error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Upload failed' 
+      };
+    }
+  };
+
+  // Upload all files and get their URLs
+  const uploadAllFiles = async (): Promise<{ [key: string]: string }> => {
+    const uploadedUrls: { [key: string]: string } = {};
+    setUploadingFiles(true);
+    setUploadProgress({});
+
+    try {
+      // Upload profile photo
+      if (profilePhoto) {
+        setUploadProgress(prev => ({ ...prev, profile: 25 }));
+        const result = await uploadFileToStorage(profilePhoto, 'profile-photos');
+        if (result.success && result.url) {
+          uploadedUrls.profile_photo = result.url;
+        } else {
+          throw new Error(result.error || 'Failed to upload profile photo');
+        }
+      }
+
+      // Upload license front
+      if (frontLicense) {
+        setUploadProgress(prev => ({ ...prev, license_front: 50 }));
+        const result = await uploadFileToStorage(frontLicense, 'license-documents');
+        if (result.success && result.url) {
+          uploadedUrls.drivers_license_front = result.url;
+        } else {
+          throw new Error(result.error || 'Failed to upload license front');
+        }
+      }
+
+      // Upload license back
+      if (backLicense) {
+        setUploadProgress(prev => ({ ...prev, license_back: 75 }));
+        const result = await uploadFileToStorage(backLicense, 'license-documents');
+        if (result.success && result.url) {
+          uploadedUrls.drivers_license_back = result.url;
+        } else {
+          throw new Error(result.error || 'Failed to upload license back');
+        }
+      }
+
+      // Upload work samples
+      if (formData.work_samples.length > 0) {
+        const workSampleUrls: string[] = [];
+        for (let i = 0; i < formData.work_samples.length; i++) {
+          const file = formData.work_samples[i];
+          const progress = 75 + (25 * (i + 1) / formData.work_samples.length);
+          setUploadProgress(prev => ({ ...prev, work_samples: progress }));
+          
+          const result = await uploadFileToStorage(file, 'work-samples');
+          if (result.success && result.url) {
+            workSampleUrls.push(result.url);
+          } else {
+            throw new Error(result.error || `Failed to upload work sample: ${file.name}`);
+          }
+        }
+        uploadedUrls.work_samples = workSampleUrls;
+      }
+
+      setUploadProgress(prev => ({ ...prev, complete: 100 }));
+      return uploadedUrls;
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -324,12 +432,12 @@ export const VendorApplication = () => {
       return;
     }
     
-    if (!formData.profile_photo) {
+    if (!profilePhoto) {
       setError('Please upload a profile photo');
       return;
     }
 
-    if (!formData.drivers_license_front || !formData.drivers_license_back) {
+    if (!frontLicense || !backLicense) {
       setError('Please upload both sides of your driver\'s license');
       return;
     }
@@ -343,6 +451,9 @@ export const VendorApplication = () => {
     setError(null);
 
     try {
+      // First upload all files
+      const uploadedUrls = await uploadAllFiles();
+
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -351,12 +462,12 @@ export const VendorApplication = () => {
         service_locations: formData.service_locations,
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
-        profile_photo: formData.profile_photo?.name || null,
-        drivers_license_front: formData.drivers_license_front?.name || null,
-        drivers_license_back: formData.drivers_license_back?.name || null,
+        profile_photo: uploadedUrls.profile_photo || null,
+        drivers_license_front: uploadedUrls.drivers_license_front || null,
+        drivers_license_back: uploadedUrls.drivers_license_back || null,
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
-        work_samples: formData.work_samples.map(file => file.name),
+        work_samples: Array.isArray(uploadedUrls.work_samples) ? uploadedUrls.work_samples : [],
         status: 'pending'
       };
 
@@ -940,12 +1051,31 @@ export const VendorApplication = () => {
 
         {/* Step 8: Work Samples */}
         {currentStep === 8 && (
-          <Card className="p-8">
+                loading={loading || uploadingFiles}
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Upload className="w-8 h-8 text-green-600" />
-              </div>
+                {uploadingFiles ? 'Uploading Files...' : loading ? 'Submitting...' : 'Review Terms & Submit'}
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
+              
+              {uploadingFiles && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm text-gray-600">Uploading your files...</div>
+                  {Object.entries(uploadProgress).map(([key, progress]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-500 w-20">{key}:</span>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-rose-500 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 w-10">{Math.round(progress)}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               <p className="text-gray-600">
                 Upload photos and videos showcasing your best work (maximum 10 files)
               </p>
