@@ -32,12 +32,12 @@ interface ApplicationData {
   service_locations: string[];
   services_applying_for: string[];
   gear: GearItem[];
-  profile_photo: string | null;
-  drivers_license_front: string | null;
-  drivers_license_back: string | null;
+  profile_photo: File | null;
+  drivers_license_front: File | null;
+  drivers_license_back: File | null;
   description: string;
   work_links: string[];
-  work_samples: string[];
+  work_samples: File[];
 }
 
 export const VendorApplication = () => {
@@ -213,7 +213,7 @@ export const VendorApplication = () => {
 
     setFormData(prev => ({
       ...prev,
-      profile_photo: files[0]?.name || ''
+      profile_photo: files[0] || null
     }));
 
     event.target.value = '';
@@ -225,7 +225,7 @@ export const VendorApplication = () => {
 
     setFormData(prev => ({
       ...prev,
-      drivers_license_front: files[0]?.name || ''
+      drivers_license_front: files[0] || null
     }));
 
     event.target.value = '';
@@ -237,7 +237,7 @@ export const VendorApplication = () => {
 
     setFormData(prev => ({
       ...prev,
-      drivers_license_back: files[0]?.name || ''
+      drivers_license_back: files[0] || null
     }));
 
     event.target.value = '';
@@ -247,27 +247,12 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    const fileNames = files.map(file => file.name);
     setFormData(prev => ({
       ...prev,
-      work_samples: [...prev.work_samples, ...fileNames]
+      work_samples: [...prev.work_samples, ...files]
     }));
 
     event.target.value = '';
-  };
-
-  const removeWorkSample = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      work_samples: prev.work_samples.filter((_, i) => i !== index)
-    }));
-  };
-
-  const clearAllWorkSamples = () => {
-    setFormData(prev => ({
-      ...prev,
-      work_samples: []
-    }));
   };
 
   const removeProfilePhoto = () => {
@@ -288,6 +273,20 @@ export const VendorApplication = () => {
     setFormData(prev => ({
       ...prev,
       drivers_license_back: null
+    }));
+  };
+
+  const removeWorkSample = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      work_samples: prev.work_samples.filter((_, i) => i !== index)
+    }));
+  };
+
+  const clearAllWorkSamples = () => {
+    setFormData(prev => ({
+      ...prev,
+      work_samples: []
     }));
   };
 
@@ -326,12 +325,12 @@ export const VendorApplication = () => {
         service_locations: formData.service_locations,
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
-        profile_photo: formData.profile_photo,
-        drivers_license_front: formData.drivers_license_front,
-        drivers_license_back: formData.drivers_license_back,
+        profile_photo: formData.profile_photo?.name || null,
+        drivers_license_front: formData.drivers_license_front?.name || null,
+        drivers_license_back: formData.drivers_license_back?.name || null,
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
-        work_samples: formData.work_samples,
+        work_samples: formData.work_samples.map(file => file.name),
         status: 'pending'
       };
 
