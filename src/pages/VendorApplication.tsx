@@ -1110,11 +1110,11 @@ export const VendorApplication = () => {
 
             <div className="space-y-8">
               <ProfilePhotoUpload
-                profilePhoto={formData.profile_photo}
+                profilePhoto={profilePhoto}
                 onPhotoSelect={handleHeadshotSelect}
                 onRemove={removeProfilePhoto}
                 uploading={uploading.profile}
-                uploadProgress={Math.round(uploadProgress.profile || 0)}
+                uploadProgress={uploadProgress.profile}
               />
 
               <LicenseUpload
