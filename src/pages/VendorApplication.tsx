@@ -351,9 +351,9 @@ export const VendorApplication = () => {
         // Simulate upload for demo
         for (let i = 0; i <= 100; i += 10) {
           setUploadProgress(prev => ({ ...prev, profile: i }));
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        setProfilePhoto(file);
+        'vendor-applications',
+        5,
+        'profile-photos'
         return;
       }
 
@@ -562,9 +562,9 @@ export const VendorApplication = () => {
     setUploading(prev => ({ ...prev, work_samples: true }));
     setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
     
-    try {
-      const uploadPromises = files.map((file, index) => 
-        uploadFileToStorage(file, 'work-samples', `work_sample_${index}`)
+        'vendor-applications',
+        10,
+        'license-documents'
       );
       const urls = await Promise.all(uploadPromises);
       
@@ -730,9 +730,9 @@ export const VendorApplication = () => {
         return selectedStates.length > 0 && formData.service_locations.length > 0;
       case 3:
         return formData.services_applying_for.length > 0;
-      case 4:
-        return formData.gear.length > 0 && formData.gear.every(item => 
-          item.gear_type && item.brand && item.model && item.year && item.condition
+          'vendor-applications',
+          file.type.startsWith('video/') ? 500 : 25,
+          'work-samples'
         );
       case 5:
         return step5Valid;
