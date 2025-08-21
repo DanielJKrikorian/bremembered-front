@@ -17,7 +17,27 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
   uploading = false,
   uploadProgress = 0
 }) => {
-  const imageUrl = profilePhoto instanceof File ? URL.createObjectURL(profilePhoto) : '';
+  const imageUrl = React.useMemo(() => {
+    if (profilePhoto instanceof File) {
+      return URL.createObjectURL(profilePhoto);
+    }
+    return '';
+  }, [profilePhoto]);
+
+  // Cleanup object URL when component unmounts or file changes
+  React.useEffect(() => {
+    return () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || isNaN(bytes)) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
 
   return (
     <div>
@@ -50,7 +70,7 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
             <div className="space-y-1">
               <p className="text-sm font-medium text-gray-900">{profilePhoto.name}</p>
               <p className="text-xs text-gray-500">
-                {(profilePhoto.size / 1024 / 1024).toFixed(2)} MB
+                {formatFileSize(profilePhoto.size)}
               </p>
             </div>
             {uploading && (
