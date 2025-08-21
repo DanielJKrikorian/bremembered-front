@@ -327,7 +327,7 @@ export const VendorApplication = () => {
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your profile photo');
       return;
-    }
+      const photoUrl = await uploadPhoto(file, applicationId, 'vendor-applications', 10);
     
     setProfilePhoto(file);
     setError(null);
@@ -490,8 +490,8 @@ export const VendorApplication = () => {
       
       // Check file type
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-        setError(`${file.name} is not a valid image or video file`);
-        return;
+        const maxSize = file.type.startsWith('video/') ? 500 : 25;
+        const photoUrl = await uploadPhoto(file, applicationId, 'vendor-applications', maxSize);
       }
     }
     
@@ -620,7 +620,7 @@ export const VendorApplication = () => {
         gear: formData.gear,
         profile_photo: uploadedFiles.profile_photo_url,
         drivers_license_front: uploadedFiles.drivers_license_front_url,
-        drivers_license_back: uploadedFiles.drivers_license_back_url,
+      const photoUrl = await uploadPhoto(file, applicationId, 'vendor-applications', 10);
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
         work_samples: uploadedFiles.work_sample_urls,
@@ -637,7 +637,7 @@ export const VendorApplication = () => {
         return;
       }
 
-      const { error: submitError } = await supabase
+      const photoUrl = await uploadPhoto(file, applicationId, 'vendor-applications', 10);
         .from('vendor_applications')
         .insert([applicationData]);
 

@@ -5,7 +5,12 @@ export const usePhotoUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
+  const uploadPhoto = async (
+    file: File, 
+    userId: string, 
+    bucketName: string = 'couple-photos',
+    maxFileSizeMB: number = 5
+  ): Promise<string | null> => {
     if (!supabase || !isSupabaseConfigured()) {
       throw new Error('Photo upload requires Supabase configuration');
     }
@@ -16,21 +21,21 @@ export const usePhotoUpload = () => {
     try {
       // Validate file
       if (!file.type.startsWith('image/')) {
-        throw new Error('Please select an image file');
+        throw new Error('Please select an image or video file');
       }
 
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        throw new Error('Image must be smaller than 5MB');
+      if (file.size > maxFileSizeMB * 1024 * 1024) {
+        throw new Error(`File must be smaller than ${maxFileSizeMB}MB`);
       }
 
       // Create unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
       const filePath = `${userId}/${fileName}`;
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
-        .from('couple-photos')
+        .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -40,12 +45,25 @@ export const usePhotoUpload = () => {
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('couple-photos')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       return publicUrl;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to upload photo';
+      let errorMessage = 'Failed to upload file';
+      
+      if (err instanceof Error) {
+        if (err.message.includes('504') || err.message.includes('timeout')) {
+          errorMessage = 'Upload timed out. Please try again with a smaller file or check your connection.';
+        } else if (err.message.includes('413') || err.message.includes('too large')) {
+          errorMessage = `File is too large. Maximum size is ${maxFileSizeMB}MB.`;
+        } else if (err.message.includes('<!DOCTYPE')) {
+          errorMessage = 'Server error occurred. Please try again later.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
