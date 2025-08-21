@@ -73,6 +73,8 @@ export const VendorApplication = () => {
   const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
+  const [step5Valid, setStep5Valid] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: [],
   });
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
@@ -463,10 +465,10 @@ export const VendorApplication = () => {
       }, 200);
       
       // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
+      const progressInterval2 = setInterval(() => {
         setFrontLicenseProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval);
+            clearInterval(progressInterval2);
             return 90;
           }
           return prev + 10;
@@ -485,7 +487,7 @@ export const VendorApplication = () => {
         }, 500);
       }
       
-      clearInterval(progressInterval);
+      clearInterval(progressInterval2);
       setFrontLicenseProgress(100);
       
       setFrontLicense(file);
@@ -549,10 +551,10 @@ export const VendorApplication = () => {
       }, 200);
       
       // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
+      const progressInterval2 = setInterval(() => {
         setBackLicenseProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval);
+            clearInterval(progressInterval2);
             return 90;
           }
           return prev + 10;
@@ -571,7 +573,7 @@ export const VendorApplication = () => {
         }, 500);
       }
       
-      clearInterval(progressInterval);
+      clearInterval(progressInterval2);
       setBackLicenseProgress(100);
       
       setBackLicense(file);
