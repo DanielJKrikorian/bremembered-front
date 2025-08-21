@@ -11,6 +11,8 @@ interface LicenseUploadProps {
   onRemoveBack: () => void;
   uploadingFront?: boolean;
   uploadingBack?: boolean;
+  uploadProgressFront?: number;
+  uploadProgressBack?: number;
 }
 
 export const LicenseUpload: React.FC<LicenseUploadProps> = ({
@@ -21,7 +23,9 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
   onRemoveFront,
   onRemoveBack,
   uploadingFront = false,
-  uploadingBack = false
+  uploadingBack = false,
+  uploadProgressFront = 0,
+  uploadProgressBack = 0
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -32,14 +36,26 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           {frontLicense ? (
             <div className="space-y-3">
               {uploadingFront ? (
-                <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+                <div className="w-12 h-12 mx-auto flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                    <span className="text-xs font-bold text-blue-600">{uploadProgressFront}%</span>
+                  </div>
                 </div>
               ) : (
                 <FileText className="w-12 h-12 text-green-600 mx-auto" />
               )}
               <p className="text-sm text-gray-600">{frontLicense.name}</p>
-              {uploadingFront && <p className="text-sm text-blue-600">Uploading...</p>}
+              {uploadingFront && (
+                <div className="space-y-2">
+                  <p className="text-sm text-blue-600">Uploading license front...</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgressFront}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -53,7 +69,20 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           ) : (
             <div>
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-sm text-gray-600 mb-4">Upload front of license</p>
+              <p className="text-sm text-gray-600 mb-4">
+                {uploadingFront ? 'Uploading...' : 'Upload front of license'}
+              </p>
+              {uploadingFront && (
+                <div className="mb-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgressFront}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">{uploadProgressFront}% uploaded</p>
+                </div>
+              )}
               <input
                 type="file"
                 id="license-front-input"
@@ -67,7 +96,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                 onClick={() => document.getElementById('license-front-input')?.click()}
                 disabled={uploadingFront}
               >
-                Choose File
+                {uploadingFront ? 'Uploading...' : 'Choose File'}
               </Button>
             </div>
           )}
@@ -81,14 +110,26 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           {backLicense ? (
             <div className="space-y-3">
               {uploadingBack ? (
-                <div className="w-12 h-12 mx-auto flex items-center justify-center">
-                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+                <div className="w-12 h-12 mx-auto flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                    <span className="text-xs font-bold text-blue-600">{uploadProgressBack}%</span>
+                  </div>
                 </div>
               ) : (
                 <FileText className="w-12 h-12 text-green-600 mx-auto" />
               )}
               <p className="text-sm text-gray-600">{backLicense.name}</p>
-              {uploadingBack && <p className="text-sm text-blue-600">Uploading...</p>}
+              {uploadingBack && (
+                <div className="space-y-2">
+                  <p className="text-sm text-blue-600">Uploading license back...</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgressBack}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -102,7 +143,20 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           ) : (
             <div>
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-sm text-gray-600 mb-4">Upload back of license</p>
+              <p className="text-sm text-gray-600 mb-4">
+                {uploadingBack ? 'Uploading...' : 'Upload back of license'}
+              </p>
+              {uploadingBack && (
+                <div className="mb-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgressBack}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">{uploadProgressBack}% uploaded</p>
+                </div>
+              )}
               <input
                 type="file"
                 id="license-back-input"
@@ -116,7 +170,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                 onClick={() => document.getElementById('license-back-input')?.click()}
                 disabled={uploadingBack}
               >
-                Choose File
+                {uploadingBack ? 'Uploading...' : 'Choose File'}
               </Button>
             </div>
           )}
