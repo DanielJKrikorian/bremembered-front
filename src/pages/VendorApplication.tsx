@@ -54,6 +54,7 @@ export const VendorApplication = () => {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
+  const [step5Valid, setStep5Valid] = useState(false);
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -75,6 +76,17 @@ export const VendorApplication = () => {
     work_links: [''],
     work_samples: []
   });
+
+  // Check Step 5 validation whenever files change
+  useEffect(() => {
+    const isValid = !!(profilePhoto && frontLicense && backLicense);
+    setStep5Valid(isValid);
+    console.log('=== STEP 5 VALIDATION UPDATE ===');
+    console.log('Profile photo exists:', !!profilePhoto);
+    console.log('Front license exists:', !!frontLicense);
+    console.log('Back license exists:', !!backLicense);
+    console.log('Step 5 valid:', isValid);
+  }, [profilePhoto, frontLicense, backLicense]);
 
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<any[]>([]);
@@ -390,6 +402,8 @@ export const VendorApplication = () => {
         return formData.gear.length > 0 && formData.gear.every(item => 
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
+      case 5:
+        return step5Valid;
         return formData.work_samples.length > 0;
         return !!profilePhoto && !!frontLicense && !!backLicense;
         return !!formData.profile_photo && 
@@ -1089,7 +1103,7 @@ export const VendorApplication = () => {
             <Button
               variant="primary"
               onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={!canProceedStep() || (currentStep === 5 && (!profilePhoto || !frontLicense || !backLicense))}
+              disabled={!canProceedStep()}
               icon={ArrowRight}
             >
               {currentStep === 8 ? 'Review Application' : 'Continue'}
