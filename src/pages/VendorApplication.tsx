@@ -1052,13 +1052,9 @@ export const VendorApplication = () => {
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Upload className="w-8 h-8 text-green-600" />
-                </div>
+              </div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
-              
-              {uploadingFiles && (
-                <div className="mt-4 space-y-2">
-                  <div className="text-sm text-gray-600">Uploading your files...</div>
+              <p className="text-gray-600">Upload examples of your work (photos, videos, etc.)</p>
             </div>
 
             <WorkSamplesUpload
@@ -1068,9 +1064,6 @@ export const VendorApplication = () => {
               onClearAll={clearAllWorkSamples}
               maxFiles={10}
               uploading={uploading.work_samples}
-              uploading={uploading.profile}
-              uploadingFront={uploading.license_front}
-              uploadingBack={uploading.license_back}
             />
           </Card>
         )}
