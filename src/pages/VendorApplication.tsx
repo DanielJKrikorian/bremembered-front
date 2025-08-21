@@ -1090,7 +1090,6 @@ export const VendorApplication = () => {
               maxFiles={10}
             />
           </Card>
-          </Card>
         )}
 
         {/* Step 9: Review & Submit */}
