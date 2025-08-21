@@ -17,7 +17,7 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
   uploading = false,
   uploadProgress = 0
 }) => {
-  const imageUrl = profilePhoto ? URL.createObjectURL(profilePhoto) : '';
+  const imageUrl = profilePhoto instanceof File ? URL.createObjectURL(profilePhoto) : '';
 
   return (
     <div>
