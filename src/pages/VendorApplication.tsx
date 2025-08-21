@@ -337,22 +337,60 @@ export const VendorApplication = () => {
     // Upload immediately
     setUploading(prev => ({ ...prev, profile: true }));
     setUploadProgress(prev => ({ ...prev, profile: 0 }));
-    
     try {
-      const url = await uploadFileToStorage(file, 'profile-photos', 'profile');
-      if (url) {
-        setUploadedFiles(prev => ({ ...prev, profile_photo_url: url }));
-        setFormData(prev => ({ ...prev, profile_photo: file }));
+      setUploadingProfilePhoto(true);
+      setUploadProgress(prev => ({ ...prev, profile: 0 }));
+      setUploading(prev => ({ ...prev, profile: true }));
+
+      if (!supabase || !isSupabaseConfigured()) {
+        // Simulate upload for demo
+        for (let i = 0; i <= 100; i += 10) {
+          setUploadProgress(prev => ({ ...prev, profile: i }));
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        setProfilePhoto(file);
+        return;
       }
+
+      // Validate file
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select an image file');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image must be smaller than 5MB');
+      }
+
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `profile-${Date.now()}.${fileExt}`;
+      const filePath = `${applicationId}/${fileName}`;
+
+      // Upload to Supabase Storage with progress tracking
+      const { data, error } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      setProfilePhoto(file);
+      setFormData(prev => ({ ...prev, profile_photo: publicUrl }));
+      setUploadProgress(prev => ({ ...prev, profile: 100 }));
     } catch (error) {
       console.error('Error uploading profile photo:', error);
-      setError('Failed to upload profile photo. Please try again.');
-    } finally {
-      setUploadingProfilePhoto(false);
+      setError(error instanceof Error ? error.message : 'Failed to upload profile photo');
       setProfilePhoto(null);
     } finally {
       setUploading(prev => ({ ...prev, profile: false }));
       setUploadProgress(prev => ({ ...prev, profile: 0 }));
+      setUploadingProfilePhoto(false);
     }
 
     event.target.value = '';
