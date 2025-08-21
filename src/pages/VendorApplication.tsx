@@ -11,12 +11,6 @@ import { TermsModal } from '../components/vendor/TermsModal';
 import { useServiceAreas } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
-interface FileUploadResult {
-  success: boolean;
-  url?: string;
-  error?: string;
-}
-
 interface GearItem {
   gear_type: string;
   brand: string;
@@ -46,6 +40,13 @@ interface ApplicationData {
   work_samples: File[];
 }
 
+interface UploadedFiles {
+  profile_photo_url?: string;
+  drivers_license_front_url?: string;
+  drivers_license_back_url?: string;
+  work_sample_urls: string[];
+}
+
 export const VendorApplication = () => {
   const navigate = useNavigate();
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
@@ -61,8 +62,10 @@ export const VendorApplication = () => {
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
   const [step5Valid, setStep5Valid] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
-  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
+    work_sample_urls: []
+  });
+  const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -87,14 +90,13 @@ export const VendorApplication = () => {
 
   // Check Step 5 validation whenever files change
   useEffect(() => {
-    const isValid = !!(profilePhoto && frontLicense && backLicense);
+    const isValid = !!(
+      (profilePhoto || uploadedFiles.profile_photo_url) && 
+      (frontLicense || uploadedFiles.drivers_license_front_url) && 
+      (backLicense || uploadedFiles.drivers_license_back_url)
+    );
     setStep5Valid(isValid);
-    console.log('=== STEP 5 VALIDATION UPDATE ===');
-    console.log('Profile photo exists:', !!profilePhoto);
-    console.log('Front license exists:', !!frontLicense);
-    console.log('Back license exists:', !!backLicense);
-    console.log('Step 5 valid:', isValid);
-  }, [profilePhoto, frontLicense, backLicense]);
+  }, [profilePhoto, frontLicense, backLicense, uploadedFiles]);
 
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<any[]>([]);
@@ -148,6 +150,39 @@ export const VendorApplication = () => {
   const conditionOptions: GearItem['condition'][] = ['Excellent', 'Good', 'Fair', 'Poor'];
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
+
+  // File upload utility function
+  const uploadFileToStorage = async (file: File, folder: string): Promise<string | null> => {
+    if (!supabase || !isSupabaseConfigured()) {
+      // Return mock URL for demo
+      return `https://mock-storage.com/${folder}/${file.name}`;
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `${folder}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -232,62 +267,115 @@ export const VendorApplication = () => {
   };
 
   // File upload handlers
-  const handleHeadshotSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeadshotSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
     const file = files[0];
     setProfilePhoto(file);
-    setFormData(prev => ({
-      ...prev,
-      profile_photo: file
-    }));
+    
+    // Upload immediately
+    setUploading(prev => ({ ...prev, profile: true }));
+    try {
+      const url = await uploadFileToStorage(file, 'profile-photos');
+      if (url) {
+        setUploadedFiles(prev => ({ ...prev, profile_photo_url: url }));
+        setFormData(prev => ({ ...prev, profile_photo: file }));
+      }
+    } catch (error) {
+      console.error('Error uploading profile photo:', error);
+      setError('Failed to upload profile photo. Please try again.');
+    } finally {
+      setUploading(prev => ({ ...prev, profile: false }));
+    }
 
     event.target.value = '';
   };
 
-  const handleLicenseFrontSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLicenseFrontSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
     const file = files[0];
     setFrontLicense(file);
-    setFormData(prev => ({
-      ...prev,
-      drivers_license_front: file
-    }));
+    
+    // Upload immediately
+    setUploading(prev => ({ ...prev, license_front: true }));
+    try {
+      const url = await uploadFileToStorage(file, 'license-documents');
+      if (url) {
+        setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: url }));
+        setFormData(prev => ({ ...prev, drivers_license_front: file }));
+      }
+    } catch (error) {
+      console.error('Error uploading license front:', error);
+      setError('Failed to upload license front. Please try again.');
+    } finally {
+      setUploading(prev => ({ ...prev, license_front: false }));
+    }
 
     event.target.value = '';
   };
 
-  const handleLicenseBackSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLicenseBackSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
     const file = files[0];
     setBackLicense(file);
-    setFormData(prev => ({
-      ...prev,
-      drivers_license_back: file
-    }));
+    
+    // Upload immediately
+    setUploading(prev => ({ ...prev, license_back: true }));
+    try {
+      const url = await uploadFileToStorage(file, 'license-documents');
+      if (url) {
+        setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: url }));
+        setFormData(prev => ({ ...prev, drivers_license_back: file }));
+      }
+    } catch (error) {
+      console.error('Error uploading license back:', error);
+      setError('Failed to upload license back. Please try again.');
+    } finally {
+      setUploading(prev => ({ ...prev, license_back: false }));
+    }
 
     event.target.value = '';
   };
 
-  const handleWorkSamplesSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWorkSamplesSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    setFormData(prev => ({
-      ...prev,
-      work_samples: [...prev.work_samples, ...files]
-    }));
+    // Upload each file immediately
+    setUploading(prev => ({ ...prev, work_samples: true }));
+    try {
+      const uploadPromises = files.map(file => uploadFileToStorage(file, 'work-samples'));
+      const urls = await Promise.all(uploadPromises);
+      
+      const validUrls = urls.filter(url => url !== null) as string[];
+      
+      setUploadedFiles(prev => ({
+        ...prev,
+        work_sample_urls: [...prev.work_sample_urls, ...validUrls]
+      }));
+      
+      setFormData(prev => ({
+        ...prev,
+        work_samples: [...prev.work_samples, ...files]
+      }));
+    } catch (error) {
+      console.error('Error uploading work samples:', error);
+      setError('Failed to upload work samples. Please try again.');
+    } finally {
+      setUploading(prev => ({ ...prev, work_samples: false }));
+    }
 
     event.target.value = '';
   };
 
   const removeProfilePhoto = () => {
     setProfilePhoto(null);
+    setUploadedFiles(prev => ({ ...prev, profile_photo_url: undefined }));
     setFormData(prev => ({
       ...prev,
       profile_photo: null
@@ -296,6 +384,7 @@ export const VendorApplication = () => {
 
   const removeLicenseFront = () => {
     setFrontLicense(null);
+    setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: undefined }));
     setFormData(prev => ({
       ...prev,
       drivers_license_front: null
@@ -304,6 +393,7 @@ export const VendorApplication = () => {
 
   const removeLicenseBack = () => {
     setBackLicense(null);
+    setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: undefined }));
     setFormData(prev => ({
       ...prev,
       drivers_license_back: null
@@ -311,6 +401,12 @@ export const VendorApplication = () => {
   };
 
   const removeWorkSample = (index: number) => {
+    // Remove from uploaded URLs as well
+    setUploadedFiles(prev => ({
+      ...prev,
+      work_sample_urls: prev.work_sample_urls.filter((_, i) => i !== index)
+    }));
+    
     setFormData(prev => ({
       ...prev,
       work_samples: prev.work_samples.filter((_, i) => i !== index)
@@ -318,110 +414,11 @@ export const VendorApplication = () => {
   };
 
   const clearAllWorkSamples = () => {
+    setUploadedFiles(prev => ({ ...prev, work_sample_urls: [] }));
     setFormData(prev => ({
       ...prev,
       work_samples: []
     }));
-  };
-
-  // File upload utility function
-  const uploadFileToStorage = async (file: File, folder: string, fileName?: string): Promise<FileUploadResult> => {
-    if (!supabase || !isSupabaseConfigured()) {
-      return { success: true, url: `mock-url/${file.name}` };
-    }
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const uploadFileName = fileName || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `${folder}/${uploadFileName}`;
-
-      const { data, error } = await supabase.storage
-        .from('vendor-applications')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('vendor-applications')
-        .getPublicUrl(filePath);
-
-      return { success: true, url: publicUrl };
-    } catch (error) {
-      console.error('Upload error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Upload failed' 
-      };
-    }
-  };
-
-  // Upload all files and get their URLs
-  const uploadAllFiles = async (): Promise<{ [key: string]: string }> => {
-    const uploadedUrls: { [key: string]: string } = {};
-    setUploadingFiles(true);
-    setUploadProgress({});
-
-    try {
-      // Upload profile photo
-      if (profilePhoto) {
-        setUploadProgress(prev => ({ ...prev, profile: 25 }));
-        const result = await uploadFileToStorage(profilePhoto, 'profile-photos');
-        if (result.success && result.url) {
-          uploadedUrls.profile_photo = result.url;
-        } else {
-          throw new Error(result.error || 'Failed to upload profile photo');
-        }
-      }
-
-      // Upload license front
-      if (frontLicense) {
-        setUploadProgress(prev => ({ ...prev, license_front: 50 }));
-        const result = await uploadFileToStorage(frontLicense, 'license-documents');
-        if (result.success && result.url) {
-          uploadedUrls.drivers_license_front = result.url;
-        } else {
-          throw new Error(result.error || 'Failed to upload license front');
-        }
-      }
-
-      // Upload license back
-      if (backLicense) {
-        setUploadProgress(prev => ({ ...prev, license_back: 75 }));
-        const result = await uploadFileToStorage(backLicense, 'license-documents');
-        if (result.success && result.url) {
-          uploadedUrls.drivers_license_back = result.url;
-        } else {
-          throw new Error(result.error || 'Failed to upload license back');
-        }
-      }
-
-      // Upload work samples
-      if (formData.work_samples.length > 0) {
-        const workSampleUrls: string[] = [];
-        for (let i = 0; i < formData.work_samples.length; i++) {
-          const file = formData.work_samples[i];
-          const progress = 75 + (25 * (i + 1) / formData.work_samples.length);
-          setUploadProgress(prev => ({ ...prev, work_samples: progress }));
-          
-          const result = await uploadFileToStorage(file, 'work-samples');
-          if (result.success && result.url) {
-            workSampleUrls.push(result.url);
-          } else {
-            throw new Error(result.error || `Failed to upload work sample: ${file.name}`);
-          }
-        }
-        uploadedUrls.work_samples = workSampleUrls;
-      }
-
-      setUploadProgress(prev => ({ ...prev, complete: 100 }));
-      return uploadedUrls;
-    } finally {
-      setUploadingFiles(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -432,17 +429,18 @@ export const VendorApplication = () => {
       return;
     }
     
-    if (!profilePhoto) {
+    if (!profilePhoto && !uploadedFiles.profile_photo_url) {
       setError('Please upload a profile photo');
       return;
     }
 
-    if (!frontLicense || !backLicense) {
+    if ((!frontLicense && !uploadedFiles.drivers_license_front_url) || 
+        (!backLicense && !uploadedFiles.drivers_license_back_url)) {
       setError('Please upload both sides of your driver\'s license');
       return;
     }
 
-    if (formData.work_samples.length === 0) {
+    if (formData.work_samples.length === 0 && uploadedFiles.work_sample_urls.length === 0) {
       setError('Please upload at least one work sample');
       return;
     }
@@ -451,9 +449,6 @@ export const VendorApplication = () => {
     setError(null);
 
     try {
-      // First upload all files
-      const uploadedUrls = await uploadAllFiles();
-
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -462,14 +457,16 @@ export const VendorApplication = () => {
         service_locations: formData.service_locations,
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
-        profile_photo: uploadedUrls.profile_photo || null,
-        drivers_license_front: uploadedUrls.drivers_license_front || null,
-        drivers_license_back: uploadedUrls.drivers_license_back || null,
+        profile_photo: uploadedFiles.profile_photo_url || null,
+        drivers_license_front: uploadedFiles.drivers_license_front_url || null,
+        drivers_license_back: uploadedFiles.drivers_license_back_url || null,
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
-        work_samples: Array.isArray(uploadedUrls.work_samples) ? uploadedUrls.work_samples : [],
+        work_samples: uploadedFiles.work_sample_urls,
         status: 'pending'
       };
+
+      console.log('Submitting application data:', applicationData);
 
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Mock application submitted:', applicationData);
@@ -520,7 +517,7 @@ export const VendorApplication = () => {
       case 7:
         return formData.work_links.some(link => link.trim() !== '');
       case 8:
-        return formData.work_samples.length > 0;
+        return formData.work_samples.length > 0 || uploadedFiles.work_sample_urls.length > 0;
        case 9:
          return true; // Step 9 is review/submit - always allow if we got this far
       default:
@@ -1062,24 +1059,6 @@ export const VendorApplication = () => {
               {uploadingFiles && (
                 <div className="mt-4 space-y-2">
                   <div className="text-sm text-gray-600">Uploading your files...</div>
-                  {Object.entries(uploadProgress).map(([key, progress]) => (
-                    <div key={key} className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500 w-20">{key}:</span>
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-rose-500 h-2 rounded-full transition-all duration-300" 
-                          style={{ width: `${progress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-500 w-10">{Math.round(progress)}%</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <p className="text-gray-600">
-                Upload photos and videos showcasing your best work (maximum 10 files)
-              </p>
             </div>
 
             <WorkSamplesUpload
@@ -1088,6 +1067,10 @@ export const VendorApplication = () => {
               onRemove={removeWorkSample}
               onClearAll={clearAllWorkSamples}
               maxFiles={10}
+              uploading={uploading.work_samples}
+              uploading={uploading.profile}
+              uploadingFront={uploading.license_front}
+              uploadingBack={uploading.license_back}
             />
           </Card>
         )}
@@ -1173,24 +1156,24 @@ export const VendorApplication = () => {
                   <div>
                     <span className="text-gray-600">Profile Photo:</span>
                     <span className="ml-2 font-medium text-green-600">
-                      {formData.profile_photo ? '✓ Uploaded' : '✗ Missing'}
+                      {uploadedFiles.profile_photo_url ? '✓ Uploaded' : '✗ Missing'}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-600">License Front:</span>
                     <span className="ml-2 font-medium text-green-600">
-                      {formData.drivers_license_front ? '✓ Uploaded' : '✗ Missing'}
+                      {uploadedFiles.drivers_license_front_url ? '✓ Uploaded' : '✗ Missing'}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-600">License Back:</span>
                     <span className="ml-2 font-medium text-green-600">
-                      {formData.drivers_license_back ? '✓ Uploaded' : '✗ Missing'}
+                      {uploadedFiles.drivers_license_back_url ? '✓ Uploaded' : '✗ Missing'}
                     </span>
                   </div>
                   <div className="md:col-span-3">
                     <span className="text-gray-600">Work Samples:</span>
-                    <span className="ml-2 font-medium">{formData.work_samples.length} files uploaded</span>
+                    <span className="ml-2 font-medium">{uploadedFiles.work_sample_urls.length} files uploaded</span>
                   </div>
                   <div className="md:col-span-3">
                     <span className="text-gray-600">Portfolio Links:</span>
@@ -1207,7 +1190,6 @@ export const VendorApplication = () => {
                   size="lg"
                   onClick={handleSubmit}
                   loading={loading}
-                  disabled={!canProceedStep()}
                   className="px-12"
                 >
                   Review Terms & Submit

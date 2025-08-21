@@ -6,12 +6,14 @@ interface ProfilePhotoUploadProps {
   profilePhoto: File | null;
   onPhotoSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
+  uploading?: boolean;
 }
 
 export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
   profilePhoto,
   onPhotoSelect,
-  onRemove
+  onRemove,
+  uploading = false
 }) => {
   return (
     <div>
@@ -19,17 +21,25 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
         {profilePhoto ? (
           <div className="space-y-3">
-            <img
-              src={URL.createObjectURL(profilePhoto)}
-              alt="Profile"
-              className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
-            />
+            {uploading ? (
+              <div className="w-24 h-24 rounded-full bg-gray-200 mx-auto border-4 border-white shadow-lg flex items-center justify-center">
+                <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+              </div>
+            ) : (
+              <img
+                src={URL.createObjectURL(profilePhoto)}
+                alt="Profile"
+                className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
+              />
+            )}
             <p className="text-sm text-gray-600">{profilePhoto.name}</p>
+            {uploading && <p className="text-sm text-blue-600">Uploading...</p>}
             <Button
               variant="outline"
               size="sm"
               onClick={onRemove}
               icon={X}
+              disabled={uploading}
             >
               Remove
             </Button>
@@ -49,6 +59,7 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
               variant="outline"
               size="sm"
               onClick={() => document.getElementById('headshot-input')?.click()}
+              disabled={uploading}
             >
               Choose File
             </Button>

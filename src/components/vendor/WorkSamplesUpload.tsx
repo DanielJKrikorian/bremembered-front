@@ -8,6 +8,7 @@ interface WorkSamplesUploadProps {
   onRemove: (index: number) => void;
   onClearAll: () => void;
   maxFiles?: number;
+  uploading?: boolean;
 }
 
 export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
@@ -15,7 +16,8 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
   onFilesSelect,
   onRemove,
   onClearAll,
-  maxFiles = 10
+  maxFiles = 10,
+  uploading = false
 }) => {
   return (
     <div className="space-y-6">
@@ -60,8 +62,15 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
       )}
       
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-        <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        {uploading ? (
+          <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+            <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+          </div>
+        ) : (
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        )}
         <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Work Samples</h4>
+        {uploading && <p className="text-blue-600 mb-2">Uploading files...</p>}
         <p className="text-gray-600 mb-4">
           Upload photos (up to 25MB) and videos (up to 500MB) showcasing your best work
         </p>
@@ -77,7 +86,7 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
           <Button
             variant="outline"
             onClick={() => document.getElementById('work-samples-input')?.click()}
-            disabled={workSamples.length >= maxFiles}
+            disabled={workSamples.length >= maxFiles || uploading}
           >
             {workSamples.length === 0 ? 'Choose Files' : 'Add More Files'}
           </Button>

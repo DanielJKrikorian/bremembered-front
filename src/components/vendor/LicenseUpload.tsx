@@ -9,6 +9,8 @@ interface LicenseUploadProps {
   onBackSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFront: () => void;
   onRemoveBack: () => void;
+  uploadingFront?: boolean;
+  uploadingBack?: boolean;
 }
 
 export const LicenseUpload: React.FC<LicenseUploadProps> = ({
@@ -17,7 +19,9 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
   onFrontSelect,
   onBackSelect,
   onRemoveFront,
-  onRemoveBack
+  onRemoveBack,
+  uploadingFront = false,
+  uploadingBack = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -27,13 +31,21 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
           {frontLicense ? (
             <div className="space-y-3">
-              <FileText className="w-12 h-12 text-green-600 mx-auto" />
+              {uploadingFront ? (
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+                </div>
+              ) : (
+                <FileText className="w-12 h-12 text-green-600 mx-auto" />
+              )}
               <p className="text-sm text-gray-600">{frontLicense.name}</p>
+              {uploadingFront && <p className="text-sm text-blue-600">Uploading...</p>}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onRemoveFront}
                 icon={X}
+                disabled={uploadingFront}
               >
                 Remove
               </Button>
@@ -53,6 +65,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('license-front-input')?.click()}
+                disabled={uploadingFront}
               >
                 Choose File
               </Button>
@@ -67,13 +80,21 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
           {backLicense ? (
             <div className="space-y-3">
-              <FileText className="w-12 h-12 text-green-600 mx-auto" />
+              {uploadingBack ? (
+                <div className="w-12 h-12 mx-auto flex items-center justify-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+                </div>
+              ) : (
+                <FileText className="w-12 h-12 text-green-600 mx-auto" />
+              )}
               <p className="text-sm text-gray-600">{backLicense.name}</p>
+              {uploadingBack && <p className="text-sm text-blue-600">Uploading...</p>}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onRemoveBack}
                 icon={X}
+                disabled={uploadingBack}
               >
                 Remove
               </Button>
@@ -93,6 +114,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('license-back-input')?.click()}
+                disabled={uploadingBack}
               >
                 Choose File
               </Button>
