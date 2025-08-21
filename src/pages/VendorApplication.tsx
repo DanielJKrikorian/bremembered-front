@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
+import { TermsModal } from '../components/vendor/TermsModal';
 import { useServiceAreas } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -46,6 +47,8 @@ export const VendorApplication = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -291,6 +294,11 @@ export const VendorApplication = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!termsAccepted) {
+      setShowTermsModal(true);
+      return;
+    }
+    
     if (!formData.profile_photo) {
       setError('Please upload a profile photo');
       return;
@@ -346,6 +354,13 @@ export const VendorApplication = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTermsAccept = () => {
+    setTermsAccepted(true);
+    setShowTermsModal(false);
+    // Automatically submit after terms are accepted
+    handleSubmit(new Event('submit') as any);
   };
 
   const canProceedStep = () => {
@@ -1039,10 +1054,10 @@ export const VendorApplication = () => {
                   disabled={!canProceedStep()}
                   className="px-12"
                 >
-                  Submit Application
+                  Review Terms & Submit
                 </Button>
                 <p className="text-sm text-gray-500 mt-4">
-                  By submitting, you agree to our Terms of Service and Privacy Policy
+                  You'll be asked to review and accept our Terms & Conditions before final submission
                 </p>
               </div>
             </div>
@@ -1069,6 +1084,13 @@ export const VendorApplication = () => {
           </div>
         )}
       </div>
+
+      {/* Terms Modal */}
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={handleTermsAccept}
+      />
     </div>
   );
 };
