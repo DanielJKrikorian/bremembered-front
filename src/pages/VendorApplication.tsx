@@ -173,12 +173,8 @@ export const VendorApplication = () => {
             }, 200);
           } else {
             setUploadProgress(prev => ({ ...prev, [progressKey]: progress }));
-    setUploadingProfilePhoto(true);
-    setProfilePhotoProgress(0);
-
           }
         }, 100);
-        setProfilePhotoProgress(progress);
       });
     }
 
@@ -338,8 +334,6 @@ export const VendorApplication = () => {
     setUploading(prev => ({ ...prev, profile: true }));
     setUploadProgress(prev => ({ ...prev, profile: 0 }));
     try {
-      setUploadingProfilePhoto(true);
-      setUploadProgress(prev => ({ ...prev, profile: 0 }));
       setUploading(prev => ({ ...prev, profile: true }));
 
       if (!supabase || !isSupabaseConfigured()) {
@@ -390,7 +384,6 @@ export const VendorApplication = () => {
     } finally {
       setUploading(prev => ({ ...prev, profile: false }));
       setUploadProgress(prev => ({ ...prev, profile: 0 }));
-      setUploadingProfilePhoto(false);
     }
 
     event.target.value = '';
@@ -399,9 +392,6 @@ export const VendorApplication = () => {
   const handleLicenseFrontSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-
-    setUploadingLicenseFront(true);
-    setLicenseFrontProgress(0);
 
     const file = files[0];
     
@@ -427,16 +417,12 @@ export const VendorApplication = () => {
     try {
       const url = await uploadFileToStorage(file, 'license-documents', 'license_front');
       if (url) {
-        setLicenseFrontProgress(progress);
         setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_front: file }));
       }
     } catch (error) {
       console.error('Error uploading license front:', error);
       setError('Failed to upload license front. Please try again.');
-    } finally {
-      setUploadingLicenseFront(false);
-      setFrontLicense(null);
     } finally {
       setUploading(prev => ({ ...prev, license_front: false }));
       setUploadProgress(prev => ({ ...prev, license_front: 0 }));
@@ -448,9 +434,6 @@ export const VendorApplication = () => {
   const handleLicenseBackSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-
-    setUploadingLicenseBack(true);
-    setLicenseBackProgress(0);
 
     const file = files[0];
     
@@ -476,16 +459,12 @@ export const VendorApplication = () => {
     try {
       const url = await uploadFileToStorage(file, 'license-documents', 'license_back');
       if (url) {
-        setLicenseBackProgress(progress);
         setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_back: file }));
       }
     } catch (error) {
       console.error('Error uploading license back:', error);
       setError('Failed to upload license back. Please try again.');
-    } finally {
-      setUploadingLicenseBack(false);
-      setBackLicense(null);
     } finally {
       setUploading(prev => ({ ...prev, license_back: false }));
       setUploadProgress(prev => ({ ...prev, license_back: 0 }));
