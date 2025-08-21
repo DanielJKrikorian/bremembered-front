@@ -410,16 +410,8 @@ export const VendorApplication = () => {
         return formData.work_links.some(link => link.trim() !== '');
       case 8:
         return formData.work_samples.length > 0;
-        return formData.work_samples.length > 0;
-        return !!profilePhoto && !!frontLicense && !!backLicense;
-        return !!formData.profile_photo && 
-               !!formData.drivers_license_front && 
-               !!formData.drivers_license_back &&
-               formData.work_samples.length > 0 &&
-               formData.description.length >= 50 &&
-               formData.services_applying_for.length > 0 &&
-               formData.service_locations.length > 0 &&
-               formData.gear.length > 0;
+       case 9:
+         return true; // Step 9 is review/submit - always allow if we got this far
       default:
         return false;
     }
