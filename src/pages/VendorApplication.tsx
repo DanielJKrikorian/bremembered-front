@@ -458,7 +458,7 @@ export const VendorApplication = () => {
         });
       }, 200);
       
-      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-documents', 10);
+      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-applications', 10);
       if (photoUrl) {
         setFrontLicense(file);
         setFrontLicenseUploadProgress(100);
@@ -514,7 +514,7 @@ export const VendorApplication = () => {
         });
       }, 200);
       
-      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-documents', 10);
+      const photoUrl = await uploadPhoto(file, 'user?.id' || '', 'vendor-applications', 10);
       if (photoUrl) {
         setBackLicense(file);
         setBackLicenseUploadProgress(100);
