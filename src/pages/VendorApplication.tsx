@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, User, MapPin, Award, Camera, FileText, Link, Check, AlertCircle, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, MapPin, Award, Camera, FileText, Link, Check, AlertCircle, Phone, Mail, Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
