@@ -424,7 +424,7 @@ export const VendorApplication = () => {
 
   const handleLicenseFrontSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+    if (!file || !user || !supabase || !isSupabaseConfigured()) return;
 
     setFrontLicenseUploading(true);
     setFrontLicenseUploadProgress(0);
@@ -673,9 +673,8 @@ export const VendorApplication = () => {
     setLoading(true);
     setError(null);
 
-    try {
-      // All files are already uploaded, just submit the application data
-      const applicationData = {
+    setUploading(prev => ({ ...prev, license_front: true }));
+    setUploadProgress(prev => ({ ...prev, license_front: 0 }));
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
@@ -688,150 +687,208 @@ export const VendorApplication = () => {
         drivers_license_back: uploadedFiles.drivers_license_back_url,
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
-        work_samples: uploadedFiles.work_sample_urls,
-        status: 'pending'
-      };
-
-      console.log('Submitting application data:', applicationData);
-
-      if (!supabase || !isSupabaseConfigured()) {
-        console.log('Mock application submitted:', applicationData);
-        // Simulate submission delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setSuccess(true);
-        return;
+    try {
+      // Validate file
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select an image file');
       }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File must be smaller than 10MB');
+      }
+        console.log('Mock application submitted:', applicationData);
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `license-documents/${user.id}/${fileName}`;
 
-      const { error: submitError } = await supabase
-        .from('vendor_applications')
-        .insert([applicationData]);
+      // Upload to vendor-applications bucket
+      const { data, error: uploadError } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      if (submitError) throw submitError;
+      if (uploadError) throw uploadError;
 
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, drivers_license_front: publicUrl }));
+      setFrontLicense(file);
+      setUploadProgress(prev => ({ ...prev, license_front: 100 }));
       setSuccess(true);
     } catch (err) {
       console.error('Error submitting application:', err);
-      setError(err instanceof Error ? err.message : 'Failed to submit application');
     } finally {
+      }, 1000);
+      setError(err instanceof Error ? err.message : 'Failed to submit application');
       setLoading(false);
     }
-  };
+    if (!file || !user || !supabase || !isSupabaseConfigured()) return;
 
-  const handleTermsAccept = () => {
-    setTermsAccepted(true);
-    setShowTermsModal(false);
+    setUploading(prev => ({ ...prev, license_back: true }));
+    setUploadProgress(prev => ({ ...prev, license_back: 0 }));
     // Automatically submit after terms are accepted
-    handleSubmit(new Event('submit') as any);
-  };
-
-  const canProceedStep = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.name && formData.phone && formData.email && 
+    try {
+      // Validate file
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select an image file');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File must be smaller than 10MB');
+      }
                formData.address.street && formData.address.city && 
-               formData.address.state && formData.address.zip;
-      case 2:
-        return selectedStates.length > 0 && formData.service_locations.length > 0;
-      case 3:
-        return formData.services_applying_for.length > 0;
-      case 4:
-        return true; // Optional step
-      case 5:
-        return step5Valid;
-      case 6:
-        return formData.description.trim().length >= 50;
-      case 7:
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `license-documents/${user.id}/${fileName}`;
+
+      // Upload to vendor-applications bucket
+      const { data, error: uploadError } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, drivers_license_back: publicUrl }));
+      setBackLicense(file);
+      setUploadProgress(prev => ({ ...prev, license_back: 100 }));
         return formData.work_links.some(link => link.trim() !== '');
       case 8:
         return formData.work_samples.length > 0 || uploadedFiles.work_sample_urls.length > 0;
+    } finally {
+      setUploading(prev => ({ ...prev, license_back: false }));
+      setTimeout(() => {
+        setUploadProgress(prev => ({ ...prev, license_back: 0 }));
+      }, 1000);
       case 9:
-        return true; // Step 9 is review/submit - always allow if we got this far
-      default:
-        return false;
-    }
   };
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case 1: return 'Personal Information';
+    if (!file || !user || !supabase || !isSupabaseConfigured()) return;
       case 2: return 'Service Locations';
-      case 3: return 'Services You Offer';
-      case 4: return 'Equipment & Gear';
-      case 5: return 'Photo & ID Upload';
+    setUploading(prev => ({ ...prev, profile_photo: true }));
+    setUploadProgress(prev => ({ ...prev, profile_photo: 0 }));
       case 6: return 'About You';
-      case 7: return 'Portfolio Links';
-      case 8: return 'Work Samples';
-      case 9: return 'Review & Submit';
-      default: return '';
-    }
-  };
-
+    try {
+      // Validate file
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please select an image file');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File must be smaller than 5MB');
+      }
   if (success) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="p-12 text-center max-w-2xl">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Application Submitted Successfully!
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Thank you for applying to join the B. Remembered vendor network. We'll review your application and get back to you within 1-2 hours.
-          </p>
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `profile-photos/${user.id}/${fileName}`;
+
+      // Upload to vendor-applications bucket
+      const { data, error: uploadError } = await supabase.storage
+        .from('vendor-applications')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vendor-applications')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, profile_photo: publicUrl }));
+      setProfilePhoto(file);
+      setUploadProgress(prev => ({ ...prev, profile_photo: 100 }));
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
             <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
             <ul className="text-sm text-blue-800 space-y-1 text-left">
+    } finally {
+      setUploading(prev => ({ ...prev, profile_photo: false }));
+      setTimeout(() => {
+        setUploadProgress(prev => ({ ...prev, profile_photo: 0 }));
+      }, 1000);
               <li>• Our team will review your application within 1-2 hours</li>
-              <li>• We'll verify your credentials and portfolio</li>
-              <li>• If approved, you'll receive setup instructions via email</li>
-              <li>• You'll gain access to our vendor dashboard and start receiving leads</li>
-            </ul>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="primary" onClick={() => navigate('/')}>
               Back to Home
-            </Button>
+    if (files.length === 0 || !user || !supabase || !isSupabaseConfigured()) return;
             <Button variant="outline" onClick={() => navigate('/vendor-onboarding')}>
-              Learn More About B. Remembered
-            </Button>
-          </div>
+    setUploading(prev => ({ ...prev, work_samples: true }));
+    setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
         </Card>
-      </div>
-    );
-  }
+    try {
+      const uploadedUrls: string[] = [];
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="ghost" 
-              icon={ArrowLeft} 
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Validate file
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+          throw new Error('Please select image or video files only');
+        }
+        if (file.size > 25 * 1024 * 1024) {
+          throw new Error('Files must be smaller than 25MB');
+        }
+
+        // Create unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const filePath = `work-samples/${user.id}/${fileName}`;
+
+        // Upload to vendor-applications bucket
+        const { data, error: uploadError } = await supabase.storage
+          .from('vendor-applications')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('vendor-applications')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+
+        // Update progress
+        setUploadProgress(prev => ({ 
+          ...prev, 
+          work_samples: Math.round(((i + 1) / files.length) * 100) 
+        }));
               onClick={() => currentStep === 1 ? navigate('/vendor-onboarding') : setCurrentStep(currentStep - 1)}
-            >
-              Back
-            </Button>
+
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Vendor Application</h1>
               <p className="text-gray-600 mt-1">{getStepTitle()}</p>
             </div>
           </div>
-
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center space-x-2 mb-8 overflow-x-auto">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((step) => (
-              <div key={step} className="flex items-center">
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all flex-shrink-0
                   ${currentStep >= step 
+    } finally {
+      setUploading(prev => ({ ...prev, work_samples: false }));
+      setTimeout(() => {
+        setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
+      }, 1000);
                     ? 'bg-rose-500 text-white shadow-lg' 
-                    : 'bg-gray-200 text-gray-600'
-                  }
-                `}>
-                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
                 </div>
                 {step < 9 && (
                   <div className={`w-8 h-1 mx-1 rounded-full transition-all ${
