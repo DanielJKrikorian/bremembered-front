@@ -73,12 +73,6 @@ export const VendorApplication = () => {
   const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
-  const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
-  const [frontLicenseUploadProgress, setFrontLicenseUploadProgress] = useState(0);
-  const [backLicenseUploading, setBackLicenseUploading] = useState(false);
-  const [backLicenseUploadProgress, setBackLicenseUploadProgress] = useState(0);
-  const [step5Valid, setStep5Valid] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: []
   });
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
