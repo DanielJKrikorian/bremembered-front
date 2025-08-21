@@ -433,17 +433,6 @@ export const VendorApplication = () => {
     setFrontLicenseUploading(true);
     setFrontLicenseUploadProgress(0);
 
-    // Simulate progress
-      const photoUrl = await uploadPhoto(file, user.id, 'vendor-applications', 10, 'license-documents');
-      setFrontLicenseUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + Math.random() * 20;
-      });
-    }, 200);
-
     const file = files[0];
     
     // Validate file size (10MB limit for documents)
@@ -499,17 +488,6 @@ export const VendorApplication = () => {
 
     setBackLicenseUploading(true);
     setBackLicenseUploadProgress(0);
-
-    // Simulate progress
-      const photoUrl = await uploadPhoto(file, user.id, 'vendor-applications', 10, 'license-documents');
-      setBackLicenseUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + Math.random() * 20;
-      });
-    }, 200);
 
     const file = files[0];
     
