@@ -3,7 +3,7 @@ import { Upload, Camera, Video, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface WorkSamplesUploadProps {
-  workSamples: string[];
+  workSamples: File[];
   onFilesSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: (index: number) => void;
   onClearAll: () => void;
@@ -24,9 +24,7 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
           <h4 className="font-medium text-gray-900 mb-2">Selected Files ({workSamples.length}/{maxFiles})</h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {workSamples.map((fileName, index) => {
-              const isVideo = fileName.toLowerCase().includes('.mp4') || 
-                            fileName.toLowerCase().includes('.mov') || 
-                            fileName.toLowerCase().includes('.avi');
+              const isVideo = fileName.type.startsWith('video/');
               
               return (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -41,9 +39,9 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{fileName}</p>
+                      <p className="font-medium text-gray-900 text-sm">{fileName.name}</p>
                       <p className="text-xs text-gray-500">
-                        {isVideo ? 'Video file' : 'Image file'}
+                        {(fileName.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
                   </div>

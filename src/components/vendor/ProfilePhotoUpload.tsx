@@ -3,7 +3,7 @@ import { Camera, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface ProfilePhotoUploadProps {
-  profilePhoto: string | null;
+  profilePhoto: File | null;
   onPhotoSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
 }
@@ -19,10 +19,12 @@ export const ProfilePhotoUpload: React.FC<ProfilePhotoUploadProps> = ({
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
         {profilePhoto ? (
           <div className="space-y-3">
-            <div className="w-24 h-24 rounded-full bg-gray-200 mx-auto flex items-center justify-center">
-              <Camera className="w-8 h-8 text-gray-400" />
-            </div>
-            <p className="text-sm text-gray-600">{profilePhoto}</p>
+            <img
+              src={URL.createObjectURL(profilePhoto)}
+              alt="Profile"
+              className="w-24 h-24 rounded-full object-cover mx-auto border-4 border-white shadow-lg"
+            />
+            <p className="text-sm text-gray-600">{profilePhoto.name}</p>
             <Button
               variant="outline"
               size="sm"

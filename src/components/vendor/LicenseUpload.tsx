@@ -3,8 +3,8 @@ import { FileText, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface LicenseUploadProps {
-  frontLicense: string | null;
-  backLicense: string | null;
+  frontLicense: File | null;
+  backLicense: File | null;
   onFrontSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onBackSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFront: () => void;
@@ -28,7 +28,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           {frontLicense ? (
             <div className="space-y-3">
               <FileText className="w-12 h-12 text-green-600 mx-auto" />
-              <p className="text-sm text-gray-600">{frontLicense}</p>
+              <p className="text-sm text-gray-600">{frontLicense.name}</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -68,7 +68,7 @@ export const LicenseUpload: React.FC<LicenseUploadProps> = ({
           {backLicense ? (
             <div className="space-y-3">
               <FileText className="w-12 h-12 text-green-600 mx-auto" />
-              <p className="text-sm text-gray-600">{backLicense}</p>
+              <p className="text-sm text-gray-600">{backLicense.name}</p>
               <Button
                 variant="outline"
                 size="sm"
