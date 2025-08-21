@@ -1,14 +1,17 @@
 import React from 'react';
-import { Upload, Camera, Video, X } from 'lucide-react';
+import { FileUpload } from './FileUpload';
 import { Button } from '../ui/Button';
+import { Plus, X } from 'lucide-react';
 
 interface WorkSamplesUploadProps {
   workSamples: File[];
   onFilesSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: (index: number) => void;
   onClearAll: () => void;
-  maxFiles?: number;
-  uploading?: boolean;
+  maxFiles: number;
+  uploading: boolean;
+  uploadProgress: number;
+  success: boolean;
 }
 
 export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
@@ -16,97 +19,77 @@ export const WorkSamplesUpload: React.FC<WorkSamplesUploadProps> = ({
   onFilesSelect,
   onRemove,
   onClearAll,
-  maxFiles = 10,
-  uploading = false
+  maxFiles,
+  uploading,
+  uploadProgress,
+  success,
 }) => {
   return (
     <div className="space-y-6">
-      {workSamples.length > 0 && (
-        <div className="mb-4">
-          <h4 className="font-medium text-gray-900 mb-2">Selected Files ({workSamples.length}/{maxFiles})</h4>
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {workSamples.map((fileName, index) => {
-              const isVideo = fileName.type.startsWith('video/');
-              
-              return (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isVideo ? 'bg-purple-100' : 'bg-blue-100'
-                    }`}>
-                      {isVideo ? (
-                        <Video className="w-4 h-4 text-purple-600" />
-                      ) : (
-                        <Camera className="w-4 h-4 text-blue-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{fileName.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(fileName.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(index)}
-                    className="text-red-500 hover:text-red-700 p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-        {uploading ? (
-          <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center">
-            <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
-          </div>
-        ) : (
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <label className="block text-sm font-medium text-gray-700 mb-4">Work Samples *</label>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {workSamples.map((file, index) => (
+          <FileUpload
+            key={index}
+            file={file}
+            label={`Work Sample ${index + 1}`}
+            accept="image/*,video/*"
+            onFileSelect={onFilesSelect}
+            onRemove={() => onRemove(index)}
+            uploading={uploading}
+            uploadProgress={uploadProgress}
+            success={success}
+            disabled={workSamples.length >= maxFiles || uploading}
+          />
+        ))}
+        {workSamples.length < maxFiles && (
+          <FileUpload
+            file={null}
+            label="Upload work samples (images or videos)"
+            accept="image/*,video/*"
+            onFileSelect={onFilesSelect}
+            onRemove={() => {}}
+            uploading={uploading}
+            uploadProgress={uploadProgress}
+            success={success}
+            disabled={workSamples.length >= maxFiles || uploading}
+          />
         )}
-        <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Work Samples</h4>
-        {uploading && <p className="text-blue-600 mb-2">Uploading files...</p>}
-        <p className="text-gray-600 mb-4">
-          Upload photos (up to 25MB) and videos (up to 500MB) showcasing your best work
-        </p>
-        <input
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          onChange={onFilesSelect}
-          className="hidden"
-          id="work-samples-input"
-        />
-        <div className="flex space-x-3 justify-center">
+      </div>
+      {workSamples.length > 0 && (
+        <div className="flex justify-between">
           <Button
             variant="outline"
+            icon={Plus}
             onClick={() => document.getElementById('work-samples-input')?.click()}
             disabled={workSamples.length >= maxFiles || uploading}
           >
-            {workSamples.length === 0 ? 'Choose Files' : 'Add More Files'}
+            Add More Samples
           </Button>
-          {workSamples.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={onClearAll}
-              className="text-red-600 border-red-200 hover:bg-red-50"
-            >
-              Clear All
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            icon={X}
+            onClick={onClearAll}
+            disabled={uploading}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            Clear All
+          </Button>
         </div>
-        
-        {workSamples.length >= maxFiles && (
-          <p className="text-sm text-amber-600 mt-2">
-            Maximum of {maxFiles} files reached. Remove files to add different ones.
-          </p>
-        )}
-      </div>
+      )}
+      <input
+        type="file"
+        id="work-samples-input"
+        accept="image/*,video/*"
+        onChange={onFilesSelect}
+        className="hidden"
+        multiple
+      />
+      {workSamples.length >= maxFiles && (
+        <p className="text-sm text-amber-600 mt-2">
+          Maximum of {maxFiles} files reached. Remove files to add different ones.
+        </p>
+      )}
     </div>
   );
 };
