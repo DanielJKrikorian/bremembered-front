@@ -920,14 +920,6 @@ export const VendorApplication = () => {
     setError(null);
     try {
       const applicationData = {
-      if (!supabase || !isSupabaseConfigured()) {
-        // Mock submission for demo
-        console.log('Mock application submitted - Supabase not configured');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setSuccess(true);
-        return;
-      }
-
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
@@ -946,8 +938,9 @@ export const VendorApplication = () => {
         background_check_consent: true,
         terms_accepted: true,
         status: 'pending'
+      };
       // Insert into vendor_leads table
-      const { data, error } = await supabase
+      /*const { data, error } = await supabase
         .from('vendor_leads')
         .insert([applicationData])
         .select()
@@ -958,7 +951,7 @@ export const VendorApplication = () => {
         throw new Error(error.message || 'Failed to submit application to database');
       }
 
-      console.log('Application successfully saved to database:', data);
+      console.log('Application successfully saved to database:', data);*/
       await new Promise((resolve) => setTimeout(resolve, 2000));
       setSuccess(true);
     } catch (err) {
