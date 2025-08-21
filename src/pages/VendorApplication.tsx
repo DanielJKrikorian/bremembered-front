@@ -315,6 +315,9 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    setHeadshotUploading(true);
+    setHeadshotUploadProgress(0);
+    
     const file = files[0];
     
     // Validate file size (5MB limit for profile photos)
@@ -377,10 +380,34 @@ export const VendorApplication = () => {
         .getPublicUrl(filePath);
 
       setProfilePhoto(file);
-      setFormData(prev => ({ ...prev, profile_photo: publicUrl }));
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setHeadshotUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
+      const url = await uploadPhoto(file, applicationId, 'vendor-applications', 5);
+      
+      clearInterval(progressInterval);
+      setHeadshotUploadProgress(100);
+      
       setUploadProgress(prev => ({ ...prev, profile: 100 }));
+      setProfilePhoto(file);
+      
+      // Complete the upload after a brief delay
+      setTimeout(() => {
+        setHeadshotUploading(false);
+        setHeadshotUploadProgress(0);
+      }, 500);
     } catch (error) {
       console.error('Error uploading profile photo:', error);
+      setHeadshotUploading(false);
+      setHeadshotUploadProgress(0);
       setError(error instanceof Error ? error.message : 'Failed to upload profile photo');
       setProfilePhoto(null);
     } finally {
