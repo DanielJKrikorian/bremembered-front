@@ -73,7 +73,7 @@ export const VendorApplication = () => {
   const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
   const [headshotUploading, setHeadshotUploading] = useState(false);
   const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
-    work_sample_urls: []
+    work_sample_urls: [],
   });
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
