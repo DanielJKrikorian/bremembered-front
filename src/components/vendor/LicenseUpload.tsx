@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileUpload } from './FileUpload';
+import { FileUpload } from './FileUpload'; // Adjust to '../ui/FileUpload' if needed
 
 interface LicenseUploadProps {
   frontLicense: File | null;
