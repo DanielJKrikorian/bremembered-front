@@ -1051,11 +1051,12 @@ export const VendorApplication = () => {
 
         {/* Step 8: Work Samples */}
         {currentStep === 8 && (
-                loading={loading || uploadingFiles}
+          <Card className="p-8">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Upload className="w-8 h-8 text-green-600" />
-                {uploadingFiles ? 'Uploading Files...' : loading ? 'Submitting...' : 'Review Terms & Submit'}
+                </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
               
               {uploadingFiles && (
@@ -1088,6 +1089,7 @@ export const VendorApplication = () => {
               onClearAll={clearAllWorkSamples}
               maxFiles={10}
             />
+          </Card>
           </Card>
         )}
 
