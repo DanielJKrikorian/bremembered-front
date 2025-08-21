@@ -63,6 +63,8 @@ export const VendorApplication = () => {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
+  const [headshotUploading, setHeadshotUploading] = useState(false);
+  const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
   const [step5Valid, setStep5Valid] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: []
@@ -1140,8 +1142,8 @@ export const VendorApplication = () => {
                 profilePhoto={profilePhoto}
                 onPhotoSelect={handleHeadshotSelect}
                 onRemove={removeProfilePhoto}
-                uploading={uploading.profile}
-                uploadProgress={uploadProgress.profile}
+                uploading={headshotUploading}
+                uploadProgress={headshotUploadProgress}
               />
 
               <LicenseUpload
