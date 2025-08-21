@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
+import { v4 as uuidv4 } from 'uuid';
 import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
@@ -51,6 +52,7 @@ export const VendorApplication = () => {
   const navigate = useNavigate();
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
   const [currentStep, setCurrentStep] = useState(1);
+  const [applicationId] = useState(() => uuidv4());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
