@@ -324,8 +324,6 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     setHeadshotUploading(true);
-      const photoUrl = await uploadPhoto(file, 'temp-user-id', 'vendor-applications', 5, 'profile-photos');
-    
     const file = files[0];
     
     // Validate file size (5MB limit for profile photos)
@@ -555,7 +553,7 @@ export const VendorApplication = () => {
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
         setError(`${file.name} is not a valid image or video file`);
         return;
-        const photoUrl = await uploadPhoto(file, 'temp-user-id', 'vendor-applications', 25, 'work-samples');
+      }
     }
     
     setError(null);
@@ -744,8 +742,8 @@ export const VendorApplication = () => {
         return formData.work_links.some(link => link.trim() !== '');
       case 8:
         return formData.work_samples.length > 0 || uploadedFiles.work_sample_urls.length > 0;
-       case 9:
-         return true; // Step 9 is review/submit - always allow if we got this far
+      case 9:
+        return true; // Step 9 is review/submit - always allow if we got this far
       default:
         return false;
     }
