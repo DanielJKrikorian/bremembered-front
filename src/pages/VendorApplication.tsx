@@ -66,6 +66,7 @@ export const VendorApplication = () => {
     work_sample_urls: []
   });
   const [uploading, setUploading] = useState<{ [key: string]: boolean }>({});
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
@@ -152,23 +153,63 @@ export const VendorApplication = () => {
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
   // File upload utility function
-  const uploadFileToStorage = async (file: File, folder: string): Promise<string | null> => {
+  const uploadFileToStorage = async (
+    file: File, 
+    folder: string, 
+    progressKey: string
+  ): Promise<string | null> => {
     if (!supabase || !isSupabaseConfigured()) {
-      // Return mock URL for demo
-      return `https://mock-storage.com/${folder}/${file.name}`;
+      // Simulate upload progress for demo
+      return new Promise((resolve) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 20;
+          if (progress >= 100) {
+            progress = 100;
+            setUploadProgress(prev => ({ ...prev, [progressKey]: progress }));
+            clearInterval(interval);
+            setTimeout(() => {
+              resolve(`https://mock-storage.com/${folder}/${file.name}`);
+            }, 200);
+          } else {
+            setUploadProgress(prev => ({ ...prev, [progressKey]: progress }));
+          }
+        }, 100);
+      });
     }
 
     try {
+      // Reset progress
+      setUploadProgress(prev => ({ ...prev, [progressKey]: 0 }));
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      // For real implementation, we'd need to track upload progress
+      // Supabase doesn't provide built-in progress tracking, so we'll simulate it
+      const uploadPromise = supabase.storage
         .from('vendor-applications')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
         });
+      
+      // Simulate progress while upload happens
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const current = prev[progressKey] || 0;
+          const increment = Math.random() * 15;
+          const newProgress = Math.min(current + increment, 90);
+          return { ...prev, [progressKey]: newProgress };
+        });
+      }, 200);
+      
+      const { data, error } = await uploadPromise;
+      
+      // Complete progress
+      clearInterval(progressInterval);
+      setUploadProgress(prev => ({ ...prev, [progressKey]: 100 }));
 
       if (error) throw error;
 
@@ -180,6 +221,7 @@ export const VendorApplication = () => {
       return publicUrl;
     } catch (error) {
       console.error('Upload error:', error);
+      setUploadProgress(prev => ({ ...prev, [progressKey]: 0 }));
       throw error;
     }
   };
@@ -272,12 +314,28 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     const file = files[0];
+    
+    // Validate file size (5MB limit for profile photos)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Profile photo must be smaller than 5MB');
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file for your profile photo');
+      return;
+    }
+    
     setProfilePhoto(file);
+    setError(null);
     
     // Upload immediately
     setUploading(prev => ({ ...prev, profile: true }));
+    setUploadProgress(prev => ({ ...prev, profile: 0 }));
+    
     try {
-      const url = await uploadFileToStorage(file, 'profile-photos');
+      const url = await uploadFileToStorage(file, 'profile-photos', 'profile');
       if (url) {
         setUploadedFiles(prev => ({ ...prev, profile_photo_url: url }));
         setFormData(prev => ({ ...prev, profile_photo: file }));
@@ -285,8 +343,10 @@ export const VendorApplication = () => {
     } catch (error) {
       console.error('Error uploading profile photo:', error);
       setError('Failed to upload profile photo. Please try again.');
+      setProfilePhoto(null);
     } finally {
       setUploading(prev => ({ ...prev, profile: false }));
+      setUploadProgress(prev => ({ ...prev, profile: 0 }));
     }
 
     event.target.value = '';
@@ -297,12 +357,28 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     const file = files[0];
+    
+    // Validate file size (10MB limit for documents)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('License document must be smaller than 10MB');
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file for your license');
+      return;
+    }
+    
     setFrontLicense(file);
+    setError(null);
     
     // Upload immediately
     setUploading(prev => ({ ...prev, license_front: true }));
+    setUploadProgress(prev => ({ ...prev, license_front: 0 }));
+    
     try {
-      const url = await uploadFileToStorage(file, 'license-documents');
+      const url = await uploadFileToStorage(file, 'license-documents', 'license_front');
       if (url) {
         setUploadedFiles(prev => ({ ...prev, drivers_license_front_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_front: file }));
@@ -310,8 +386,10 @@ export const VendorApplication = () => {
     } catch (error) {
       console.error('Error uploading license front:', error);
       setError('Failed to upload license front. Please try again.');
+      setFrontLicense(null);
     } finally {
       setUploading(prev => ({ ...prev, license_front: false }));
+      setUploadProgress(prev => ({ ...prev, license_front: 0 }));
     }
 
     event.target.value = '';
@@ -322,12 +400,28 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     const file = files[0];
+    
+    // Validate file size (10MB limit for documents)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('License document must be smaller than 10MB');
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file for your license');
+      return;
+    }
+    
     setBackLicense(file);
+    setError(null);
     
     // Upload immediately
     setUploading(prev => ({ ...prev, license_back: true }));
+    setUploadProgress(prev => ({ ...prev, license_back: 0 }));
+    
     try {
-      const url = await uploadFileToStorage(file, 'license-documents');
+      const url = await uploadFileToStorage(file, 'license-documents', 'license_back');
       if (url) {
         setUploadedFiles(prev => ({ ...prev, drivers_license_back_url: url }));
         setFormData(prev => ({ ...prev, drivers_license_back: file }));
@@ -335,8 +429,10 @@ export const VendorApplication = () => {
     } catch (error) {
       console.error('Error uploading license back:', error);
       setError('Failed to upload license back. Please try again.');
+      setBackLicense(null);
     } finally {
       setUploading(prev => ({ ...prev, license_back: false }));
+      setUploadProgress(prev => ({ ...prev, license_back: 0 }));
     }
 
     event.target.value = '';
@@ -346,10 +442,32 @@ export const VendorApplication = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
+    // Validate files
+    for (const file of files) {
+      // Check file size (25MB for images, 500MB for videos)
+      const maxSize = file.type.startsWith('video/') ? 500 * 1024 * 1024 : 25 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setError(`${file.name} is too large. Max size: ${file.type.startsWith('video/') ? '500MB' : '25MB'}`);
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        setError(`${file.name} is not a valid image or video file`);
+        return;
+      }
+    }
+    
+    setError(null);
+    
     // Upload each file immediately
     setUploading(prev => ({ ...prev, work_samples: true }));
+    setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
+    
     try {
-      const uploadPromises = files.map(file => uploadFileToStorage(file, 'work-samples'));
+      const uploadPromises = files.map((file, index) => 
+        uploadFileToStorage(file, 'work-samples', `work_sample_${index}`)
+      );
       const urls = await Promise.all(uploadPromises);
       
       const validUrls = urls.filter(url => url !== null) as string[];
@@ -363,11 +481,16 @@ export const VendorApplication = () => {
         ...prev,
         work_samples: [...prev.work_samples, ...files]
       }));
+      
+      setUploadProgress(prev => ({ ...prev, work_samples: 100 }));
     } catch (error) {
       console.error('Error uploading work samples:', error);
       setError('Failed to upload work samples. Please try again.');
     } finally {
       setUploading(prev => ({ ...prev, work_samples: false }));
+      setTimeout(() => {
+        setUploadProgress(prev => ({ ...prev, work_samples: 0 }));
+      }, 1000);
     }
 
     event.target.value = '';
@@ -429,18 +552,18 @@ export const VendorApplication = () => {
       return;
     }
     
-    if (!profilePhoto && !uploadedFiles.profile_photo_url) {
+    // Validate that all required files are uploaded
+    if (!uploadedFiles.profile_photo_url) {
       setError('Please upload a profile photo');
       return;
     }
 
-    if ((!frontLicense && !uploadedFiles.drivers_license_front_url) || 
-        (!backLicense && !uploadedFiles.drivers_license_back_url)) {
+    if (!uploadedFiles.drivers_license_front_url || !uploadedFiles.drivers_license_back_url) {
       setError('Please upload both sides of your driver\'s license');
       return;
     }
 
-    if (formData.work_samples.length === 0 && uploadedFiles.work_sample_urls.length === 0) {
+    if (uploadedFiles.work_sample_urls.length === 0) {
       setError('Please upload at least one work sample');
       return;
     }
@@ -449,6 +572,7 @@ export const VendorApplication = () => {
     setError(null);
 
     try {
+      // All files are already uploaded, just submit the application data
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -457,9 +581,9 @@ export const VendorApplication = () => {
         service_locations: formData.service_locations,
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
-        profile_photo: uploadedFiles.profile_photo_url || null,
-        drivers_license_front: uploadedFiles.drivers_license_front_url || null,
-        drivers_license_back: uploadedFiles.drivers_license_back_url || null,
+        profile_photo: uploadedFiles.profile_photo_url,
+        drivers_license_front: uploadedFiles.drivers_license_front_url,
+        drivers_license_back: uploadedFiles.drivers_license_back_url,
         description: formData.description,
         work_links: formData.work_links.filter(link => link.trim() !== ''),
         work_samples: uploadedFiles.work_sample_urls,
@@ -470,6 +594,8 @@ export const VendorApplication = () => {
 
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Mock application submitted:', applicationData);
+        // Simulate submission delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
         setSuccess(true);
         return;
       }
@@ -950,6 +1076,8 @@ export const VendorApplication = () => {
                 profilePhoto={formData.profile_photo}
                 onPhotoSelect={handleHeadshotSelect}
                 onRemove={removeProfilePhoto}
+                uploading={uploading.profile}
+                uploadProgress={Math.round(uploadProgress.profile || 0)}
               />
 
               <LicenseUpload
@@ -959,6 +1087,10 @@ export const VendorApplication = () => {
                 onBackSelect={handleLicenseBackSelect}
                 onRemoveFront={removeLicenseFront}
                 onRemoveBack={removeLicenseBack}
+                uploadingFront={uploading.license_front}
+                uploadingBack={uploading.license_back}
+                uploadProgressFront={Math.round(uploadProgress.license_front || 0)}
+                uploadProgressBack={Math.round(uploadProgress.license_back || 0)}
               />
             </div>
           </Card>
