@@ -50,6 +50,13 @@ export const VendorApplication = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
+  // Add state to track file uploads for reactivity
+  const [uploadedFiles, setUploadedFiles] = useState({
+    profilePhoto: false,
+    licenseFront: false,
+    licenseBack: false
+  });
+
   const [formData, setFormData] = useState<ApplicationData>({
     name: '',
     phone: '',
@@ -216,6 +223,7 @@ export const VendorApplication = () => {
       ...prev,
       profile_photo: files[0] || null
     }));
+    setUploadedFiles(prev => ({ ...prev, profilePhoto: true }));
     setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
@@ -229,6 +237,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_front: files[0] || null
     }));
+    setUploadedFiles(prev => ({ ...prev, licenseFront: true }));
     setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
@@ -242,6 +251,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_back: files[0] || null
     }));
+    setUploadedFiles(prev => ({ ...prev, licenseBack: true }));
     setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
@@ -264,6 +274,7 @@ export const VendorApplication = () => {
       ...prev,
       profile_photo: null
     }));
+    setUploadedFiles(prev => ({ ...prev, profilePhoto: false }));
     setFileUploadTrigger(prev => prev + 1);
   };
 
@@ -272,6 +283,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_front: null
     }));
+    setUploadedFiles(prev => ({ ...prev, licenseFront: false }));
     setFileUploadTrigger(prev => prev + 1);
   };
 
@@ -280,6 +292,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_back: null
     }));
+    setUploadedFiles(prev => ({ ...prev, licenseBack: false }));
     setFileUploadTrigger(prev => prev + 1);
   };
 
@@ -391,12 +404,7 @@ export const VendorApplication = () => {
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
         return formData.work_samples.length > 0;
-        // Check if all three files are uploaded
-        const hasProfilePhoto = formData.profile_photo !== null;
-        const hasFrontLicense = formData.drivers_license_front !== null;
-        const hasBackLicense = formData.drivers_license_back !== null;
-        console.log('Step 5 validation:', { hasProfilePhoto, hasFrontLicense, hasBackLicense });
-        return hasProfilePhoto && hasFrontLicense && hasBackLicense;
+        return uploadedFiles.profilePhoto && uploadedFiles.licenseFront && uploadedFiles.licenseBack;
         return !!formData.profile_photo && 
                !!formData.drivers_license_front && 
                !!formData.drivers_license_back &&
