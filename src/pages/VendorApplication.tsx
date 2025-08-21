@@ -377,10 +377,10 @@ export const VendorApplication = () => {
           item.gear_type && item.brand && item.model && item.year && item.condition
         );
         return formData.work_samples.length > 0;
-        return profilePhoto && frontLicense && backLicense;
-        return profilePhoto && 
-               frontLicense && 
-               backLicense &&
+        return !!formData.profile_photo && !!formData.drivers_license_front && !!formData.drivers_license_back;
+        return !!formData.profile_photo && 
+               !!formData.drivers_license_front && 
+               !!formData.drivers_license_back &&
                formData.work_samples.length > 0 &&
                formData.description.length >= 50 &&
                formData.services_applying_for.length > 0 &&
