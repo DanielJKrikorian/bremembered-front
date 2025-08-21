@@ -158,6 +158,76 @@ export const VendorApplication = () => {
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
+  const handleFileSelect = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    uploadType: 'work' | 'business' | 'id'
+  ) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Update form data based on upload type
+    if (uploadType === 'work') {
+      const fileNames = files.map(file => file.name);
+      setFormData(prev => ({
+        ...prev,
+        work_samples: [...prev.work_samples, ...fileNames]
+      }));
+    } else if (uploadType === 'business') {
+      const fileNames = files.map(file => file.name);
+      setFormData(prev => ({
+        ...prev,
+        business_documents: [...prev.business_documents, ...fileNames]
+      }));
+    } else if (uploadType === 'id') {
+      setFormData(prev => ({
+        ...prev,
+        id_verification_document: files[0]?.name || ''
+      }));
+    }
+
+    // Reset the input value so the same file can be selected again
+    event.target.value = '';
+  };
+
+  const handleHeadshotSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setFormData(prev => ({
+      ...prev,
+      profile_photo: files[0]?.name || ''
+    }));
+
+    // Reset the input value
+    event.target.value = '';
+  };
+
+  const handleLicenseFrontSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setFormData(prev => ({
+      ...prev,
+      drivers_license_front: files[0]?.name || ''
+    }));
+
+    // Reset the input value
+    event.target.value = '';
+  };
+
+  const handleLicenseBackSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setFormData(prev => ({
+      ...prev,
+      drivers_license_back: files[0]?.name || ''
+    }));
+
+    // Reset the input value
+    event.target.value = '';
+  };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -983,28 +1053,17 @@ export const VendorApplication = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
-                            handleFileUpload('profile_photo', file);
-                          }
-                        }}
+                        onChange={handleHeadshotSelect}
                         className="hidden"
-                        id="profile-photo"
+                        id="headshot-input"
                       />
-                      <label htmlFor="profile-photo">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.preventDefault();
-                            openUploadModal('profile_photo', 'Upload Profile Photo', 'Choose a professional headshot', 'image/*', 'profile');
-                          }}
-                        >
-                          Choose File
-                        </Button>
-                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('headshot-input')?.click()}
+                      >
+                        Choose File
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1032,29 +1091,18 @@ export const VendorApplication = () => {
                       <p className="text-sm text-gray-600 mb-4">Upload front of license</p>
                       <input
                         type="file"
+                        id="license-front-input"
                         accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
-                            handleFileUpload('drivers_license_front', file);
-                          }
-                        }}
+                        onChange={handleLicenseFrontSelect}
                         className="hidden"
-                        id="license-front"
                       />
-                      <label htmlFor="license-front">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            openUploadModal('drivers_license_front', 'Upload Driver\'s License (Front)', 'Upload the front side of your driver\'s license', 'image/*', 'license');
-                          }}
-                        >
-                          Choose File
-                        </Button>
-                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('license-front-input')?.click()}
+                      >
+                        Choose File
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1082,29 +1130,18 @@ export const VendorApplication = () => {
                       <p className="text-sm text-gray-600 mb-4">Upload back of license</p>
                       <input
                         type="file"
+                        id="license-back-input"
                         accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
-                            handleFileUpload('drivers_license_back', file);
-                          }
-                        }}
+                        onChange={handleLicenseBackSelect}
                         className="hidden"
-                        id="license-back"
                       />
-                      <label htmlFor="license-back">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            openUploadModal('drivers_license_back', 'Upload Driver\'s License (Back)', 'Upload the back side of your driver\'s license', 'image/*', 'license');
-                          }}
-                        >
-                          Choose File
-                        </Button>
-                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('license-back-input')?.click()}
+                      >
+                        Choose File
+                      </Button>
                     </div>
                   )}
                 </div>
