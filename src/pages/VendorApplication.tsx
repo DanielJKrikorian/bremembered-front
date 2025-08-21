@@ -324,7 +324,7 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     setHeadshotUploading(true);
-    setHeadshotUploadProgress(0);
+      const photoUrl = await uploadPhoto(file, 'temp-user-id', 'vendor-applications', 5, 'profile-photos');
     
     const file = files[0];
     
@@ -555,7 +555,7 @@ export const VendorApplication = () => {
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
         setError(`${file.name} is not a valid image or video file`);
         return;
-      }
+        const photoUrl = await uploadPhoto(file, 'temp-user-id', 'vendor-applications', 25, 'work-samples');
     }
     
     setError(null);
