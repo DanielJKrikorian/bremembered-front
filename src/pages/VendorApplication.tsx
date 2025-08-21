@@ -74,6 +74,7 @@ export const VendorApplication = () => {
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<any[]>([]);
 
+  const [fileUploadTrigger, setFileUploadTrigger] = useState(0);
   // Update available regions when states change
   useEffect(() => {
     if (selectedStates.length > 0) {
@@ -215,6 +216,7 @@ export const VendorApplication = () => {
       ...prev,
       profile_photo: files[0] || null
     }));
+    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -227,6 +229,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_front: files[0] || null
     }));
+    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -239,6 +242,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_back: files[0] || null
     }));
+    setFileUploadTrigger(prev => prev + 1);
 
     event.target.value = '';
   };
@@ -260,6 +264,7 @@ export const VendorApplication = () => {
       ...prev,
       profile_photo: null
     }));
+    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeLicenseFront = () => {
@@ -267,6 +272,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_front: null
     }));
+    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeLicenseBack = () => {
@@ -274,6 +280,7 @@ export const VendorApplication = () => {
       ...prev,
       drivers_license_back: null
     }));
+    setFileUploadTrigger(prev => prev + 1);
   };
 
   const removeWorkSample = (index: number) => {
