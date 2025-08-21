@@ -4,16 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { usePhotoUpload } from '../hooks/usePhotoUpload';
+import { useVendorPhotoUpload } from '../hooks/useVendorPhotoUpload';
 import { v4 as uuidv4 } from 'uuid';
 import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
 import { TermsModal } from '../components/vendor/TermsModal';
 import { useServiceAreas } from '../hooks/useSupabase';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
-// Interfaces (unchanged)
+// Interfaces
 interface GearItem {
   gear_type: string;
   brand: string;
@@ -478,6 +477,9 @@ const WorkSamplesStep = ({
   handleWorkSamplesSelect,
   removeWorkSample,
   clearAllWorkSamples,
+  workSamplesUploading,
+  workSamplesUploadProgress,
+  workSamplesSuccess,
 }: any) => (
   <Card className="p-8">
     <div className="text-center mb-8">
@@ -620,7 +622,7 @@ const ReviewSubmitStep = ({ formData, uploadedFiles, handleSubmit, loading }: an
 export const VendorApplication = () => {
   const navigate = useNavigate();
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas();
-  const { uploadPhoto } = usePhotoUpload();
+  const { uploadPhoto, error: uploadError, progress: uploadProgress, success: uploadSuccess, uploading } = useVendorPhotoUpload();
   const [currentStep, setCurrentStep] = useState(1);
   const [applicationId] = useState(() => uuidv4());
   const [loading, setLoading] = useState(false);
@@ -633,18 +635,6 @@ export const VendorApplication = () => {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [frontLicense, setFrontLicense] = useState<File | null>(null);
   const [backLicense, setBackLicense] = useState<File | null>(null);
-  const [headshotUploading, setHeadshotUploading] = useState(false);
-  const [headshotUploadProgress, setHeadshotUploadProgress] = useState(0);
-  const [headshotSuccess, setHeadshotSuccess] = useState(false);
-  const [frontLicenseUploading, setFrontLicenseUploading] = useState(false);
-  const [frontLicenseUploadProgress, setFrontLicenseUploadProgress] = useState(0);
-  const [frontLicenseSuccess, setFrontLicenseSuccess] = useState(false);
-  const [backLicenseUploading, setBackLicenseUploading] = useState(false);
-  const [backLicenseUploadProgress, setBackLicenseUploadProgress] = useState(0);
-  const [backLicenseSuccess, setBackLicenseSuccess] = useState(false);
-  const [workSamplesUploading, setWorkSamplesUploading] = useState(false);
-  const [workSamplesUploadProgress, setWorkSamplesUploadProgress] = useState(0);
-  const [workSamplesSuccess, setWorkSamplesSuccess] = useState(false);
   const [step5Valid, setStep5Valid] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
     work_sample_urls: [],
@@ -693,103 +683,34 @@ export const VendorApplication = () => {
     setStep5Valid(isValid);
   }, [profilePhoto, frontLicense, backLicense, uploadedFiles]);
 
-  const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
+  useEffect(() => {
+    if (uploadError) setError(uploadError);
+  }, [uploadError]);
 
-  // File upload utility function
-  const uploadFileToStorage = async (
-    file: File,
-    folder: string,
-    progressKey: string,
-    setProgress: (value: number) => void,
-    setSuccess: (value: boolean) => void
-  ): Promise<string | null> => {
-    if (!supabase || !isSupabaseConfigured()) {
-      // Simulate upload progress for demo
-      return new Promise((resolve) => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 20;
-          if (progress >= 100) {
-            progress = 100;
-            setProgress(progress);
-            clearInterval(interval);
-            setSuccess(true);
-            setTimeout(() => {
-              setSuccess(false);
-              resolve(`https://mock-storage.com/${folder}/${file.name}`);
-            }, 3000);
-          } else {
-            setProgress(progress);
-          }
-        }, 100);
-      });
-    }
-    try {
-      setProgress(0);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `${folder}/${fileName}`;
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          const newProgress = Math.min(prev + Math.random() * 15, 90);
-          if (newProgress >= 90) clearInterval(progressInterval);
-          return newProgress;
-        });
-      }, 200);
-      const { data, error } = await supabase.storage
-        .from('vendor-applications')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
-      clearInterval(progressInterval);
-      setProgress(100);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage
-        .from('vendor-applications')
-        .getPublicUrl(filePath);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      return publicUrl;
-    } catch (error) {
-      console.error('Upload error:', error);
-      setProgress(0);
-      throw error;
-    }
-  };
+  const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
   // File upload handlers
   const handleHeadshotSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-    setHeadshotUploading(true);
     const file = files[0];
 
     if (file.size > 5 * 1024 * 1024) {
       setError('Profile photo must be smaller than 5MB');
-      setHeadshotUploading(false);
       return;
     }
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your profile photo');
-      setHeadshotUploading(false);
       return;
     }
 
     try {
-      const url = await uploadFileToStorage(
-        file,
-        `${applicationId}/profile`,
-        'profile',
-        setHeadshotUploadProgress,
-        setHeadshotSuccess
-      );
+      const url = await uploadPhoto(file, applicationId, 'vendor-applications', 5, 'profile');
       setProfilePhoto(file);
       setUploadedFiles((prev) => ({ ...prev, profile_photo_url: url || undefined }));
       setFormData((prev) => ({ ...prev, profile_photo: file }));
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to upload profile photo');
-      setHeadshotSuccess(false);
-    } finally {
-      setHeadshotUploading(false);
-      setHeadshotUploadProgress(0);
+      // Error is set via useVendorPhotoUpload
     }
     event.target.value = '';
   };
@@ -797,37 +718,24 @@ export const VendorApplication = () => {
   const handleLicenseFrontSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-    setFrontLicenseUploading(true);
     const file = files[0];
 
     if (file.size > 10 * 1024 * 1024) {
       setError('License document must be smaller than 10MB');
-      setFrontLicenseUploading(false);
       return;
     }
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
-      setFrontLicenseUploading(false);
       return;
     }
 
     try {
-      const url = await uploadFileToStorage(
-        file,
-        `${applicationId}/license-front`,
-        'license-front',
-        setFrontLicenseUploadProgress,
-        setFrontLicenseSuccess
-      );
+      const url = await uploadPhoto(file, applicationId, 'vendor-applications', 10, 'license-front');
       setFrontLicense(file);
       setUploadedFiles((prev) => ({ ...prev, drivers_license_front_url: url || undefined }));
       setFormData((prev) => ({ ...prev, drivers_license_front: file }));
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to upload front license');
-      setFrontLicenseSuccess(false);
-    } finally {
-      setFrontLicenseUploading(false);
-      setFrontLicenseUploadProgress(0);
+      // Error is set via useVendorPhotoUpload
     }
     event.target.value = '';
   };
@@ -835,37 +743,24 @@ export const VendorApplication = () => {
   const handleLicenseBackSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-    setBackLicenseUploading(true);
     const file = files[0];
 
     if (file.size > 10 * 1024 * 1024) {
       setError('License document must be smaller than 10MB');
-      setBackLicenseUploading(false);
       return;
     }
     if (!file.type.startsWith('image/')) {
       setError('Please select an image file for your license');
-      setBackLicenseUploading(false);
       return;
     }
 
     try {
-      const url = await uploadFileToStorage(
-        file,
-        `${applicationId}/license-back`,
-        'license-back',
-        setBackLicenseUploadProgress,
-        setBackLicenseSuccess
-      );
+      const url = await uploadPhoto(file, applicationId, 'vendor-applications', 10, 'license-back');
       setBackLicense(file);
       setUploadedFiles((prev) => ({ ...prev, drivers_license_back_url: url || undefined }));
       setFormData((prev) => ({ ...prev, drivers_license_back: file }));
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to upload back license');
-      setBackLicenseSuccess(false);
-    } finally {
-      setBackLicenseUploading(false);
-      setBackLicenseUploadProgress(0);
+      // Error is set via useVendorPhotoUpload
     }
     event.target.value = '';
   };
@@ -873,31 +768,22 @@ export const VendorApplication = () => {
   const handleWorkSamplesSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-    setWorkSamplesUploading(true);
 
     for (const file of files) {
       const maxSize = file.type.startsWith('video/') ? 500 * 1024 * 1024 : 25 * 1024 * 1024;
       if (file.size > maxSize) {
         setError(`${file.name} is too large. Max size: ${file.type.startsWith('video/') ? '500MB' : '25MB'}`);
-        setWorkSamplesUploading(false);
         return;
       }
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
         setError(`${file.name} is not a valid image or video file`);
-        setWorkSamplesUploading(false);
         return;
       }
     }
 
     try {
       const uploadPromises = files.map((file) =>
-        uploadFileToStorage(
-          file,
-          `${applicationId}/work-samples`,
-          'work-samples',
-          setWorkSamplesUploadProgress,
-          setWorkSamplesSuccess
-        )
+        uploadPhoto(file, applicationId, 'vendor-applications', file.type.startsWith('video/') ? 500 : 25, 'work-samples')
       );
       const urls = await Promise.all(uploadPromises);
       const validUrls = urls.filter((url): url is string => url !== null);
@@ -910,11 +796,7 @@ export const VendorApplication = () => {
         work_samples: [...prev.work_samples, ...files],
       }));
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to upload work samples');
-      setWorkSamplesSuccess(false);
-    } finally {
-      setWorkSamplesUploading(false);
-      setWorkSamplesUploadProgress(0);
+      // Error is set via useVendorPhotoUpload
     }
     event.target.value = '';
   };
@@ -1256,15 +1138,15 @@ export const VendorApplication = () => {
             removeProfilePhoto={removeProfilePhoto}
             removeLicenseFront={removeLicenseFront}
             removeLicenseBack={removeLicenseBack}
-            headshotUploading={headshotUploading}
-            headshotUploadProgress={headshotUploadProgress}
-            headshotSuccess={headshotSuccess}
-            frontLicenseUploading={frontLicenseUploading}
-            frontLicenseUploadProgress={frontLicenseUploadProgress}
-            frontLicenseSuccess={frontLicenseSuccess}
-            backLicenseUploading={backLicenseUploading}
-            backLicenseUploadProgress={backLicenseUploadProgress}
-            backLicenseSuccess={backLicenseSuccess}
+            headshotUploading={uploading}
+            headshotUploadProgress={uploadProgress}
+            headshotSuccess={uploadSuccess}
+            frontLicenseUploading={uploading}
+            frontLicenseUploadProgress={uploadProgress}
+            frontLicenseSuccess={uploadSuccess}
+            backLicenseUploading={uploading}
+            backLicenseUploadProgress={uploadProgress}
+            backLicenseSuccess={uploadSuccess}
           />
         )}
         {currentStep === 6 && (
@@ -1287,6 +1169,9 @@ export const VendorApplication = () => {
             handleWorkSamplesSelect={handleWorkSamplesSelect}
             removeWorkSample={removeWorkSample}
             clearAllWorkSamples={clearAllWorkSamples}
+            workSamplesUploading={uploading}
+            workSamplesUploadProgress={uploadProgress}
+            workSamplesSuccess={uploadSuccess}
           />
         )}
         {currentStep === 9 && (
