@@ -177,6 +177,12 @@ export const Header: React.FC = () => {
                         >
                           Payments
                         </button>
+                        <button 
+                          onClick={() => navigate('/profile?tab=wedding-board')}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Wedding Board
+                        </button>
                         <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Help Center</a>
                         <hr className="my-1" />
                         <button 
