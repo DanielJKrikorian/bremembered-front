@@ -944,6 +944,15 @@ export const VendorApplication = () => {
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
         profile_photo: uploadedFiles.profile_photo_url,
+        drivers_license_front: uploadedFiles.drivers_license_front_url,
+        drivers_license_back: uploadedFiles.drivers_license_back_url,
+        description: formData.description,
+        work_links: formData.work_links.filter((link) => link.trim() !== ''),
+        work_samples: uploadedFiles.work_sample_urls,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      };
+
       console.log('Submitting application data:', applicationData);
 
       // Insert into vendor_applications table
