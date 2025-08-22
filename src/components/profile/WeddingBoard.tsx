@@ -352,7 +352,10 @@ export const WeddingBoard: React.FC = () => {
                   </div>
                 </div>
               </Card>
-            );
+              );
+            }
+
+            return null;
           })}
         </div>
       )}

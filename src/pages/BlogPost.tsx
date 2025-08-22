@@ -17,7 +17,7 @@ export const BlogPost: React.FC = () => {
   const { post, loading, error } = useBlogPost(slug || '');
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
-  const { addToFavorites } = useWeddingBoard();
+  const { addBlogPostToFavorites } = useWeddingBoard();
 
   // Scroll to top when component mounts or slug changes
   React.useEffect(() => {
@@ -72,7 +72,6 @@ export const BlogPost: React.FC = () => {
       }
     }
   };
-
   const renderContent = (content: string) => {
     // Simple markdown-like rendering
     return content

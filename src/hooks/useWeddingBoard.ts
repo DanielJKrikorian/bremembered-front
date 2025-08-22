@@ -249,6 +249,9 @@ export const useWeddingBoard = () => {
     return favorites.find(fav => fav.package_id === packageId || fav.blog_post_id === packageId);
   };
 
+  const isBlogPostFavorited = (blogPostId: string) => {
+    return favorites.some(fav => fav.blog_post_id === blogPostId);
+  };
   return {
     favorites,
     loading,
@@ -259,6 +262,7 @@ export const useWeddingBoard = () => {
     removeFromFavorites,
     updateFavoriteNotes,
     isFavorited,
-    getFavorite
+    getFavorite,
+    isBlogPostFavorited
   };
 };
