@@ -486,6 +486,43 @@ export const useBlogPostLike = (postId: string) => {
   const [likeCount, setLikeCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  // Fetch current like status and count when component mounts
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      if (!postId || !supabase || !isSupabaseConfigured()) {
+        return;
+      }
+
+      try {
+        // Get total like count
+        const { count: totalLikes, error: countError } = await supabase
+          .from('blog_post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', postId);
+
+        if (countError) throw countError;
+        setLikeCount(totalLikes || 0);
+
+        // Check if current user has liked this post (only if authenticated)
+        if (isAuthenticated) {
+          const { data: userLike, error: likeError } = await supabase
+            .from('blog_post_likes')
+            .select('id')
+            .eq('post_id', postId)
+            .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+            .maybeSingle();
+
+          if (likeError) throw likeError;
+          setIsLiked(!!userLike);
+        }
+      } catch (err) {
+        console.error('Error fetching like status:', err);
+      }
+    };
+
+    fetchLikeStatus();
+  }, [postId, isAuthenticated]);
+
   const toggleLike = async (onAuthRequired?: () => void) => {
     if (!isAuthenticated) {
       onAuthRequired?.();
@@ -500,6 +537,15 @@ export const useBlogPostLike = (postId: string) => {
     }
 
     setLoading(true);
+    
+    // Store current state for potential rollback
+    const previousIsLiked = isLiked;
+    const previousLikeCount = likeCount;
+    
+    // Optimistic update
+    setIsLiked(!isLiked);
+    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+    
     try {
       if (isLiked) {
         // Remove like
@@ -510,8 +556,6 @@ export const useBlogPostLike = (postId: string) => {
           .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
 
         if (error) throw error;
-        setIsLiked(false);
-        setLikeCount(prev => prev - 1);
       } else {
         // Add like
         const { error } = await supabase
@@ -521,12 +565,27 @@ export const useBlogPostLike = (postId: string) => {
             user_id: (await supabase.auth.getUser()).data.user?.id
           });
 
-        if (error) throw error;
-        setIsLiked(true);
-        setLikeCount(prev => prev + 1);
+        if (error) {
+          // If it's a duplicate key error, the user already liked this post
+          if (error.code === '23505') {
+            // Re-sync with database
+            const { count: totalLikes } = await supabase
+              .from('blog_post_likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('post_id', postId);
+            
+            setIsLiked(true);
+            setLikeCount(totalLikes || 0);
+            return;
+          }
+          throw error;
+        }
       }
     } catch (err) {
       console.error('Error toggling like:', err);
+      // Rollback optimistic update on error
+      setIsLiked(previousIsLiked);
+      setLikeCount(previousLikeCount);
     } finally {
       setLoading(false);
     }
