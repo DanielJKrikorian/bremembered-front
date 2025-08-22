@@ -185,7 +185,9 @@ export const WeddingBoard: React.FC = () => {
         <Card className="p-12 text-center">
           <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-            )
+            }
+600 mb-6">
             Start browsing wedding services and save your favorites by clicking the heart icon
           </p>
           <Button
@@ -195,7 +197,9 @@ export const WeddingBoard: React.FC = () => {
           >
             Browse Wedding Services
           </Button>
-        </Card>
+    
+  )
+}    </Card>
       ) : (
         <div className="space-y-8">
           {/* Blog Posts Section */}
