@@ -66,7 +66,7 @@ export const BlogPost: React.FC = () => {
     // If user is authenticated and post exists, also add to wedding board
     if (post && !isLiked) {
       try {
-        await addToFavorites(post.id, `Loved this article: ${post.title}`);
+        await addBlogPostToFavorites(post.id, `Loved this article: ${post.title}`);
       } catch (error) {
         console.error('Error adding blog post to wedding board:', error);
       }

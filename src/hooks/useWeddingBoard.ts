@@ -127,7 +127,7 @@ export const useWeddingBoard = () => {
     fetchFavorites();
   }, [user, isAuthenticated, couple?.id]);
 
-  const addToFavorites = async (packageId: string, notes?: string) => {
+  const addFavoriteItem = async (itemId: string, itemType: 'package' | 'blog_post', notes?: string) => {
     if (!couple?.id || !isAuthenticated) {
       throw new Error('Authentication required');
     }
@@ -137,7 +137,9 @@ export const useWeddingBoard = () => {
       const mockFavorite: WeddingBoardFavorite = {
         id: `mock-fav-${Date.now()}`,
         couple_id: couple.id,
-        package_id: packageId,
+        package_id: itemType === 'package' ? itemId : undefined,
+        blog_post_id: itemType === 'blog_post' ? itemId : undefined,
+        item_type: itemType,
         notes: notes || undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -147,13 +149,16 @@ export const useWeddingBoard = () => {
     }
 
     try {
+      const insertData = {
+        couple_id: couple.id,
+        item_type: itemType,
+        notes: notes || null,
+        ...(itemType === 'package' ? { package_id: itemId } : { blog_post_id: itemId })
+      };
+
       const { data, error } = await supabase
         .from('wedding_board_favorites')
-        .insert([{
-          couple_id: couple.id,
-          package_id: packageId,
-          notes: notes || null
-        }])
+        .insert([insertData])
         .select(`
           *,
           service_packages(
@@ -170,6 +175,19 @@ export const useWeddingBoard = () => {
             primary_image,
             created_at,
             updated_at
+          ),
+          blog_posts(
+            id,
+            title,
+            slug,
+            excerpt,
+            featured_image,
+            category,
+            tags,
+            read_time,
+            view_count,
+            like_count,
+            published_at
           )
         `)
         .single();
@@ -182,6 +200,14 @@ export const useWeddingBoard = () => {
       console.error('Error adding to favorites:', err);
       throw err;
     }
+  };
+
+  const addPackageToFavorites = async (packageId: string, notes?: string) => {
+    return addFavoriteItem(packageId, 'package', notes);
+  };
+
+  const addBlogPostToFavorites = async (blogPostId: string, notes?: string) => {
+    return addFavoriteItem(blogPostId, 'blog_post', notes);
   };
 
   const removeFromFavorites = async (favoriteId: string) => {
@@ -252,11 +278,12 @@ export const useWeddingBoard = () => {
   const isBlogPostFavorited = (blogPostId: string) => {
     return favorites.some(fav => fav.blog_post_id === blogPostId);
   };
+
   return {
     favorites,
     loading,
     error,
-    addToFavorites,
+    addFavoriteItem,
     addPackageToFavorites,
     addBlogPostToFavorites,
     removeFromFavorites,
