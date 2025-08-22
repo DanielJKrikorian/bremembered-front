@@ -335,6 +335,7 @@ export const Home: React.FC = () => {
                 
                 return (
                   <Card key={pkg.id} hover className="overflow-hidden cursor-pointer relative" onClick={() => navigate(`/package/${pkg.id}`)}>
+                    <>
                     {/* Deal Badge */}
                     <div className="absolute top-4 left-4 z-10">
                       <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
@@ -526,6 +527,7 @@ export const Home: React.FC = () => {
                        {review.vendor?.name || 'B. Remembered'} <span className="text-gray-500 font-normal">(Vendor)</span>
                      </h4>
                    </div>
+                    </>
                     <p className="text-gray-600 mb-4 italic">"{review.feedback}"</p>
                     <div className="flex items-center">
                       <img
