@@ -6,10 +6,12 @@ import { Card } from '../components/ui/Card';
 import { CustomPackageModal } from '../components/common/CustomPackageModal';
 import { BookingModal } from '../components/common/BookingModal';
 import { useLatestReviews, useServicePackages } from '../hooks/useSupabase';
+import { useCart } from '../context/CartContext';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const { addItem, openCart } = useCart();
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
   const { packages, loading: packagesLoading } = useServicePackages();
 
@@ -412,7 +414,8 @@ export const Home: React.FC = () => {
                         className="w-full mt-4"
                         onClick={(e) => { 
                           e.stopPropagation(); 
-                          navigate(`/package/${pkg.id}`); 
+                          addItem({ package: pkg });
+                          openCart();
                         }}
                       >
                         Claim This Deal

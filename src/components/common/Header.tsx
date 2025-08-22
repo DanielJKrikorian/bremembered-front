@@ -1,15 +1,17 @@
 import React from 'react';
 import { useState } from 'react';
-import { Heart, Menu, User, Calendar, Search, Bell } from 'lucide-react';
+import { Heart, Menu, User, Calendar, Search, Bell, ShoppingCart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { AuthModal } from '../auth/AuthModal';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, signOut, user } = useAuth();
+  const { state: cartState, toggleCart } = useCart();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
@@ -100,6 +102,21 @@ export const Header: React.FC = () => {
 
               {isAuthenticated ? (
                 <>
+                  <div className="relative">
+                    <Button 
+                      variant="ghost" 
+                      icon={ShoppingCart} 
+                      size="sm"
+                      onClick={toggleCart}
+                      className="relative"
+                    >
+                      {cartState.items.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {cartState.items.length}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
                   <Button 
                     variant="ghost" 
                     icon={Bell} 
@@ -129,6 +146,12 @@ export const Header: React.FC = () => {
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           My Profile
+                        </button>
+                        <button 
+                          onClick={() => navigate('/cart')}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          My Cart ({cartState.items.length})
                         </button>
                         <button 
                           onClick={() => navigate('/my-bookings')}
@@ -168,6 +191,21 @@ export const Header: React.FC = () => {
                 </>
               ) : (
                 <>
+                  <div className="relative">
+                    <Button 
+                      variant="ghost" 
+                      icon={ShoppingCart} 
+                      size="sm"
+                      onClick={toggleCart}
+                      className="relative"
+                    >
+                      {cartState.items.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {cartState.items.length}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
                   <Button variant="ghost" onClick={handleLogin} size="sm">
                     Log In
                   </Button>
@@ -210,6 +248,12 @@ export const Header: React.FC = () => {
                     {isAuthenticated && (
                       <>
                         <hr className="my-1" />
+                        <button 
+                          onClick={() => navigate('/cart')}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          My Cart ({cartState.items.length})
+                        </button>
                         <button 
                           onClick={() => navigate('/my-bookings')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"

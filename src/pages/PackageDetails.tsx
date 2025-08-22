@@ -4,12 +4,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useServicePackages, useVendorsByPackage } from '../hooks/useSupabase';
+import { useCart } from '../context/CartContext';
 
 export const PackageDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
+  const { addItem, openCart } = useCart();
   
   // Get the specific package
   const { packages, loading: packageLoading } = useServicePackages();
@@ -87,12 +89,20 @@ export const PackageDetails: React.FC = () => {
 
   const handleBookPackage = () => {
     if (packageData) {
-      navigate('/checkout', { 
-        state: { 
-          package: packageData,
-          totalPrice: packageData.price 
-        } 
+      // Add to cart instead of going directly to checkout
+      addItem({
+        package: packageData
       });
+      openCart();
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (packageData) {
+      addItem({
+        package: packageData
+      });
+      openCart();
     }
   };
 
@@ -473,12 +483,16 @@ export const PackageDetails: React.FC = () => {
                   variant="primary"
                   size="lg"
                   className="w-full"
-                  onClick={handleBookPackage}
+                  onClick={handleAddToCart}
                 >
-                  Book This Package
-                </Button>
-                <Button variant="outline" className="w-full">
                   Add to Cart
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/cart')}
+                >
+                  View Cart
                 </Button>
                 <Button variant="outline" className="w-full">
                   Request Custom Quote

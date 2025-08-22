@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import { CustomPackageModal } from '../components/common/CustomPackageModal';
 import { useServicePackages } from '../hooks/useSupabase';
 import { ServicePackage } from '../types/booking';
+import { useCart } from '../context/CartContext';
 
 export const SearchResults: React.FC = () => {
   const location = useLocation();
@@ -16,6 +17,7 @@ export const SearchResults: React.FC = () => {
   const [sortBy, setSortBy] = useState('recommended');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCustomPackageModal, setShowCustomPackageModal] = useState(false);
+  const { addItem, openCart } = useCart();
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
     eventTypes: [] as string[],
@@ -751,10 +753,11 @@ export const SearchResults: React.FC = () => {
                           className="w-full mt-4"
                           onClick={(e) => { 
                             e.stopPropagation(); 
-                            navigate(`/package/${pkg.id}`); 
+                            addItem({ package: pkg });
+                            openCart();
                           }}
                         >
-                          View Package
+                          Add to Cart
                         </Button>
                       </div>
                     </Card>
@@ -837,10 +840,13 @@ export const SearchResults: React.FC = () => {
                               <div className="text-sm text-gray-500">Starting price</div>
                             </div>
                             <button
-                              onClick={() => navigate(`/package/${pkg.id}`)}
+                              onClick={() => {
+                                addItem({ package: pkg });
+                                openCart();
+                              }}
                               className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium"
                             >
-                              View Package
+                              Add to Cart
                             </button>
                           </div>
                         </div>
