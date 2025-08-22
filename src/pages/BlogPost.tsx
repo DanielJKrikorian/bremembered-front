@@ -7,6 +7,7 @@ import { useBlogPost, useRelatedPosts, useBlogPostLike } from '../hooks/useBlog'
 import { NewsletterSignup } from '../components/blog/NewsletterSignup';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
+import { useAuth } from '../context/AuthContext';
 
 export const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -18,6 +19,7 @@ export const BlogPost: React.FC = () => {
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
   const { addBlogPostToFavorites } = useWeddingBoard();
+  const { isAuthenticated } = useAuth();
 
   // Scroll to top when component mounts or slug changes
   React.useEffect(() => {
@@ -64,7 +66,7 @@ export const BlogPost: React.FC = () => {
     await toggleLike(() => setShowAuthModal(true));
     
     // If user is authenticated and post exists, also add to wedding board
-    if (post && !isLiked) {
+    if (isAuthenticated && post && !isLiked) {
       try {
         await addBlogPostToFavorites(post.id, `Loved this article: ${post.title}`);
       } catch (error) {
