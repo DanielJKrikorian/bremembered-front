@@ -1,295 +1,294 @@
-import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useCouple } from './useCouple';
-import { ServicePackage } from '../types/booking';
+import React, { useState } from 'react';
+import { Heart, Star, Clock, Camera, Video, Music, Users, Calendar, Package, Edit2, Trash2, Save, X, Plus, MessageCircle, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { Input } from '../ui/Input';
+import { useWeddingBoard } from '../../hooks/useWeddingBoard';
+import { useCart } from '../../context/CartContext';
 
-export interface WeddingBoardFavorite {
-  id: string;
-  couple_id: string;
-  package_id?: string;
-  blog_post_id?: string;
-  item_type: 'package' | 'blog_post';
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-  // Joined data
-  service_packages?: ServicePackage;
-  blog_posts?: {
-    id: string;
-    title: string;
-    slug: string;
-    excerpt: string;
-    featured_image?: string;
-    category: string;
-    tags: string[];
-    read_time: number;
-    view_count: number;
-    like_count: number;
-    published_at?: string;
+export const WeddingBoard: React.FC = () => {
+  const navigate = useNavigate();
+  const { favorites, loading, error, removeFromFavorites, updateFavoriteNotes } = useWeddingBoard();
+  const { addItem, openCart } = useCart();
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
+  const getServiceIcon = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': return Camera;
+      case 'Videography': return Video;
+      case 'DJ Services': return Music;
+      case 'Live Musician': return Music;
+      case 'Coordination': return Users;
+      case 'Planning': return Calendar;
+      default: return Package;
+    }
   };
-}
 
-export const useWeddingBoard = () => {
-  const { user, isAuthenticated } = useAuth();
-  const { couple } = useCouple();
-  const [favorites, setFavorites] = useState<WeddingBoardFavorite[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const getServicePhoto = (serviceType: string, packageId: string) => {
+    const hash = packageId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const photoIndex = Math.abs(hash) % getServicePhotos(serviceType).length;
+    return getServicePhotos(serviceType)[photoIndex];
+  };
 
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (!isAuthenticated || !user || !couple?.id) {
-        setFavorites([]);
-        setLoading(false);
-        return;
-      }
-
-      if (!supabase || !isSupabaseConfigured()) {
-        // Mock favorites for demo
-        const mockFavorites: WeddingBoardFavorite[] = [
-          {
-            id: 'mock-fav-1',
-            couple_id: couple.id,
-            package_id: 'mock-package-1',
-            item_type: 'package',
-            notes: 'Love this photography style!',
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:00:00Z',
-            service_packages: {
-              id: 'mock-package-1',
-              service_type: 'Photography',
-              name: 'Premium Wedding Photography',
-              description: 'Complete wedding day photography with 8 hours of coverage',
-              price: 250000,
-              features: ['8 hours coverage', '500+ edited photos', 'Online gallery', 'Print release'],
-              coverage: { ceremony: true, reception: true, getting_ready: true },
-              status: 'approved',
-              hour_amount: 8,
-              event_type: 'Wedding',
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z'
-            }
-          }
+  const getServicePhotos = (serviceType: string) => {
+    switch (serviceType) {
+      case 'Photography': 
+        return [
+          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
         ];
-        setFavorites(mockFavorites);
-        setLoading(false);
-        return;
+      case 'Videography': 
+        return [
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+      case 'DJ Services': 
+        return [
+          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+      default: 
+        return [
+          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
+          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
+        ];
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
+
+  const getPackageCoverage = (coverage: Record<string, any>) => {
+    if (!coverage || typeof coverage !== 'object') return [];
+    
+    const events = [];
+    if (coverage.events && Array.isArray(coverage.events)) {
+      events.push(...coverage.events);
+    }
+    
+    Object.keys(coverage).forEach(key => {
+      if (key !== 'events' && coverage[key] === true) {
+        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
       }
+    });
+    
+    return events;
+  };
 
-      try {
-        const { data, error } = await supabase
-          .from('wedding_board_favorites')
-          .select(`
-            *,
-            service_packages(
-              id,
-              service_type,
-              name,
-              description,
-              price,
-              features,
-              coverage,
-              status,
-              hour_amount,
-              event_type,
-              primary_image,
-              created_at,
-              updated_at
-            ),
-            blog_posts(
-              id,
-              title,
-              slug,
-              excerpt,
-              featured_image,
-              category,
-              tags,
-              read_time,
-              view_count,
-              like_count,
-              published_at
-            )
-          `)
-          .eq('couple_id', couple.id)
-          .order('created_at', { ascending: false });
+  const startEditingNotes = (favorite: any) => {
+    setEditingNotes(favorite.id);
+    setEditText(favorite.notes || '');
+  };
 
-        if (error) throw error;
-        setFavorites(data || []);
-      } catch (err) {
-        console.error('Error fetching favorites:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch favorites');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFavorites();
-  }, [user, isAuthenticated, couple?.id]);
-
-  const addFavoriteItem = async (itemId: string, itemType: 'package' | 'blog_post', notes?: string) => {
-    if (!couple?.id || !isAuthenticated) {
-      throw new Error('Authentication required');
-    }
-
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock adding to favorites
-      const mockFavorite: WeddingBoardFavorite = {
-        id: `mock-fav-${Date.now()}`,
-        couple_id: couple.id,
-        package_id: itemType === 'package' ? itemId : undefined,
-        blog_post_id: itemType === 'blog_post' ? itemId : undefined,
-        item_type: itemType,
-        notes: notes || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setFavorites(prev => [mockFavorite, ...prev]);
-      return mockFavorite;
-    }
-
+  const saveNotes = async (favoriteId: string) => {
     try {
-      const insertData = {
-        couple_id: couple.id,
-        item_type: itemType,
-        notes: notes || null,
-        ...(itemType === 'package' ? { package_id: itemId } : { blog_post_id: itemId })
-      };
-
-      const { data, error } = await supabase
-        .from('wedding_board_favorites')
-        .insert([insertData])
-        .select(`
-          *,
-          service_packages(
-            id,
-            service_type,
-            name,
-            description,
-            price,
-            features,
-            coverage,
-            status,
-            hour_amount,
-            event_type,
-            primary_image,
-            created_at,
-            updated_at
-          ),
-          blog_posts(
-            id,
-            title,
-            slug,
-            excerpt,
-            featured_image,
-            category,
-            tags,
-            read_time,
-            view_count,
-            like_count,
-            published_at
-          )
-        `)
-        .single();
-
-      if (error) throw error;
-      
-      setFavorites(prev => [data, ...prev]);
-      return data;
-    } catch (err) {
-      console.error('Error adding to favorites:', err);
-      throw err;
+      await updateFavoriteNotes(favoriteId, editText);
+      setEditingNotes(null);
+      setEditText('');
+    } catch (error) {
+      console.error('Error updating notes:', error);
     }
   };
 
-  const addPackageToFavorites = async (packageId: string, notes?: string) => {
-    return addFavoriteItem(packageId, 'package', notes);
+  const cancelEditNotes = () => {
+    setEditingNotes(null);
+    setEditText('');
   };
 
-  const addBlogPostToFavorites = async (blogPostId: string, notes?: string) => {
-    return addFavoriteItem(blogPostId, 'blog_post', notes);
-  };
-
-  const removeFromFavorites = async (favoriteId: string) => {
-    if (!isAuthenticated) {
-      throw new Error('Authentication required');
-    }
-
-    // Update local state immediately
-    setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
-
-    if (!supabase || !isSupabaseConfigured()) {
-      return;
-    }
-
+  const handleRemoveFavorite = async (favoriteId: string) => {
     try {
-      const { error } = await supabase
-        .from('wedding_board_favorites')
-        .delete()
-        .eq('id', favoriteId);
-
-      if (error) throw error;
-    } catch (err) {
-      // Revert local state on error
-      console.error('Error removing from favorites:', err);
-      // Refetch to restore correct state
-      window.location.reload();
-      throw err;
+      await removeFromFavorites(favoriteId);
+    } catch (error) {
+      console.error('Error removing favorite:', error);
     }
   };
 
-  const updateFavoriteNotes = async (favoriteId: string, notes: string) => {
-    if (!isAuthenticated) {
-      throw new Error('Authentication required');
+  const handleAddToCart = (pkg: ServicePackage) => {
+    addItem({ package: pkg });
+    openCart();
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
     }
-
-    // Update local state immediately
-    setFavorites(prev => prev.map(fav => 
-      fav.id === favoriteId 
-        ? { ...fav, notes, updated_at: new Date().toISOString() }
-        : fav
-    ));
-
-    if (!supabase || !isSupabaseConfigured()) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('wedding_board_favorites')
-        .update({ notes, updated_at: new Date().toISOString() })
-        .eq('id', favoriteId);
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('Error updating favorite notes:', err);
-      throw err;
-    }
+    return num.toString();
   };
 
-  const isFavorited = (packageId: string) => {
-    return favorites.some(fav => fav.package_id === packageId || fav.blog_post_id === packageId);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your wedding board...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const getFavorite = (packageId: string) => {
-    return favorites.find(fav => fav.package_id === packageId || fav.blog_post_id === packageId);
-  };
+  if (error) {
+    return (
+      <Card className="p-8 text-center">
+        <p className="text-red-600 mb-4">Error loading wedding board: {error}</p>
+        <Button variant="primary" onClick={() => window.location.reload()}>
+          Try Again
+        </Button>
+      </Card>
+    );
+  }
 
-  const isBlogPostFavorited = (blogPostId: string) => {
-    return favorites.some(fav => fav.blog_post_id === blogPostId);
-  };
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Board</h3>
+            <p className="text-gray-600">
+              Your saved wedding packages and inspiration
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-rose-500">{favorites.length}</div>
+              <div className="text-sm text-gray-600">Saved Items</div>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/search')}
+              icon={Plus}
+            >
+              Browse More
+            </Button>
+          </div>
+        </div>
+      </Card>
 
-  return {
-    favorites,
-    loading,
-    error,
-    addFavoriteItem,
-    addPackageToFavorites,
-    addBlogPostToFavorites,
-    removeFromFavorites,
-    updateFavoriteNotes,
-    isFavorited,
-    getFavorite,
-    isBlogPostFavorited
-  };
+      {/* Favorites Grid */}
+      {favorites.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h3>
+          <p className="text-gray-600 mb-6">
+            Start browsing wedding services and save your favorites by clicking the heart icon
+          </p>
+          <Button
+            variant="primary"
+            onClick={() => navigate('/search')}
+            icon={Heart}
+          >
+            Browse Wedding Services
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {/* Service Package Favorites */}
+          {favorites.filter(fav => fav.item_type === 'package' && fav.service_packages).length > 0 && (
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Saved Wedding Services</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favorites
+                  .filter(fav => fav.item_type === 'package' && fav.service_packages)
+                  .map((favorite) => {
+                    const pkg = favorite.service_packages!;
+                    const ServiceIcon = getServiceIcon(pkg.service_type);
+                    const packageCoverage = getPackageCoverage(pkg.coverage || {});
+                    
+                    return (
+                      <Card key={favorite.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                        <div className="aspect-video overflow-hidden relative">
+                          <img
+                            src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg.id)}
+                            alt={pkg.name}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <button
+                              onClick={() => handleRemoveFavorite(favorite.id)}
+                              className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
+                            >
+                              <Heart className="w-4 h-4 text-white fill-current" />
+                            </button>
+                          </div>
+                          <div className="absolute bottom-3 left-3">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-900">
+                              <ServiceIcon className="w-3 h-3 mr-1" />
+                              {pkg.service_type}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
+                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
+
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <Card className="p-6 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Heart className="w-6 h-6 text-rose-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Building Your Dream Wedding?
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Browse more services to complete your perfect day
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              variant="primary"
+              onClick={() => navigate('/search')}
+            >
+              Browse All Services
+            </Button>
+            {favorites.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Add all favorites to cart
+                  favorites.forEach(fav => {
+                    if (fav.service_packages) {
+                      addItem({ package: fav.service_packages });
+                    }
+                  });
+                  openCart();
+                }}
+              >
+                Add All to Cart
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
 };

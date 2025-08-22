@@ -197,10 +197,135 @@ export const WeddingBoard: React.FC = () => {
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {favorites.map((favorite) => {
-            const pkg = favorite.service_packages;
-            if (!pkg) return null;
+        <div className="space-y-8">
+          {/* Blog Posts Section */}
+          {favorites.filter(fav => fav.item_type === 'blog_post' && fav.blog_posts).length > 0 && (
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Saved Articles</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {favorites
+                  .filter(fav => fav.item_type === 'blog_post' && fav.blog_posts)
+                  .map((favorite) => {
+                    const post = favorite.blog_posts!;
+                    
+                    return (
+                      <Card key={favorite.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                        <div className="flex">
+                          <div className="w-32 h-24 flex-shrink-0">
+                            <img
+                              src={post.featured_image || 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                              alt={post.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-gray-900 line-clamp-2 text-sm">{post.title}</h4>
+                              <button
+                                onClick={() => handleRemoveFavorite(favorite.id)}
+                                className="p-1 text-red-500 hover:text-red-700 transition-colors ml-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-2 mb-3">{post.excerpt}</p>
+                            
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  <span>{post.read_time} min</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  <span>{formatNumber(post.view_count)}</span>
+                                </div>
+                              </div>
+                              <span>{new Date(favorite.created_at).toLocaleDateString()}</span>
+                            </div>
+
+                            {/* Notes Section for Blog Posts */}
+                            {editingNotes === favorite.id ? (
+                              <div className="space-y-2 mb-3">
+                                <Input
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  placeholder="Add notes about this article..."
+                                  className="text-xs"
+                                />
+                                <div className="flex space-x-1">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    icon={Save}
+                                    onClick={() => saveNotes(favorite.id)}
+                                    className="text-xs px-2 py-1"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={X}
+                                    onClick={cancelEditNotes}
+                                    className="text-xs px-2 py-1"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mb-3">
+                                {favorite.notes ? (
+                                  <div className="bg-gray-50 p-2 rounded text-xs text-gray-600 mb-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="line-clamp-2">{favorite.notes}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon={Edit2}
+                                        onClick={() => startEditingNotes(favorite)}
+                                        className="text-gray-400 hover:text-gray-600 ml-1"
+                                      />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => startEditingNotes(favorite)}
+                                    className="text-xs text-gray-400 hover:text-gray-600 bg-gray-50 p-2 rounded w-full text-left"
+                                  >
+                                    Add notes...
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => navigate(`/inspiration/${post.slug}`)}
+                              className="w-full text-xs"
+                            >
+                              Read Article
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Service Packages Section */}
+          {favorites.filter(fav => fav.item_type === 'package' && fav.service_packages).length > 0 && (
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Saved Packages</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favorites
+                  .filter(fav => fav.item_type === 'package' && fav.service_packages)
+                  .map((favorite) => {
+                    const pkg = favorite.service_packages!;
 
             const ServiceIcon = getServiceIcon(pkg.service_type);
             const packageCoverage = getPackageCoverage(pkg.coverage || {});

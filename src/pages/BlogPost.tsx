@@ -63,15 +63,23 @@ export const BlogPost: React.FC = () => {
   };
 
   const handleLikeClick = async () => {
-    await toggleLike(() => setShowAuthModal(true));
-    
-    // If user is authenticated and post exists, also add to wedding board
-    if (isAuthenticated && post && !isLiked) {
-      try {
-        await addBlogPostToFavorites(post.id, `Loved this article: ${post.title}`);
-      } catch (error) {
-        console.error('Error adding blog post to wedding board:', error);
+    try {
+      await toggleLike(() => setShowAuthModal(true));
+      
+      // If user is authenticated and post exists, also add to wedding board
+      if (isAuthenticated && post && !isLiked) {
+        try {
+          await addBlogPostToFavorites(post.id, `Loved this article: ${post.title}`);
+        } catch (error) {
+          // Only log error if it's not about duplicate saves
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          if (!errorMessage.includes('already saved')) {
+            console.error('Error adding blog post to wedding board:', error);
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error toggling like:', error);
     }
   };
   const renderContent = (content: string) => {
