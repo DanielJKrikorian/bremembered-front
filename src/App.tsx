@@ -27,6 +27,7 @@ import { ChatBot } from './components/chat/ChatBot';
 import { CartSidebar } from './components/cart/CartSidebar';
 import { Blog } from './pages/Blog';
 import { BlogPost } from './pages/BlogPost';
+import { Cart } from './pages/Cart';
 
 function App() {
   return (
