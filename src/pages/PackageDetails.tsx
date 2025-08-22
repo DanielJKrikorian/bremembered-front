@@ -5,6 +5,8 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useServicePackages, useVendorsByPackage } from '../hooks/useSupabase';
 import { useCart } from '../context/CartContext';
+import { useWeddingBoard } from '../hooks/useWeddingBoard';
+import { useAuth } from '../context/AuthContext';
 
 export const PackageDetails: React.FC = () => {
   const { id } = useParams();
@@ -12,6 +14,8 @@ export const PackageDetails: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
   const { addItem, openCart, state: cartState } = useCart();
+  const { addToFavorites, removeFromFavorites, isFavorited } = useWeddingBoard();
+  const { isAuthenticated } = useAuth();
   
   // Scroll to top when component mounts or id changes
   React.useEffect(() => {
@@ -24,6 +28,31 @@ export const PackageDetails: React.FC = () => {
   
   // Get vendors who offer this package
   const { vendors, loading: vendorsLoading } = useVendorsByPackage(id || '');
+
+  const isPackageFavorited = packageData ? isFavorited(packageData.id) : false;
+
+  const handleToggleFavorite = async () => {
+    if (!packageData) return;
+    
+    if (!isAuthenticated) {
+      alert('Please sign in to save favorites');
+      return;
+    }
+
+    try {
+      if (isPackageFavorited) {
+        const { favorites } = useWeddingBoard();
+        const favorite = favorites.find(fav => fav.package_id === packageData.id);
+        if (favorite) {
+          await removeFromFavorites(favorite.id);
+        }
+      } else {
+        await addToFavorites(packageData.id);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -187,8 +216,20 @@ export const PackageDetails: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-4 right-4 flex space-x-2">
-                  <Button variant="ghost" icon={Heart} size="sm" className="bg-white/80 hover:bg-white">
-                  </Button>
+                  <button
+                    onClick={handleToggleFavorite}
+                    className={`p-2 rounded-full transition-colors shadow-lg ${
+                      isPackageFavorited 
+                        ? 'bg-red-500 hover:bg-red-600' 
+                        : 'bg-white/80 hover:bg-white'
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${
+                      isPackageFavorited 
+                        ? 'text-white fill-current' 
+                        : 'text-gray-600'
+                    }`} />
+                  </button>
                   <Button variant="ghost" icon={Share2} size="sm" className="bg-white/80 hover:bg-white">
                   </Button>
                 </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Filter, Grid, List, SlidersHorizontal, MapPin, Star, Clock, Users, ChevronDown, Search, X, Check, Camera, Video, Music, Calendar, Package } from 'lucide-react';
+import { Filter, Grid, List, SlidersHorizontal, MapPin, Star, Clock, Users, ChevronDown, Search, X, Check, Camera, Video, Music, Calendar, Package, Heart } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -8,6 +8,8 @@ import { CustomPackageModal } from '../components/common/CustomPackageModal';
 import { useServicePackages } from '../hooks/useSupabase';
 import { ServicePackage } from '../types/booking';
 import { useCart } from '../context/CartContext';
+import { useWeddingBoard } from '../hooks/useWeddingBoard';
+import { useAuth } from '../context/AuthContext';
 
 export const SearchResults: React.FC = () => {
   const location = useLocation();
@@ -18,6 +20,8 @@ export const SearchResults: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCustomPackageModal, setShowCustomPackageModal] = useState(false);
   const { addItem, openCart } = useCart();
+  const { addToFavorites, removeFromFavorites, isFavorited, favorites } = useWeddingBoard();
+  const { isAuthenticated } = useAuth();
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
     eventTypes: [] as string[],
@@ -211,6 +215,29 @@ export const SearchResults: React.FC = () => {
     });
     
     return events;
+  };
+
+  const handleToggleFavorite = async (e: React.MouseEvent, pkg: ServicePackage) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      // Could show auth modal here
+      alert('Please sign in to save favorites');
+      return;
+    }
+
+    try {
+      if (isFavorited(pkg.id)) {
+        const favorite = favorites.find(fav => fav.package_id === pkg.id);
+        if (favorite) {
+          await removeFromFavorites(favorite.id);
+        }
+      } else {
+        await addToFavorites(pkg.id);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const getServiceIcon = (serviceType: string) => {
@@ -678,15 +705,30 @@ export const SearchResults: React.FC = () => {
                 {sortedPackages.map((pkg) => {
                   const ServiceIcon = getServiceIcon(pkg.service_type);
                   const packageCoverage = getPackageCoverage(pkg.coverage || {});
+                  const isPackageFavorited = isFavorited(pkg.id);
                   
                   return (
                     <Card key={pkg.id} hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/package/${pkg.id}`)}>
-                      <div className="aspect-video overflow-hidden">
+                      <div className="aspect-video overflow-hidden relative">
                         <img
                           src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
                           alt={pkg.name}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                         />
+                        <button
+                          onClick={(e) => handleToggleFavorite(e, pkg)}
+                          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg ${
+                            isPackageFavorited 
+                              ? 'bg-red-500 hover:bg-red-600' 
+                              : 'bg-white/80 hover:bg-white'
+                          }`}
+                        >
+                          <Heart className={`w-4 h-4 ${
+                            isPackageFavorited 
+                              ? 'text-white fill-current' 
+                              : 'text-gray-600'
+                          }`} />
+                        </button>
                       </div>
                       
                       <div className="p-6">
@@ -781,16 +823,33 @@ export const SearchResults: React.FC = () => {
                 {sortedPackages.map((pkg) => {
                   const ServiceIcon = getServiceIcon(pkg.service_type);
                   const packageCoverage = getPackageCoverage(pkg.coverage || {});
+                  const isPackageFavorited = isFavorited(pkg.id);
                   
                   return (
                     <Card key={pkg.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                       <div className="p-6">
                         <div className="flex items-center space-x-6">
-                          <img
-                            src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
-                            alt={pkg.name}
-                            className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                          />
+                          <div className="relative">
+                            <img
+                              src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
+                              alt={pkg.name}
+                              className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                            />
+                            <button
+                              onClick={(e) => handleToggleFavorite(e, pkg)}
+                              className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg ${
+                                isPackageFavorited 
+                                  ? 'bg-red-500 hover:bg-red-600' 
+                                  : 'bg-white hover:bg-gray-50 border border-gray-200'
+                              }`}
+                            >
+                              <Heart className={`w-3 h-3 ${
+                                isPackageFavorited 
+                                  ? 'text-white fill-current' 
+                                  : 'text-gray-600'
+                              }`} />
+                            </button>
+                          </div>
                           
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-2 mb-2">
