@@ -12,9 +12,8 @@ export const VendorRecommendation: React.FC = () => {
   // Get data from previous steps
   const {
     selectedPackage,
-    selectedServices,
-    currentServiceIndex,
-    currentService,
+    selectedServices = [],
+    currentServiceIndex = 0,
     eventDate,
     venue,
     region,
@@ -23,6 +22,7 @@ export const VendorRecommendation: React.FC = () => {
     vibes
   } = location.state || {};
 
+  const currentService = selectedServices[currentServiceIndex] || 'Photography';
   const nextService = selectedServices[currentServiceIndex + 1];
 
   // Get recommended vendors
