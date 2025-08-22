@@ -23,18 +23,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Get initial session
     const getInitialSession = async () => {
       if (!supabase || !isSupabaseConfigured()) {
+        console.warn('Supabase not configured, skipping auth initialization');
         setLoading(false);
         return;
       }
 
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        if (error) {
+          console.warn('Auth session error (expected if not configured):', error.message);
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         
         setSession(session);
         setUser(session?.user ?? null);
       } catch (error) {
-        console.error('Error getting session:', error);
+        console.warn('Error getting session (expected if not configured):', error);
+        setSession(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -46,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (supabase && isSupabaseConfigured()) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
+          console.log('Auth state change:', event, !!session);
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
@@ -73,6 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       return () => subscription.unsubscribe();
+    } else {
+      console.warn('Supabase not configured, auth state changes will not be monitored');
     }
   }, []);
 

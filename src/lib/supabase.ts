@@ -16,5 +16,11 @@ export const isSupabaseConfigured = () => {
 
 // Only create client if properly configured
 export const supabase = isSupabaseConfigured() 
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: {
+        persistSession: false, // Disable session persistence to avoid refresh token issues
+        autoRefreshToken: false, // Disable auto refresh to prevent token errors
+        detectSessionInUrl: false // Disable URL session detection
+      }
+    })
   : null;
