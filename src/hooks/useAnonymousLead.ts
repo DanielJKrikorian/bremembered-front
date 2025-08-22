@@ -99,7 +99,7 @@ export const useAnonymousLead = () => {
     setLead(prev => prev ? { ...prev, ...updates } : null);
 
     // Check if Supabase is properly configured before making requests
-    if (!supabase) {
+    if (!supabase || !isSupabaseConfigured()) {
       return;
     }
 
@@ -119,6 +119,8 @@ export const useAnonymousLead = () => {
       if (error) throw error;
       setLead(data);
     } catch (err) {
+      console.error('Failed to update lead in database:', err);
+      setError('Failed to save progress. Your selections are saved locally.');
       // Local state is already updated above, so we can continue
     }
   };
