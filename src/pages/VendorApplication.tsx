@@ -10,7 +10,7 @@ import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
 import { TermsModal } from '../components/vendor/TermsModal';
-import { useServiceAreas, supabase, isSupabaseConfigured } from '../hooks/useSupabase';
+import { useServiceAreas, supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // Interfaces
 interface GearItem {
@@ -756,7 +756,7 @@ export const VendorApplication = () => {
 
     try {
       const url = await uploadPhoto(file, applicationId, 'vendor-applications', 10, 'license-back');
-      setBackLicense(file);
+      setFrontLicense(file);
       setUploadedFiles((prev) => ({ ...prev, drivers_license_back_url: url || undefined }));
       setFormData((prev) => ({ ...prev, drivers_license_back: file }));
     } catch (error) {
