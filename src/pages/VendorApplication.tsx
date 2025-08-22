@@ -919,7 +919,6 @@ export const VendorApplication = () => {
     setLoading(true);
     setError(null);
     try {
-      const applicationData = {
       if (!supabase || !isSupabaseConfigured()) {
         // For demo purposes, just show success
         console.log('Mock application submitted (Supabase not configured)');
@@ -928,6 +927,7 @@ export const VendorApplication = () => {
         return;
       }
 
+      const applicationData = {
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
