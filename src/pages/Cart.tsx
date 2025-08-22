@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, Clock, Star, MessageCircle } from 'lucide-react';
+import { ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, Clock, Star, MessageCircle, Save, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -17,6 +17,13 @@ export const Cart: React.FC = () => {
   );
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedItemForVendor, setSelectedItemForVendor] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    eventDate: '',
+    eventTime: '',
+    venue: '',
+    notes: ''
+  });
 
   // Get vendors for the item we're selecting a vendor for
   const itemForVendorSelection = state.items.find(item => item.id === selectingVendorForItem);
@@ -64,6 +71,55 @@ export const Cart: React.FC = () => {
     setShowVendorModal(true);
   };
 
+  const calculateEndTime = (startTime: string, hourAmount?: number) => {
+    if (!startTime || !hourAmount) return '';
+    
+    try {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const startDate = new Date();
+      startDate.setHours(hours, minutes, 0, 0);
+      
+      const endDate = new Date(startDate.getTime() + (hourAmount * 60 * 60 * 1000));
+      
+      return endDate.toTimeString().slice(0, 5); // HH:MM format
+    } catch (error) {
+      console.error('Error calculating end time:', error);
+      return '';
+    }
+  };
+
+  const startEditing = (item: any) => {
+    setEditingItem(item.id);
+    setEditForm({
+      eventDate: item.eventDate || '',
+      eventTime: item.eventTime || '',
+      venue: item.venue?.name || '',
+      notes: item.notes || ''
+    });
+  };
+
+  const saveEdit = (itemId: string) => {
+    const endTime = calculateEndTime(editForm.eventTime, state.items.find(i => i.id === itemId)?.package.hour_amount);
+    
+    updateItem(itemId, {
+      eventDate: editForm.eventDate || undefined,
+      eventTime: editForm.eventTime || undefined,
+      endTime: endTime || undefined,
+      venue: editForm.venue ? { 
+        id: 'temp-venue', 
+        name: editForm.venue 
+      } : undefined,
+      notes: editForm.notes || undefined
+    });
+    
+    setEditingItem(null);
+    setEditForm({ eventDate: '', eventTime: '', venue: '', notes: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingItem(null);
+    setEditForm({ eventDate: '', eventTime: '', venue: '', notes: '' });
+  };
   const handlePickForMe = (itemId: string) => {
     const item = state.items.find(i => i.id === itemId);
     if (!item) return;
@@ -182,41 +238,217 @@ export const Cart: React.FC = () => {
                             </p>
                             
                             {/* Package Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <span className="font-medium">Service:</span>
-                                  <span className="ml-2">{item.package.service_type}</span>
-                                </div>
-                                {item.package.hour_amount && (
-                                  <div className="flex items-center text-sm text-gray-600">
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    <span>{item.package.hour_amount} hours</span>
+                            {/* Event Details Form or Display */}
+                            {editingItem === item.id ? (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <h4 className="font-medium text-blue-900 mb-3">Edit Event Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <Input
+                                    label="Event Date"
+                                    type="date"
+                                    value={editForm.eventDate}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, eventDate: e.target.value }))}
+                                    icon={Calendar}
+                                  />
+                                  <Input
+                                    label="Start Time"
+                                    type="time"
+                                    value={editForm.eventTime}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, eventTime: e.target.value }))}
+                                    icon={Clock}
+                                  />
+                                  <div className="md:col-span-2">
+                                    <Input
+                                      label="Venue Name"
+                                      value={editForm.venue}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, venue: e.target.value }))}
+                                      placeholder="Enter venue name"
+                                      icon={MapPin}
+                                    />
                                   </div>
-                                )}
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <span className="font-medium">Price:</span>
-                                  <span className="ml-2 text-lg font-bold text-gray-900">
-                                    {formatPrice(item.package.price)}
-                                  </span>
+                                  <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Notes
+                                    </label>
+                                    <textarea
+                                      value={editForm.notes}
+                                      onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                                      placeholder="Any special requests or notes..."
+                                      rows={2}
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex space-x-3 mt-4">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    icon={Save}
+                                    onClick={() => saveEdit(item.id)}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={X}
+                                    onClick={cancelEdit}
+                                  >
+                                    Cancel
+                                  </Button>
                                 </div>
                               </div>
-                              
-                              <div className="space-y-2">
-                                {item.eventDate && (
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-2">
                                   <div className="flex items-center text-sm text-gray-600">
-                                    <Calendar className="w-4 h-4 mr-1" />
-                                    <span>{new Date(item.eventDate).toLocaleDateString()}</span>
+                                    <span className="font-medium">Service:</span>
+                                    <span className="ml-2">{item.package.service_type}</span>
                                   </div>
-                                )}
-                                {item.venue && (
+                                  {item.package.hour_amount && (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                      <Clock className="w-4 h-4 mr-1" />
+                                      <span>{item.package.hour_amount} hours</span>
+                                    </div>
+                                  )}
                                   <div className="flex items-center text-sm text-gray-600">
-                                    <MapPin className="w-4 h-4 mr-1" />
-                                    <span>{item.venue.name}</span>
+                                    <span className="font-medium">Price:</span>
+                                    <span className="ml-2 text-lg font-bold text-gray-900">
+                                      {formatPrice(item.package.price)}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  {item.eventDate ? (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                      <Calendar className="w-4 h-4 mr-1" />
+                                      <span>{new Date(item.eventDate).toLocaleDateString()}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center text-sm text-amber-600">
+                                      <Calendar className="w-4 h-4 mr-1" />
+                                      <span>Date not set</span>
+                                    </div>
+                                  )}
+                                  
+                                  {item.eventTime ? (
+                                    <div className="space-y-1">
+                                      <div className="flex items-center text-sm text-gray-600">
+                                        <Clock className="w-4 h-4 mr-1" />
+                                        <span>
+                                          {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          })}
+                                          {item.endTime && (
+                                            <span className="text-gray-500">
+                                              {' - '}
+                                              {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true
+                                              })}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center text-sm text-amber-600">
+                                      <Clock className="w-4 h-4 mr-1" />
+                                      <span>Time not set</span>
+                                    </div>
+                                  )}
+                                  
+                                  {item.venue ? (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                      <MapPin className="w-4 h-4 mr-1" />
+                                      <span>{item.venue.name}</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center text-sm text-amber-600">
+                                      <MapPin className="w-4 h-4 mr-1" />
+                                      <span>Venue not set</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Event Details Section */}
+                            {!editingItem || editingItem !== item.id ? (
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-medium text-gray-900">Event Details</h4>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={Edit}
+                                    onClick={() => startEditing(item)}
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                                
+                                {!item.eventDate && !item.eventTime && !item.venue ? (
+                                  <div className="text-center py-4">
+                                    <p className="text-amber-600 text-sm mb-3">Event details needed</p>
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={() => startEditing(item)}
+                                    >
+                                      Add Event Details
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2 text-sm">
+                                    {item.eventDate && (
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Date:</span>
+                                        <span className="font-medium">{new Date(item.eventDate).toLocaleDateString()}</span>
+                                      </div>
+                                    )}
+                                    {item.eventTime && (
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Time:</span>
+                                        <span className="font-medium">
+                                          {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true
+                                          })}
+                                          {item.endTime && (
+                                            <span className="text-gray-500">
+                                              {' - '}
+                                              {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true
+                                              })}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {item.venue && (
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Venue:</span>
+                                        <span className="font-medium">{item.venue.name}</span>
+                                      </div>
+                                    )}
+                                    {item.notes && (
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Notes:</span>
+                                        <span className="font-medium text-xs">{item.notes}</span>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
-                            </div>
+                            ) : null}
 
                             {/* Vendor Selection */}
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">

@@ -114,7 +114,26 @@ export const CartSidebar: React.FC = () => {
                               <Calendar className="w-3 h-3 mr-1" />
                               <span>
                                 {new Date(item.eventDate).toLocaleDateString()}
-                                {item.eventTime && ` at ${item.eventTime}`}
+                                {item.eventTime && (
+                                  <>
+                                    {' at '}
+                                    {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
+                                      hour: 'numeric',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                    {item.endTime && (
+                                      <>
+                                        {' - '}
+                                        {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </>
+                                    )}
+                                  </>
+                                )}
                               </span>
                             </div>
                           )}

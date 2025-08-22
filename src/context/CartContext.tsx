@@ -7,6 +7,7 @@ export interface CartItem {
   vendor?: Vendor;
   eventDate?: string;
   eventTime?: string;
+  endTime?: string;
   venue?: {
     id: string;
     name: string;
