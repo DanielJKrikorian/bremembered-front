@@ -417,7 +417,6 @@ export const Home: React.FC = () => {
                       >
                         Claim This Deal
                       </Button>
-                    </div>
                   </Card>
                 );
               })}
