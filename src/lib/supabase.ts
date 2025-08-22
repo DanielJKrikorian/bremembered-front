@@ -18,8 +18,8 @@ export const isSupabaseConfigured = () => {
 export const supabase = isSupabaseConfigured() 
   ? createClient(supabaseUrl!, supabaseAnonKey!, {
       auth: {
-        persistSession: false, // Disable session persistence to avoid refresh token issues
-        autoRefreshToken: false, // Disable auto refresh to prevent token errors
+        persistSession: true, // Enable session persistence to maintain login state
+        autoRefreshToken: true, // Enable auto refresh to keep sessions active
         detectSessionInUrl: false // Disable URL session detection
       }
     })
