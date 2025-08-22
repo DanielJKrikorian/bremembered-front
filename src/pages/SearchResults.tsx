@@ -759,6 +759,17 @@ export const SearchResults: React.FC = () => {
                         >
                           Add to Cart
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full mt-2"
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            navigate(`/package/${pkg.id}`);
+                          }}
+                        >
+                          View Details
+                        </Button>
                       </div>
                     </Card>
                   );
@@ -848,6 +859,13 @@ export const SearchResults: React.FC = () => {
                             >
                               Add to Cart
                             </button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/package/${pkg.id}`)}
+                            >
+                              View Details
+                            </Button>
                           </div>
                         </div>
                       </div>
