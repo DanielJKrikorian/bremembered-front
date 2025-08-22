@@ -72,6 +72,7 @@ export const BlogPost: React.FC = () => {
       }
     }
   };
+
   const renderContent = (content: string) => {
     // Simple markdown-like rendering
     return content
