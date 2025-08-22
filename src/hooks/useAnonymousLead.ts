@@ -99,7 +99,7 @@ export const useAnonymousLead = () => {
     setLead(prev => prev ? { ...prev, ...updates } : null);
 
     // Check if Supabase is properly configured before making requests
-    if (!supabase || !isSupabaseConfigured()) {
+    if (!supabase) {
       return;
     }
 
