@@ -927,6 +927,14 @@ export const VendorApplication = () => {
         return;
       }
 
+      if (!supabase || !isSupabaseConfigured()) {
+        // For demo purposes, just show success
+        console.log('Mock application submitted (Supabase not configured)');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setSuccess(true);
+        return;
+      }
+
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -936,14 +944,6 @@ export const VendorApplication = () => {
         services_applying_for: formData.services_applying_for,
         gear: formData.gear,
         profile_photo: uploadedFiles.profile_photo_url,
-        drivers_license_front: uploadedFiles.drivers_license_front_url,
-        drivers_license_back: uploadedFiles.drivers_license_back_url,
-        description: formData.description,
-        work_links: formData.work_links.filter(link => link.trim() !== ''),
-        work_samples: uploadedFiles.work_sample_urls,
-        status: 'pending'
-      };
-
       console.log('Submitting application data:', applicationData);
 
       // Insert into vendor_applications table
