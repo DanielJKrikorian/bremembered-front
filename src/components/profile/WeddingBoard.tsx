@@ -124,6 +124,13 @@ export const WeddingBoard: React.FC = () => {
     openCart();
   };
 
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'k';
+    }
+    return num.toString();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
