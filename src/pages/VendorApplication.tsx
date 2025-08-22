@@ -10,7 +10,8 @@ import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
 import { TermsModal } from '../components/vendor/TermsModal';
-import { useServiceAreas, supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useServiceAreas } from '../hooks/useSupabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // Interfaces
 interface GearItem {
@@ -756,7 +757,7 @@ export const VendorApplication = () => {
 
     try {
       const url = await uploadPhoto(file, applicationId, 'vendor-applications', 10, 'license-back');
-      setFrontLicense(file);
+      setBackLicense(file);
       setUploadedFiles((prev) => ({ ...prev, drivers_license_back_url: url || undefined }));
       setFormData((prev) => ({ ...prev, drivers_license_back: file }));
     } catch (error) {
@@ -919,13 +920,13 @@ export const VendorApplication = () => {
     setLoading(true);
     setError(null);
     try {
-      if (!supabase || !isSupabaseConfigured()) {
-        // For demo purposes, just show success
+      if (!isSupabaseConfigured() || !supabase) {
         console.log('Mock application submitted (Supabase not configured)');
         await new Promise(resolve => setTimeout(resolve, 2000));
         setSuccess(true);
         return;
       }
+
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -942,18 +943,22 @@ export const VendorApplication = () => {
         work_samples: uploadedFiles.work_sample_urls,
         status: 'pending',
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
+
       console.log('Submitting application data:', applicationData);
-      // Insert into vendor_applications table
+
       const { data, error } = await supabase
         .from('vendor_applications')
         .insert([applicationData])
         .select()
         .single();
+
       if (error) {
         console.error('Database error:', error);
         throw new Error(error.message || 'Failed to submit application to database');
       }
+
       console.log('Application successfully saved to database:', data);
       setSuccess(true);
     } catch (err) {
