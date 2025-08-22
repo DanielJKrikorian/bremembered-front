@@ -13,6 +13,11 @@ export const PackageDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
   const { addItem, openCart } = useCart();
   
+  // Scroll to top when component mounts or id changes
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [id]);
+
   // Get the specific package
   const { packages, loading: packageLoading } = useServicePackages();
   const packageData = packages.find(p => p.id === id);
