@@ -499,13 +499,6 @@ export const PackageDetails: React.FC = () => {
                 >
                   View Cart
                 </Button>
-                <Button variant="outline" className="w-full">
-                  Request Custom Quote
-                </Button>
-              </div>
-
-              <div className="mt-6 text-center text-xs text-gray-500">
-                Free cancellation up to 30 days before your event
               </div>
             </Card>
 
