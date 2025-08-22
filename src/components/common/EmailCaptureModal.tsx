@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Save, Heart } from 'lucide-react';
+import { X, Mail, Save, Heart, Calendar } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -18,6 +18,7 @@ export const EmailCaptureModal: React.FC<EmailCaptureModalProps> = ({
   onSkip
 }) => {
   const [email, setEmail] = useState('');
+  const [weddingDate, setWeddingDate] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -72,6 +73,15 @@ export const EmailCaptureModal: React.FC<EmailCaptureModalProps> = ({
             placeholder="your.email@example.com"
             icon={Mail}
             required
+          />
+          
+          <Input
+            label="Wedding Date (Optional)"
+            type="date"
+            value={weddingDate}
+            onChange={(e) => setWeddingDate(e.target.value)}
+            placeholder="Select your wedding date"
+            icon={Calendar}
           />
           
           <div className="space-y-3">
