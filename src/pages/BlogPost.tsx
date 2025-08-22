@@ -5,15 +5,19 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useBlogPost, useRelatedPosts, useBlogPostLike } from '../hooks/useBlog';
 import { NewsletterSignup } from '../components/blog/NewsletterSignup';
+import { AuthModal } from '../components/auth/AuthModal';
+import { useWeddingBoard } from '../hooks/useWeddingBoard';
 
 export const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { post, loading, error } = useBlogPost(slug || '');
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
+  const { addToFavorites } = useWeddingBoard();
 
   // Scroll to top when component mounts or slug changes
   React.useEffect(() => {
@@ -56,6 +60,18 @@ export const BlogPost: React.FC = () => {
     }
   };
 
+  const handleLikeClick = async () => {
+    await toggleLike(() => setShowAuthModal(true));
+    
+    // If user is authenticated and post exists, also add to wedding board
+    if (post && !isLiked) {
+      try {
+        await addToFavorites(post.id, `Loved this article: ${post.title}`);
+      } catch (error) {
+        console.error('Error adding blog post to wedding board:', error);
+      }
+    }
+  };
   const renderContent = (content: string) => {
     // Simple markdown-like rendering
     return content
@@ -287,7 +303,7 @@ export const BlogPost: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
-                  onClick={toggleLike}
+                  onClick={handleLikeClick}
                   disabled={likeLoading}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
                     isLiked 
@@ -428,6 +444,13 @@ export const BlogPost: React.FC = () => {
           />
         </section>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="signup"
+      />
     </div>
   );
 };

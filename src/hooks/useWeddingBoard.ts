@@ -7,12 +7,27 @@ import { ServicePackage } from '../types/booking';
 export interface WeddingBoardFavorite {
   id: string;
   couple_id: string;
-  package_id: string;
+  package_id?: string;
+  blog_post_id?: string;
+  item_type: 'package' | 'blog_post';
   notes?: string;
   created_at: string;
   updated_at: string;
   // Joined data
   service_packages?: ServicePackage;
+  blog_posts?: {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string;
+    featured_image?: string;
+    category: string;
+    tags: string[];
+    read_time: number;
+    view_count: number;
+    like_count: number;
+    published_at?: string;
+  };
 }
 
 export const useWeddingBoard = () => {
@@ -37,6 +52,7 @@ export const useWeddingBoard = () => {
             id: 'mock-fav-1',
             couple_id: couple.id,
             package_id: 'mock-package-1',
+            item_type: 'package',
             notes: 'Love this photography style!',
             created_at: '2024-01-15T10:00:00Z',
             updated_at: '2024-01-15T10:00:00Z',
@@ -80,6 +96,19 @@ export const useWeddingBoard = () => {
               primary_image,
               created_at,
               updated_at
+            ),
+            blog_posts(
+              id,
+              title,
+              slug,
+              excerpt,
+              featured_image,
+              category,
+              tags,
+              read_time,
+              view_count,
+              like_count,
+              published_at
             )
           `)
           .eq('couple_id', couple.id)
@@ -213,11 +242,11 @@ export const useWeddingBoard = () => {
   };
 
   const isFavorited = (packageId: string) => {
-    return favorites.some(fav => fav.package_id === packageId);
+    return favorites.some(fav => fav.package_id === packageId || fav.blog_post_id === packageId);
   };
 
   const getFavorite = (packageId: string) => {
-    return favorites.find(fav => fav.package_id === packageId);
+    return favorites.find(fav => fav.package_id === packageId || fav.blog_post_id === packageId);
   };
 
   return {
@@ -225,6 +254,8 @@ export const useWeddingBoard = () => {
     loading,
     error,
     addToFavorites,
+    addPackageToFavorites,
+    addBlogPostToFavorites,
     removeFromFavorites,
     updateFavoriteNotes,
     isFavorited,

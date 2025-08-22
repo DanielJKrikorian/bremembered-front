@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export interface BlogPost {
   id: string;
@@ -480,11 +481,17 @@ export const useBlogCategories = () => {
 };
 
 export const useBlogPostLike = (postId: string) => {
+  const { isAuthenticated } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const toggleLike = async () => {
+  const toggleLike = async (onAuthRequired?: () => void) => {
+    if (!isAuthenticated) {
+      onAuthRequired?.();
+      return;
+    }
+
     if (!supabase || !isSupabaseConfigured()) {
       // Mock like toggle for demo
       setIsLiked(!isLiked);
