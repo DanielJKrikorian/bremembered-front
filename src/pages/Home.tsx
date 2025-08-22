@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { CustomPackageModal } from '../components/common/CustomPackageModal';
+import { BookingModal } from '../components/common/BookingModal';
 import { useLatestReviews, useServicePackages } from '../hooks/useSupabase';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [showCustomPackageModal, setShowCustomPackageModal] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
   const { packages, loading: packagesLoading } = useServicePackages();
 
@@ -173,7 +174,7 @@ export const Home: React.FC = () => {
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => setShowCustomPackageModal(true)}
+                  onClick={() => setShowBookingModal(true)}
                   className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
                 >
                   Start Your Booking Journey ✨
@@ -593,9 +594,9 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Custom Package Modal */}
-      <CustomPackageModal
-        isOpen={showCustomPackageModal}
-        onClose={() => setShowCustomPackageModal(false)}
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
       />
     </div>
   );
