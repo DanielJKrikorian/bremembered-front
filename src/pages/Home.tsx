@@ -224,6 +224,7 @@ export const Home: React.FC = () => {
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-8">
             {[
               { 
                 icon: Camera, 
@@ -252,6 +253,34 @@ export const Home: React.FC = () => {
                 description: 'Stress-free planning from start to finish', 
                 color: 'bg-purple-100 text-purple-600',
                 features: ['Timeline planning', 'Vendor management', 'Day-of coordination']
+              },
+              { 
+                icon: Calendar, 
+                title: 'Planning', 
+                description: 'Full-service wedding planning from engagement to "I do"', 
+                color: 'bg-blue-100 text-blue-600',
+                features: ['Venue selection', 'Vendor sourcing', 'Budget management']
+              },
+              { 
+                icon: Music, 
+                title: 'Live Musician', 
+                description: 'Beautiful live music for ceremonies and receptions', 
+                color: 'bg-indigo-100 text-indigo-600',
+                features: ['Ceremony music', 'Cocktail hour', 'Special performances']
+              },
+              { 
+                icon: Calendar, 
+                title: 'Planning', 
+                description: 'Full-service wedding planning from engagement to "I do"', 
+                color: 'bg-blue-100 text-blue-600',
+                features: ['Venue selection', 'Vendor sourcing', 'Budget management']
+              },
+              { 
+                icon: Music, 
+                title: 'Live Musician', 
+                description: 'Beautiful live music for ceremonies and receptions', 
+                color: 'bg-indigo-100 text-indigo-600',
+                features: ['Ceremony music', 'Cocktail hour', 'Special performances']
               }
             ].map((service, index) => (
               <Card key={index} hover className="text-center p-6 group">
