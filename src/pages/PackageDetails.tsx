@@ -11,7 +11,7 @@ export const PackageDetails: React.FC = () => {
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, state: cartState } = useCart();
   
   // Scroll to top when component mounts or id changes
   React.useEffect(() => {
@@ -495,9 +495,9 @@ export const PackageDetails: React.FC = () => {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => navigate('/cart')}
+                  onClick={openCart}
                 >
-                  View Cart
+                  View Cart ({cartState.items.length})
                 </Button>
               </div>
             </Card>
