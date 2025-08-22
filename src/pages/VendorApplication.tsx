@@ -10,7 +10,7 @@ import { ProfilePhotoUpload } from '../components/vendor/ProfilePhotoUpload';
 import { LicenseUpload } from '../components/vendor/LicenseUpload';
 import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
 import { TermsModal } from '../components/vendor/TermsModal';
-import { useServiceAreas } from '../hooks/useSupabase';
+import { useServiceAreas, supabase, isSupabaseConfigured } from '../hooks/useSupabase';
 
 // Interfaces
 interface GearItem {
@@ -926,15 +926,6 @@ export const VendorApplication = () => {
         setSuccess(true);
         return;
       }
-
-      if (!supabase || !isSupabaseConfigured()) {
-        // For demo purposes, just show success
-        console.log('Mock application submitted (Supabase not configured)');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setSuccess(true);
-        return;
-      }
-
       const applicationData = {
         name: formData.name,
         phone: formData.phone,
@@ -952,21 +943,17 @@ export const VendorApplication = () => {
         status: 'pending',
         created_at: new Date().toISOString(),
       };
-
       console.log('Submitting application data:', applicationData);
-
       // Insert into vendor_applications table
       const { data, error } = await supabase
         .from('vendor_applications')
         .insert([applicationData])
         .select()
         .single();
-
       if (error) {
         console.error('Database error:', error);
         throw new Error(error.message || 'Failed to submit application to database');
       }
-
       console.log('Application successfully saved to database:', data);
       setSuccess(true);
     } catch (err) {
