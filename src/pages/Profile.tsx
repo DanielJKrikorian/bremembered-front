@@ -53,7 +53,6 @@ export const Profile: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings'>('overview');
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings' | 'wedding-board'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -94,7 +93,6 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'preferences', 'settings'].includes(tab)) {
     if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'preferences', 'settings', 'wedding-board'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
