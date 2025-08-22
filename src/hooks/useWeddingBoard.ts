@@ -238,16 +238,29 @@ export const WeddingBoard: React.FC = () => {
                           <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
                           <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
 
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+                          <div className="flex items-center justify-between">
+                            <Button
+                              variant="outline"
+                              onClick={() => handleAddToCart(pkg)}
+                              icon={ShoppingCart}
+                            >
+                              Add to Cart
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleRemoveFavorite(favorite.id)}
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
