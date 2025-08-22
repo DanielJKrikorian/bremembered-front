@@ -395,10 +395,6 @@ export const Home: React.FC = () => {
                           <span className="text-2xl font-bold text-rose-600">
                             {formatPrice(discountedPrice)}
                           </span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-green-600 font-medium">
-                            Save {formatPrice(savings)}
                           </div>
                           {pkg.hour_amount && (
                             <div className="text-xs text-gray-500">

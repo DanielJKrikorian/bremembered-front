@@ -274,11 +274,6 @@ export const PackageDetails: React.FC = () => {
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-3">{packageData.name}</h1>
                   <div className="flex items-center space-x-6 text-gray-600">
-                    <div className="flex items-center">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 mr-1" />
-                      <span className="font-medium text-lg">4.9</span>
-                      <span className="ml-1">(127 reviews)</span>
-                    </div>
                     {packageData.hour_amount && (
                       <div className="flex items-center">
                         <Clock className="w-5 h-5 mr-1" />

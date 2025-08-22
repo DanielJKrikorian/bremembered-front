@@ -870,10 +870,6 @@ export const SearchResults: React.FC = () => {
                             <p className="text-gray-600 text-sm mb-3 line-clamp-2">{pkg.description}</p>
 
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                              <div className="flex items-center">
-                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                <span>4.9 (127 reviews)</span>
-                              </div>
                               {pkg.hour_amount && (
                                 <div className="flex items-center">
                                   <Clock className="w-4 h-4 mr-1" />

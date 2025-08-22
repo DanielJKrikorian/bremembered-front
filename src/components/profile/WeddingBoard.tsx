@@ -228,10 +228,6 @@ export const WeddingBoard: React.FC = () => {
 
                   {/* Package Details */}
                   <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                      <span>4.9</span>
-                    </div>
                     {pkg.hour_amount && (
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
