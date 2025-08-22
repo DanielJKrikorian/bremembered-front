@@ -522,12 +522,11 @@ export const Home: React.FC = () => {
                         <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                       ))}
                     </div>
-                   <div className="mb-3">
-                     <h4 className="font-semibold text-gray-900">
-                       {review.vendor?.name || 'B. Remembered'} <span className="text-gray-500 font-normal">(Vendor)</span>
-                     </h4>
-                   </div>
-                    </>
+                    <div className="mb-3">
+                      <h4 className="font-semibold text-gray-900">
+                        {review.vendor?.name || 'B. Remembered'} <span className="text-gray-500 font-normal">(Vendor)</span>
+                      </h4>
+                    </div>
                     <p className="text-gray-600 mb-4 italic">"{review.feedback}"</p>
                     <div className="flex items-center">
                       <img
