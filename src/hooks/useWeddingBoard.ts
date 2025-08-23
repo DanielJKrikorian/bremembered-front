@@ -1,307 +1,235 @@
-import React, { useState } from 'react';
-import { Heart, Star, Clock, Camera, Video, Music, Users, Calendar, Package, Edit2, Trash2, Save, X, Plus, MessageCircle, ShoppingCart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { Input } from '../ui/Input';
-import { useWeddingBoard } from '../../hooks/useWeddingBoard';
-import { useCart } from '../../context/CartContext';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
-export const WeddingBoard: React.FC = () => {
-  const navigate = useNavigate();
-  const { favorites, loading, error, removeFromFavorites, updateFavoriteNotes } = useWeddingBoard();
-  const { addItem, openCart } = useCart();
-  const [editingNotes, setEditingNotes] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
+interface WeddingBoardFavorite {
+  id: string;
+  couple_id: string;
+  item_type: 'package' | 'blog_post';
+  package_id?: string;
+  blog_post_id?: string;
+  notes?: string;
+  created_at: string;
+  service_packages?: {
+    id: string;
+    service_type: string;
+    name: string;
+    description: string;
+    price: number;
+    features: string[];
+    coverage: Record<string, any>;
+    status: string;
+    hour_amount?: number;
+    event_type?: string;
+    primary_image?: string;
+    created_at: string;
+    updated_at: string;
+  };
+  blog_posts?: {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string;
+    featured_image?: string;
+    category: string;
+    tags: string[];
+    read_time: number;
+    view_count: number;
+    like_count: number;
+    published_at: string;
+  };
+}
 
-  const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': return Camera;
-      case 'Videography': return Video;
-      case 'DJ Services': return Music;
-      case 'Live Musician': return Music;
-      case 'Coordination': return Users;
-      case 'Planning': return Calendar;
-      default: return Package;
+export const useWeddingBoard = () => {
+  const { user } = useAuth();
+  const [favorites, setFavorites] = useState<WeddingBoardFavorite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchFavorites = async () => {
+    if (!user) {
+      setFavorites([]);
+      setLoading(false);
+      return;
     }
-  };
 
-  const getServicePhoto = (serviceType: string, packageId: string) => {
-    const hash = packageId.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    
-    const photoIndex = Math.abs(hash) % getServicePhotos(serviceType).length;
-    return getServicePhotos(serviceType)[photoIndex];
-  };
+    try {
+      setLoading(true);
+      setError(null);
 
-  const getServicePhotos = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': 
-        return [
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'Videography': 
-        return [
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'DJ Services': 
-        return [
-          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      default: 
-        return [
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-    }
-  };
+      // First get the couple_id
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
-  };
-
-  const getPackageCoverage = (coverage: Record<string, any>) => {
-    if (!coverage || typeof coverage !== 'object') return [];
-    
-    const events = [];
-    if (coverage.events && Array.isArray(coverage.events)) {
-      events.push(...coverage.events);
-    }
-    
-    Object.keys(coverage).forEach(key => {
-      if (key !== 'events' && coverage[key] === true) {
-        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
+      if (coupleError) {
+        throw coupleError;
       }
-    });
-    
-    return events;
+
+      if (!coupleData) {
+        setFavorites([]);
+        setLoading(false);
+        return;
+      }
+
+      // Then get the favorites
+      const { data, error: favoritesError } = await supabase
+        .from('wedding_board_favorites')
+        .select(`
+          *,
+          service_packages(
+            id,
+            service_type,
+            name,
+            description,
+            price,
+            features,
+            coverage,
+            status,
+            hour_amount,
+            event_type,
+            primary_image,
+            created_at,
+            updated_at
+          ),
+          blog_posts(
+            id,
+            title,
+            slug,
+            excerpt,
+            featured_image,
+            category,
+            tags,
+            read_time,
+            view_count,
+            like_count,
+            published_at
+          )
+        `)
+        .eq('couple_id', coupleData.id)
+        .order('created_at', { ascending: false });
+
+      if (favoritesError) {
+        throw favoritesError;
+      }
+
+      setFavorites(data || []);
+    } catch (err) {
+      console.error('Error fetching favorites:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load favorites');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const startEditingNotes = (favorite: any) => {
-    setEditingNotes(favorite.id);
-    setEditText(favorite.notes || '');
-  };
+  const addToFavorites = async (itemType: 'package' | 'blog_post', itemId: string, notes?: string) => {
+    if (!user) {
+      throw new Error('Authentication required');
+    }
 
-  const saveNotes = async (favoriteId: string) => {
     try {
-      await updateFavoriteNotes(favoriteId, editText);
-      setEditingNotes(null);
-      setEditText('');
-    } catch (error) {
-      console.error('Error updating notes:', error);
+      // Get couple_id
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (coupleError || !coupleData) {
+        throw new Error('Couple profile not found');
+      }
+
+      const favoriteData: any = {
+        couple_id: coupleData.id,
+        item_type: itemType,
+        notes: notes || null
+      };
+
+      if (itemType === 'package') {
+        favoriteData.package_id = itemId;
+        favoriteData.blog_post_id = null;
+      } else {
+        favoriteData.blog_post_id = itemId;
+        favoriteData.package_id = null;
+      }
+
+      const { error } = await supabase
+        .from('wedding_board_favorites')
+        .insert(favoriteData);
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh favorites
+      await fetchFavorites();
+    } catch (err) {
+      console.error('Error adding to favorites:', err);
+      throw err;
     }
   };
 
-  const cancelEditNotes = () => {
-    setEditingNotes(null);
-    setEditText('');
-  };
-
-  const handleRemoveFavorite = async (favoriteId: string) => {
+  const removeFromFavorites = async (favoriteId: string) => {
     try {
-      await removeFromFavorites(favoriteId);
-    } catch (error) {
-      console.error('Error removing favorite:', error);
+      const { error } = await supabase
+        .from('wedding_board_favorites')
+        .delete()
+        .eq('id', favoriteId);
+
+      if (error) {
+        throw error;
+      }
+
+      // Remove from local state
+      setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
+    } catch (err) {
+      console.error('Error removing from favorites:', err);
+      throw err;
     }
   };
 
-  const handleAddToCart = (pkg: ServicePackage) => {
-    addItem({ package: pkg });
-    openCart();
-  };
+  const updateFavoriteNotes = async (favoriteId: string, notes: string) => {
+    try {
+      const { error } = await supabase
+        .from('wedding_board_favorites')
+        .update({ notes })
+        .eq('id', favoriteId);
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'k';
+      if (error) {
+        throw error;
+      }
+
+      // Update local state
+      setFavorites(prev => prev.map(fav => 
+        fav.id === favoriteId ? { ...fav, notes } : fav
+      ));
+    } catch (err) {
+      console.error('Error updating notes:', err);
+      throw err;
     }
-    return num.toString();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your wedding board...</p>
-        </div>
-      </div>
+  const isFavorited = (itemType: 'package' | 'blog_post', itemId: string) => {
+    return favorites.some(fav => 
+      fav.item_type === itemType && 
+      (itemType === 'package' ? fav.package_id === itemId : fav.blog_post_id === itemId)
     );
-  }
+  };
 
-  if (error) {
-    return (
-      <Card className="p-8 text-center">
-        <p className="text-red-600 mb-4">Error loading wedding board: {error}</p>
-        <Button variant="primary" onClick={() => window.location.reload()}>
-          Try Again
-        </Button>
-      </Card>
-    );
-  }
+  useEffect(() => {
+    fetchFavorites();
+  }, [user]);
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Board</h3>
-            <p className="text-gray-600">
-              Your saved wedding packages and inspiration
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="text-right">
-              <div className="text-2xl font-bold text-rose-500">{favorites.length}</div>
-              <div className="text-sm text-gray-600">Saved Items</div>
-            </div>
-            <Button
-              variant="primary"
-              onClick={() => navigate('/search')}
-              icon={Plus}
-            >
-              Browse More
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Favorites Grid */}
-      {favorites.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h3>
-          <p className="text-gray-600 mb-6">
-            Start browsing wedding services and save your favorites by clicking the heart icon
-          </p>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/search')}
-            icon={Heart}
-          >
-            Browse Wedding Services
-          </Button>
-        </Card>
-      ) : (
-        <div className="space-y-8">
-          {/* Service Package Favorites */}
-          {favorites.filter(fav => fav.item_type === 'package' && fav.service_packages).length > 0 && (
-            <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Saved Wedding Services</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {favorites
-                  .filter(fav => fav.item_type === 'package' && fav.service_packages)
-                  .map((favorite) => {
-                    const pkg = favorite.service_packages!;
-                    const ServiceIcon = getServiceIcon(pkg.service_type);
-                    const packageCoverage = getPackageCoverage(pkg.coverage || {});
-                    
-                    return (
-                      <Card key={favorite.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                        <div className="aspect-video overflow-hidden relative">
-                          <img
-                            src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg.id)}
-                            alt={pkg.name}
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute top-3 right-3">
-                            <button
-                              onClick={() => handleRemoveFavorite(favorite.id)}
-                              className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg"
-                            >
-                              <Heart className="w-4 h-4 text-white fill-current" />
-                            </button>
-                          </div>
-                          <div className="absolute bottom-3 left-3">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/90 text-gray-900">
-                              <ServiceIcon className="w-3 h-3 mr-1" />
-                              {pkg.service_type}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
-                          <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
-
-                          <div className="flex items-center justify-between">
-                            <Button
-                              variant="outline"
-                              onClick={() => handleAddToCart(pkg)}
-                              icon={ShoppingCart}
-                            >
-                              Add to Cart
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleRemoveFavorite(favorite.id)}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <Card className="p-6 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Heart className="w-6 h-6 text-rose-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Building Your Dream Wedding?
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Browse more services to complete your perfect day
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button
-              variant="primary"
-              onClick={() => navigate('/search')}
-            >
-              Browse All Services
-            </Button>
-            {favorites.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Add all favorites to cart
-                  favorites.forEach(fav => {
-                    if (fav.service_packages) {
-                      addItem({ package: fav.service_packages });
-                    }
-                  });
-                  openCart();
-                }}
-              >
-                Add All to Cart
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+  return {
+    favorites,
+    loading,
+    error,
+    addToFavorites,
+    removeFromFavorites,
+    updateFavoriteNotes,
+    isFavorited,
+    refetch: fetchFavorites
+  };
 };
