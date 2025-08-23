@@ -486,48 +486,49 @@ export const WeddingBoard: React.FC = () => {
                     );
                   })}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <Card className="p-6 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Heart className="w-6 h-6 text-rose-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Building Your Dream Wedding?
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Browse more services to complete your perfect day
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              variant="primary"
+              onClick={() => navigate('/search')}
+            >
+              Browse All Services
+            </Button>
+            {favorites.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Add all favorites to cart
+                  favorites.forEach(fav => {
+                    if (fav.service_packages) {
+                      addItem({ package: fav.service_packages });
+                    }
+                  });
+                  openCart();
+                }}
+              >
+                Add All to Cart
+              </Button>
             )}
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <Card className="p-6 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-6 h-6 text-rose-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Building Your Dream Wedding?
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Browse more services to complete your perfect day
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                variant="primary"
-                onClick={() => navigate('/search')}
-              >
-                Browse All Services
-              </Button>
-              {favorites.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    // Add all favorites to cart
-                    favorites.forEach(fav => {
-                      if (fav.service_packages) {
-                        addItem({ package: fav.service_packages });
-                      }
-                    });
-                    openCart();
-                  }}
-                >
-                  Add All to Cart
-                </Button>
-              )}
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  };
+        </div>
+      </Card>
+    </div>
+  );
+};
