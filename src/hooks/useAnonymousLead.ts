@@ -55,14 +55,14 @@ export const useAnonymousLead = () => {
         .from('anonymous_leads')
         .select('*')
         .eq('session_id', sessionId)
-        .maybeSingle();
+        .limit(1);
 
       if (fetchError && fetchError.code !== 'PGRST116') {
         throw fetchError;
       }
 
-      if (existingLead) {
-        setLead(existingLead);
+      if (existingLead && existingLead.length > 0) {
+        setLead(existingLead[0]);
       } else {
         // Create new lead
         const newLead = {
