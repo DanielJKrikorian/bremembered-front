@@ -560,164 +560,166 @@ export const Profile: React.FC = () => {
               {couple?.wedding_date && (
                 <p className="text-rose-600 font-medium mt-1">
                   Wedding: {formatDate(couple.wedding_date)}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => handleTabChange(tab.key)}
-                  className={`
-                    py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 transition-colors
-                    ${activeTab === tab.key
-                      ? 'border-rose-500 text-rose-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <OverviewDashboard onTabChange={handleTabChange} />
-          )}
-
-          {activeTab === 'profile' && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Profile Information</h3>
-                <Button
-                  variant={isEditing ? "outline" : "primary"}
-                  onClick={isEditing ? handleEditToggle : handleEditToggle}
-                >
-                  {isEditing ? 'Cancel' : 'Edit Profile'}
-                </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Left Sidebar - Navigation */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 sticky top-4">
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">My Profile</h1>
+                <p className="text-sm text-gray-600">Manage your wedding planning</p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+              
+              <nav className="space-y-2">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setActiveTab(tab.key as any)}
+                      className={`
+                        w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-all
+                        ${activeTab === tab.key
+                          ? 'bg-rose-500 text-white shadow-lg'
+                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                        }
+                      `}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-medium">{tab.label}</span>
+            {isEditing ? (
+              <form onSubmit={handleSaveProfile} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
-                    label="Couple Name"
-                    value={isEditing ? editForm.name : couple?.name || ''}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Sarah & Michael"
-                    disabled={!isEditing}
+                    label="Your Name"
+                    value={editForm.partner1_name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, partner1_name: e.target.value }))}
+                    icon={User}
+                    required
                   />
                   <Input
-                    label="Partner 1 Name"
-                    value={isEditing ? editForm.partner1_name : couple?.partner1_name || ''}
-                    onChange={(e) => handleInputChange('partner1_name', e.target.value)}
-                    placeholder="Sarah Johnson"
-                    disabled={!isEditing}
-                  />
-                  <Input
-                    label="Partner 2 Name"
-                    value={isEditing ? editForm.partner2_name : couple?.partner2_name || ''}
-                    onChange={(e) => handleInputChange('partner2_name', e.target.value)}
-                    placeholder="Michael Davis"
-                    disabled={!isEditing}
+                    label="Partner's Name"
+                    value={editForm.partner2_name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, partner2_name: e.target.value }))}
+                    icon={Heart}
                   />
                   <Input
                     label="Email"
                     type="email"
-                    value={isEditing ? editForm.email : couple?.email || ''}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="sarah@example.com"
-                    disabled={!isEditing}
+                    value={editForm.email}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                    icon={Mail}
+                    required
                   />
                   <Input
                     label="Phone"
-                    value={isEditing ? editForm.phone : couple?.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="(555) 123-4567"
-                    disabled={!isEditing}
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                    icon={Phone}
                   />
-                </div>
-
-                <div className="space-y-4">
                   <Input
                     label="Wedding Date"
                     type="date"
-                    value={isEditing ? editForm.wedding_date : couple?.wedding_date || ''}
-                    onChange={(e) => handleInputChange('wedding_date', e.target.value)}
-                    disabled={!isEditing}
+                    value={editForm.wedding_date}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, wedding_date: e.target.value }))}
                     icon={Calendar}
-                  />
-                  <Input
-                    label="Venue Name"
-                    value={isEditing ? editForm.venue_name : couple?.venue_name || ''}
-                    onChange={(e) => handleInputChange('venue_name', e.target.value)}
-                    placeholder="Sunset Gardens"
-                    disabled={!isEditing}
                   />
                   <Input
                     label="Guest Count"
                     type="number"
-                    value={isEditing ? editForm.guest_count : couple?.guest_count?.toString() || ''}
-                    onChange={(e) => handleInputChange('guest_count', e.target.value)}
-                    placeholder="120"
-                    disabled={!isEditing}
+                    value={editForm.guest_count?.toString() || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, guest_count: parseInt(e.target.value) || 0 }))}
+                    icon={Users}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
                     <Input
-                      label="Ceremony Time"
-                      type="time"
-                      value={isEditing ? editForm.ceremony_time : couple?.ceremony_time || ''}
-                      onChange={(e) => handleInputChange('ceremony_time', e.target.value)}
-                      disabled={!isEditing}
+                      label="Venue Name"
+                      value={editForm.venue_name}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, venue_name: e.target.value }))}
+                      icon={MapPin}
                     />
-                    <Input
-                      label="Reception Time"
-                      type="time"
-                      value={isEditing ? editForm.reception_time : couple?.reception_time || ''}
-                      onChange={(e) => handleInputChange('reception_time', e.target.value)}
-                      disabled={!isEditing}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Any special notes about your wedding..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Wedding Notes
-                </label>
-                <textarea
-                  value={isEditing ? editForm.notes : couple?.notes || ''}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Share any special details about your wedding..."
-                  rows={4}
-                  disabled={!isEditing}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-50 disabled:text-gray-500"
-                />
-              </div>
-
-              {isEditing && (
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button variant="outline" onClick={handleEditToggle}>
+                <div className="flex justify-end space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button variant="primary" onClick={handleSave}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={updating}
+                  >
                     Save Changes
                   </Button>
                 </div>
-              )}
-            </Card>
-          )}
+              </form>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+                    <p className="text-gray-900">{couple?.partner1_name || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Partner's Name</label>
+                    <p className="text-gray-900">{couple?.partner2_name || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <p className="text-gray-900">{couple?.email || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <p className="text-gray-900">{couple?.phone || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Wedding Date</label>
+                    <p className="text-gray-900">
+                      {couple?.wedding_date 
+                        ? new Date(couple.wedding_date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'Not set'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Guest Count</label>
+                    <p className="text-gray-900">{couple?.guest_count || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                    <p className="text-gray-900">{couple?.venue_name || 'Not set'}</p>
+                  </div>
+                  {couple?.notes && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                      <p className="text-gray-900">{couple.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
 
           {activeTab === 'timeline' && (
             <WeddingTimeline />
@@ -1352,15 +1354,16 @@ export const Profile: React.FC = () => {
                   <Button variant="outline" className="w-full justify-start">
                     <Download className="w-4 h-4 mr-2" />
                     Download My Data
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50">
-                    <Shield className="w-4 h-4 mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          )}
+            {activeTab === 'timeline' && <WeddingTimeline />}
+            {activeTab === 'gallery' && <WeddingGallery />}
+            {activeTab === 'messages' && <MessagingSection />}
+            {activeTab === 'payments' && <PaymentsSection />}
+            {activeTab === 'preferences' && <PreferencesSection />}
+            {activeTab === 'settings' && <SettingsSection />}
+            {activeTab === 'wedding-board' && <WeddingBoard />}
+            {activeTab === 'reviews' && <ReviewsSection />}
+            {activeTab === 'contracts' && <ContractsSection />}
+          </div>
         </div>
       </div>
 
