@@ -514,6 +514,17 @@ export const MyBookings: React.FC = () => {
                             Leave Review
                           </Button>
                         )}
+                        {activeTab === 'past' && booking.status !== 'cancelled' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                            onClick={() => handleLeaveReview(booking)}
+                            icon={Star}
+                          >
+                            Leave Review
+                          </Button>
+                        )}
                         {(booking.status === 'confirmed' || booking.status === 'pending') && (
                           <Button 
                             variant="outline" 
