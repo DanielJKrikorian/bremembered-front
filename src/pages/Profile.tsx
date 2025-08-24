@@ -560,6 +560,12 @@ export const Profile: React.FC = () => {
               {couple?.wedding_date && (
                 <p className="text-rose-600 font-medium mt-1">
                   Wedding: {formatDate(couple.wedding_date)}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Sidebar - Navigation */}
           <div className="lg:col-span-1">
@@ -586,6 +592,31 @@ export const Profile: React.FC = () => {
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
                       <span className="font-medium">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            {activeTab === 'overview' && (
+              <OverviewDashboard />
+            )}
+
+            {activeTab === 'profile' && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Profile Information</h3>
+                  <Button
+                    variant={isEditing ? "outline" : "primary"}
+                    onClick={handleEditToggle}
+                  >
+                    {isEditing ? 'Cancel' : 'Edit Profile'}
+                  </Button>
+                </div>
+
             {isEditing ? (
               <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1354,15 +1385,15 @@ export const Profile: React.FC = () => {
                   <Button variant="outline" className="w-full justify-start">
                     <Download className="w-4 h-4 mr-2" />
                     Download My Data
-            {activeTab === 'timeline' && <WeddingTimeline />}
-            {activeTab === 'gallery' && <WeddingGallery />}
-            {activeTab === 'messages' && <MessagingSection />}
-            {activeTab === 'payments' && <PaymentsSection />}
-            {activeTab === 'preferences' && <PreferencesSection />}
-            {activeTab === 'settings' && <SettingsSection />}
-            {activeTab === 'wedding-board' && <WeddingBoard />}
-            {activeTab === 'reviews' && <ReviewsSection />}
-            {activeTab === 'contracts' && <ContractsSection />}
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
           </div>
         </div>
       </div>
