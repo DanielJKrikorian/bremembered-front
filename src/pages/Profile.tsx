@@ -1008,6 +1008,154 @@ export const Profile: React.FC = () => {
             <ReviewsSection />
           )}
 
+          {activeTab === 'contracts' && (
+            <div className="space-y-6">
+              {/* Contracts Header */}
+              <Card className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Contracts</h3>
+                    <p className="text-gray-600">
+                      View and download your signed service contracts
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-rose-500">{contracts.length}</div>
+                    <div className="text-sm text-gray-600">Total Contracts</div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Contracts List */}
+              {contractsLoading ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="text-center">
+                    <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading your contracts...</p>
+                  </div>
+                </div>
+              ) : contracts.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No contracts yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    Contracts will appear here once you complete bookings with vendors
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate('/search')}
+                  >
+                    Browse Services
+                  </Button>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {contracts.map((contract) => (
+                    <Card key={contract.id} className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              {contract.bookings?.service_packages?.name || contract.bookings?.service_type}
+                            </h4>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                              contract.signature 
+                                ? 'bg-green-100 text-green-800 border-green-200' 
+                                : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            }`}>
+                              {contract.signature ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Signed
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                  Pending Signature
+                                </>
+                              )}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 mb-3">
+                            Contract with {contract.bookings?.vendors?.name}
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-600">Service Type:</span>
+                              <div className="font-medium">{contract.bookings?.service_type}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Created:</span>
+                              <div className="font-medium">{new Date(contract.created_at).toLocaleDateString()}</div>
+                            </div>
+                            {contract.signed_at && (
+                              <>
+                                <div>
+                                  <span className="text-gray-600">Signed By:</span>
+                                  <div className="font-medium">{contract.signature}</div>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Signed On:</span>
+                                  <div className="font-medium">{new Date(contract.signed_at).toLocaleDateString()}</div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contract Preview */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                        <h5 className="font-medium text-gray-900 mb-2">Contract Preview</h5>
+                        <div className="text-sm text-gray-700 max-h-32 overflow-y-auto">
+                          {contract.content.split('\n').slice(0, 6).map((line: string, index: number) => (
+                            <p key={index} className="mb-1">{line}</p>
+                          ))}
+                          {contract.content.split('\n').length > 6 && (
+                            <p className="text-gray-500 italic">... (view full contract)</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={Eye}
+                          onClick={() => navigate(`/booking/${contract.booking_id}?tab=contract`)}
+                        >
+                          View Full Contract
+                        </Button>
+                        {contract.signature && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={Download}
+                            onClick={() => handleDownloadContract(contract)}
+                          >
+                            Download PDF
+                          </Button>
+                        )}
+                        {!contract.signature && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/booking/${contract.booking_id}?tab=contract`)}
+                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                          >
+                            Sign Contract
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'preferences' && (
             <Card className="p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Wedding Preferences</h3>
