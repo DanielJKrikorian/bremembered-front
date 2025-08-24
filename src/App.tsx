@@ -23,6 +23,7 @@ import { VendorRecommendation } from './pages/booking/VendorRecommendation';
 import { PackageDetails } from './pages/PackageDetails';
 import { VendorOnboarding } from './pages/VendorOnboarding';
 import { VendorApplication } from './pages/VendorApplication';
+import { BookingDetails } from './pages/BookingDetails';
 import { ChatBot } from './components/chat/ChatBot';
 import { CartSidebar } from './components/cart/CartSidebar';
 import { Blog } from './pages/Blog';
@@ -46,6 +47,7 @@ function App() {
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/my-bookings" element={<MyBookings />} />
+                  <Route path="/booking/:id" element={<BookingDetails />} />
                   <Route path="/inspiration" element={<Inspiration />} />
                   <Route path="/how-it-works" element={<HowItWorks />} />
                   <Route path="/support" element={<Support />} />

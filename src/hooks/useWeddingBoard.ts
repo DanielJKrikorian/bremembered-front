@@ -129,6 +129,16 @@ export const useWeddingBoard = () => {
       throw new Error('Authentication required');
     }
 
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock success for demo
+      return;
+    }
+
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock success for demo
+      return;
+    }
+
     try {
       // Get couple_id
       const { data: coupleData, error: coupleError } = await supabase
