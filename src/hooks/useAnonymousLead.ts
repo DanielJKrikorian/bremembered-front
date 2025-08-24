@@ -55,7 +55,7 @@ export const useAnonymousLead = () => {
         .from('anonymous_leads')
         .select('*')
         .eq('session_id', sessionId)
-        .single();
+        .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
         throw fetchError;
@@ -114,10 +114,12 @@ export const useAnonymousLead = () => {
         .update(updatedData)
         .eq('session_id', lead.session_id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setLead(data);
+      if (data) {
+        setLead(data);
+      }
     } catch (err) {
       console.error('Failed to update lead in database:', err);
       setError('Failed to save progress. Your selections are saved locally.');
@@ -147,10 +149,12 @@ export const useAnonymousLead = () => {
         })
         .eq('session_id', lead.session_id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setLead(data);
+      if (data) {
+        setLead(data);
+      }
     } catch (err) {
       // Local state is already updated above, so we can continue
     }
