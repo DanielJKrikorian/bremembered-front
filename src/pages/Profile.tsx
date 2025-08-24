@@ -6,6 +6,7 @@ import { useWeddingGallery } from '../hooks/useWeddingGallery';
 import { useCouplePreferences, useStyleTags, useVibeTags, useLanguages } from '../hooks/useCouple';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { useConversations } from '../hooks/useMessaging';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
