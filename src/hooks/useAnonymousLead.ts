@@ -57,8 +57,13 @@ export const useAnonymousLead = () => {
         .eq('session_id', sessionId)
         .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          // No rows found - treat as null
+          existingLead = null;
+        } else {
+          throw fetchError;
+        }
       }
 
       if (existingLead) {
