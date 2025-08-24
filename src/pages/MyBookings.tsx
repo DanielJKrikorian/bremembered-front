@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBookings } from '../hooks/useBookings';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useCreateConversation } from '../hooks/useMessaging';
+import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
 
 export const MyBookings: React.FC = () => {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export const MyBookings: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
 
   // Redirect to auth if not authenticated
   if (!isAuthenticated) {
@@ -175,6 +178,11 @@ export const MyBookings: React.FC = () => {
       // Fallback: just go to messages tab
       navigate('/profile?tab=messages');
     }
+  };
+
+  const handleLeaveReview = (booking: any) => {
+    setSelectedBookingForReview(booking);
+    setShowReviewModal(true);
   };
 
   return (
@@ -497,7 +505,12 @@ export const MyBookings: React.FC = () => {
                           </Button>
                         )}
                         {booking.status === 'completed' && (
-                          <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                            onClick={() => handleLeaveReview(booking)}
+                          >
                             Leave Review
                           </Button>
                         )}
@@ -570,6 +583,32 @@ export const MyBookings: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Review Modal */}
+      {selectedBookingForReview && (
+        <VendorReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedBookingForReview(null);
+          }}
+          vendor={{
+            id: selectedBookingForReview.vendors?.id || '',
+            name: selectedBookingForReview.vendors?.name || '',
+            profile_photo: selectedBookingForReview.vendors?.profile_photo,
+            service_type: selectedBookingForReview.service_type
+          }}
+          booking={{
+            id: selectedBookingForReview.id,
+            service_packages: selectedBookingForReview.service_packages
+          }}
+          onReviewSubmitted={() => {
+            setShowReviewModal(false);
+            setSelectedBookingForReview(null);
+            // Could refresh bookings here if needed
+          }}
+        />
+      )}
     </div>
   );
 };

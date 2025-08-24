@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
+import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
 
 interface BookingDetails {
   id: string;
@@ -122,6 +123,7 @@ export const BookingDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'contract' | 'payments'>('overview');
   const [isSigningContract, setIsSigningContract] = useState(false);
   const [signature, setSignature] = useState('');
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     if (id && isAuthenticated) {
@@ -919,6 +921,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   >
                     View Gallery
                   </Button>
+                  {booking.status === 'completed' && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => setShowReviewModal(true)}
+                      icon={Star}
+                    >
+                      Leave Review
+                    </Button>
+                  )}
                 </div>
               </Card>
 
@@ -1217,6 +1229,28 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               <p className="text-red-700">{error}</p>
             </div>
           </Card>
+        )}
+
+        {/* Review Modal */}
+        {booking.vendors && (
+          <VendorReviewModal
+            isOpen={showReviewModal}
+            onClose={() => setShowReviewModal(false)}
+            vendor={{
+              id: booking.vendors.id,
+              name: booking.vendors.name,
+              profile_photo: booking.vendors.profile_photo,
+              service_type: booking.service_type
+            }}
+            booking={{
+              id: booking.id,
+              service_packages: booking.service_packages
+            }}
+            onReviewSubmitted={() => {
+              setShowReviewModal(false);
+              // Could refresh booking data here if needed
+            }}
+          />
         )}
       </div>
     </div>
