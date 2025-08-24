@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music, MessageCircle, CreditCard, Star } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, Bell, Shield, Download, Share2, Music, MessageCircle, CreditCard, Star, FileText, Eye, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
@@ -55,6 +55,8 @@ export const Profile: React.FC = () => {
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings' | 'wedding-board' | 'reviews'>('overview');
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -94,7 +96,7 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'preferences', 'settings', 'wedding-board', 'reviews'].includes(tab)) {
+   if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'contracts', 'preferences', 'settings', 'wedding-board', 'reviews'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
       // Default to overview
@@ -129,6 +131,97 @@ export const Profile: React.FC = () => {
       }
     }
   }, [conversationsLoading, conversations, location.state?.selectedConversationId, selectedConversation]);
+
+  // Fetch contracts
+  React.useEffect(() => {
+    const fetchContracts = async () => {
+      if (!couple?.id) {
+        setContractsLoading(false);
+        return;
+      }
+
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock contracts for demo
+        const mockContracts = [
+          {
+            id: 'mock-contract-1',
+            booking_id: 'mock-booking-1',
+            content: 'WEDDING PHOTOGRAPHY SERVICE AGREEMENT\n\nThis agreement is between Sarah & Michael (Client) and Elegant Moments Photography (Photographer)...',
+            signature: 'Sarah Johnson',
+            signed_at: '2024-01-20T10:00:00Z',
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-20T10:00:00Z',
+            status: 'signed',
+            bookings: {
+              id: 'mock-booking-1',
+              service_type: 'Photography',
+              vendors: {
+                name: 'Elegant Moments Photography'
+              },
+              service_packages: {
+                name: 'Premium Wedding Photography'
+              }
+            }
+          },
+          {
+            id: 'mock-contract-2',
+            booking_id: 'mock-booking-2',
+            content: 'DAY-OF COORDINATION SERVICE AGREEMENT\n\nThis agreement is between Sarah & Michael (Client) and Perfect Harmony Events (Coordinator)...',
+            signature: null,
+            signed_at: null,
+            created_at: '2024-01-18T14:00:00Z',
+            updated_at: '2024-01-18T14:00:00Z',
+            status: 'pending',
+            bookings: {
+              id: 'mock-booking-2',
+              service_type: 'Coordination',
+              vendors: {
+                name: 'Perfect Harmony Events'
+              },
+              service_packages: {
+                name: 'Day-of Coordination'
+              }
+            }
+          }
+        ];
+        setContracts(mockContracts);
+        setContractsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('contracts')
+          .select(`
+            *,
+            bookings!inner(
+              id,
+              service_type,
+              vendors!inner(
+                name
+              ),
+              service_packages(
+                name
+              )
+            )
+          `)
+          .eq('bookings.couple_id', couple.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setContracts(data || []);
+      } catch (err) {
+        console.error('Error fetching contracts:', err);
+        setContracts([]);
+      } finally {
+        setContractsLoading(false);
+      }
+    };
+
+    if (couple?.id) {
+      fetchContracts();
+    }
+  }, [couple]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as any);
@@ -266,6 +359,113 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const handleDownloadContract = (contract: any) => {
+    if (!contract || !contract.bookings) return;
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('SERVICE CONTRACT', 105, 20, { align: 'center' });
+
+      // Contract info
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.text('B. Remembered', 105, 35, { align: 'center' });
+      doc.text('Wedding Services Platform', 105, 42, { align: 'center' });
+
+      // Contract details
+      let yPos = 60;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('CONTRACT DETAILS', 20, yPos);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      
+      doc.text(`Contract ID: ${contract.id.substring(0, 8).toUpperCase()}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Service: ${contract.bookings.service_packages?.name || contract.bookings.service_type}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Vendor: ${contract.bookings.vendors.name}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Created: ${new Date(contract.created_at).toLocaleDateString()}`, 20, yPos);
+      yPos += 7;
+      if (contract.signed_at) {
+        doc.text(`Signed: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        yPos += 7;
+      }
+
+      yPos += 10;
+
+      // Contract content
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('CONTRACT TERMS', 20, yPos);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      
+      const lines = contract.content.split('\n');
+      lines.forEach((line: string) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        if (line.trim() === '') {
+          yPos += 4;
+          return;
+        }
+        
+        if (line.includes(':') && line.length < 50) {
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        const wrappedLines = doc.splitTextToSize(line, 170);
+        doc.text(wrappedLines, 20, yPos);
+        yPos += 5 * wrappedLines.length;
+      });
+
+      // Signature section
+      if (contract.signature) {
+        yPos += 20;
+        if (yPos > 250) {
+          doc.addPage();
+          yPos = 40;
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('DIGITAL SIGNATURE', 20, yPos);
+        yPos += 10;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(`Signed by: ${contract.signature}`, 20, yPos);
+        yPos += 6;
+        doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+      }
+
+      // Save the PDF
+      const fileName = `Contract_${contract.bookings.vendors.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+    } catch (error) {
+      console.error('Error generating contract PDF:', error);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -314,6 +514,7 @@ export const Profile: React.FC = () => {
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
     { key: 'messages', label: 'Messages', icon: MessageCircle },
     { key: 'payments', label: 'Payments', icon: CreditCard },
+   { key: 'contracts', label: 'Contracts', icon: FileText },
     { key: 'reviews', label: 'My Reviews', icon: Star },
     { key: 'preferences', label: 'Preferences', icon: Heart },
     { key: 'profile', label: 'Profile Information', icon: User },
