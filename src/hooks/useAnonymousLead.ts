@@ -116,7 +116,7 @@ export const useAnonymousLead = () => {
         .select()
         .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
       if (data) {
         setLead(data);
       }
@@ -151,7 +151,7 @@ export const useAnonymousLead = () => {
         .select()
         .maybeSingle();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
       if (data) {
         setLead(data);
       }
