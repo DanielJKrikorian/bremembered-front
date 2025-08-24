@@ -54,7 +54,6 @@ export const Profile: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings' | 'wedding-board'>('overview');
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'preferences' | 'settings' | 'wedding-board' | 'reviews'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
