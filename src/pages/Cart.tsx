@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { useCart } from '../context/CartContext';
 import { useRecommendedVendors } from '../hooks/useSupabase';
 import { Vendor } from '../types/booking';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export const Cart: React.FC = () => {
     venue: '',
     notes: ''
   });
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   // Get vendors for the item we're selecting a vendor for
   const itemForVendorSelection = state.items.find(item => item.id === selectingVendorForItem);
@@ -35,6 +38,40 @@ export const Cart: React.FC = () => {
     styles: [],
     vibes: []
   });
+
+  const checkVendorAvailability = async (vendorId: string, eventDate: string): Promise<boolean> => {
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock availability check for demo - assume available
+      return true;
+    }
+
+    try {
+      // Check if vendor has any events on the selected date
+      const startOfDay = new Date(eventDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(eventDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data: conflictingEvents, error } = await supabase
+        .from('events')
+        .select('id, start_time, end_time, title')
+        .eq('vendor_id', vendorId)
+        .gte('start_time', startOfDay.toISOString())
+        .lte('start_time', endOfDay.toISOString());
+
+      if (error) {
+        console.error('Error checking vendor availability:', error);
+        throw error;
+      }
+
+      // If there are any events on this date, vendor is not available
+      return conflictingEvents.length === 0;
+    } catch (error) {
+      console.error('Error checking vendor availability:', error);
+      throw error;
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -58,11 +95,59 @@ export const Cart: React.FC = () => {
   };
 
   const handleVendorSelect = (vendor: Vendor) => {
-    if (selectingVendorForItem) {
-      updateItem(selectingVendorForItem, { vendor });
-      setSelectingVendorForItem(null);
-      setShowVendorModal(false);
+    if (!selectingVendorForItem) return;
+
+    const item = state.items.find(i => i.id === selectingVendorForItem);
+    if (!item) return;
+
+    // Check if event date is set
+    if (!item.eventDate) {
+      setAvailabilityError('Please set an event date first before choosing a vendor.');
+      return;
     }
+
+    // Check vendor availability
+    setCheckingAvailability(true);
+    setAvailabilityError(null);
+
+    checkVendorAvailability(vendor.id, item.eventDate)
+      .then((isAvailable) => {
+        if (isAvailable) {
+          updateItem(selectingVendorForItem, { vendor });
+          setSelectingVendorForItem(null);
+          setShowVendorModal(false);
+          setAvailabilityError(null);
+        } else {
+          setAvailabilityError(`${vendor.name} is not available on ${new Date(item.eventDate!).toLocaleDateString()}. Please choose a different vendor or change your event date.`);
+        }
+      })
+      .catch((error) => {
+        console.error('Error checking availability:', error);
+        setAvailabilityError('Unable to check vendor availability. Please try again.');
+      })
+      .finally(() => {
+        setCheckingAvailability(false);
+      });
+  };
+
+  const handleChooseVendorWithDateCheck = (itemId: string) => {
+    const item = state.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    if (!item.eventDate) {
+      setAvailabilityError('Please set an event date first before choosing a vendor.');
+      // Focus on the item that needs a date
+      const element = document.getElementById(`item-${itemId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    setSelectedItemForVendor(itemId);
+    setSelectingVendorForItem(itemId);
+    setShowVendorModal(true);
+    setAvailabilityError(null);
   };
 
   const handleChooseVendor = (itemId: string) => {
@@ -223,7 +308,7 @@ export const Cart: React.FC = () => {
                   
                   <div className="space-y-4">
                     {incompleteItems.map((item) => (
-                      <Card key={item.id} className="p-6">
+                      <Card key={item.id} className="p-6" id={`item-${item.id}`}>
                         <div className="flex items-start space-x-4">
                           <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-3xl">
                             {getServiceIcon(item.package.service_type)}
@@ -453,12 +538,20 @@ export const Cart: React.FC = () => {
                             {/* Vendor Selection */}
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                               <h4 className="font-medium text-amber-900 mb-3">Choose Your Vendor</h4>
+                              {!item.eventDate && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                                  <p className="text-sm text-red-800">
+                                    ⚠️ Please set an event date first before choosing a vendor
+                                  </p>
+                                </div>
+                              )}
                               <div className="flex flex-col sm:flex-row gap-3">
                                 <Button
                                   variant="primary"
                                   size="sm"
-                                  onClick={() => handleChooseVendor(item.id)}
+                                  onClick={() => handleChooseVendorWithDateCheck(item.id)}
                                   className="flex-1"
+                                  disabled={!item.eventDate}
                                 >
                                   Browse Vendors
                                 </Button>
@@ -467,6 +560,7 @@ export const Cart: React.FC = () => {
                                   size="sm"
                                   onClick={() => handlePickForMe(item.id)}
                                   className="flex-1"
+                                  disabled={!item.eventDate}
                                 >
                                   Pick For Me
                                 </Button>
@@ -768,6 +862,12 @@ export const Cart: React.FC = () => {
               </div>
 
               <div className="p-6">
+                {availabilityError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{availabilityError}</p>
+                  </div>
+                )}
+
                 {vendorsLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -837,8 +937,10 @@ export const Cart: React.FC = () => {
                             size="sm"
                             className="flex-1"
                             onClick={() => handleVendorSelect(vendor)}
+                            disabled={checkingAvailability}
+                            loading={checkingAvailability}
                           >
-                            Select Vendor
+                            {checkingAvailability ? 'Checking Availability...' : 'Select Vendor'}
                           </Button>
                           <Button
                             variant="outline"
