@@ -477,6 +477,7 @@ const EventModal: React.FC<EventModalProps> = ({
     </div>
   );
 };
+
 const eventTypes = [
   { value: "custom", label: "Custom Event" },
   { value: "getting_ready", label: "Getting Ready" },
@@ -1153,395 +1154,416 @@ export const WeddingTimeline: React.FC = () => {
   return (
     <>
       <div className="space-y-6">
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
-          <Check className="h-5 w-5 text-green-500 mr-2" />
-          <p className="text-green-700">{successMessage}</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-          <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-          <p className="text-red-700">{error}</p>
-        </div>
-      )}
-
-      {/* Wedding Date Section */}
-      <Card className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Wedding Date</h3>
-        <div className="flex flex-col md:flex-row md:items-end gap-4">
-          <div className="flex-grow">
-            <Input
-              label="Set Your Wedding Date"
-              type="date"
-              value={weddingDate}
-              onChange={(e) => setWeddingDate(e.target.value)}
-              icon={Calendar}
-            />
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
+            <Check className="h-5 w-5 text-green-500 mr-2" />
+            <p className="text-green-700">{successMessage}</p>
           </div>
-          <Button
-            variant="primary"
-            onClick={async () => {
-              if (!weddingDate || !couple || !supabase || !isSupabaseConfigured()) {
-                setError("Please select a wedding date");
-                return;
-              }
+        )}
 
-              try {
-                const { error } = await supabase
-                  .from("couples")
-                  .update({ wedding_date: weddingDate })
-                  .eq("id", couple.id);
-
-                if (error) throw error;
-
-
-                setSuccessMessage("Wedding date updated successfully");
-
-                setTimeout(() => {
-                  setSuccessMessage(null);
-                }, 3000);
-              } catch (error) {
-                console.error("Error updating wedding date:", error);
-                setError("Failed to update wedding date");
-              }
-            }}
-          >
-            Update Date
-          </Button>
-        </div>
-
-        {couple?.venue_name && (
-          <div className="mt-4 flex items-center text-gray-600">
-            <MapPin className="h-5 w-5 mr-2" />
-            <span>{couple.venue_name}</span>
-            {couple.venue_street_address && (
-              <span className="ml-1">({couple.venue_street_address})</span>
-            )}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+            <p className="text-red-700">{error}</p>
           </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
-      </Card>
+        )}
 
-      {/* Timeline Header */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">Wedding Timeline</h3>
-            <p className="text-gray-600 mt-1">Plan and organize your wedding day events</p>
+        {/* Wedding Date Section */}
+        <Card className="p-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Wedding Date</h3>
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-grow">
+              <Input
+                label="Set Your Wedding Date"
+                type="date"
+                value={weddingDate}
+                onChange={(e) => setWeddingDate(e.target.value)}
+                icon={Calendar}
+              />
+            </div>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                if (!weddingDate || !couple || !supabase || !isSupabaseConfigured()) {
+                  setError("Please select a wedding date");
+                  return;
+                }
+
+                try {
+                  const { error } = await supabase
+                    .from("couples")
+                    .update({ wedding_date: weddingDate })
+                    .eq("id", couple.id);
+
+                  if (error) throw error;
+
+
+                  setSuccessMessage("Wedding date updated successfully");
+
+                  setTimeout(() => {
+                    setSuccessMessage(null);
+                  }, 3000);
+                } catch (error) {
+                  console.error("Error updating wedding date:", error);
+                  setError("Failed to update wedding date");
+                }
+              }}
+            >
+              Update Date
+            </Button>
           </div>
-          <div className="flex space-x-3">
-            <div className="relative" ref={downloadMenuRef}>
-              <Button
-                variant="outline"
-                icon={Download}
-                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                disabled={events.length === 0 || isDownloading}
-              >
-                Download
-                {showDownloadMenu ? (
-                  <ChevronUp className="h-4 w-4 ml-2" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 ml-2" />
-                )}
-              </Button>
 
-              {showDownloadMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                  <div className="py-1">
-                    <button
-                      onClick={handleDownloadTimelinePDF}
-                      disabled={events.length === 0 || isDownloading}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                    >
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Download as PDF
-                    </button>
-                    <button
-                      onClick={() => {
-                        // CSV download logic here
-                        setShowDownloadMenu(false);
-                      }}
-                      disabled={events.length === 0 || isDownloading}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Download as CSV
-                    </button>
-                  </div>
-                </div>
+          {couple?.venue_name && (
+            <div className="mt-4 flex items-center text-gray-600">
+              <MapPin className="h-5 w-5 mr-2" />
+              <span>{couple.venue_name}</span>
+              {couple.venue_street_address && (
+                <span className="ml-1">({couple.venue_street_address})</span>
               )}
             </div>
+          )}
+        </Card>
 
-            <Button
-              variant="outline"
-              icon={showStandardEvents ? ChevronUp : ChevronDown}
-              onClick={() => setShowStandardEvents(!showStandardEvents)}
-            >
-              {showStandardEvents ? "Hide" : "Add"} Standard Events
-            </Button>
-
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={handleAddEvent}
-            >
-              Add Custom Event
-            </Button>
-          </div>
-        </div>
-
-        {/* Share with Vendor Section */}
-        <div className="border-t pt-6">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">Share Timeline with Vendor</h4>
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-grow">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Vendor
-              </label>
-              <select
-                value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                <option value="">Select a vendor</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.name}
-                  </option>
-                ))}
-              </select>
+        {/* Timeline Header */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Wedding Timeline</h3>
+              <p className="text-gray-600 mt-1">Plan and organize your wedding day events</p>
             </div>
-            <Button
-              variant="primary"
-              icon={Share2}
-              onClick={handleShareWithVendor}
-              disabled={!selectedVendor || isSharing}
-              loading={isSharing}
-            >
-              Share Timeline
-            </Button>
-          </div>
-          {shareLink && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700 mb-2">
-                Share this link with the vendor:
-              </p>
-              <div className="flex items-center">
-                <input
-                  type="text"
-                  value={shareLink}
-                  readOnly
-                  className="flex-grow p-2 rounded-l-lg border border-gray-300 bg-white text-sm"
-                />
+            <div className="flex space-x-3">
+              <div className="relative" ref={downloadMenuRef}>
                 <Button
-                  variant="primary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(shareLink);
-                    setSuccessMessage("Link copied to clipboard!");
-                    setTimeout(() => setSuccessMessage(null), 3000);
-                  }}
-                  className="rounded-l-none"
+                  variant="outline"
+                  icon={Download}
+                  onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                  disabled={events.length === 0 || isDownloading}
                 >
-                  Copy
+                  Download
+                  {showDownloadMenu ? (
+                    <ChevronUp className="h-4 w-4 ml-2" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  )}
                 </Button>
+
+                {showDownloadMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <div className="py-1">
+                      <button
+                        onClick={handleDownloadTimelinePDF}
+                        disabled={events.length === 0 || isDownloading}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <FileDown className="h-4 w-4 mr-2" />
+                        Download as PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          // CSV download logic here
+                          setShowDownloadMenu(false);
+                        }}
+                        disabled={events.length === 0 || isDownloading}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Download as CSV
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                icon={showStandardEvents ? ChevronUp : ChevronDown}
+                onClick={() => setShowStandardEvents(!showStandardEvents)}
+              >
+                {showStandardEvents ? "Hide" : "Add"} Standard Events
+              </Button>
+
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={handleAddEvent}
+              >
+                Add Custom Event
+              </Button>
+            </div>
+          </div>
+
+          {/* Share with Vendor Section */}
+          <div className="border-t pt-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Share Timeline with Vendor</h4>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-grow">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Vendor
+                </label>
+                <select
+                  value={selectedVendor}
+                  onChange={(e) => setSelectedVendor(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">Select a vendor</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                variant="primary"
+                icon={Share2}
+                onClick={handleShareWithVendor}
+                disabled={!selectedVendor || isSharing}
+                loading={isSharing}
+              >
+                Share Timeline
+              </Button>
+            </div>
+            {shareLink && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700 mb-2">
+                  Share this link with the vendor:
+                </p>
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    value={shareLink}
+                    readOnly
+                    className="flex-grow p-2 rounded-l-lg border border-gray-300 bg-white text-sm"
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareLink);
+                      setSuccessMessage("Link copied to clipboard!");
+                      setTimeout(() => setSuccessMessage(null), 3000);
+                    }}
+                    className="rounded-l-none"
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Standard Events */}
+        {showStandardEvents && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">Standard Wedding Events</h3>
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={addStandardEvents}
+                disabled={!weddingDate}
+              >
+                Add All Standard Events
+              </Button>
+            </div>
+
+            {!weddingDate && (
+              <div className="bg-yellow-50 p-4 rounded-lg mb-6 flex items-start border border-yellow-200">
+                <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                <p className="text-yellow-700">
+                  Please set your wedding date first to add standard events.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {standardEvents.map((event) => {
+                const isAdded = events.some((e) => e.type === event.type);
+                return (
+                  <div
+                    key={event.type}
+                    className={`p-4 rounded-lg border ${
+                      isAdded
+                        ? "bg-green-50 border-green-200"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-gray-900">{event.title}</h4>
+                      {isAdded ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <Check className="h-3 w-3 mr-1" />
+                          Added
+                        </span>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={Plus}
+                          onClick={() => addSingleStandardEvent(event)}
+                          disabled={!weddingDate}
+                        >
+                          Add
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                    <div className="flex items-center text-sm text-gray-500">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {event.duration_minutes} minutes
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Timeline Events */}
+        <Card className="overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Your Wedding Day Timeline</h3>
+          </div>
+
+          {events.length === 0 ? (
+            <div className="p-12 text-center">
+              <Calendar className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+              <h4 className="text-lg font-medium text-gray-900 mb-2">No events yet</h4>
+              <p className="text-gray-600 mb-6">
+                {standardEventsAdded
+                  ? "Add custom events or edit the standard events to fit your schedule"
+                  : "Get started by adding standard events or creating custom ones"}
+              </p>
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={handleAddEvent}
+              >
+                Add Your First Event
+              </Button>
+            </div>
+          ) : (
+            <div className="relative">
+              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+              <div className="divide-y divide-gray-100">
+                {events.map((event, index) => (
+                  <div key={event.id} className="p-6 relative">
+                    <div className="absolute left-8 top-8 w-4 h-4 rounded-full bg-rose-500 transform -translate-x-1/2 border-2 border-white"></div>
+
+                    <div className="ml-12">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800">
+                              {format(parseISO(`2000-01-01T${event.event_time}`), "h:mm a")}
+                            </span>
+                            <h4 className="text-lg font-medium text-gray-900">{event.title}</h4>
+                          </div>
+
+                          {event.description && (
+                            <p className="text-gray-600 mb-3">{event.description}</p>
+                          )}
+
+                          {/* Photo Shotlist Information */}
+                          {event.photo_shotlist && (
+                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center mb-2">
+                                <Camera className="w-4 h-4 text-blue-600 mr-2" />
+                                <span className="text-sm font-medium text-blue-900">Photo Shotlist</span>
+                              </div>
+                              <p className="text-sm text-blue-800">
+                                <strong>Must-have shots:</strong> {event.photo_shotlist}
+                              </p>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {format(parseISO(event.event_date), "MMMM d, yyyy")}
+                            </div>
+                            {event.duration_minutes && (
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-1" />
+                                {event.duration_minutes} minutes
+                              </div>
+                            )}
+                            {event.location && (
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {event.location}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Music Information */}
+                          {(event.music_notes || event.playlist_requests) && (
+                            <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                              <div className="flex items-center mb-2">
+                                <Music className="w-4 h-4 text-purple-600 mr-2" />
+                                <span className="text-sm font-medium text-purple-900">Music Requests</span>
+                              </div>
+                              {event.music_notes && (
+                                <p className="text-sm text-purple-800 mb-1">
+                                  <strong>Songs:</strong> {event.music_notes}
+                                </p>
+                              )}
+                              {event.playlist_requests && (
+                                <p className="text-sm text-purple-800">
+                                  <strong>Playlist:</strong> {event.playlist_requests}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Photo Shotlist */}
+                          {event.photo_shotlist && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Camera className="w-4 h-4 text-blue-600" />
+                                <span className="font-medium text-blue-900">Photo Shotlist</span>
+                              </div>
+                              <p className="text-blue-700 text-sm">
+                                <strong>Must-have shots:</strong> {event.photo_shotlist}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="ml-4 flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            icon={Edit2}
+                            onClick={() => startEditing(event)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            icon={X}
+                            onClick={() => handleDeleteEvent(event.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Time gap indicator */}
+                      {index < events.length - 1 && (
+                        <div className="mt-4 text-sm text-gray-500 italic">
+                          {calculateTimeDifference(event, events[index + 1])}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
-        </div>
-      </Card>
-
-      {/* Standard Events */}
-      {showStandardEvents && (
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Standard Wedding Events</h3>
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={addStandardEvents}
-              disabled={!weddingDate}
-            >
-              Add All Standard Events
-            </Button>
-          </div>
-
-          {!weddingDate && (
-            <div className="bg-yellow-50 p-4 rounded-lg mb-6 flex items-start border border-yellow-200">
-              <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
-              <p className="text-yellow-700">
-                Please set your wedding date first to add standard events.
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {standardEvents.map((event) => {
-              const isAdded = events.some((e) => e.type === event.type);
-              return (
-                <div
-                  key={event.type}
-                  className={`p-4 rounded-lg border ${
-                    isAdded
-                      ? "bg-green-50 border-green-200"
-                      : "bg-white border-gray-200"
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-gray-900">{event.title}</h4>
-                    {isAdded ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <Check className="h-3 w-3 mr-1" />
-                        Added
-                      </span>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon={Plus}
-                        onClick={() => addSingleStandardEvent(event)}
-                        disabled={!weddingDate}
-                      >
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{event.description}</p>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock className="h-4 w-4 mr-1" />
-                    {event.duration_minutes} minutes
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </Card>
-      )}
-
-
-      {/* Timeline Events */}
-      <Card className="overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Your Wedding Day Timeline</h3>
-        </div>
-
-        {events.length === 0 ? (
-          <div className="p-12 text-center">
-            <Calendar className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No events yet</h4>
-            <p className="text-gray-600 mb-6">
-              {standardEventsAdded
-                ? "Add custom events or edit the standard events to fit your schedule"
-                : "Get started by adding standard events or creating custom ones"}
-            </p>
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={handleAddEvent}
-            >
-              Add Your First Event
-            </Button>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-
-            <div className="divide-y divide-gray-100">
-              {events.map((event, index) => (
-                <div key={event.id} className="p-6 relative">
-                  <div className="absolute left-8 top-8 w-4 h-4 rounded-full bg-rose-500 transform -translate-x-1/2 border-2 border-white"></div>
-
-                  <div className="ml-12">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-rose-100 text-rose-800">
-                            {format(parseISO(`2000-01-01T${event.event_time}`), "h:mm a")}
-                          </span>
-                          <h4 className="text-lg font-medium text-gray-900">{event.title}</h4>
-                        </div>
-
-                        {event.description && (
-                          <p className="text-gray-600 mb-3">{event.description}</p>
-                        )}
-
-                        {/* Photo Shotlist Information */}
-                        {event.photo_shotlist && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center mb-2">
-                              <Camera className="w-4 h-4 text-blue-600 mr-2" />
-                              <span className="text-sm font-medium text-blue-900">Photo Shotlist</span>
-                            </div>
-                            <p className="text-sm text-blue-800">
-                              <strong>Must-have shots:</strong> {event.photo_shotlist}
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {format(parseISO(event.event_date), "MMMM d, yyyy")}
-                          </div>
-                          {event.duration_minutes && (
-                            <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-1" />
-                              {event.duration_minutes} minutes
-                            </div>
-                          )}
-                          {event.location && (
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {event.location}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Music Information */}
-                        {(event.music_notes || event.playlist_requests) && (
-                          <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                            <div className="flex items-center mb-2">
-                              <Music className="w-4 h-4 text-purple-600 mr-2" />
-                              <span className="text-sm font-medium text-purple-900">Music Requests</span>
-                            </div>
-                            {event.music_notes && (
-                              <p className="text-sm text-purple-800 mb-1">
-                                <strong>Songs:</strong> {event.music_notes}
-                              </p>
-                            )}
-                            {event.playlist_requests && (
-                              <p className="text-sm text-purple-800">
-                                <strong>Playlist:</strong> {event.playlist_requests}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Photo Shotlist */}
-                        {event.photo_shotlist && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Camera className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium text-blue-900">Photo Shotlist</span>
-                            </div>
-                            <p className="text-blue-700 text-sm">
-                              <strong>Must-have shots:</strong> {event.photo_shotlist}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </>
+      </div>
 
       {/* Event Modal */}
       <EventModal
@@ -1549,374 +1571,12 @@ export const WeddingTimeline: React.FC = () => {
         onClose={() => {
           setShowEventModal(false);
           setEditingEvent(null);
-          setFormData({
-            type: 'ceremony',
-            title: '',
-            description: '',
-            event_date: '',
-            event_time: '',
-            location: '',
-            duration_minutes: 60,
-            music_notes: '',
-            playlist_requests: '',
-            photo_shotlist: ''
-          });
         }}
         event={editingEvent}
-        formData={formData}
-        setFormData={setFormData}
+        weddingDate={weddingDate}
         onSave={handleSaveEvent}
-        loading={loading}
+        isEditing={!!editingEvent}
       />
     </>
   );
 };
-
-// Event Modal Component
-interface EventModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  event: any;
-  formData: any;
-  setFormData: (data: any) => void;
-  onSave: () => void;
-  loading: boolean;
-}
-
-const EventModal: React.FC<EventModalProps> = ({
-  isOpen,
-  onClose,
-  event,
-  formData,
-  setFormData,
-  onSave,
-  loading
-}) => {
-  const [currentStep, setCurrentStep] = useState(1);
-
-  if (!isOpen) return null;
-
-  const canProceedStep = () => {
-    switch (currentStep) {
-      case 1: return formData.title && formData.event_date && formData.event_time;
-      case 2: return true; // Music is optional
-      case 3: return true; // Photo shotlist is optional
-      default: return false;
-    }
-  };
-
-  const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSave = () => {
-    onSave();
-    setCurrentStep(1); // Reset to first step
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">
-              {event ? 'Edit Event' : 'Add New Event'}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Step {currentStep} of 3
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        {/* Progress Steps */}
-        <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-center space-x-4">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                  ${currentStep >= step 
-                    ? 'bg-rose-500 text-white shadow-lg' 
-                    : 'bg-gray-200 text-gray-600'
-                  }
-                `}>
-                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
-                </div>
-                {step < 3 && (
-                  <div className={`w-16 h-1 mx-2 rounded-full transition-all ${
-                    currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-center mt-2">
-            <span className="text-sm text-gray-600">
-              {currentStep === 1 && 'Event Details'}
-              {currentStep === 2 && 'Music & Playlist'}
-              {currentStep === 3 && 'Photo Shotlist'}
-            </span>
-          </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="p-4 md:p-6">
-          {/* Step 1: Event Details */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Event Details</h2>
-                <p className="text-gray-600">Basic information about your event</p>
-              </div>
-
-              <div className="space-y-4 max-w-md mx-auto">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="ceremony">Ceremony</option>
-                    <option value="reception">Reception</option>
-                    <option value="cocktail_hour">Cocktail Hour</option>
-                    <option value="getting_ready">Getting Ready</option>
-                    <option value="first_look">First Look</option>
-                    <option value="family_photos">Family Photos</option>
-                    <option value="couple_photos">Couple Photos</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <Input
-                  label="Event Title *"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Wedding Ceremony, First Dance"
-                  required
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Brief description of this event"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Date *"
-                    type="date"
-                    value={formData.event_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, event_date: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    label="Time *"
-                    type="time"
-                    value={formData.event_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, event_time: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <Input
-                  label="Location"
-                  value={formData.location || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="Venue name or specific location"
-                />
-
-                <Input
-                  label="Duration (minutes)"
-                  type="number"
-                  value={formData.duration_minutes?.toString() || '60'}
-                  onChange={(e) => setFormData(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) || 60 }))}
-                  placeholder="60"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Music & Playlist */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Music className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Music & Playlist</h2>
-                <p className="text-gray-600">Music requests for this event (optional)</p>
-              </div>
-
-              <div className="space-y-4 max-w-md mx-auto">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Specific Song Requests</label>
-                  <textarea
-                    value={formData.music_notes || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, music_notes: e.target.value }))}
-                    placeholder="Specific songs for this moment (e.g., 'Perfect by Ed Sheeran for first dance')"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Playlist Preferences</label>
-                  <textarea
-                    value={formData.playlist_requests || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, playlist_requests: e.target.value }))}
-                    placeholder="Music style preferences, do-not-play lists, or general vibe requests"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Photo Shotlist */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Camera className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Photo Shotlist</h2>
-                <p className="text-gray-600">Must-have photos for this event (optional)</p>
-              </div>
-
-              <div className="space-y-4 max-w-md mx-auto">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Photo Requests</label>
-                  <textarea
-                    value={formData.photo_shotlist || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, photo_shotlist: e.target.value }))}
-                    placeholder="Specific shots you want captured during this event (e.g., 'Ring exchange close-up, parents' reactions, full ceremony overview')"
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Help your photographer capture the moments that matter most to you
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-between items-center p-4 md:p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex space-x-3">
-            {currentStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                icon={ArrowLeft}
-              >
-                Back
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-          </div>
-          
-          <div className="flex space-x-3">
-            {currentStep < 3 ? (
-              <Button
-                variant="primary"
-                onClick={handleNext}
-                disabled={!canProceedStep()}
-                icon={ArrowRight}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={handleSave}
-                disabled={!canProceedStep()}
-                loading={loading}
-                icon={Save}
-              >
-                {event ? 'Update Event' : 'Add Event'}
-              </Button>
-                          value={formData.playlist_requests || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, playlist_requests: e.target.value }))}
-                          placeholder="Music style preferences, do-not-play lists, or general vibe requests"
-                      </div>
-
-                      <div className="ml-4 flex items-center space-x-2">
-                        <Button
-                    </div>
-                  </div>
-                )}
-                          variant="ghost"
-                {/* Step 3: Photo Shotlist */}
-                {modalStep === 3 && (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Camera className="w-8 h-8 text-blue-600" />
-                      </div>
-                      <h4 className="text-2xl font-bold text-gray-900 mb-3">Photo Shotlist</h4>
-                      <p className="text-gray-600">What photos are must-haves for your event?</p>
-                    </div>
-
-                    <div className="space-y-4">
-                          icon={Edit2}
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Photo Requests & Must-Have Shots
-                {/* Step 3: Music & Playlist */}
-                {modalStep === 2 && (
-                          value={formData.photo_shotlist || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, photo_shotlist: e.target.value }))}
-                          placeholder="List specific photos you want captured (e.g., 'First dance with parents', 'Ring exchange close-up', 'Sunset couple photos', etc.)"
-                          rows={6}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      <h4 className="text-2xl font-bold text-gray-900 mb-3">Music & Playlist</h4>
-                      <p className="text-gray-600">Any specific music requests or preferences?</p>
-                    </div>
-
-                        <label className="block text-sm font-medium text-purple-700 mb-2">
-                          Specific Song Requests
-                {/* Photo Shotlist */}
-                {event.photo_shotlist && (
-                          value={formData.music_notes || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, music_notes: e.target.value }))}
-                          placeholder="Any specific songs for key moments? (e.g., 'First dance: Perfect by Ed Sheeran', 'Processional: Canon in D')"
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                    <div className="text-blue-800 text-sm">
-                      <strong>Must-have shots:</strong> {event.photo_shotlist}
-      />
-  );
-                        <label className="block text-sm font-medium text-purple-700 mb-2">
-                          Playlist Requests & Preferences
