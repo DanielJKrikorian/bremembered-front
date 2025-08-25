@@ -1221,7 +1221,11 @@ export const WeddingTimeline: React.FC = () => {
               <span className="ml-1">({couple.venue_street_address})</span>
             )}
           </div>
-        )}
+        </div>
+      </Card>
+    </div>
+  );
+};
       </Card>
 
       {/* Timeline Header */}
@@ -1513,6 +1517,357 @@ export const WeddingTimeline: React.FC = () => {
                               <p className="text-sm text-purple-800">
                                 <strong>Playlist:</strong> {event.playlist_requests}
                               </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Photo Shotlist */}
+                        {event.photo_shotlist && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Camera className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium text-blue-900">Photo Shotlist</span>
+                            </div>
+                            <p className="text-blue-700 text-sm">
+                              <strong>Must-have shots:</strong> {event.photo_shotlist}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </>
+
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setEditingEvent(null);
+          setFormData({
+            type: 'ceremony',
+            title: '',
+            description: '',
+            event_date: '',
+            event_time: '',
+            location: '',
+            duration_minutes: 60,
+            music_notes: '',
+            playlist_requests: '',
+            photo_shotlist: ''
+          });
+        }}
+        event={editingEvent}
+        formData={formData}
+        setFormData={setFormData}
+        onSave={handleSaveEvent}
+        loading={loading}
+      />
+    </>
+  );
+};
+
+// Event Modal Component
+interface EventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  event: any;
+  formData: any;
+  setFormData: (data: any) => void;
+  onSave: () => void;
+  loading: boolean;
+}
+
+const EventModal: React.FC<EventModalProps> = ({
+  isOpen,
+  onClose,
+  event,
+  formData,
+  setFormData,
+  onSave,
+  loading
+}) => {
+  const [currentStep, setCurrentStep] = useState(1);
+
+  if (!isOpen) return null;
+
+  const canProceedStep = () => {
+    switch (currentStep) {
+      case 1: return formData.title && formData.event_date && formData.event_time;
+      case 2: return true; // Music is optional
+      case 3: return true; // Photo shotlist is optional
+      default: return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSave = () => {
+    onSave();
+    setCurrentStep(1); // Reset to first step
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">
+              {event ? 'Edit Event' : 'Add New Event'}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Step {currentStep} of 3
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Progress Steps */}
+        <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-center space-x-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
+                  ${currentStep >= step 
+                    ? 'bg-rose-500 text-white shadow-lg' 
+                    : 'bg-gray-200 text-gray-600'
+                  }
+                `}>
+                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
+                </div>
+                {step < 3 && (
+                  <div className={`w-16 h-1 mx-2 rounded-full transition-all ${
+                    currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center mt-2">
+            <span className="text-sm text-gray-600">
+              {currentStep === 1 && 'Event Details'}
+              {currentStep === 2 && 'Music & Playlist'}
+              {currentStep === 3 && 'Photo Shotlist'}
+            </span>
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <div className="p-4 md:p-6">
+          {/* Step 1: Event Details */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Event Details</h2>
+                <p className="text-gray-600">Basic information about your event</p>
+              </div>
+
+              <div className="space-y-4 max-w-md mx-auto">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="ceremony">Ceremony</option>
+                    <option value="reception">Reception</option>
+                    <option value="cocktail_hour">Cocktail Hour</option>
+                    <option value="getting_ready">Getting Ready</option>
+                    <option value="first_look">First Look</option>
+                    <option value="family_photos">Family Photos</option>
+                    <option value="couple_photos">Couple Photos</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <Input
+                  label="Event Title *"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g., Wedding Ceremony, First Dance"
+                  required
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    value={formData.description || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description of this event"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Date *"
+                    type="date"
+                    value={formData.event_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, event_date: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    label="Time *"
+                    type="time"
+                    value={formData.event_time}
+                    onChange={(e) => setFormData(prev => ({ ...prev, event_time: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <Input
+                  label="Location"
+                  value={formData.location || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="Venue name or specific location"
+                />
+
+                <Input
+                  label="Duration (minutes)"
+                  type="number"
+                  value={formData.duration_minutes?.toString() || '60'}
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) || 60 }))}
+                  placeholder="60"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Music & Playlist */}
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Music className="w-8 h-8 text-purple-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Music & Playlist</h2>
+                <p className="text-gray-600">Music requests for this event (optional)</p>
+              </div>
+
+              <div className="space-y-4 max-w-md mx-auto">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Specific Song Requests</label>
+                  <textarea
+                    value={formData.music_notes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, music_notes: e.target.value }))}
+                    placeholder="Specific songs for this moment (e.g., 'Perfect by Ed Sheeran for first dance')"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Playlist Preferences</label>
+                  <textarea
+                    value={formData.playlist_requests || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, playlist_requests: e.target.value }))}
+                    placeholder="Music style preferences, do-not-play lists, or general vibe requests"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Photo Shotlist */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Photo Shotlist</h2>
+                <p className="text-gray-600">Must-have photos for this event (optional)</p>
+              </div>
+
+              <div className="space-y-4 max-w-md mx-auto">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Photo Requests</label>
+                  <textarea
+                    value={formData.photo_shotlist || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, photo_shotlist: e.target.value }))}
+                    placeholder="Specific shots you want captured during this event (e.g., 'Ring exchange close-up, parents' reactions, full ceremony overview')"
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Help your photographer capture the moments that matter most to you
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center p-4 md:p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex space-x-3">
+            {currentStep > 1 && (
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                icon={ArrowLeft}
+              >
+                Back
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+          </div>
+          
+          <div className="flex space-x-3">
+            {currentStep < 3 ? (
+              <Button
+                variant="primary"
+                onClick={handleNext}
+                disabled={!canProceedStep()}
+                icon={ArrowRight}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                disabled={!canProceedStep()}
+                loading={loading}
+                icon={Save}
+              >
+                {event ? 'Update Event' : 'Add Event'}
+              </Button>
                           value={formData.playlist_requests || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, playlist_requests: e.target.value }))}
                           placeholder="Music style preferences, do-not-play lists, or general vibe requests"
