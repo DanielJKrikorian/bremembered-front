@@ -759,6 +759,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <span className="text-gray-500">{formatPrice(totalAmount - depositAmount)} (due later)</span>
           </div>
           <div className="flex justify-between text-lg font-semibold border-t pt-3">
+      </form>
             <span>Total Due Today</span>
             <span>{formatPrice(grandTotal)}</span>
           </div>
