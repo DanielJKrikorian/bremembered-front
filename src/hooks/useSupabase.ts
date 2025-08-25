@@ -491,6 +491,30 @@ export const useServiceAreas = (state?: string) => {
 
   useEffect(() => {
     const fetchServiceAreas = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        // Mock service areas for demo
+        const mockServiceAreas = [
+          { id: '1', state: 'MA', region: 'Greater Boston' },
+          { id: '2', state: 'MA', region: 'Cape Cod' },
+          { id: '3', state: 'MA', region: 'Western Massachusetts' },
+          { id: '4', state: 'RI', region: 'Providence' },
+          { id: '5', state: 'RI', region: 'Newport' },
+          { id: '6', state: 'NH', region: 'Seacoast' },
+          { id: '7', state: 'NH', region: 'White Mountains' },
+          { id: '8', state: 'CT', region: 'Hartford' },
+          { id: '9', state: 'CT', region: 'New Haven' },
+          { id: '10', state: 'ME', region: 'Portland' },
+          { id: '11', state: 'VT', region: 'Burlington' }
+        ];
+        
+        const filteredAreas = state 
+          ? mockServiceAreas.filter(area => area.state === state)
+          : mockServiceAreas;
+        
+        setServiceAreas(filteredAreas);
+        setLoading(false);
+        return;
+      }
 
       try {
         let query = supabase

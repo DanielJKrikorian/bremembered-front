@@ -1136,13 +1136,22 @@ export const Cart: React.FC = () => {
                         onChange={(e) => setNewVenue(prev => ({ ...prev, zip: e.target.value }))}
                         placeholder="12345"
                       />
-                      <Input
-                        label="Region"
-                        value={newVenue.region}
-                        onChange={(e) => setNewVenue(prev => ({ ...prev, region: e.target.value }))}
-                        placeholder="e.g., Greater Boston, Cape Cod"
-                        required
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Region *</label>
+                        <select
+                          value={newVenue.region}
+                          onChange={(e) => setNewVenue(prev => ({ ...prev, region: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          required
+                        >
+                          <option value="">Select Region</option>
+                          {serviceAreas
+                            .filter(area => area.state === newVenue.state)
+                            .map((area) => (
+                              <option key={area.id} value={area.region}>{area.region}</option>
+                            ))}
+                        </select>
+                      </div>
                       <Input
                         label="Contact Name"
                         value={newVenue.contact_name}
