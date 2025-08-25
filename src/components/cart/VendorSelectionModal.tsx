@@ -647,9 +647,6 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                             </div>
                           )}
                           <span>{viewingVendorProfile.years_experience} years experience</span>
-                          {viewingVendorProfile.phone && (
-                            <span>📞 {viewingVendorProfile.phone}</span>
-                          )}
                         </div>
                         <p className="text-gray-600 leading-relaxed">
                           {viewingVendorProfile.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist with ${viewingVendorProfile.years_experience} years of experience creating beautiful memories for couples.`}
