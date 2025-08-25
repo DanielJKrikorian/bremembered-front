@@ -272,8 +272,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
   };
 
   const handleSignatureChange = (serviceType: string, signature: string) => {
-    setSignatures(prev => ({ ...prev, [serviceType]: signature }));
-    if (error) setError(null);
+    setSignatures(prev => {
+      const newSignatures = { ...prev, [serviceType]: signature };
+      return newSignatures;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -581,13 +583,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Digital Signature
                               </label>
-                              <Input
+                              <input
+                                type="text"
                                 placeholder="Type your full legal name to sign"
                                 value={signatures[template.service_type] || ''}
-                               onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
-                                helperText="By typing your name, you agree to be legally bound by this contract"
+                                onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                                 required
                               />
+                              <p className="text-sm text-gray-500 mt-1">
+                                By typing your name, you agree to be legally bound by this contract
+                              </p>
                             </div>
                           ) : (
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
