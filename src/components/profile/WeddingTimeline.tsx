@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Clock, MapPin, Calendar, X, Edit2, ChevronDown, ChevronUp, AlertCircle, Check, Download, FileDown, FileText, Share2, Music, Users } from 'lucide-react';
+import { Plus, Clock, MapPin, Calendar, X, Edit2, ChevronDown, ChevronUp, AlertCircle, Check, Download, FileDown, FileText, Share2, Music, Users, Camera } from 'lucide-react';
 import { format, parseISO, addMinutes } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import { Button } from '../ui/Button';
@@ -21,6 +21,7 @@ interface TimelineEvent {
   is_standard?: boolean;
   music_notes?: string;
   playlist_requests?: string;
+  photo_shotlist?: string;
 }
 
 interface EventFormData {
@@ -33,6 +34,7 @@ interface EventFormData {
   duration_minutes: number;
   music_notes: string;
   playlist_requests: string;
+  photo_shotlist: string;
 }
 
 interface StandardEvent {
@@ -48,6 +50,311 @@ interface Vendor {
   name: string;
 }
 
+interface EventModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  event?: TimelineEvent;
+  weddingDate: string;
+  onSave: (eventData: EventFormData) => void;
+  isEditing: boolean;
+}
+
+const EventModal: React.FC<EventModalProps> = ({
+  isOpen,
+  onClose,
+  event,
+  weddingDate,
+  onSave,
+  isEditing
+}) => {
+  const [formData, setFormData] = useState<EventFormData>({
+    title: '',
+    description: '',
+    event_date: weddingDate,
+    event_time: '',
+    location: '',
+    type: 'custom',
+    duration_minutes: 60,
+    music_notes: '',
+    playlist_requests: '',
+    photo_shotlist: ''
+  });
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    if (event) {
+      setFormData({
+        title: event.title,
+        description: event.description || '',
+        event_date: event.event_date,
+        event_time: event.event_time,
+        location: event.location || '',
+        type: event.type,
+        duration_minutes: event.duration_minutes || 60,
+        music_notes: event.music_notes || '',
+        playlist_requests: event.playlist_requests || '',
+        photo_shotlist: event.photo_shotlist || ''
+      });
+    } else {
+      setFormData({
+        title: '',
+        description: '',
+        event_date: weddingDate,
+        event_time: '',
+        location: '',
+        type: 'custom',
+        duration_minutes: 60,
+        music_notes: '',
+        playlist_requests: '',
+        photo_shotlist: ''
+      });
+    }
+    setFormErrors({});
+  }, [event, weddingDate, isOpen]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedType = e.target.value;
+    const standardEvent = standardEvents.find(event => event.type === selectedType);
+
+    if (standardEvent) {
+      setFormData(prev => ({
+        ...prev,
+        type: selectedType,
+        title: standardEvent.title,
+        description: standardEvent.description,
+        duration_minutes: standardEvent.duration_minutes,
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, type: selectedType }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+
+    if (!formData.title.trim()) {
+      errors.title = "Title is required";
+    }
+    if (!formData.event_date) {
+      errors.event_date = "Date is required";
+    }
+    if (!formData.event_time) {
+      errors.event_time = "Time is required";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateForm()) {
+      onSave(formData);
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">
+              {isEditing ? 'Edit Event' : 'Add New Event'}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {isEditing ? 'Update event details' : 'Create a new timeline event'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Event Type
+            </label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleTypeChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+            >
+              {eventTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Input
+            label="Title"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            placeholder="Enter event title"
+            error={formErrors.title}
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+              placeholder="Enter event description"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Date"
+              name="event_date"
+              type="date"
+              value={formData.event_date}
+              onChange={handleInputChange}
+              error={formErrors.event_date}
+              required
+            />
+            <Input
+              label="Time"
+              name="event_time"
+              type="time"
+              value={formData.event_time}
+              onChange={handleInputChange}
+              error={formErrors.event_time}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Location"
+              name="location"
+              value={formData.location}
+              onChange={handleInputChange}
+              placeholder="Enter location"
+              icon={MapPin}
+            />
+            <Input
+              label="Duration (minutes)"
+              name="duration_minutes"
+              type="number"
+              value={formData.duration_minutes.toString()}
+              onChange={handleInputChange}
+              min="5"
+              step="5"
+              icon={Clock}
+            />
+          </div>
+
+          {/* Music Section */}
+          <div className="border-t pt-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <Music className="w-5 h-5 mr-2 text-rose-600" />
+              Music & Playlist Requests
+            </h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Specific Song Requests
+                </label>
+                <textarea
+                  name="music_notes"
+                  value={formData.music_notes}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Playlist Requests & Preferences
+                </label>
+                <textarea
+                  name="playlist_requests"
+                  value={formData.playlist_requests}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Photo Shotlist Section */}
+          <div className="border-t pt-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <Camera className="w-5 h-5 mr-2 text-blue-600" />
+              Photo Shotlist & Requests
+            </h4>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Photo Requests & Must-Have Shots
+              </label>
+              <textarea
+                name="photo_shotlist"
+                value={formData.photo_shotlist}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                List specific photos you want captured during this event. This helps your photographer plan and ensures no important moments are missed.
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              {isEditing ? 'Update Event' : 'Add Event'}
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+};
 const eventTypes = [
   { value: "custom", label: "Custom Event" },
   { value: "getting_ready", label: "Getting Ready" },
@@ -168,10 +475,9 @@ export const WeddingTimeline: React.FC = () => {
   const { couple } = useCouple();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddingEvent, setIsAddingEvent] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [weddingDate, setWeddingDate] = useState<string>("");
   const [showStandardEvents, setShowStandardEvents] = useState(false);
   const [standardEventsAdded, setStandardEventsAdded] = useState(false);
@@ -184,19 +490,6 @@ export const WeddingTimeline: React.FC = () => {
   const [isSharing, setIsSharing] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
-  const defaultEventState: EventFormData = {
-    title: "",
-    description: "",
-    event_date: "",
-    event_time: "",
-    location: "",
-    type: "custom",
-    duration_minutes: 60,
-    music_notes: "",
-    playlist_requests: "",
-  };
-
-  const [formData, setFormData] = useState<EventFormData>(defaultEventState);
 
   useEffect(() => {
     if (couple) {
@@ -245,12 +538,6 @@ export const WeddingTimeline: React.FC = () => {
       );
       setStandardEventsAdded(hasStandardEvents || false);
 
-      if (couple.wedding_date && !formData.event_date) {
-        setFormData((prev) => ({
-          ...prev,
-          event_date: couple.wedding_date,
-        }));
-      }
     } catch (error) {
       console.error("Error fetching events:", error);
       setError("Failed to load timeline events");
@@ -281,127 +568,44 @@ export const WeddingTimeline: React.FC = () => {
     }
   };
 
-  const validateForm = () => {
-    const errors: { [key: string]: string } = {};
-
-    if (!formData.title.trim()) {
-      errors.title = "Title is required";
-    }
-    if (!formData.event_date) {
-      errors.event_date = "Date is required";
-    }
-    if (!formData.event_time) {
-      errors.event_time = "Time is required";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (formErrors[name]) {
-      setFormErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedType = e.target.value;
-
-    const standardEvent = standardEvents.find(
-      (event) => event.type === selectedType
-    );
-
-    if (standardEvent) {
-      setFormData((prev) => ({
-        ...prev,
-        type: selectedType,
-        title: standardEvent.title,
-        description: standardEvent.description,
-        duration_minutes: standardEvent.duration_minutes,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        type: selectedType,
-      }));
-    }
-  };
-
-  const handleAddEvent = async () => {
+  const handleSaveEvent = async (eventData: EventFormData) => {
     if (!user || !couple || !supabase || !isSupabaseConfigured()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
     try {
-      const eventData = {
-        ...formData,
+      const dataToSave = {
+        ...eventData,
         couple_id: couple.id,
-        is_standard: formData.type !== "custom" && formData.type !== "other",
+        is_standard: eventData.type !== "custom" && eventData.type !== "other",
       };
 
-      const { error } = await supabase
-        .from("timeline_events")
-        .insert([eventData]);
-
-      if (error) throw error;
-
-      setIsAddingEvent(false);
-      setFormData(defaultEventState);
-      setFormErrors({});
-      fetchEvents();
-      setSuccessMessage("Event added successfully");
-
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
-    } catch (error) {
-      console.error("Error adding event:", error);
-      setError("Failed to add event");
-    }
-  };
-
-  const handleUpdateEvent = async (eventId: string) => {
-    if (!supabase || !isSupabaseConfigured()) return;
-
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("timeline_events")
-        .update(formData)
-        .eq("id", eventId);
-
-      if (error) throw error;
+      if (editingEvent) {
+        // Update existing event
+        const { error } = await supabase
+          .from("timeline_events")
+          .update(dataToSave)
+          .eq("id", editingEvent.id);
+        
+        if (error) throw error;
+        setSuccessMessage("Event updated successfully");
+      } else {
+        // Create new event
+        const { error } = await supabase
+          .from("timeline_events")
+          .insert([dataToSave]);
+        
+        if (error) throw error;
+        setSuccessMessage("Event added successfully");
+      }
 
       setEditingEvent(null);
-      setFormData(defaultEventState);
-      setFormErrors({});
       fetchEvents();
-      setSuccessMessage("Event updated successfully");
 
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
     } catch (error) {
-      console.error("Error updating event:", error);
-      setError("Failed to update event");
+      console.error("Error saving event:", error);
+      setError(editingEvent ? "Failed to update event" : "Failed to add event");
     }
   };
 
@@ -429,26 +633,13 @@ export const WeddingTimeline: React.FC = () => {
   };
 
   const startEditing = (event: TimelineEvent) => {
-    setEditingEvent(event.id);
-    setFormData({
-      title: event.title,
-      description: event.description || "",
-      event_date: event.event_date,
-      event_time: event.event_time,
-      location: event.location || "",
-      type: event.type,
-      duration_minutes: event.duration_minutes || 60,
-      music_notes: event.music_notes || "",
-      playlist_requests: event.playlist_requests || "",
-    });
-    setFormErrors({});
+    setEditingEvent(event);
+    setShowEventModal(true);
   };
 
-  const cancelForm = () => {
-    setIsAddingEvent(false);
+  const handleAddEvent = () => {
     setEditingEvent(null);
-    setFormData(defaultEventState);
-    setFormErrors({});
+    setShowEventModal(true);
   };
 
   const addStandardEvents = async () => {
@@ -753,6 +944,11 @@ export const WeddingTimeline: React.FC = () => {
           yPos += 6;
         }
 
+        if (event.photo_shotlist) {
+          doc.setFont("helvetica", "normal");
+          doc.text(`Photos: ${event.photo_shotlist}`, 25, yPos);
+          yPos += 6;
+        }
         if (event.duration_minutes) {
           doc.setFont("helvetica", "normal");
           doc.text(`Duration: ${event.duration_minutes} minutes`, 25, yPos);
@@ -878,10 +1074,6 @@ export const WeddingTimeline: React.FC = () => {
 
                 if (error) throw error;
 
-                setFormData((prev) => ({
-                  ...prev,
-                  event_date: weddingDate,
-                }));
 
                 setSuccessMessage("Wedding date updated successfully");
 
@@ -970,7 +1162,7 @@ export const WeddingTimeline: React.FC = () => {
             <Button
               variant="primary"
               icon={Plus}
-              onClick={() => setIsAddingEvent(true)}
+              onClick={handleAddEvent}
             >
               Add Custom Event
             </Button>
@@ -1104,152 +1296,6 @@ export const WeddingTimeline: React.FC = () => {
         </Card>
       )}
 
-      {/* Event Form */}
-      {(isAddingEvent || editingEvent) && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">
-            {editingEvent ? "Edit Event" : "Add Custom Event"}
-          </h3>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Event Type
-              </label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleTypeChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                {eventTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Input
-              label="Title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="Enter event title"
-              error={formErrors.title}
-              required
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                placeholder="Enter event description"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Date"
-                name="event_date"
-                type="date"
-                value={formData.event_date}
-                onChange={handleInputChange}
-                error={formErrors.event_date}
-                required
-              />
-              <Input
-                label="Time"
-                name="event_time"
-                type="time"
-                value={formData.event_time}
-                onChange={handleInputChange}
-                error={formErrors.event_time}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                placeholder="Enter location"
-                icon={MapPin}
-              />
-              <Input
-                label="Duration (minutes)"
-                name="duration_minutes"
-                type="number"
-                value={formData.duration_minutes.toString()}
-                onChange={handleInputChange}
-                min="5"
-                step="5"
-                icon={Clock}
-              />
-            </div>
-
-            {/* Music Section */}
-            <div className="border-t pt-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <Music className="w-5 h-5 mr-2 text-rose-600" />
-                Music & Playlist Requests
-              </h4>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Specific Song Requests
-                  </label>
-                  <textarea
-                    name="music_notes"
-                    value={formData.music_notes}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Playlist Requests & Preferences
-                  </label>
-                  <textarea
-                    name="playlist_requests"
-                    value={formData.playlist_requests}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button variant="outline" onClick={cancelForm}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() =>
-                  editingEvent ? handleUpdateEvent(editingEvent) : handleAddEvent()
-                }
-              >
-                {editingEvent ? "Update Event" : "Add Event"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Timeline Events */}
       <Card className="overflow-hidden">
@@ -1269,7 +1315,7 @@ export const WeddingTimeline: React.FC = () => {
             <Button
               variant="primary"
               icon={Plus}
-              onClick={() => setIsAddingEvent(true)}
+              onClick={handleAddEvent}
             >
               Add Your First Event
             </Button>
@@ -1297,6 +1343,18 @@ export const WeddingTimeline: React.FC = () => {
                           <p className="text-gray-600 mb-3">{event.description}</p>
                         )}
 
+                        {/* Photo Shotlist Information */}
+                        {event.photo_shotlist && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center mb-2">
+                              <Camera className="w-4 h-4 text-blue-600 mr-2" />
+                              <span className="text-sm font-medium text-blue-900">Photo Shotlist</span>
+                            </div>
+                            <p className="text-sm text-blue-800">
+                              <strong>Must-have shots:</strong> {event.photo_shotlist}
+                            </p>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
@@ -1367,5 +1425,17 @@ export const WeddingTimeline: React.FC = () => {
         )}
       </Card>
     </div>
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setEditingEvent(null);
+        }}
+        event={editingEvent || undefined}
+        weddingDate={weddingDate}
+        onSave={handleSaveEvent}
+        isEditing={!!editingEvent}
+      />
   );
 };
