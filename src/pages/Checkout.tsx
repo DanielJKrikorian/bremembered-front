@@ -104,6 +104,10 @@ const CheckoutForm: React.FC<{
   const [signatures, setSignatures] = useState<Record<string, string>>({});
   const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
+  const [formData, setFormData] = useState<CheckoutFormData>({
+    partner1Name: '',
+    partner2Name: '',
+    email: '',
     phone: '',
     billingAddress: '',
     city: '',
@@ -117,6 +121,12 @@ const CheckoutForm: React.FC<{
     savePaymentMethod: false,
     agreedToTerms: false
   });
+
+  const subtotal = totalAmount;
+  const totalDiscount = discountState.couponDiscount + discountState.referralDiscount;
+  const depositAmount = Math.round((subtotal - totalDiscount) * 0.5);
+  const totalServiceFee = cartItems.length * 150;
+  const grandTotal = depositAmount + totalServiceFee * 100;
 
   const validateCoupon = async (code: string) => {
     if (!code.trim()) {
@@ -808,7 +818,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               <input
                                 type="text"
                                 placeholder="Type your full legal name to sign"
-                               value={tempSignatures[template.service_type] || ''}
+                                value={tempSignatures[template.service_type] || ''}
                                 onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                                 required
