@@ -700,11 +700,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
                 <p className="text-blue-800 text-sm">
-                  You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due closer to your event date.
+                  You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due 7 days before your event.
                 </p>
               </div>
               
-              <div className="space-y-6">
+              <div className="space-y-6 mb-8">
                 <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
                   <Lock className="w-5 h-5 text-green-600" />
                   <div>
@@ -1068,7 +1068,7 @@ export const Checkout: React.FC = () => {
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• You'll receive a confirmation email within 5 minutes</li>
                 <li>• Your vendors will contact you within 24 hours</li>
-                <li>• The remaining balance will be due closer to your event date</li>
+                <li>• The remaining balance will be due 7 days before your event</li>
                 <li>• {!isAuthenticated ? 'Create an account to message vendors and track progress' : 'Use your dashboard to track progress and message vendors'}</li>
               </ul>
             </div>
