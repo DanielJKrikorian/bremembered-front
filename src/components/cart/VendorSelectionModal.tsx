@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, MapPin, Search, Plus, Check, ArrowRight, ArrowLeft, User, Star, Clock, Shield } from 'lucide-react';
+import { X, Calendar, MapPin, Search, Plus, Check, ArrowRight, ArrowLeft, User, Star, Clock, Shield, Play } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -683,19 +683,74 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                     )}
 
                     {/* Portfolio Preview */}
-                    {viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0 && (
+                    {((viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0) ||
+                      (viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0)) && (
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Recent Work</h4>
-                        <div className="grid grid-cols-3 gap-4">
-                          {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
-                            <img
-                              key={index}
-                              src={photo}
-                              alt={`Portfolio ${index + 1}`}
-                              className="aspect-square object-cover rounded-lg hover:scale-105 transition-transform duration-200"
-                            />
-                          ))}
-                        </div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Portfolio</h4>
+                        
+                        {/* Photos */}
+                        {viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0 && (
+                          <div className="mb-6">
+                            <h5 className="font-medium text-gray-700 mb-3">Recent Photos</h5>
+                            <div className="grid grid-cols-3 gap-4">
+                              {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Portfolio photo ${index + 1}`}
+                                  className="aspect-square object-cover rounded-lg hover:scale-105 transition-transform duration-200 cursor-pointer"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Videos */}
+                        {viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0 && (
+                          <div className="mb-6">
+                            <h5 className="font-medium text-gray-700 mb-3">Recent Videos</h5>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {viewingVendorProfile.portfolio_videos.slice(0, 4).map((video, index) => (
+                                <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden group">
+                                  <video
+                                    src={video}
+                                    className="w-full h-full object-cover"
+                                    controls
+                                    preload="metadata"
+                                    poster={viewingVendorProfile.portfolio_photos?.[index] || undefined}
+                                  >
+                                    <source src={video} type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                  </video>
+                                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                                      <Play className="w-6 h-6 text-gray-900 ml-1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Intro Video */}
+                        {viewingVendorProfile.intro_video && (
+                          <div>
+                            <h5 className="font-medium text-gray-700 mb-3">Introduction Video</h5>
+                            <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                              <video
+                                src={viewingVendorProfile.intro_video}
+                                className="w-full h-full object-cover"
+                                controls
+                                preload="metadata"
+                                poster={viewingVendorProfile.portfolio_photos?.[0] || undefined}
+                              >
+                                <source src={viewingVendorProfile.intro_video} type="video/mp4" />
+                                Your browser does not support the video tag.
+                              </video>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
