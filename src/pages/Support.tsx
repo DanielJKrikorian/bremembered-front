@@ -3,10 +3,16 @@ import { MessageCircle, Phone, Mail, Clock, Search, HelpCircle, BookOpen, Users,
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export const Support: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -83,18 +89,60 @@ export const Support: React.FC = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Contact form submitted:', contactForm);
-    // Reset form
-    setContactForm({
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
-      priority: 'normal'
-    });
+    
+    setSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock submission for demo
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setSubmitSuccess(true);
+        setContactForm({
+          name: '',
+          email: '',
+          subject: '',
+          message: '',
+          priority: 'normal'
+        });
+        setTimeout(() => setSubmitSuccess(false), 5000);
+        return;
+      }
+
+      const inquiryData = {
+        name: contactForm.name,
+        email: contactForm.email,
+        subject: contactForm.subject,
+        message: contactForm.message,
+        priority: contactForm.priority,
+        user_id: isAuthenticated ? user?.id : null
+      };
+
+      const { error } = await supabase
+        .from('support_inquiries')
+        .insert([inquiryData]);
+
+      if (error) throw error;
+
+      setSubmitSuccess(true);
+      setContactForm({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+        priority: 'normal'
+      });
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch (err) {
+      console.error('Error submitting inquiry:', err);
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit inquiry');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -247,11 +295,31 @@ export const Support: React.FC = () => {
           <div>
             <Card className="p-6 sticky top-4">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Still Need Help?</h3>
+              
+              {submitSuccess && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-green-800">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Inquiry submitted successfully!</span>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    We'll respond within 2 hours during business hours.
+                  </p>
+                </div>
+              )}
+              
+              {submitError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{submitError}</p>
+                </div>
+              )}
+              
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <Input
                   label="Name"
                   value={contactForm.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
+                  disabled={submitting}
                   required
                 />
                 
@@ -260,6 +328,7 @@ export const Support: React.FC = () => {
                   type="email"
                   value={contactForm.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
+                  disabled={submitting}
                   required
                 />
                 
@@ -270,7 +339,8 @@ export const Support: React.FC = () => {
                   <select
                     value={contactForm.priority}
                     onChange={(e) => handleInputChange('priority', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    disabled={submitting}
                   >
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>
@@ -283,6 +353,7 @@ export const Support: React.FC = () => {
                   label="Subject"
                   value={contactForm.subject}
                   onChange={(e) => handleInputChange('subject', e.target.value)}
+                  disabled={submitting}
                   required
                 />
                 
@@ -293,15 +364,23 @@ export const Support: React.FC = () => {
                   <textarea
                     value={contactForm.message}
                     onChange={(e) => handleInputChange('message', e.target.value)}
+                    disabled={submitting}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                     placeholder="Please describe your issue or question in detail..."
                     required
                   />
                 </div>
                 
-                <Button type="submit" variant="primary" icon={Send} className="w-full">
-                  Call (978) 945-3WED
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  icon={Send} 
+                  className="w-full"
+                  loading={submitting}
+                  disabled={submitting}
+                >
+                  Submit Inquiry
                 </Button>
               </form>
               
