@@ -27,6 +27,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
   onVendorSelected
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [viewingVendorProfile, setViewingVendorProfile] = useState<Vendor | null>(null);
   const [eventDate, setEventDate] = useState(cartItem.eventDate || '');
   const [eventTime, setEventTime] = useState(cartItem.eventTime || '');
   const [endTime, setEndTime] = useState(cartItem.endTime || '');
@@ -218,6 +219,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
 
   const resetModal = () => {
     setCurrentStep(1);
+    setViewingVendorProfile(null);
     setEventDate(cartItem.eventDate || '');
     setEventTime(cartItem.eventTime || '');
     setEndTime(cartItem.endTime || '');
@@ -598,125 +600,288 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
 
           {/* Step 3: Vendor Selection */}
           {currentStep === 3 && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Choose Your Vendor</h2>
-                <p className="text-gray-600">
-                  Available {cartItem.package.service_type.toLowerCase()} vendors for {selectedVenue?.region}
-                </p>
-              </div>
+            <>
+              {viewingVendorProfile ? (
+                /* Vendor Profile View */
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-4 mb-6">
+                    <Button
+                      variant="ghost"
+                      icon={ArrowLeft}
+                      onClick={() => setViewingVendorProfile(null)}
+                      size="sm"
+                    >
+                      Back to Vendors
+                    </Button>
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">{viewingVendorProfile.name}</h2>
+                      <p className="text-gray-600">{cartItem.package.service_type} Specialist</p>
+                    </div>
+                  </div>
 
-              {vendorsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                  <p className="text-gray-600">Finding available vendors...</p>
-                </div>
-              ) : vendors.length === 0 ? (
-                <div className="text-center py-8">
-                  <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No vendors available</h3>
-                  <p className="text-gray-600 mb-4">
-                    No {cartItem.package.service_type.toLowerCase()} vendors are available in {selectedVenue?.region} for {new Date(eventDate).toLocaleDateString()}.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(2)}
-                  >
-                    Try Different Venue
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4 max-w-2xl mx-auto">
-                  {vendors.map((vendor) => {
-                    const isSelected = selectedVendor?.id === vendor.id;
-                    
-                    return (
-                      <div
-                        key={vendor.id}
-                        onClick={() => handleVendorSelect(vendor)}
-                        className={`
-                          relative p-6 rounded-lg border-2 cursor-pointer transition-all
-                          ${isSelected 
-                            ? 'border-purple-500 bg-purple-50' 
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }
-                          ${checkingAvailability ? 'opacity-50 pointer-events-none' : ''}
-                        `}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-4 right-4 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        )}
-                        
-                        <div className="flex items-start space-x-4">
-                          <img
-                            src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                            alt={vendor.name}
-                            className="w-16 h-16 rounded-full object-cover"
-                          />
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{vendor.name}</h3>
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                              {vendor.rating && (
-                                <div className="flex items-center">
-                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                  <span>{vendor.rating}</span>
-                                </div>
-                              )}
-                              <span>{vendor.years_experience} years experience</span>
-                              <div className="flex items-center">
-                                <Shield className="w-4 h-4 text-green-600 mr-1" />
-                                <span>Verified</span>
-                              </div>
+                  {/* Vendor Profile Content */}
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex items-start space-x-6">
+                      <img
+                        src={viewingVendorProfile.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                        alt={viewingVendorProfile.name}
+                        className="w-24 h-24 rounded-full object-cover"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-3">{viewingVendorProfile.name}</h3>
+                        <div className="flex items-center space-x-4 text-gray-600 mb-4">
+                          {viewingVendorProfile.rating && (
+                            <div className="flex items-center">
+                              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 mr-1" />
+                              <span className="font-medium text-lg">{viewingVendorProfile.rating}</span>
                             </div>
-                            <p className="text-gray-600 text-sm line-clamp-2">
-                              {vendor.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist`}
-                            </p>
-                            {vendor.specialties && vendor.specialties.length > 0 && (
-                              <div className="mt-3">
-                                <div className="flex flex-wrap gap-1">
-                                  {vendor.specialties.slice(0, 3).map((specialty, index) => (
-                                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                      {specialty}
-                                    </span>
-                                  ))}
-                                  {vendor.specialties.length > 3 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                      +{vendor.specialties.length - 3} more
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          )}
+                          <span>{viewingVendorProfile.years_experience} years experience</span>
+                          {viewingVendorProfile.phone && (
+                            <span>📞 {viewingVendorProfile.phone}</span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 leading-relaxed">
+                          {viewingVendorProfile.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist with ${viewingVendorProfile.years_experience} years of experience creating beautiful memories for couples.`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Specialties */}
+                    {viewingVendorProfile.specialties && viewingVendorProfile.specialties.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Specialties</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingVendorProfile.specialties.map((specialty, index) => (
+                            <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                              {specialty}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    );
-                  })}
+                    )}
+
+                    {/* Service Areas */}
+                    {viewingVendorProfile.service_areas && viewingVendorProfile.service_areas.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Service Areas</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingVendorProfile.service_areas.map((area, index) => (
+                            <span key={index} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm">
+                              {area}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Portfolio Preview */}
+                    {viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-3">Recent Work</h4>
+                        <div className="grid grid-cols-3 gap-4">
+                          {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
+                            <img
+                              key={index}
+                              src={photo}
+                              alt={`Portfolio ${index + 1}`}
+                              className="aspect-square object-cover rounded-lg hover:scale-105 transition-transform duration-200"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 mb-1">
+                          {viewingVendorProfile.rating || '4.9'}
+                        </div>
+                        <div className="text-sm text-gray-600">Average Rating</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 mb-1">
+                          {viewingVendorProfile.years_experience}
+                        </div>
+                        <div className="text-sm text-gray-600">Years Experience</div>
+                      </div>
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-gray-900 mb-1">200+</div>
+                        <div className="text-sm text-gray-600">Events Completed</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-center space-x-3 pt-6 border-t border-gray-200">
+                    <Button
+                      variant="outline"
+                      onClick={() => setViewingVendorProfile(null)}
+                    >
+                      Back to Vendor List
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        handleVendorSelect(viewingVendorProfile);
+                        setViewingVendorProfile(null);
+                      }}
+                      disabled={checkingAvailability}
+                      loading={checkingAvailability}
+                    >
+                      Select This Vendor
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Vendor Selection List */
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <User className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">Choose Your Vendor</h2>
+                    <p className="text-gray-600">
+                      Available {cartItem.package.service_type.toLowerCase()} vendors for {selectedVenue?.region}
+                    </p>
+                  </div>
+
+                  {vendorsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-gray-600">Finding available vendors...</p>
+                    </div>
+                  ) : vendors.length === 0 ? (
+                    <div className="text-center py-8">
+                      <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">No vendors available</h3>
+                      <p className="text-gray-600 mb-4">
+                        No {cartItem.package.service_type.toLowerCase()} vendors are available in {selectedVenue?.region} for {new Date(eventDate).toLocaleDateString()}.
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep(2)}
+                      >
+                        Try Different Venue
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-w-2xl mx-auto">
+                      {vendors.map((vendor) => {
+                        const isSelected = selectedVendor?.id === vendor.id;
+                        
+                        return (
+                          <div
+                            key={vendor.id}
+                            className={`
+                              relative p-6 rounded-lg border-2 transition-all
+                              ${isSelected 
+                                ? 'border-purple-500 bg-purple-50' 
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }
+                              ${checkingAvailability ? 'opacity-50 pointer-events-none' : ''}
+                            `}
+                          >
+                            {isSelected && (
+                              <div className="absolute top-4 right-4 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            )}
+                            
+                            <div className="flex items-start space-x-4">
+                              <img
+                                src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                                alt={vendor.name}
+                                className="w-16 h-16 rounded-full object-cover"
+                              />
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{vendor.name}</h3>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                                  {vendor.rating && (
+                                    <div className="flex items-center">
+                                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                                      <span>{vendor.rating}</span>
+                                    </div>
+                                  )}
+                                  <span>{vendor.years_experience} years experience</span>
+                                  <div className="flex items-center">
+                                    <Shield className="w-4 h-4 text-green-600 mr-1" />
+                                    <span>Verified</span>
+                                  </div>
+                                </div>
+                                <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                                  {vendor.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist`}
+                                </p>
+                                {vendor.specialties && vendor.specialties.length > 0 && (
+                                  <div className="mb-3">
+                                    <div className="flex flex-wrap gap-1">
+                                      {vendor.specialties.slice(0, 3).map((specialty, index) => (
+                                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                          {specialty}
+                                        </span>
+                                      ))}
+                                      {vendor.specialties.length > 3 && (
+                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                                          +{vendor.specialties.length - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Action Buttons */}
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingVendorProfile(vendor);
+                                    }}
+                                  >
+                                    View Profile
+                                  </Button>
+                                  <Button
+                                    variant={isSelected ? "primary" : "outline"}
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVendorSelect(vendor);
+                                    }}
+                                    disabled={checkingAvailability}
+                                  >
+                                    {isSelected ? 'Selected' : 'Select Vendor'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex justify-center space-x-3">
+                    <Button
+                      variant="outline"
+                      onClick={handleBack}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleComplete}
+                      disabled={!canProceedStep() || checkingAvailability}
+                      loading={checkingAvailability}
+                    >
+                      Complete Booking Setup
+                    </Button>
+                  </div>
                 </div>
               )}
-
-              <div className="flex justify-center space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                >
-                  Back
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleComplete}
-                  disabled={!canProceedStep() || checkingAvailability}
-                  loading={checkingAvailability}
-                >
-                  Complete Booking Setup
-                </Button>
-              </div>
-            </div>
+            </>
           )}
         </div>
 
