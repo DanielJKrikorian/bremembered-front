@@ -500,6 +500,7 @@ export const PackageDetails: React.FC = () => {
               
               <div className="space-y-4 mb-6">
                 <p className="text-gray-600">Direct messaging with your vendor</p>
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600">Package Price</span>
                   <span className="text-2xl font-bold text-gray-900">{formatPrice(packageData.price)}</span>
                 </div>
