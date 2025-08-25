@@ -56,6 +56,11 @@ const CheckoutForm: React.FC<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
+  
+  // Calculate totals within component scope
+  const totalServiceFee = cartItems.length * 150; // $150 per service
+  const grandTotal = totalAmount + totalServiceFee * 100; // Convert to cents
+  
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
     partner2Name: '',
