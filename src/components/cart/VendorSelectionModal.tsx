@@ -633,8 +633,17 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                         <div className="flex items-center space-x-4 text-gray-600 mb-4">
                           {viewingVendorProfile.rating && (
                             <div className="flex items-center">
-                              <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 mr-1" />
-                              <span className="font-medium text-lg">{viewingVendorProfile.rating}</span>
+                              <div className="flex items-center mr-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`w-5 h-5 ${
+                                      star <= viewingVendorProfile.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="font-medium text-lg">({viewingVendorProfile.rating})</span>
                             </div>
                           )}
                           <span>{viewingVendorProfile.years_experience} years experience</span>
@@ -801,8 +810,17 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                                 <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                                   {vendor.rating && (
                                     <div className="flex items-center">
-                                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                      <span>{vendor.rating}</span>
+                                      <div className="flex items-center mr-2">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star
+                                            key={star}
+                                            className={`w-4 h-4 ${
+                                              star <= vendor.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className="text-sm">({vendor.rating})</span>
                                     </div>
                                   )}
                                   <span>{vendor.years_experience} years experience</span>
