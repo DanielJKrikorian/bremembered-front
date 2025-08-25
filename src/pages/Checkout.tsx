@@ -494,7 +494,6 @@ export const Checkout: React.FC = () => {
                 </div>
 
                 <div className="text-xs text-gray-500 pt-4 space-y-1">
-                  <p>✓ Free cancellation up to 30 days before your event</p>
                   <p>✓ All prices include applicable taxes</p>
                   <p>✓ Payment processed securely</p>
                   <p>✓ 24/7 customer support</p>
