@@ -1029,7 +1029,8 @@ export const WeddingTimeline: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {/* Success/Error Messages */}
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
@@ -1424,7 +1425,8 @@ export const WeddingTimeline: React.FC = () => {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+
       {/* Event Modal */}
       <EventModal
         isOpen={showEventModal}
@@ -1437,5 +1439,6 @@ export const WeddingTimeline: React.FC = () => {
         onSave={handleSaveEvent}
         isEditing={!!editingEvent}
       />
+    </>
   );
 };
