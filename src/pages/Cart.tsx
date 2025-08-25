@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, Clock, Star, MessageCircle, Save, X } from 'lucide-react';
+import { ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, Clock, Star, MessageCircle, Save, X, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useCart } from '../context/CartContext';
-import { useRecommendedVendors } from '../hooks/useSupabase';
+import { useRecommendedVendors, useVenues } from '../hooks/useSupabase';
 import { Vendor } from '../types/booking';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { Venue } from '../types/booking';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
@@ -27,17 +28,37 @@ export const Cart: React.FC = () => {
   });
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [showVenueModal, setShowVenueModal] = useState(false);
+  const [selectedItemForVenue, setSelectedItemForVenue] = useState<string | null>(null);
+  const [venueSearch, setVenueSearch] = useState('');
+  const [showVenueForm, setShowVenueForm] = useState(false);
+  const [newVenue, setNewVenue] = useState({
+    name: '',
+    street_address: '',
+    city: '',
+    state: '',
+    zip: '',
+    region: '',
+    contact_name: '',
+    phone: '',
+    email: ''
+  });
 
   // Get vendors for the item we're selecting a vendor for
   const itemForVendorSelection = state.items.find(item => item.id === selectingVendorForItem);
   const { vendors: availableVendors, loading: vendorsLoading } = useRecommendedVendors({
     servicePackageId: itemForVendorSelection?.package.id || '',
     eventDate: itemForVendorSelection?.eventDate || '',
-    region: itemForVendorSelection?.venue?.city || '',
+    region: itemForVendorSelection?.venue?.region || '',
     languages: [],
     styles: [],
     vibes: []
   });
+
+  // Get venues for venue selection
+  const { venues, loading: venuesLoading } = useVenues(venueSearch);
+
+  const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
   const checkVendorAvailability = async (vendorId: string, eventDate: string): Promise<boolean> => {
     if (!supabase || !isSupabaseConfigured()) {
@@ -94,6 +115,105 @@ export const Cart: React.FC = () => {
     }
   };
 
+  const handleVenueSelect = async (venue: Venue, itemId: string) => {
+    updateItem(itemId, { 
+      venue: {
+        id: venue.id,
+        name: venue.name,
+        city: venue.city,
+        state: venue.state,
+        region: venue.region
+      }
+    });
+    setShowVenueModal(false);
+    setSelectedItemForVenue(null);
+    setVenueSearch('');
+    setShowVenueForm(false);
+  };
+
+  const handleCreateVenue = async (itemId: string) => {
+    if (!newVenue.name || !newVenue.region) {
+      setAvailabilityError('Please fill in venue name and region');
+      return;
+    }
+
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock venue creation for demo
+      const venue: Venue = {
+        id: `temp-${Date.now()}`,
+        name: newVenue.name,
+        street_address: newVenue.street_address,
+        city: newVenue.city,
+        state: newVenue.state,
+        zip: newVenue.zip,
+        region: newVenue.region,
+        contact_name: newVenue.contact_name,
+        phone: newVenue.phone,
+        email: newVenue.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      await handleVenueSelect(venue, itemId);
+      setNewVenue({
+        name: '',
+        street_address: '',
+        city: '',
+        state: '',
+        zip: '',
+        region: '',
+        contact_name: '',
+        phone: '',
+        email: ''
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .insert([{
+          name: newVenue.name,
+          street_address: newVenue.street_address || null,
+          city: newVenue.city || null,
+          state: newVenue.state || null,
+          zip: newVenue.zip || null,
+          region: newVenue.region,
+          contact_name: newVenue.contact_name || null,
+          phone: newVenue.phone || null,
+          email: newVenue.email || null
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await handleVenueSelect(data, itemId);
+      setNewVenue({
+        name: '',
+        street_address: '',
+        city: '',
+        state: '',
+        zip: '',
+        region: '',
+        contact_name: '',
+        phone: '',
+        email: ''
+      });
+    } catch (error) {
+      console.error('Error creating venue:', error);
+      setAvailabilityError('Failed to create venue. Please try again.');
+    }
+  };
+
+  const handleChooseVenue = (itemId: string) => {
+    setSelectedItemForVenue(itemId);
+    setShowVenueModal(true);
+    setVenueSearch('');
+    setShowVenueForm(false);
+    setAvailabilityError(null);
+  };
+
   const handleVendorSelect = (vendor: Vendor) => {
     if (!selectingVendorForItem) return;
 
@@ -103,6 +223,11 @@ export const Cart: React.FC = () => {
     // Check if event date is set
     if (!item.eventDate) {
       setAvailabilityError('Please set an event date first before choosing a vendor.');
+      return;
+    }
+
+    if (!item.venue || !item.venue.region) {
+      setAvailabilityError('Please select a venue first before choosing a vendor.');
       return;
     }
 
@@ -137,6 +262,15 @@ export const Cart: React.FC = () => {
     if (!item.eventDate) {
       setAvailabilityError('Please set an event date first before choosing a vendor.');
       // Focus on the item that needs a date
+      const element = document.getElementById(`item-${itemId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    if (!item.venue || !item.venue.region) {
+      setAvailabilityError('Please select a venue first before choosing a vendor.');
       const element = document.getElementById(`item-${itemId}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -345,10 +479,12 @@ export const Cart: React.FC = () => {
                                   <div className="md:col-span-2">
                                     <Input
                                       label="Venue Name"
-                                      value={editForm.venue}
-                                      onChange={(e) => setEditForm(prev => ({ ...prev, venue: e.target.value }))}
-                                      placeholder="Enter venue name"
+                                      value={item.venue?.name || ''}
+                                      placeholder="Click to select venue"
                                       icon={MapPin}
+                                      readOnly
+                                      onClick={() => handleChooseVenue(item.id)}
+                                      className="cursor-pointer"
                                     />
                                   </div>
                                   <div className="md:col-span-2">
@@ -450,7 +586,7 @@ export const Cart: React.FC = () => {
                                   {item.venue ? (
                                     <div className="flex items-center text-sm text-gray-600">
                                       <MapPin className="w-4 h-4 mr-1" />
-                                      <span>{item.venue.name}</span>
+                                      <span>{item.venue.name} ({item.venue.region})</span>
                                     </div>
                                   ) : (
                                     <div className="flex items-center text-sm text-amber-600">
@@ -524,6 +660,12 @@ export const Cart: React.FC = () => {
                                         <span className="font-medium">{item.venue.name}</span>
                                       </div>
                                     )}
+                                    {item.venue?.region && (
+                                      <div className="flex justify-between">
+                                        <span className="text-gray-600">Region:</span>
+                                        <span className="font-medium">{item.venue.region}</span>
+                                      </div>
+                                    )}
                                     {item.notes && (
                                       <div className="flex justify-between">
                                         <span className="text-gray-600">Notes:</span>
@@ -535,13 +677,31 @@ export const Cart: React.FC = () => {
                               </div>
                             ) : null}
 
+                            {/* Venue Selection */}
+                            {!item.venue && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <h4 className="font-medium text-blue-900 mb-3">Select Venue</h4>
+                                <p className="text-sm text-blue-800 mb-3">
+                                  Choose your venue to find vendors in your area
+                                </p>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => handleChooseVenue(item.id)}
+                                  icon={MapPin}
+                                >
+                                  Choose Venue
+                                </Button>
+                              </div>
+                            )}
+
                             {/* Vendor Selection */}
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                               <h4 className="font-medium text-amber-900 mb-3">Choose Your Vendor</h4>
-                              {!item.eventDate && (
+                              {(!item.eventDate || !item.venue) && (
                                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
                                   <p className="text-sm text-red-800">
-                                    ⚠️ Please set an event date first before choosing a vendor
+                                    ⚠️ Please set an event date and venue first before choosing a vendor
                                   </p>
                                 </div>
                               )}
@@ -551,7 +711,7 @@ export const Cart: React.FC = () => {
                                   size="sm"
                                   onClick={() => handleChooseVendorWithDateCheck(item.id)}
                                   className="flex-1"
-                                  disabled={!item.eventDate}
+                                  disabled={!item.eventDate || !item.venue}
                                 >
                                   Browse Vendors
                                 </Button>
@@ -560,7 +720,7 @@ export const Cart: React.FC = () => {
                                   size="sm"
                                   onClick={() => handlePickForMe(item.id)}
                                   className="flex-1"
-                                  disabled={!item.eventDate}
+                                  disabled={!item.eventDate || !item.venue}
                                 >
                                   Pick For Me
                                 </Button>
@@ -675,7 +835,7 @@ export const Cart: React.FC = () => {
                                 {item.venue && (
                                   <div className="flex items-center text-sm text-gray-600">
                                     <MapPin className="w-4 h-4 mr-1" />
-                                    <span>{item.venue.name}</span>
+                                    <span>{item.venue.name} ({item.venue.region})</span>
                                   </div>
                                 )}
                               </div>
@@ -834,6 +994,194 @@ export const Cart: React.FC = () => {
                 </div>
               </Card>
             </div>
+          </div>
+        )}
+
+        {/* Venue Selection Modal */}
+        {showVenueModal && selectedItemForVenue && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">Select Venue</h3>
+                  <p className="text-gray-600 mt-1">Choose your event venue</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowVenueModal(false);
+                    setSelectedItemForVenue(null);
+                    setVenueSearch('');
+                    setShowVenueForm(false);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {availabilityError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{availabilityError}</p>
+                  </div>
+                )}
+
+                {!showVenueForm ? (
+                  <>
+                    {/* Venue Search */}
+                    <div className="mb-6">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search venues by name or location..."
+                          value={venueSearch}
+                          onChange={(e) => setVenueSearch(e.target.value)}
+                          className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Venue Results */}
+                    {venueSearch && (
+                      <div className="mb-6">
+                        <h4 className="font-medium text-gray-900 mb-4">Search Results</h4>
+                        {venuesLoading ? (
+                          <div className="text-center py-8">
+                            <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                            <p className="text-gray-600">Searching venues...</p>
+                          </div>
+                        ) : venues.length > 0 ? (
+                          <div className="space-y-3 max-h-64 overflow-y-auto">
+                            {venues.map((venue) => (
+                              <div
+                                key={venue.id}
+                                onClick={() => handleVenueSelect(venue, selectedItemForVenue!)}
+                                className="p-4 border border-gray-200 rounded-lg hover:border-rose-300 hover:bg-rose-50 cursor-pointer transition-colors"
+                              >
+                                <h5 className="font-medium text-gray-900">{venue.name}</h5>
+                                <p className="text-sm text-gray-600">
+                                  {venue.street_address && `${venue.street_address}, `}
+                                  {venue.city}, {venue.state} {venue.zip}
+                                </p>
+                                {venue.region && (
+                                  <p className="text-sm text-rose-600 font-medium">Region: {venue.region}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-center py-4">
+                            No venues found. Try a different search or add a new venue.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="text-center">
+                      <Button
+                        variant="primary"
+                        icon={Plus}
+                        onClick={() => setShowVenueForm(true)}
+                      >
+                        Add New Venue
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  /* Add New Venue Form */
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Add New Venue</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <Input
+                          label="Venue Name"
+                          value={newVenue.name}
+                          onChange={(e) => setNewVenue(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter venue name"
+                          required
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Input
+                          label="Street Address"
+                          value={newVenue.street_address}
+                          onChange={(e) => setNewVenue(prev => ({ ...prev, street_address: e.target.value }))}
+                          placeholder="123 Main Street"
+                        />
+                      </div>
+                      <Input
+                        label="City"
+                        value={newVenue.city}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, city: e.target.value }))}
+                        placeholder="City"
+                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                        <select
+                          value={newVenue.state}
+                          onChange={(e) => setNewVenue(prev => ({ ...prev, state: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          required
+                        >
+                          <option value="">Select State</option>
+                          {states.map((state) => (
+                            <option key={state} value={state}>{state}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <Input
+                        label="ZIP Code"
+                        value={newVenue.zip}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, zip: e.target.value }))}
+                        placeholder="12345"
+                      />
+                      <Input
+                        label="Region"
+                        value={newVenue.region}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, region: e.target.value }))}
+                        placeholder="e.g., Greater Boston, Cape Cod"
+                        required
+                      />
+                      <Input
+                        label="Contact Name"
+                        value={newVenue.contact_name}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, contact_name: e.target.value }))}
+                        placeholder="Venue coordinator name"
+                      />
+                      <Input
+                        label="Phone"
+                        value={newVenue.phone}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="(555) 123-4567"
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        value={newVenue.email}
+                        onChange={(e) => setNewVenue(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="venue@example.com"
+                      />
+                    </div>
+                    <div className="flex space-x-3 mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowVenueForm(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => handleCreateVenue(selectedItemForVenue!)}
+                        disabled={!newVenue.name || !newVenue.region}
+                      >
+                        Add Venue
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         )}
 

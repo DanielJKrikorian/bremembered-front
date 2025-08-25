@@ -202,11 +202,25 @@ export const useRecommendedVendors = (filters: {
 
         // Filter by region if specified
         if (filters.region && vendorData.length > 0) {
-          vendorData = vendorData.filter(vendor => 
-            vendor.service_areas?.some((area: string) => 
-              area.toLowerCase().includes(filters.region!.toLowerCase())
-            )
-          );
+          // Get vendors who serve this region from vendor_service_areas table
+          const { data: vendorServiceAreas, error: serviceAreaError } = await supabase
+            .from('vendor_service_areas')
+            .select('vendor_id')
+            .ilike('region', `%${filters.region}%`);
+
+          if (!serviceAreaError && vendorServiceAreas && vendorServiceAreas.length > 0) {
+            const vendorIdsInRegion = vendorServiceAreas.map(vsa => vsa.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsInRegion.includes(vendor.id)
+            );
+          } else {
+            // Fallback to service_areas array if vendor_service_areas query fails
+            vendorData = vendorData.filter(vendor => 
+              vendor.service_areas?.some((area: string) => 
+                area.toLowerCase().includes(filters.region!.toLowerCase())
+              )
+            );
+          }
         }
 
         // If we have language preferences, filter vendors
