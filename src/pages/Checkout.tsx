@@ -13,6 +13,15 @@ import { AuthModal } from '../components/auth/AuthModal';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(price / 100);
+};
+
 interface CheckoutFormData {
   // Personal Information
   firstName: string;
@@ -518,15 +527,6 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
-  };
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
