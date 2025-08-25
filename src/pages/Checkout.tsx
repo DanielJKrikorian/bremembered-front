@@ -584,7 +584,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               <Input
                                 placeholder="Type your full legal name to sign"
                                 value={signatures[template.service_type] || ''}
-                               onChange={(e) => setSignatures(prev => ({ ...prev, [template.service_type]: e.target.value }))}
+                               onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
                                 helperText="By typing your name, you agree to be legally bound by this contract"
                                 required
                               />
