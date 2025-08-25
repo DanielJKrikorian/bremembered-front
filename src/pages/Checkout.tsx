@@ -453,7 +453,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       <form onSubmit={handleSubmit}>
         {/* Step 1: Personal Information & Event Details */}
         {currentStep === 1 && (
-          <Card className="p-6">
+          <Card className="p-6 mb-8">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <User className="w-5 h-5 text-blue-600" />
@@ -497,6 +497,22 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 helperText="For urgent updates about your booking"
                 required
               />
+            </div>
+            
+            {/* Terms Agreement for Step 1 */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <label className="flex items-start space-x-3">
+                <input 
+                  type="checkbox" 
+                  checked={formData.agreedToTerms}
+                  onChange={(e) => handleInputChange('agreedToTerms', e.target.checked)}
+                  className="mt-1 text-rose-500 focus:ring-rose-500" 
+                  required 
+                />
+                <span className="text-sm text-gray-600">
+                  I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this booking is subject to the vendor's cancellation policy.
+                </span>
+              </label>
             </div>
           </Card>
         )}
@@ -708,21 +724,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       Save payment method for future bookings
                     </label>
                   </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <label className="flex items-start space-x-3">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.agreedToTerms}
-                      onChange={(e) => handleInputChange('agreedToTerms', e.target.checked)}
-                      className="mt-1 text-rose-500 focus:ring-rose-500" 
-                      required 
-                    />
-                    <span className="text-sm text-gray-600">
-                      I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this booking is subject to the vendor's cancellation policy.
-                    </span>
-                  </label>
                 </div>
               </div>
             </Card>
