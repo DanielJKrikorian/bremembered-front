@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useCart } from '../context/CartContext';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { AuthModal } from '../components/auth/AuthModal';
@@ -87,6 +88,16 @@ const CheckoutForm: React.FC<{
   const { couple } = useCouple();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discountState, setDiscountState] = useState({
+    couponCode: '',
+    referralCode: '',
+    appliedCoupon: null as any,
+    appliedReferral: null as any,
+    validatingCoupon: false,
+    validatingReferral: false,
+    couponError: null as string | null,
+    referralError: null as string | null
+  });
   const [cardReady, setCardReady] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Contract, 3: Payment
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
