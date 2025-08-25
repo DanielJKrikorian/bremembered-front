@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, Check, ArrowLeft, Calendar, MapPin, Users, Mail, Phone, User, Shield, AlertCircle, Eye, EyeOff, FileText, Edit } from 'lucide-react';
+import { CreditCard, Lock, Check, ArrowLeft, Calendar, MapPin, Users, Mail, Phone, User, Shield, AlertCircle, Eye, EyeOff, FileText, Edit, ArrowRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -781,6 +781,22 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </span>
                 </label>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between">
+          {currentStep > 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevStep}
+              icon={ArrowLeft}
+            >
+              Back
+            </Button>
+          )}
           
           <div className={currentStep === 1 ? 'ml-auto' : ''}>
             <Button
@@ -800,56 +816,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               {currentStep === 2 && 'Continue to Payment'}
               {currentStep === 3 && (loading ? 'Processing Payment...' : `Pay Deposit - ${formatPrice(grandTotal)}`)}
             </Button>
-        <div className="grid grid-cols-1 gap-6">
-            label="Street Address"
-            placeholder="123 Main Street"
-            value={formData.billingAddress}
-            onChange={(e) => handleInputChange('billingAddress', e.target.value)}
-            required
-          />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              label="City"
-              placeholder="City"
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              required
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-              <select
-                value={formData.state}
-                onChange={(e) => handleInputChange('state', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                required
-              >
-                <option value="">Select State</option>
-                {states.map((state) => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-            </div>
-            <Input
-              label="ZIP Code"
-              placeholder="12345"
-              value={formData.zipCode}
-              onChange={(e) => handleInputChange('zipCode', e.target.value)}
-              required
-            />
           </div>
-        </div>
-      </Card>
-
-      {/* Payment Information */}
-      <Card className="p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-purple-600" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
-        </div>
-        
-        <div className="space-y-6">
         </div>
       </form>
 
@@ -876,48 +843,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           <div className="flex justify-between text-lg font-semibold border-t pt-3">
             <span>Total Due Today</span>
             <span>{formatPrice(grandTotal)}</span>
-                      '::placeholder': {
-                        color: '#6b7280',
-                      },
-                    },
-                    invalid: {
-                      color: '#dc2626',
-                    },
-                  },
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Payment Options */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                id="save-payment"
-                checked={formData.savePaymentMethod}
-                onChange={(e) => handleInputChange('savePaymentMethod', e.target.checked)}
-                className="text-rose-500 focus:ring-rose-500 rounded"
-              />
-              <label htmlFor="save-payment" className="text-sm text-gray-700">
-                Save payment method for future bookings
-              </label>
-            </div>
-          </div>
-
-          <div className="border-t pt-6">
-            <label className="flex items-start space-x-3">
-              <input 
-                type="checkbox" 
-                checked={formData.agreedToTerms}
-                onChange={(e) => handleInputChange('agreedToTerms', e.target.checked)}
-                className="mt-1 text-rose-500 focus:ring-rose-500" 
-                required 
-              />
-              <span className="text-sm text-gray-600">
-                I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this booking is subject to the vendor's cancellation policy.
-              </span>
-            </label>
           </div>
         </div>
       </Card>
@@ -1205,324 +1130,6 @@ export const Checkout: React.FC = () => {
                 <li>• You'll receive a confirmation email within 5 minutes</li>
                 <li>• Your vendors will contact you within 24 hours</li>
                 <li>• The remaining balance will be due closer to your event date</li>
-                <li>• {!isAuthenticated ? 'Create an account to message vendors and track progress' : 'Use your dashboard to track progress and message vendors'}</li>
-              </ul>
-            </div>
-
-            {!isAuthenticated && (
-              <div className="mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setShowAuthModal(true);
-                  }}
-                  className="w-full"
-                >
-                  Create Account to Message Vendors
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
-      </div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode={authMode}
-      />
-    </div>
-  );
-};
-
-
-      {/* Submit Button */}
-      <div className="text-center">
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="w-full max-w-md"
-          loading={loading}
-          disabled={!stripe || !elements || !cardReady || loading}
-          icon={CreditCard}
-        >
-          {loading ? 'Processing Payment...' : `Complete Booking - ${formatPrice(totalAmount + 15000)}`}
-        </Button>
-        <p className="text-sm text-gray-500 mt-3">
-          You will be charged {formatPrice(grandTotal)} today
-        </p>
-      </div>
-    </form>
-  );
-};
-
-export const Checkout: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { state: cartState, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState(1);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
-
-  // Get cart data from either location state or cart context
-  const cartItems = location.state?.cartItems || cartState.items;
-  const totalAmount = location.state?.totalAmount || cartState.totalAmount;
-
-  // Redirect if no items
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      navigate('/cart');
-    }
-  }, [cartItems.length, navigate]);
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': return '📸';
-      case 'Videography': return '🎥';
-      case 'DJ Services': return '🎵';
-      case 'Live Musician': return '🎼';
-      case 'Coordination': return '👰';
-      case 'Planning': return '📅';
-      default: return '💍';
-    }
-  };
-
-  const handlePaymentSuccess = () => {
-    setStep(2); // Show confirmation
-    clearCart(); // Clear cart after successful payment
-  };
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    // Continue with checkout process
-  };
-
-  const handleProceedWithoutAuth = () => {
-    // Force authentication before final payment
-    setShowAuthModal(true);
-    setAuthMode('signup');
-  };
-
-  const totalServiceFee = cartItems.length * 150; // $150 per service
-  const grandTotal = totalAmount + totalServiceFee * 100; // Convert to cents
-
-  if (cartItems.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Items to Checkout</h2>
-            disabled={!stripe || !elements || !cardReady || loading || !formData.partner1Name}
-          <Button variant="primary" onClick={() => navigate('/search')}>
-            {loading ? 'Processing Payment...' : `Complete Booking - ${formatPrice(grandTotal)}`}
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="ghost" 
-              icon={ArrowLeft} 
-              onClick={() => navigate('/cart')}
-            >
-              Back to Cart
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Complete Your Booking</h1>
-              <p className="text-gray-600 mt-1">
-                {step === 1 ? 'Enter your details and payment information' : 'Booking Confirmation'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {step === 1 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Checkout Form */}
-            <div className="lg:col-span-2">
-              {!isAuthenticated && (
-                <Card className="p-6 mb-8 bg-amber-50 border-amber-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-amber-900 mb-1">Sign up for the best experience</h3>
-                      <p className="text-amber-800 text-sm">
-                        Create an account to message vendors, track your bookings, and access your wedding gallery
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAuthMode('login');
-                          setShowAuthModal(true);
-                        }}
-                        className="text-amber-700 border-amber-300 hover:bg-amber-100"
-                      >
-                        Sign In
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                          setAuthMode('signup');
-                          setShowAuthModal(true);
-                        }}
-                        className="bg-amber-600 hover:bg-amber-700"
-                      >
-                        Sign Up
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              <Elements stripe={stripePromise}>
-                <CheckoutForm
-                  cartItems={cartItems}
-                  totalAmount={totalAmount}
-                  onSuccess={handlePaymentSuccess}
-                />
-              </Elements>
-            </div>
-
-            {/* Order Summary */}
-            <div>
-              <Card className="p-6 sticky top-4">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h3>
-                
-                <div className="space-y-4 mb-6">
-                  {cartItems.map((item: any) => (
-                    <div key={item.id} className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">
-                        {getServiceIcon(item.package.service_type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 line-clamp-2">
-                          {item.package.name}
-                        </h4>
-                        <p className="text-sm text-gray-600">{item.package.service_type}</p>
-                        {item.vendor && (
-                          <p className="text-xs text-green-600">Vendor: {item.vendor.name}</p>
-                        )}
-                        {item.eventDate && (
-                          <p className="text-xs text-gray-500">
-                            {new Date(item.eventDate).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium text-gray-900">
-                          {formatPrice(item.package.price)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{formatPrice(totalAmount)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Service Fees ({cartItems.length} × $150)</span>
-                    <span className="font-medium">${totalServiceFee}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-lg font-semibold border-t pt-3">
-                    <span>Total</span>
-                    <span>{formatPrice(grandTotal)}</span>
-                  </div>
-                </div>
-
-                {/* Trust Indicators */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <Shield className="w-4 h-4 text-green-600" />
-                      <span className="text-gray-600">Secure checkout with Stripe</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Check className="w-4 h-4 text-green-600" />
-                      <span className="text-gray-600">Direct messaging with your vendor</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Phone className="w-4 h-4 text-green-600" />
-                      <span className="text-gray-600">24/7 customer support</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        ) : (
-          /* Confirmation Step */
-          <Card className="p-8 text-center max-w-2xl mx-auto">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-3xl font-semibold text-gray-900 mb-4">Booking Confirmed!</h2>
-            <p className="text-xl text-gray-600 mb-6">
-              Thank you for choosing B. Remembered! Your wedding booking has been successfully confirmed.
-            </p>
-            
-            <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-              <h3 className="font-semibold text-gray-900 mb-4">Booking Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Booking ID:</span>
-                  <span className="font-medium">#BR-{Date.now().toString().slice(-6)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Services:</span>
-                  <span className="font-medium">{cartItems.length} service{cartItems.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Paid:</span>
-                  <span className="font-medium">{formatPrice(grandTotal)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Button 
-                variant="primary" 
-                className="w-full"
-                onClick={() => navigate('/my-bookings')}
-              >
-                View My Bookings
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => navigate('/')}
-              >
-                Continue Shopping
-              </Button>
-            </div>
-
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">What's Next?</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• You'll receive a confirmation email within 5 minutes</li>
-                <li>• Your vendors will contact you within 24 hours</li>
                 <li>• {!isAuthenticated ? 'Create an account to message vendors and track progress' : 'Use your dashboard to track progress and message vendors'}</li>
               </ul>
             </div>
