@@ -221,10 +221,13 @@ By signing below, both parties agree to the terms outlined in this contract.`,
 
   const validateForm = () => {
     const required = [
-      'partner1Name', 'email', 'phone',
-      'billingAddress', 'city', 'state', 'zipCode',
-      'eventDate', 'eventTime', 'eventLocation'
+      'partner1Name', 'email', 'phone'
     ];
+    
+    // Add billing address requirements for payment step
+    if (currentStep === 3) {
+      required.push('billingAddress', 'city', 'state', 'zipCode');
+    }
     
     for (const field of required) {
       if (!formData[field as keyof CheckoutFormData]) {
@@ -450,164 +453,52 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       <form onSubmit={handleSubmit}>
         {/* Step 1: Personal Information & Event Details */}
         {currentStep === 1 && (
-          <div className="space-y-8">
-            {/* Personal Information */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+          <Card className="p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5 text-blue-600" />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input
-                  label="Partner 1 Name"
-                  value={formData.partner1Name}
-                  onChange={(e) => handleInputChange('partner1Name', e.target.value)}
-                  placeholder="Your name"
-                  icon={User}
-                  required
-                />
-                <Input
-                  label="Partner 2 Name (Optional)"
-                  value={formData.partner2Name}
-                  onChange={(e) => handleInputChange('partner2Name', e.target.value)}
-                  placeholder="Partner's name"
-                  icon={User}
-                />
-                <Input
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="john.smith@example.com"
-                  icon={Mail}
-                  helperText="We'll send booking confirmations here"
-                  required
-                />
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  placeholder="(555) 123-4567"
-                  icon={Phone}
-                  helperText="For urgent updates about your booking"
-                  required
-                />
-              </div>
-            </Card>
-
-            {/* Event Details */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-rose-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Event Details</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input
-                  label="Event Date"
-                  type="date"
-                  value={formData.eventDate}
-                  onChange={(e) => handleInputChange('eventDate', e.target.value)}
-                  icon={Calendar}
-                  required
-                />
-                <Input
-                  label="Event Time"
-                  type="time"
-                  value={formData.eventTime}
-                  onChange={(e) => handleInputChange('eventTime', e.target.value)}
-                  required
-                />
-                <div className="md:col-span-2">
-                  <Input
-                    label="Event Location"
-                    placeholder="Venue name and address"
-                    value={formData.eventLocation}
-                    onChange={(e) => handleInputChange('eventLocation', e.target.value)}
-                    icon={MapPin}
-                    required
-                  />
-                </div>
-                <Input
-                  label="Expected Guest Count"
-                  type="number"
-                  placeholder="Number of guests"
-                  value={formData.guestCount}
-                  onChange={(e) => handleInputChange('guestCount', e.target.value)}
-                  icon={Users}
-                  required
-                />
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Special Requests or Notes
-                  </label>
-                  <textarea
-                    placeholder="Any special requirements, themes, or important details..."
-                    value={formData.specialRequests}
-                    onChange={(e) => handleInputChange('specialRequests', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </Card>
-
-            {/* Billing Address */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Billing Address</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 gap-6">
-                <Input
-                  label="Street Address"
-                  placeholder="123 Main Street"
-                  value={formData.billingAddress}
-                  onChange={(e) => handleInputChange('billingAddress', e.target.value)}
-                  required
-                />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Input
-                    label="City"
-                    placeholder="City"
-                    value={formData.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    required
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-                    <select
-                      value={formData.state}
-                      onChange={(e) => handleInputChange('state', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      required
-                    >
-                      <option value="">Select State</option>
-                      {states.map((state) => (
-                        <option key={state} value={state}>{state}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <Input
-                    label="ZIP Code"
-                    placeholder="12345"
-                    value={formData.zipCode}
-                    onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
+              <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Partner 1 Name"
+                value={formData.partner1Name}
+                onChange={(e) => handleInputChange('partner1Name', e.target.value)}
+                placeholder="Your name"
+                icon={User}
+                required
+              />
+              <Input
+                label="Partner 2 Name (Optional)"
+                value={formData.partner2Name}
+                onChange={(e) => handleInputChange('partner2Name', e.target.value)}
+                placeholder="Partner's name"
+                icon={User}
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="john.smith@example.com"
+                icon={Mail}
+                helperText="We'll send booking confirmations here"
+                required
+              />
+              <Input
+                label="Phone Number"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="(555) 123-4567"
+                icon={Phone}
+                helperText="For urgent updates about your booking"
+                required
+              />
+            </div>
+          </Card>
         )}
 
         {/* Step 2: Contract Signing */}
@@ -702,87 +593,140 @@ By signing below, both parties agree to the terms outlined in this contract.`,
 
         {/* Step 3: Payment Information */}
         {currentStep === 3 && (
-          <Card className="p-6">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
-            </div>
-            
-            {/* Deposit Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
-              <p className="text-blue-800 text-sm">
-                You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due closer to your event date.
-              </p>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                <Lock className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-800">Secure Payment</p>
-                  <p className="text-xs text-green-700">Your payment information is encrypted and secure</p>
+          <div className="space-y-6">
+            {/* Billing Address */}
+            <Card className="p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-emerald-600" />
                 </div>
+                <h3 className="text-xl font-semibold text-gray-900">Billing Address</h3>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Card Information
-                </label>
-                <div className="p-4 border border-gray-300 rounded-lg bg-white">
-                  <CardElement
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: '16px',
-                          color: '#1f2937',
-                          '::placeholder': {
-                            color: '#6b7280',
-                          },
-                        },
-                        invalid: {
-                          color: '#dc2626',
-                        },
-                      },
-                    }}
+              <div className="grid grid-cols-1 gap-6">
+                <Input
+                  label="Street Address"
+                  placeholder="123 Main Street"
+                  value={formData.billingAddress}
+                  onChange={(e) => handleInputChange('billingAddress', e.target.value)}
+                  required
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    label="City"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    required
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                    <select
+                      value={formData.state}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      required
+                    >
+                      <option value="">Select State</option>
+                      {states.map((state) => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input
+                    label="ZIP Code"
+                    placeholder="12345"
+                    value={formData.zipCode}
+                    onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                    required
                   />
                 </div>
               </div>
+            </Card>
 
-              {/* Payment Options */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="save-payment"
-                    checked={formData.savePaymentMethod}
-                    onChange={(e) => handleInputChange('savePaymentMethod', e.target.checked)}
-                    className="text-rose-500 focus:ring-rose-500 rounded"
-                  />
-                  <label htmlFor="save-payment" className="text-sm text-gray-700">
-                    Save payment method for future bookings
+            {/* Payment Information */}
+            <Card className="p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
+              </div>
+              
+              {/* Deposit Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
+                <p className="text-blue-800 text-sm">
+                  You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due closer to your event date.
+                </p>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <Lock className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">Secure Payment</p>
+                    <p className="text-xs text-green-700">Your payment information is encrypted and secure</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Card Information
+                  </label>
+                  <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                    <CardElement
+                      options={{
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#1f2937',
+                            '::placeholder': {
+                              color: '#6b7280',
+                            },
+                          },
+                          invalid: {
+                            color: '#dc2626',
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Payment Options */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="save-payment"
+                      checked={formData.savePaymentMethod}
+                      onChange={(e) => handleInputChange('savePaymentMethod', e.target.checked)}
+                      className="text-rose-500 focus:ring-rose-500 rounded"
+                    />
+                    <label htmlFor="save-payment" className="text-sm text-gray-700">
+                      Save payment method for future bookings
+                    </label>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <label className="flex items-start space-x-3">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.agreedToTerms}
+                      onChange={(e) => handleInputChange('agreedToTerms', e.target.checked)}
+                      className="mt-1 text-rose-500 focus:ring-rose-500" 
+                      required 
+                    />
+                    <span className="text-sm text-gray-600">
+                      I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this booking is subject to the vendor's cancellation policy.
+                    </span>
                   </label>
                 </div>
               </div>
-
-              <div className="border-t pt-6">
-                <label className="flex items-start space-x-3">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.agreedToTerms}
-                    onChange={(e) => handleInputChange('agreedToTerms', e.target.checked)}
-                    className="mt-1 text-rose-500 focus:ring-rose-500" 
-                    required 
-                  />
-                  <span className="text-sm text-gray-600">
-                    I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this booking is subject to the vendor's cancellation policy.
-                  </span>
-                </label>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         )}
 
         {/* Navigation Buttons */}
@@ -799,32 +743,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           )}
           
           <div className={currentStep === 1 ? 'ml-auto' : ''}>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              disabled={
-                (currentStep === 3 && (!stripe || !elements || !cardReady || loading)) ||
-                (currentStep === 2 && !contractTemplates.every(template => 
-                  signatures[template.service_type] && signatures[template.service_type].trim() !== ''
-                ))
-              }
-              icon={currentStep === 3 ? CreditCard : ArrowRight}
-            >
-              {currentStep === 1 && 'Continue to Contracts'}
-              {currentStep === 2 && 'Continue to Payment'}
-              {currentStep === 3 && (loading ? 'Processing Payment...' : `Pay Deposit - ${formatPrice(grandTotal)}`)}
-            </Button>
-          </div>
-        </div>
-      </form>
-
-      {/* Payment Summary - Always visible */}
-      <Card className="p-6 bg-gray-50">
-        <h4 className="font-semibold text-gray-900 mb-4">Payment Summary</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
             <span className="text-gray-600">Package Total</span>
             <span className="font-medium">{formatPrice(totalAmount)}</span>
           </div>
