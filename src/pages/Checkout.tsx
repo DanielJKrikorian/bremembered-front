@@ -754,6 +754,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </div>
             </Card>
+
+            {/* Add extra spacing before navigation buttons */}
+            <div className="mt-12"></div>
           </div>
         )}
 
