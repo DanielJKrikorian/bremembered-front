@@ -1513,54 +1513,55 @@ export const WeddingTimeline: React.FC = () => {
                               <p className="text-sm text-purple-800">
                                 <strong>Playlist:</strong> {event.playlist_requests}
                               </p>
-                            )}
-                          </div>
-                        )}
+                          value={formData.playlist_requests || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, playlist_requests: e.target.value }))}
+                          placeholder="Music style preferences, do-not-play lists, or general vibe requests"
                       </div>
 
                       <div className="ml-4 flex items-center space-x-2">
                         <Button
+                    </div>
+                  </div>
+                )}
                           variant="ghost"
-                          icon={Edit2}
-                          size="sm"
-                          onClick={() => startEditing(event)}
-                        />
-                        <Button
-                          variant="ghost"
-                          icon={X}
-                          size="sm"
-                          onClick={() => handleDeleteEvent(event.id)}
-                          className="text-red-500 hover:text-red-700"
-                        />
+                {/* Step 3: Photo Shotlist */}
+                {modalStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Camera className="w-8 h-8 text-blue-600" />
                       </div>
+                      <h4 className="text-2xl font-bold text-gray-900 mb-3">Photo Shotlist</h4>
+                      <p className="text-gray-600">What photos are must-haves for your event?</p>
                     </div>
 
-                    {index < events.length - 1 && (
-                      <div className="mt-4 text-xs text-gray-500">
-                        {calculateTimeDifference(event, events[index + 1])}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
-      </div>
+                    <div className="space-y-4">
+                          icon={Edit2}
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Photo Requests & Must-Have Shots
+                {/* Step 3: Music & Playlist */}
+                {modalStep === 2 && (
+                          value={formData.photo_shotlist || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, photo_shotlist: e.target.value }))}
+                          placeholder="List specific photos you want captured (e.g., 'First dance with parents', 'Ring exchange close-up', 'Sunset couple photos', etc.)"
+                          rows={6}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      <h4 className="text-2xl font-bold text-gray-900 mb-3">Music & Playlist</h4>
+                      <p className="text-gray-600">Any specific music requests or preferences?</p>
+                    </div>
 
-      {/* Event Modal */}
-      <EventModal
-        isOpen={showEventModal}
-        onClose={() => {
-          setShowEventModal(false);
-          setEditingEvent(null);
-        }}
-        event={editingEvent || undefined}
-        weddingDate={weddingDate}
-        onSave={handleSaveEvent}
-        isEditing={!!editingEvent}
+                        <label className="block text-sm font-medium text-purple-700 mb-2">
+                          Specific Song Requests
+                {/* Photo Shotlist */}
+                {event.photo_shotlist && (
+                          value={formData.music_notes || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, music_notes: e.target.value }))}
+                          placeholder="Any specific songs for key moments? (e.g., 'First dance: Perfect by Ed Sheeran', 'Processional: Canon in D')"
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    <div className="text-blue-800 text-sm">
+                      <strong>Must-have shots:</strong> {event.photo_shotlist}
       />
-    </>
   );
-};
+                        <label className="block text-sm font-medium text-purple-700 mb-2">
+                          Playlist Requests & Preferences
