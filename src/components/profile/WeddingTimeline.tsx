@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Clock, MapPin, Calendar, X, Edit2, ChevronDown, ChevronUp, AlertCircle, Check, Download, FileDown, FileText, Share2, Music, Users, Camera } from 'lucide-react';
+import { Plus, Clock, MapPin, Calendar, X, Edit2, ChevronDown, ChevronUp, AlertCircle, Check, Download, FileDown, FileText, Share2, Music, Users, Camera, ArrowLeft, ArrowRight } from 'lucide-react';
 import { format, parseISO, addMinutes } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import { Button } from '../ui/Button';
@@ -472,6 +472,7 @@ const EventModal: React.FC<EventModalProps> = ({
               </Button>
             )}
           </div>
+        </div>
       </Card>
     </div>
   );
