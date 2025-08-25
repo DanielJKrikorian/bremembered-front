@@ -164,7 +164,7 @@ export const Support: React.FC = () => {
                 </div>
               </div>
               <Button variant="primary" className="w-full">
-                Call (555) 123-WEDDING
+                Call (978) 945-3WED
               </Button>
             </Card>
 
