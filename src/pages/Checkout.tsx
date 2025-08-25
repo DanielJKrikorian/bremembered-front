@@ -24,8 +24,8 @@ const formatPrice = (price: number) => {
 
 interface CheckoutFormData {
   // Personal Information
-  firstName: string;
-  lastName: string;
+  partner1Name: string;
+  partner2Name: string;
   email: string;
   phone: string;
   // Billing Address
@@ -57,8 +57,8 @@ const CheckoutForm: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
   const [formData, setFormData] = useState<CheckoutFormData>({
-    firstName: '',
-    lastName: '',
+    partner1Name: '',
+    partner2Name: '',
     email: '',
     phone: '',
     billingAddress: '',
@@ -77,13 +77,11 @@ const CheckoutForm: React.FC<{
   // Pre-fill form with user data if authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      const name = user.user_metadata?.name || couple?.name || '';
-      const nameParts = name.split(' ');
       
       setFormData(prev => ({
         ...prev,
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
+        partner1Name: couple?.partner1_name || user.user_metadata?.name || '',
+        partner2Name: couple?.partner2_name || '',
         email: user.email || couple?.email || '',
         phone: couple?.phone || '',
         eventDate: couple?.wedding_date || '',
@@ -127,14 +125,17 @@ const CheckoutForm: React.FC<{
 
   const validateForm = () => {
     const required = [
-      'firstName', 'lastName', 'email', 'phone',
+      'partner1Name', 'email', 'phone',
       'billingAddress', 'city', 'state', 'zipCode',
       'eventDate', 'eventTime', 'eventLocation'
     ];
     
     for (const field of required) {
       if (!formData[field as keyof CheckoutFormData]) {
-        setError(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+        const fieldName = field === 'partner1Name' ? 'partner 1 name' : 
+                         field === 'partner2Name' ? 'partner 2 name' :
+                         field.replace(/([A-Z])/g, ' $1').toLowerCase();
+        setError(`Please fill in ${fieldName}`);
         return false;
       }
     }
@@ -205,7 +206,9 @@ const CheckoutForm: React.FC<{
         payment_method: {
           card: cardElement,
           billing_details: {
-            name: `${formData.firstName} ${formData.lastName}`,
+            name: formData.partner2Name 
+              ? `${formData.partner1Name} & ${formData.partner2Name}`
+              : formData.partner1Name,
             email: formData.email,
             phone: formData.phone,
             address: {
@@ -260,18 +263,18 @@ const CheckoutForm: React.FC<{
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
-            label="First Name"
-            value={formData.firstName}
-            onChange={(e) => handleInputChange('firstName', e.target.value)}
-            placeholder="John"
+            label="Partner 1 Name"
+            value={formData.partner1Name}
+            onChange={(e) => handleInputChange('partner1Name', e.target.value)}
+            placeholder="Your name"
             icon={User}
             required
           />
           <Input
-            label="Last Name"
-            value={formData.lastName}
-            onChange={(e) => handleInputChange('lastName', e.target.value)}
-            placeholder="Smith"
+            label="Partner 2 Name (Optional)"
+            value={formData.partner2Name}
+            onChange={(e) => handleInputChange('partner2Name', e.target.value)}
+            placeholder="Partner's name"
             icon={User}
             required
           />
@@ -496,7 +499,7 @@ const CheckoutForm: React.FC<{
           {loading ? 'Processing Payment...' : `Complete Booking - ${formatPrice(totalAmount + 15000)}`}
         </Button>
         <p className="text-sm text-gray-500 mt-3">
-          You will be charged {formatPrice(totalAmount + 15000)} today
+          You will be charged {formatPrice(grandTotal)} today
         </p>
       </div>
     </form>
@@ -564,9 +567,9 @@ export const Checkout: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">No Items to Checkout</h2>
-          <p className="text-gray-600 mb-6">Your cart is empty. Please add items before proceeding to checkout.</p>
+            disabled={!stripe || !elements || !cardReady || loading || !formData.partner1Name}
           <Button variant="primary" onClick={() => navigate('/search')}>
-            Browse Services
+            {loading ? 'Processing Payment...' : `Complete Booking - ${formatPrice(grandTotal)}`}
           </Button>
         </Card>
       </div>
