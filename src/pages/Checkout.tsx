@@ -104,18 +104,6 @@ const CheckoutForm: React.FC<{
   const [signatures, setSignatures] = useState<Record<string, string>>({});
   const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
-  const [discountState, setDiscountState] = useState<DiscountState>({
-    couponCode: '',
-    referralCode: '',
-    couponDiscount: 0,
-    referralDiscount: 0,
-    couponError: null,
-    referralError: null,
-    couponLoading: false,
-    referralLoading: false,
-    appliedCoupon: null,
-    appliedReferral: null
-  });
   
   // Calculate totals within component scope
   const totalServiceFee = cartItems.length * 150; // $150 per service
