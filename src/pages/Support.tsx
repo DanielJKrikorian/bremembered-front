@@ -13,6 +13,7 @@ export const Support: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showChatBot, setShowChatBot] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -149,6 +150,12 @@ export const Support: React.FC = () => {
     setContactForm(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleStartChat = () => {
+    // Trigger the chat bot to open
+    const chatBotEvent = new CustomEvent('openChatBot');
+    window.dispatchEvent(chatBotEvent);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -194,7 +201,11 @@ export const Support: React.FC = () => {
                   <span>Available 24/7</span>
                 </div>
               </div>
-              <Button variant="primary" className="w-full">
+              <Button 
+                variant="primary" 
+                className="w-full"
+                onClick={handleStartChat}
+              >
                 Start Chat
               </Button>
             </Card>

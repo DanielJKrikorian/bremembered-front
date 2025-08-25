@@ -61,6 +61,18 @@ export const ChatBot: React.FC = () => {
   const [recommendedPackages, setRecommendedPackages] = useState<ServicePackage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Listen for external events to open the chat bot
+  useEffect(() => {
+    const handleOpenChatBot = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener('openChatBot', handleOpenChatBot);
+    return () => {
+      window.removeEventListener('openChatBot', handleOpenChatBot);
+    };
+  }, []);
+
   // Generate session ID
   const generateSessionId = () => {
     return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
