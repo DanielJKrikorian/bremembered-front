@@ -765,19 +765,15 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                                 <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden group">
                                   <video
                                     src={video}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover cursor-pointer"
                                     controls
                                     preload="metadata"
                                     poster={viewingVendorProfile.portfolio_photos?.[index] || undefined}
-                                  >
-                                    <source src={video} type="video/mp4" />
-                                    Your browser does not support the video tag.
-                                  </video>
-                                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                                      <Play className="w-6 h-6 text-gray-900 ml-1" />
-                                    </div>
-                                  </div>
+                                    onError={(e) => {
+                                      console.error('Video failed to load:', video);
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
                                 </div>
                               ))}
                             </div>
@@ -795,10 +791,11 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                                 controls
                                 preload="metadata"
                                 poster={viewingVendorProfile.portfolio_photos?.[0] || undefined}
-                              >
-                                <source src={viewingVendorProfile.intro_video} type="video/mp4" />
-                                Your browser does not support the video tag.
-                              </video>
+                                onError={(e) => {
+                                  console.error('Intro video failed to load:', viewingVendorProfile.intro_video);
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
                             </div>
                           </div>
                         )}
