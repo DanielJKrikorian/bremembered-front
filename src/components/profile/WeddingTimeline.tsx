@@ -212,7 +212,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -259,10 +259,10 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         {/* Form Content */}
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {/* Step 1: Event Details */}
           {currentStep === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-8 h-8 text-blue-600" />
@@ -361,7 +361,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
           {/* Step 2: Music */}
           {currentStep === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="text-center">
                 <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Music className="w-8 h-8 text-purple-600" />
@@ -379,7 +379,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     name="music_notes"
                     value={formData.music_notes}
                     onChange={handleInputChange}
-                    rows={4}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
                   />
@@ -393,7 +393,7 @@ const EventModal: React.FC<EventModalProps> = ({
                     name="playlist_requests"
                     value={formData.playlist_requests}
                     onChange={handleInputChange}
-                    rows={4}
+                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
                   />
@@ -404,7 +404,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
           {/* Step 3: Photo Shotlist */}
           {currentStep === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="text-center">
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Camera className="w-8 h-8 text-blue-600" />
@@ -421,7 +421,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   name="photo_shotlist"
                   value={formData.photo_shotlist}
                   onChange={handleInputChange}
-                  rows={8}
+                  rows={6}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
                 />
@@ -434,7 +434,7 @@ const EventModal: React.FC<EventModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-between items-center p-6 border-t border-gray-200">
+        <div className="flex justify-between items-center p-4 md:p-6 border-t border-gray-200">
           <div>
             {currentStep > 1 && (
               <Button
