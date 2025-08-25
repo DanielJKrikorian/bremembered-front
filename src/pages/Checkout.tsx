@@ -743,29 +743,20 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           )}
           
           <div className={currentStep === 1 ? 'ml-auto' : ''}>
-            <span className="text-gray-600">Package Total</span>
-            <span className="font-medium">{formatPrice(totalAmount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Deposit (50%)</span>
-            <span className="font-medium">{formatPrice(depositAmount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Service Fees ({cartItems.length} × $150)</span>
-            <span className="font-medium">${totalServiceFee}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Remaining Balance</span>
-            <span className="text-gray-500">{formatPrice(totalAmount - depositAmount)} (due later)</span>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading || (currentStep === 3 && (!stripe || !elements || !cardReady))}
+              loading={loading}
+              icon={currentStep === 3 ? CreditCard : ArrowRight}
+            >
+              {currentStep === 1 ? 'Continue to Contracts' :
+               currentStep === 2 ? 'Continue to Payment' :
+               loading ? 'Processing...' : `Pay ${formatPrice(grandTotal)}`}
+            </Button>
           </div>
         </div>
-        </form>
-          <div className="flex justify-between text-lg font-semibold border-t pt-3">
-            <span>Total Due Today</span>
-            <span>{formatPrice(grandTotal)}</span>
-          </div>
-        </div>
-      </Card>
+      </form>
     </div>
   );
 };
