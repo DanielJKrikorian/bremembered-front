@@ -28,6 +28,13 @@ interface CartState {
 // Local storage key for cart persistence
 const CART_STORAGE_KEY = 'bremembered_cart';
 
+// Default empty cart state
+const DEFAULT_EMPTY_CART: CartState = {
+  items: [],
+  isOpen: false,
+  totalAmount: 0
+};
+
 // Load cart from localStorage
 const loadCartFromStorage = (): CartState => {
   try {
@@ -37,7 +44,7 @@ const loadCartFromStorage = (): CartState => {
       // Validate the structure
       if (parsed && Array.isArray(parsed.items)) {
         return {
-          ...initialState,
+          ...DEFAULT_EMPTY_CART,
           ...parsed,
           // Recalculate total amount to ensure consistency
           totalAmount: parsed.items.reduce((sum: number, item: CartItem) => sum + item.package.price, 0)
@@ -47,7 +54,7 @@ const loadCartFromStorage = (): CartState => {
   } catch (error) {
     console.error('Error loading cart from storage:', error);
   }
-  return initialState;
+  return DEFAULT_EMPTY_CART;
 };
 
 // Save cart to localStorage
@@ -68,11 +75,7 @@ type CartAction =
   | { type: 'OPEN_CART' }
   | { type: 'CLOSE_CART' };
 
-const initialState: CartState = loadCartFromStorage() || {
-  items: [],
-  isOpen: false,
-  totalAmount: 0
-};
+const initialState: CartState = loadCartFromStorage();
 
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
