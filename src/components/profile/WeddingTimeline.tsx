@@ -194,94 +194,104 @@ const EventModal: React.FC<EventModalProps> = ({
 
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Event Type
-            </label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleTypeChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-            >
-              {eventTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Event Details Section */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+              Event Details
+            </h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Event Type
+                </label>
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleTypeChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  {eventTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <Input
-            label="Title"
-            name="title"
-            value={formData.title}
-            onChange={handleInputChange}
-            placeholder="Enter event title"
-            error={formErrors.title}
-            required
-          />
+              <Input
+                label="Title"
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
+                placeholder="Enter event title"
+                error={formErrors.title}
+                required
+              />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              placeholder="Enter event description"
-            />
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  placeholder="Enter event description"
+                />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Date"
-              name="event_date"
-              type="date"
-              value={formData.event_date}
-              onChange={handleInputChange}
-              error={formErrors.event_date}
-              required
-            />
-            <Input
-              label="Time"
-              name="event_time"
-              type="time"
-              value={formData.event_time}
-              onChange={handleInputChange}
-              error={formErrors.event_time}
-              required
-            />
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Date"
+                  name="event_date"
+                  type="date"
+                  value={formData.event_date}
+                  onChange={handleInputChange}
+                  error={formErrors.event_date}
+                  required
+                />
+                <Input
+                  label="Time"
+                  name="event_time"
+                  type="time"
+                  value={formData.event_time}
+                  onChange={handleInputChange}
+                  error={formErrors.event_time}
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Location"
-              name="location"
-              value={formData.location}
-              onChange={handleInputChange}
-              placeholder="Enter location"
-              icon={MapPin}
-            />
-            <Input
-              label="Duration (minutes)"
-              name="duration_minutes"
-              type="number"
-              value={formData.duration_minutes.toString()}
-              onChange={handleInputChange}
-              min="5"
-              step="5"
-              icon={Clock}
-            />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  placeholder="Enter location"
+                  icon={MapPin}
+                />
+                <Input
+                  label="Duration (minutes)"
+                  name="duration_minutes"
+                  type="number"
+                  value={formData.duration_minutes.toString()}
+                  onChange={handleInputChange}
+                  min="5"
+                  step="5"
+                  icon={Clock}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Music Section */}
-          <div className="border-t pt-6">
+          <div className="bg-purple-50 rounded-lg p-6">
             <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Music className="w-5 h-5 mr-2 text-rose-600" />
+              <Music className="w-5 h-5 mr-2 text-purple-600" />
               Music & Playlist Requests
             </h4>
             
@@ -295,7 +305,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   value={formData.music_notes}
                   onChange={handleInputChange}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
                 />
               </div>
@@ -309,7 +319,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   value={formData.playlist_requests}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
                 />
               </div>
@@ -317,7 +327,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
 
           {/* Photo Shotlist Section */}
-          <div className="border-t pt-6">
+          <div className="bg-blue-50 rounded-lg p-6">
             <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
               <Camera className="w-5 h-5 mr-2 text-blue-600" />
               Photo Shotlist & Requests
@@ -332,7 +342,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 value={formData.photo_shotlist}
                 onChange={handleInputChange}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
               />
               <p className="text-xs text-gray-500 mt-1">
