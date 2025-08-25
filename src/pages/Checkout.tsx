@@ -80,6 +80,7 @@ const CheckoutForm: React.FC<{
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [signatures, setSignatures] = useState<Record<string, string>>({});
+  const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
   
   // Calculate totals within component scope
@@ -272,10 +273,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
   };
 
   const handleSignatureChange = (serviceType: string, signature: string) => {
-    setSignatures(prev => {
-      const newSignatures = { ...prev, [serviceType]: signature };
-      return newSignatures;
-    });
+    setTempSignatures(prev => ({ ...prev, [serviceType]: signature }));
+  };
+
+  const confirmSignature = (serviceType: string) => {
+    const signature = tempSignatures[serviceType];
+    if (signature && signature.trim()) {
+      setSignatures(prev => ({ ...prev, [serviceType]: signature.trim() }));
+      setTempSignatures(prev => ({ ...prev, [serviceType]: '' }));
+      if (error) setError(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -586,7 +593,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               <input
                                 type="text"
                                 placeholder="Type your full legal name to sign"
-                                value={signatures[template.service_type] || ''}
+                               value={tempSignatures[template.service_type] || ''}
                                 onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                                 required
@@ -594,6 +601,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               <p className="text-sm text-gray-500 mt-1">
                                 By typing your name, you agree to be legally bound by this contract
                               </p>
+                              <div className="mt-3">
+                                <Button
+                                  type="button"
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => confirmSignature(template.service_type)}
+                                  disabled={!tempSignatures[template.service_type] || !tempSignatures[template.service_type].trim()}
+                                >
+                                  Confirm Signature
+                                </Button>
+                              </div>
                             </div>
                           ) : (
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
