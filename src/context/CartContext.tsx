@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { ServicePackage, Vendor } from '../types/booking';
 
 export interface CartItem {
@@ -25,6 +25,40 @@ interface CartState {
   totalAmount: number;
 }
 
+// Local storage key for cart persistence
+const CART_STORAGE_KEY = 'bremembered_cart';
+
+// Load cart from localStorage
+const loadCartFromStorage = (): CartState => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Validate the structure
+      if (parsed && Array.isArray(parsed.items)) {
+        return {
+          ...initialState,
+          ...parsed,
+          // Recalculate total amount to ensure consistency
+          totalAmount: parsed.items.reduce((sum: number, item: CartItem) => sum + item.package.price, 0)
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Error loading cart from storage:', error);
+  }
+  return initialState;
+};
+
+// Save cart to localStorage
+const saveCartToStorage = (state: CartState) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error('Error saving cart to storage:', error);
+  }
+};
+
 type CartAction =
   | { type: 'ADD_ITEM'; payload: Omit<CartItem, 'id' | 'addedAt'> }
   | { type: 'REMOVE_ITEM'; payload: string }
@@ -34,7 +68,7 @@ type CartAction =
   | { type: 'OPEN_CART' }
   | { type: 'CLOSE_CART' };
 
-const initialState: CartState = {
+const initialState: CartState = loadCartFromStorage() || {
   items: [],
   isOpen: false,
   totalAmount: 0
@@ -120,6 +154,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+
+  // Save to localStorage whenever cart state changes
+  useEffect(() => {
+    saveCartToStorage(state);
+  }, [state]);
 
   const addItem = (item: Omit<CartItem, 'id' | 'addedAt'>) => {
     dispatch({ type: 'ADD_ITEM', payload: item });

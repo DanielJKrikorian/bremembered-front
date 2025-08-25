@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, Clock, Star, MessageCircle, Save, X, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -14,6 +14,12 @@ export const Cart: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, removeItem, updateItem, clearCart } = useCart();
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const [selectingVendorForItem, setSelectingVendorForItem] = useState<string | null>(
     location.state?.selectVendorForItem || null
   );
