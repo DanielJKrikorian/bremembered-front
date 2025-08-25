@@ -167,8 +167,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ onChooseVendor }) => {
                             size="sm"
                             className="text-xs py-1 px-2 h-6"
                             onClick={() => {
-                              closeCart();
-                              navigate('/cart', { state: { selectVendorForItem: item.id } });
+                              onChooseVendor?.(item);
                             }}
                           >
                             Choose Vendor
