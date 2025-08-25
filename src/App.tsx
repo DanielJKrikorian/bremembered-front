@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { BookingProvider } from './context/BookingContext';
 import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
+import { CartProvider, useCart } from './context/CartContext';
 import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
 import { Home } from './pages/Home';
@@ -26,11 +26,35 @@ import { VendorApplication } from './pages/VendorApplication';
 import { BookingDetails } from './pages/BookingDetails';
 import { ChatBot } from './components/chat/ChatBot';
 import { CartSidebar } from './components/cart/CartSidebar';
+import { VendorSelectionModal } from './components/cart/VendorSelectionModal';
 import { Blog } from './pages/Blog';
 import { BlogPost } from './pages/BlogPost';
 import { Cart } from './pages/Cart';
 
 function App() {
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
+  const { updateItem } = useCart();
+
+  const handleChooseVendor = (cartItem: any) => {
+    setSelectedCartItem(cartItem);
+    setShowVendorModal(true);
+  };
+
+  const handleVendorSelected = (vendor: any, eventDetails: any) => {
+    if (selectedCartItem) {
+      updateItem(selectedCartItem.id, {
+        vendor,
+        eventDate: eventDetails.eventDate,
+        eventTime: eventDetails.eventTime,
+        endTime: eventDetails.endTime,
+        venue: eventDetails.venue
+      });
+    }
+    setShowVendorModal(false);
+    setSelectedCartItem(null);
+  };
+
   return (
     <AuthProvider>
       <CartProvider>
@@ -72,7 +96,18 @@ function App() {
               </main>
               <Footer />
               <ChatBot />
-              <CartSidebar />
+              <CartSidebar onChooseVendor={handleChooseVendor} />
+              {selectedCartItem && (
+                <VendorSelectionModal
+                  isOpen={showVendorModal}
+                  onClose={() => {
+                    setShowVendorModal(false);
+                    setSelectedCartItem(null);
+                  }}
+                  cartItem={selectedCartItem}
+                  onVendorSelected={handleVendorSelected}
+                />
+              )}
             </div>
           </Router>
         </BookingProvider>

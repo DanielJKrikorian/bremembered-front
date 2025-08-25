@@ -5,7 +5,11 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useCart } from '../../context/CartContext';
 
-export const CartSidebar: React.FC = () => {
+interface CartSidebarProps {
+  onChooseVendor?: (item: any) => void;
+}
+
+export const CartSidebar: React.FC<CartSidebarProps> = ({ onChooseVendor }) => {
   const navigate = useNavigate();
   const { state, removeItem, closeCart } = useCart();
 
