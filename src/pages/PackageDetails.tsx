@@ -499,7 +499,7 @@ export const PackageDetails: React.FC = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Book This Package</h3>
               
               <div className="space-y-4 mb-6">
-                Direct messaging with your vendor
+                <p className="text-gray-600">Direct messaging with your vendor</p>
                   <span className="text-gray-600">Package Price</span>
                   <span className="text-2xl font-bold text-gray-900">{formatPrice(packageData.price)}</span>
                 </div>
