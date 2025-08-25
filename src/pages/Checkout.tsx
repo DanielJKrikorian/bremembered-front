@@ -104,18 +104,6 @@ const CheckoutForm: React.FC<{
   const [signatures, setSignatures] = useState<Record<string, string>>({});
   const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
-  
-  // Calculate totals within component scope
-  const totalServiceFee = cartItems.length * 150; // $150 per service
-  const depositAmount = Math.round(totalAmount * 0.5); // 50% deposit
-  const subtotal = depositAmount + totalServiceFee * 100; // Convert to cents
-  const totalDiscount = discountState.couponDiscount + discountState.referralDiscount;
-  const grandTotal = Math.max(0, subtotal - totalDiscount);
-  
-  const [formData, setFormData] = useState<CheckoutFormData>({
-    partner1Name: '',
-    partner2Name: '',
-    email: '',
     phone: '',
     billingAddress: '',
     city: '',
