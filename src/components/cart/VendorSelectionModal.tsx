@@ -828,19 +828,10 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                     </div>
 
                     {/* Reviews Section */}
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-4">Recent Reviews</h4>
-                      {reviewsLoading ? (
-                        <div className="text-center py-4">
-                          <div className="animate-spin w-6 h-6 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                          <p className="text-sm text-gray-600">Loading reviews...</p>
-                        </div>
-                      ) : vendorReviews.length === 0 ? (
-                        <div className="text-center py-6 bg-gray-50 rounded-lg">
-                          <Star className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">No reviews yet</p>
-                        </div>
-                      ) : (
+                    {/* Reviews Section - Only show if vendor has reviews */}
+                    {!reviewsLoading && vendorReviews.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4">Recent Reviews</h4>
                         <div className="space-y-4 max-h-64 overflow-y-auto">
                           {vendorReviews.slice(0, 3).map((review) => (
                             <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
@@ -892,8 +883,8 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
