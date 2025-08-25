@@ -83,7 +83,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
           .from('bookings')
           .select('vendor_id')
           .in('vendor_id', vendorIds)
-          .eq('status', 'completed');
+          .in('status', ['confirmed', 'completed']);
 
         if (error) throw error;
 
