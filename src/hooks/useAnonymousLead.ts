@@ -51,7 +51,7 @@ export const useAnonymousLead = () => {
       const sessionId = getSessionId();
 
       // Check if lead already exists
-      const { data: existingLead, error: fetchError } = await supabase
+      let { data: existingLead, error: fetchError } = await supabase
         .from('anonymous_leads')
         .select('*')
         .eq('session_id', sessionId)
