@@ -188,7 +188,7 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <p className="font-medium">Call Us</p>
-                <p className="text-gray-300">(555) 123-WEDDING</p>
+                <p className="text-gray-300">(978) 945-3WED</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">

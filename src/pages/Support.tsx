@@ -301,7 +301,7 @@ export const Support: React.FC = () => {
                 </div>
                 
                 <Button type="submit" variant="primary" icon={Send} className="w-full">
-                  Send Message
+                  Call (978) 945-3WED
                 </Button>
               </form>
               
