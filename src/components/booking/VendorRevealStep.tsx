@@ -269,7 +269,7 @@ export const VendorRevealStep: React.FC<VendorRevealStepProps> = ({
           <div className="flex items-center justify-center space-x-6 mt-4 text-xs text-gray-500">
             <div className="flex items-center">
               <Check className="w-3 h-3 mr-1" />
-              <span>Free cancellation</span>
+              <span>Direct messaging</span>
             </div>
             <div className="flex items-center">
               <Shield className="w-3 h-3 mr-1" />

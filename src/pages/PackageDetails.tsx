@@ -499,7 +499,7 @@ export const PackageDetails: React.FC = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Book This Package</h3>
               
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center">
+                Direct messaging with your vendor
                   <span className="text-gray-600">Package Price</span>
                   <span className="text-2xl font-bold text-gray-900">{formatPrice(packageData.price)}</span>
                 </div>

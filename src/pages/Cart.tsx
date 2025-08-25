@@ -380,7 +380,7 @@ export const Cart: React.FC = () => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Check className="w-4 h-4 text-green-600" />
-                      <span className="text-gray-600">Free cancellation up to 30 days</span>
+                      <span className="text-gray-600">Direct messaging with your vendor</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-green-600" />

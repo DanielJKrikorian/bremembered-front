@@ -225,7 +225,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ onChooseVendor }) => {
               </div>
               
               <div className="text-center text-xs text-gray-500">
-                Free cancellation up to 30 days before your event
+                Direct messaging with your vendor
               </div>
             </div>
           </div>

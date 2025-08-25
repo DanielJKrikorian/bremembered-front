@@ -497,7 +497,7 @@ export const ServiceBundle: React.FC = () => {
               
               <div className="text-center">
                 <p className="text-xs text-gray-500 mb-2">
-                  Free cancellation up to 30 days before your event
+                  Direct messaging with your vendor
                 </p>
                 <Button variant="outline" className="w-full">
                   Request Custom Quote
