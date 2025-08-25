@@ -67,6 +67,7 @@ const EventModal: React.FC<EventModalProps> = ({
   onSave,
   isEditing
 }) => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
@@ -109,6 +110,7 @@ const EventModal: React.FC<EventModalProps> = ({
         photo_shotlist: ''
       });
     }
+    setCurrentStep(1);
     setFormErrors({});
   }, [event, weddingDate, isOpen]);
 
@@ -144,28 +146,65 @@ const EventModal: React.FC<EventModalProps> = ({
     }
   };
 
-  const validateForm = () => {
+  const validateCurrentStep = () => {
     const errors: { [key: string]: string } = {};
 
-    if (!formData.title.trim()) {
-      errors.title = "Title is required";
-    }
-    if (!formData.event_date) {
-      errors.event_date = "Date is required";
-    }
-    if (!formData.event_time) {
-      errors.event_time = "Time is required";
+    if (currentStep === 1) {
+      if (!formData.title.trim()) {
+        errors.title = "Title is required";
+      }
+      if (!formData.event_date) {
+        errors.event_date = "Date is required";
+      }
+      if (!formData.event_time) {
+        errors.event_time = "Time is required";
+      }
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1:
+        return formData.title.trim() && formData.event_date && formData.event_time;
+      case 2:
+        return true; // Music section is optional
+      case 3:
+        return true; // Photo section is optional
+      default:
+        return false;
+    }
+  };
+
+  const handleNext = () => {
+    if (validateCurrentStep() && currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+    if (validateCurrentStep()) {
       onSave(formData);
       onClose();
+      setCurrentStep(1);
+    }
+  };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return 'Event Details';
+      case 2: return 'Music & Playlist';
+      case 3: return 'Photo Shotlist';
+      default: return 'Event Details';
     }
   };
 
@@ -173,7 +212,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -181,7 +220,7 @@ const EventModal: React.FC<EventModalProps> = ({
               {isEditing ? 'Edit Event' : 'Add New Event'}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              {isEditing ? 'Update event details' : 'Create a new timeline event'}
+              Step {currentStep} of 3: {getStepTitle()}
             </p>
           </div>
           <button
@@ -192,175 +231,247 @@ const EventModal: React.FC<EventModalProps> = ({
           </button>
         </div>
 
+        {/* Progress Steps */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-center space-x-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
+                  ${currentStep >= step 
+                    ? 'bg-rose-500 text-white shadow-lg' 
+                    : 'bg-gray-200 text-gray-600'
+                  }
+                `}>
+                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
+                </div>
+                {step < 3 && (
+                  <div className={`w-16 h-1 mx-2 rounded-full transition-all ${
+                    currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center mt-2">
+            <span className="text-sm text-gray-600">{getStepTitle()}</span>
+          </div>
+        </div>
+
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Event Details Section */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-              Event Details
-            </h4>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Event Type
-                </label>
-                <select
-                  name="type"
-                  value={formData.type}
-                  onChange={handleTypeChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                >
-                  {eventTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+        <div className="p-6">
+          {/* Step 1: Event Details */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Event Details</h2>
+                <p className="text-gray-600">Basic information about your event</p>
               </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Event Type
+                  </label>
+                  <select
+                    name="type"
+                    value={formData.type}
+                    onChange={handleTypeChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    {eventTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <Input
-                label="Title"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                placeholder="Enter event title"
-                error={formErrors.title}
-                required
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  placeholder="Enter event description"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Date"
-                  name="event_date"
-                  type="date"
-                  value={formData.event_date}
+                  label="Title"
+                  name="title"
+                  value={formData.title}
                   onChange={handleInputChange}
-                  error={formErrors.event_date}
+                  placeholder="Enter event title"
+                  error={formErrors.title}
                   required
                 />
-                <Input
-                  label="Time"
-                  name="event_time"
-                  type="time"
-                  value={formData.event_time}
-                  onChange={handleInputChange}
-                  error={formErrors.event_time}
-                  required
-                />
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="Enter location"
-                  icon={MapPin}
-                />
-                <Input
-                  label="Duration (minutes)"
-                  name="duration_minutes"
-                  type="number"
-                  value={formData.duration_minutes.toString()}
-                  onChange={handleInputChange}
-                  min="5"
-                  step="5"
-                  icon={Clock}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    placeholder="Enter event description"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Date"
+                    name="event_date"
+                    type="date"
+                    value={formData.event_date}
+                    onChange={handleInputChange}
+                    error={formErrors.event_date}
+                    required
+                  />
+                  <Input
+                    label="Time"
+                    name="event_time"
+                    type="time"
+                    value={formData.event_time}
+                    onChange={handleInputChange}
+                    error={formErrors.event_time}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="Enter location"
+                    icon={MapPin}
+                  />
+                  <Input
+                    label="Duration (minutes)"
+                    name="duration_minutes"
+                    type="number"
+                    value={formData.duration_minutes.toString()}
+                    onChange={handleInputChange}
+                    min="5"
+                    step="5"
+                    icon={Clock}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Music Section */}
-          <div className="bg-purple-50 rounded-lg p-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Music className="w-5 h-5 mr-2 text-purple-600" />
-              Music & Playlist Requests
-            </h4>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Specific Song Requests
-                </label>
-                <textarea
-                  name="music_notes"
-                  value={formData.music_notes}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
-                />
+          {/* Step 2: Music */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Music className="w-8 h-8 text-purple-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Music & Playlist</h2>
+                <p className="text-gray-600">Share your music preferences and requests</p>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specific Song Requests
+                  </label>
+                  <textarea
+                    name="music_notes"
+                    value={formData.music_notes}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Playlist Requests & Preferences
+                  </label>
+                  <textarea
+                    name="playlist_requests"
+                    value={formData.playlist_requests}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Photo Shotlist */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera className="w-8 h-8 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Photo Shotlist</h2>
+                <p className="text-gray-600">Specify the photos you want captured</p>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Playlist Requests & Preferences
+                  Photo Requests & Must-Have Shots
                 </label>
                 <textarea
-                  name="playlist_requests"
-                  value={formData.playlist_requests}
+                  name="photo_shotlist"
+                  value={formData.photo_shotlist}
                   onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  List specific photos you want captured during this event. This helps your photographer plan and ensures no important moments are missed.
+                </p>
               </div>
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Photo Shotlist Section */}
-          <div className="bg-blue-50 rounded-lg p-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Camera className="w-5 h-5 mr-2 text-blue-600" />
-              Photo Shotlist & Requests
-            </h4>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Photo Requests & Must-Have Shots
-              </label>
-              <textarea
-                name="photo_shotlist"
-                value={formData.photo_shotlist}
-                onChange={handleInputChange}
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                List specific photos you want captured during this event. This helps your photographer plan and ensures no important moments are missed.
-              </p>
-            </div>
+        {/* Actions */}
+        <div className="flex justify-between items-center p-6 border-t border-gray-200">
+          <div>
+            {currentStep > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBack}
+                icon={ArrowLeft}
+              >
+                Back
+              </Button>
+            )}
           </div>
-
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+          
+          <div className="flex space-x-3">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary">
-              {isEditing ? 'Update Event' : 'Add Event'}
-            </Button>
+            {currentStep < 3 ? (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleNext}
+                disabled={!canProceedToNextStep()}
+                icon={ArrowRight}
+              >
+                Next: {currentStep === 1 ? 'Music' : 'Photos'}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleSubmit}
+              >
+                {isEditing ? 'Update Event' : 'Add Event'}
+              </Button>
+            )}
           </div>
-        </form>
       </Card>
     </div>
   );
