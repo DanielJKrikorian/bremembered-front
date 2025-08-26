@@ -370,42 +370,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     const signature = tempSignatures[serviceType];
     if (signature && signature.trim()) {
       setSignatures((prev) => ({ ...prev, [serviceType]: signature.trim() }));
-      console.log('Confirming payment with Stripe...');
-      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: formData.partner2Name 
-              ? `${formData.partner1Name} & ${formData.partner2Name}`
-              : formData.partner1Name,
-            email: formData.email,
-            phone: formData.phone,
-            address: {
-              line1: formData.billingAddress,
-              city: formData.city,
-              state: formData.state,
-              postal_code: formData.zipCode,
-              country: 'US'
-            }
-          }
-        }
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message || 'Payment failed');
-      }
-
-      if (paymentIntent?.status === 'succeeded') {
-        console.log('✅ Payment successful!');
-        onSuccess();
-      } else {
-        throw new Error('Payment was not completed successfully');
-      }
-    } catch (err) {
-      console.error('Checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
