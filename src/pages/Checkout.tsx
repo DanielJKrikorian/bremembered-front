@@ -56,8 +56,7 @@ export const Checkout: React.FC = () => {
         phone: '',
         eventDate: '',
         eventTime: '',
-        venueName: '',
-        venueAddress: '',
+        eventLocation: '',
         guestCount: '',
         specialRequests: ''
       }, '').finally(() => {
