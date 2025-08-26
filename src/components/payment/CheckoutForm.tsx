@@ -39,9 +39,12 @@ interface CheckoutFormProps {
   totalAmount: number;
   discountAmount: number;
   referralDiscount: number;
+  clientSecret: string | null;
+  paymentIntentId: string | null;
   onSuccess: () => void;
   onReferralApplied: (discount: number, referral: any) => void;
   onReferralRemoved: () => void;
+  onInitializePayment: (customerInfo: any, referralCode: string) => void;
 }
 
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
@@ -49,9 +52,12 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   totalAmount,
   discountAmount,
   referralDiscount,
+  clientSecret,
+  paymentIntentId,
   onSuccess,
   onReferralApplied,
   onReferralRemoved,
+  onInitializePayment,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -66,8 +72,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [contractsLoading, setContractsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [referralLoading, setReferralLoading] = useState(false);
-  const [referralError, setReferralError] = useState<string | null>(null);
-  const [appliedReferral, setAppliedReferral] = useState<any>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'affirm'>('card');
@@ -101,45 +105,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret && stripe && elements) {
-      initializePaymentIntent();
+    if (currentStep === 3 && !clientSecret) {
+      onInitializePayment(formData, referralCode);
     }
-  }, [currentStep, clientSecret, stripe, elements]);
-
-  const initializePaymentIntent = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          cartItems,
-          totalAmount,
-          discountAmount,
-          referralDiscount,
-          customerInfo: {
-            name: `${formData.partner1Name}${formData.partner2Name ? ` & ${formData.partner2Name}` : ''}`,
-            email: formData.email,
-            phone: formData.phone,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Payment intent created:', data);
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
-    } catch (err) {
-      console.error('Error creating payment intent:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
-    }
-  };
+  }, [currentStep, clientSecret, onInitializePayment, formData, referralCode]);
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 

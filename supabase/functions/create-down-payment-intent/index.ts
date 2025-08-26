@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
         type: 'wedding_booking_deposit',
         customer_name: customerInfo.partner2Name 
           ? `${customerInfo.partner1Name} & ${customerInfo.partner2Name}`
-          : customerInfo.partner1Name,
+          : customerInfo.partner1Name || 'Wedding Customer',
         event_date: customerInfo.eventDate || '',
         event_location: customerInfo.eventLocation || '',
         guest_count: customerInfo.guestCount || '',
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
           event_time: item.eventTime || '',
           venue_name: item.venue?.name || ''
         }))),
-        referral_code: customerInfo.referralCode || '',
+        referral_code: '',
         discount_amount: discountAmount.toString(),
         referral_discount: referralDiscount.toString(),
         deposit_amount: depositAmount.toString(),

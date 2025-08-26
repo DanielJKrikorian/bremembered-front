@@ -28,6 +28,7 @@ export const Checkout: React.FC = () => {
   const [referralDiscount, setReferralDiscount] = useState<number>(0);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
 
   const cartItems = location.state?.cartItems || cartState.items;
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
@@ -42,14 +43,7 @@ export const Checkout: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Initialize payment intent when component mounts
-  useEffect(() => {
-    if (cartItems.length > 0 && !clientSecret) {
-      initializePaymentIntent();
-    }
-  }, [cartItems.length, clientSecret]);
-
-  const initializePaymentIntent = async () => {
+  const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
         method: 'POST',
@@ -62,11 +56,7 @@ export const Checkout: React.FC = () => {
           totalAmount,
           discountAmount: appliedDiscount,
           referralDiscount,
-          customerInfo: {
-            name: 'Wedding Customer',
-            email: 'customer@example.com',
-            phone: '(555) 123-4567',
-          },
+          customerInfo,
         }),
       });
 
@@ -76,6 +66,8 @@ export const Checkout: React.FC = () => {
 
       const data = await response.json();
       setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+      console.log('Payment intent created:', data);
     } catch (err) {
       console.error('Error creating payment intent:', err);
     }
@@ -152,9 +144,12 @@ export const Checkout: React.FC = () => {
                   totalAmount={totalAmount}
                   discountAmount={appliedDiscount}
                   referralDiscount={referralDiscount}
+                  clientSecret={clientSecret}
+                  paymentIntentId={paymentIntentId}
                   onSuccess={handlePaymentSuccess}
                   onReferralApplied={handleReferralApplied}
                   onReferralRemoved={handleReferralRemoved}
+                  onInitializePayment={initializePaymentIntent}
                 />
               </Elements>
               
