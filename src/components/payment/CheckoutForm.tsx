@@ -971,7 +971,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
+        <div className="flex justify-between mt-8 px-6">
           {currentStep > 1 && (
             <Button type="button" variant="outline" onClick={handlePrevStep} icon={ArrowLeft}>
               Back

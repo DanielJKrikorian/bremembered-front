@@ -42,9 +42,15 @@ Deno.serve(async (req) => {
     const customerPhone = metadata.customer_phone || ''
     const depositAmount = parseInt(metadata.deposit_amount || '0')
     const discountAmount = parseInt(metadata.discount_amount || '0')
+    const referralDiscount = parseInt(metadata.referral_discount || '0')
+    const billingAddress = metadata.billing_address || ''
+    const city = metadata.city || ''
+    const state = metadata.state || ''
+    const zipCode = metadata.zip_code || ''
 
-    // Create or get couple
+    // Create or get couple using the existing edge function logic
     let coupleId = null
+    let userId = null
     
     // First try to find existing couple by email
     const { data: existingCouple, error: coupleSearchError } = await supabase
@@ -59,10 +65,13 @@ Deno.serve(async (req) => {
 
     if (existingCouple) {
       coupleId = existingCouple.id
+      userId = existingCouple.user_id
     } else {
-      // Create new user account
+      // Create new user account using the same logic as create-couple function
+      const normalizedEmail = customerEmail.trim().toLowerCase()
+      
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: customerEmail,
+        email: normalizedEmail,
         password: Math.random().toString(36).slice(-8) + 'A1!', // Generate random password
         email_confirm: true,
         user_metadata: {
@@ -76,36 +85,47 @@ Deno.serve(async (req) => {
         throw authError
       }
 
-      // Create couple profile
-      const [partner1Name, partner2Name] = customerName.split(' & ')
-      
-      const { data: newCouple, error: coupleError } = await supabase
-        .from('couples')
-        .insert({
-          user_id: authUser.user.id,
-          name: customerName,
-          partner1_name: partner1Name || customerName,
-          partner2_name: partner2Name || null,
-          email: customerEmail,
-          phone: customerPhone,
-          wedding_date: eventDate || null,
-          venue_name: eventLocation || null
-        })
-        .select('id')
-        .single()
-
-      if (coupleError) throw coupleError
-      coupleId = newCouple.id
+      userId = authUser.user.id
 
       // Create user record
       await supabase
         .from('users')
         .insert({
-          id: authUser.user.id,
-          email: customerEmail,
+          id: userId,
+          email: normalizedEmail,
           name: customerName,
           role: 'couple'
         })
+
+      // Create couple profile
+      const [partner1Name, partner2Name] = customerName.split(' & ')
+      
+      const coupleData = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        name: customerName,
+        partner1_name: partner1Name || customerName,
+        partner2_name: partner2Name || null,
+        email: normalizedEmail,
+        phone: customerPhone || null,
+        wedding_date: eventDate || null,
+        venue_name: eventLocation || null,
+        billing_address: billingAddress || null,
+        venue_city: city || null,
+        venue_state: state || null,
+        venue_zip: zipCode || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      const { data: newCouple, error: coupleError } = await supabase
+        .from('couples')
+        .insert(coupleData)
+        .select('id')
+        .single()
+
+      if (coupleError) throw coupleError
+      coupleId = newCouple.id
     }
 
     // Process each cart item
@@ -166,7 +186,7 @@ Deno.serve(async (req) => {
           initial_payment: itemDepositAmount,
           platform_fee: itemPlatformFee,
           paid_amount: itemDepositAmount,
-          discount: Math.round((discountAmount / cartItems.length)) || 0,
+          discount: Math.round((discountAmount + referralDiscount) / cartItems.length) || 0,
           stripe_payment_intent_id: paymentIntentId
         })
         .select('id')
