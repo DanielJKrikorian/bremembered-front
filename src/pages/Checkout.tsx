@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, AlertCircle, Shield, Phone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
@@ -11,12 +9,6 @@ import { CheckoutForm } from '../components/payment/CheckoutForm';
 import { OrderSummary } from '../components/checkout/OrderSummary';
 import { BookingConfirmation } from '../components/checkout/BookingConfirmation';
 import { AuthModal } from '../components/auth/AuthModal';
-
-// Initialize Stripe
-const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-const stripePromise = publishableKey && publishableKey !== 'your_stripe_publishable_key_here'
-  ? loadStripe(publishableKey)
-  : null;
 
 export const Checkout: React.FC = () => {
   const location = useLocation();
@@ -35,8 +27,6 @@ export const Checkout: React.FC = () => {
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
 
   useEffect(() => {
-    console.log('Checkout: Stripe Publishable Key:', publishableKey);
-    console.log('Checkout: Stripe Promise:', !!stripePromise);
     if (cartItems.length === 0) {
       navigate('/cart');
     }
@@ -136,56 +126,15 @@ export const Checkout: React.FC = () => {
                   </div>
                 </Card>
               )}
-              {stripePromise ? (
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    appearance: {
-                      theme: 'stripe',
-                      variables: {
-                        colorPrimary: '#f43f5e',
-                        colorBackground: '#ffffff',
-                        colorText: '#1f2937',
-                        colorDanger: '#dc2626',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        spacingUnit: '4px',
-                        borderRadius: '8px',
-                      },
-                    },
-                  }}
-                >
-                  <CheckoutForm
-                    cartItems={cartItems}
-                    totalAmount={totalAmount}
-                    discountAmount={appliedDiscount}
-                    referralDiscount={referralDiscount}
-                    onSuccess={handlePaymentSuccess}
-                    onReferralApplied={handleReferralApplied}
-                    onReferralRemoved={handleReferralRemoved}
-                  />
-                </Elements>
-              ) : (
-                <Card className="p-8 text-center">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Payment System Unavailable</h3>
-                  <p className="text-gray-600 mb-6">
-                    The payment system is not configured. Please contact our support team to complete your booking.
-                  </p>
-                  <div className="space-y-3">
-                    <Button
-                      variant="primary"
-                      onClick={() => (window.location.href = 'mailto:hello@bremembered.io')}
-                    >
-                      Contact Support
-                    </Button>
-                    <Button variant="outline" onClick={() => navigate('/cart')}>
-                      Back to Cart
-                    </Button>
-                  </div>
-                </Card>
-              )}
+              <CheckoutForm
+                cartItems={cartItems}
+                totalAmount={totalAmount}
+                discountAmount={appliedDiscount}
+                referralDiscount={referralDiscount}
+                onSuccess={handlePaymentSuccess}
+                onReferralApplied={handleReferralApplied}
+                onReferralRemoved={handleReferralRemoved}
+              />
             </div>
             <OrderSummary
               cartItems={cartItems}
