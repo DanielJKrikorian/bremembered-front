@@ -120,7 +120,7 @@ export const useConversations = () => {
         const { data, error } = await supabase
           .from('conversations')
           .select('*')
-          .contains('participant_ids', [user.id])
+          .filter('participant_ids', 'cs', user.id)
           .order('updated_at', { ascending: false });
 
         if (error) throw error;
