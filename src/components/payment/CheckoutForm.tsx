@@ -131,6 +131,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         cardElement.off('ready');
         cardElement.off('change');
       };
+    } else {
+      console.error('CardElement not found');
+      setError('Card input not found. Please try again.');
     }
   }, [stripe, elements]);
 
@@ -267,7 +270,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         setAppliedReferral({
           ...data,
           vendor_name: data.vendors.name,
-          discount: 5000, // $50 discount
+          discount: 5000,
         });
         setReferralError(null);
       }
@@ -280,8 +283,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
   };
 
-  const handleReferralSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleReferralSubmit = () => {
     validateReferralCode(referralCode);
   };
 
@@ -750,7 +752,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleReferralSubmit} className="flex space-x-3">
+                <div className="flex space-x-3">
                   <input
                     type="text"
                     placeholder="Enter referral code (e.g., DANI1234)"
@@ -759,14 +761,15 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                   />
                   <Button
-                    type="submit"
+                    type="button"
                     variant="outline"
+                    onClick={handleReferralSubmit}
                     loading={referralLoading}
                     disabled={!referralCode.trim() || referralLoading}
                   >
                     Apply
                   </Button>
-                </form>
+                </div>
               )}
               {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
             </Card>
