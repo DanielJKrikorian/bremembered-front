@@ -22,9 +22,10 @@
          code,
          discount_percent: discountPercent,
          expiration_date: expirationDate.toISOString(),
--        is_valid: true
-+        is_valid: true,
-+        service_package_id: packageId
+         is_valid: true,
+         service_package_id: packageId
        })
        .select()
        .single();
+   } catch (error) {
+   }
