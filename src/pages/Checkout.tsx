@@ -104,6 +104,18 @@ const CheckoutForm: React.FC<{
   const [signatures, setSignatures] = useState<Record<string, string>>({});
   const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
+  const [discountState, setDiscountState] = useState({
+    couponCode: '',
+    referralCode: '',
+    couponDiscount: 0,
+    referralDiscount: 0,
+    appliedCoupon: null,
+    appliedReferral: null,
+    isValidatingCoupon: false,
+    isValidatingReferral: false,
+    couponError: null,
+    referralError: null
+  });
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
     partner2Name: '',
