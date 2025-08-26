@@ -92,6 +92,17 @@ export const Checkout: React.FC = () => {
         {step === 1 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
+              <Elements stripe={stripePromise}>
+                <CheckoutForm
+                  cartItems={cartItems}
+                  totalAmount={totalAmount}
+                  discountAmount={appliedDiscount}
+                  referralDiscount={referralDiscount}
+                  onSuccess={handlePaymentSuccess}
+                  onReferralApplied={handleReferralApplied}
+                  onReferralRemoved={handleReferralRemoved}
+                />
+              </Elements>
               {!isAuthenticated && (
                 <Card className="p-6 mb-8 bg-amber-50 border-amber-200">
                   <div className="flex items-center justify-between">
@@ -128,15 +139,6 @@ export const Checkout: React.FC = () => {
                   </div>
                 </Card>
               )}
-              <CheckoutForm
-                cartItems={cartItems}
-                totalAmount={totalAmount}
-                discountAmount={appliedDiscount}
-                referralDiscount={referralDiscount}
-                onSuccess={handlePaymentSuccess}
-                onReferralApplied={handleReferralApplied}
-                onReferralRemoved={handleReferralRemoved}
-              />
             </div>
             <OrderSummary
               cartItems={cartItems}
@@ -148,14 +150,12 @@ export const Checkout: React.FC = () => {
             />
           </div>
         ) : (
-          <Elements stripe={stripePromise}>
-            <BookingConfirmation
-              cartItems={cartItems}
-              totalAmount={totalAmount}
-              depositAmount={Math.round((totalAmount - appliedDiscount - referralDiscount) * 0.5) + cartItems.length * 150 * 100}
-              onCreateAccount={handleCreateAccount}
-            />
-          </Elements>
+          <BookingConfirmation
+            cartItems={cartItems}
+            totalAmount={totalAmount}
+            depositAmount={Math.round((totalAmount - appliedDiscount - referralDiscount) * 0.5) + cartItems.length * 150 * 100}
+            onCreateAccount={handleCreateAccount}
+          />
         )}
       </div>
       
