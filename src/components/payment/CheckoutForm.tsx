@@ -75,6 +75,15 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [cardComplete, setCardComplete] = useState(false);
   const [cardElementMounted, setCardElementMounted] = useState(false);
 
+  // Debug Stripe initialization
+  useEffect(() => {
+    console.log('=== STRIPE INITIALIZATION DEBUG ===');
+    console.log('Stripe instance:', !!stripe);
+    console.log('Elements instance:', !!elements);
+    console.log('Current step:', currentStep);
+    console.log('Client secret:', !!clientSecret);
+  }, [stripe, elements, currentStep, clientSecret]);
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
     partner2Name: '',
@@ -102,10 +111,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Set up CardElement event listeners
   useEffect(() => {
-    if (stripe && elements && currentStep === 3) {
+    if (stripe && elements && currentStep === 3 && clientSecret) {
       const cardElement = elements.getElement(CardElement);
       if (cardElement) {
-        console.log('✅ Setting up CardElement event listeners');
+        console.log('✅ Setting up CardElement event listeners', { cardElement: !!cardElement });
         
         const handleReady = () => {
           console.log('✅ CardElement is ready for input');
@@ -114,7 +123,11 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         };
         
         const handleChange = (event: any) => {
-          console.log('CardElement change event:', event);
+          console.log('CardElement change event:', { 
+            complete: event.complete, 
+            error: event.error?.message,
+            empty: event.empty 
+          });
           setCardError(event.error ? event.error.message : null);
           setCardComplete(event.complete);
         };
@@ -126,7 +139,16 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           cardElement.off('ready', handleReady);
           cardElement.off('change', handleChange);
         };
+      } else {
+        console.error('❌ CardElement not found in elements');
       }
+    } else {
+      console.log('CardElement setup skipped:', {
+        stripe: !!stripe,
+        elements: !!elements,
+        step: currentStep,
+        clientSecret: !!clientSecret
+      });
     }
   }, [stripe, elements, currentStep, clientSecret]);
 
@@ -724,12 +746,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
 
               <div className="space-y-4">
-                {!clientSecret || !cardElementMounted ? (
+                {!clientSecret ? (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
                     <p className="text-blue-800 text-sm">
-                      {!clientSecret ? 'Initializing secure payment...' : 'Loading card input...'}
+                      Initializing secure payment...
                     </p>
+                  </div>
+                ) : !cardElementMounted ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p className="text-blue-800 text-sm">Loading card input...</p>
                   </div>
                 ) : (
                   <div>
@@ -768,14 +795,13 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                             },
                           },
                           hidePostalCode: true,
-                          disabled: !clientSecret,
                         }}
                       />
                     </div>
                     {cardError && (
                       <p className="text-sm text-red-600 mt-1">{cardError}</p>
                     )}
-                    {cardReady && !cardError && (
+                    {cardElementMounted && !cardError && (
                       <p className="text-sm text-green-600 mt-1 flex items-center">
                         <Check className="w-3 h-3 mr-1" />
                         Card input ready
