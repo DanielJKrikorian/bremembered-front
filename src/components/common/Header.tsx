@@ -85,6 +85,13 @@ export const Header: React.FC = () => {
                     ? 'text-rose-600 font-medium' 
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
+              >
+                Support
+              </button>
+            </nav>
+
+            {/* Right side actions */}
+            <div className="flex items-center space-x-2">
               <NotificationBell />
               <Button 
                 variant="ghost" 
