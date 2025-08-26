@@ -106,17 +106,18 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Debug Stripe initialization
   useEffect(() => {
-    console.log('Stripe instance:', stripe);
-    console.log('Elements instance:', elements);
-    console.log('Stripe Publishable Key:', import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
-    if (!stripe || !elements) {
-      setError('Payment system not initialized. Please try again later.');
+    if (currentStep !== 3 || !stripe || !elements) {
+      console.log('Skipping CardElement setup: ', { currentStep, stripe: !!stripe, elements: !!elements });
+      if (!stripe || !elements) {
+        setError('Payment system not initialized. Please try again later.');
+      }
       return;
     }
 
+    console.log('Attempting to initialize CardElement...');
     const cardElement = elements.getElement(CardElement);
     if (cardElement) {
+      console.log('✅ CardElement found');
       cardElement.on('ready', () => {
         console.log('✅ CardElement is ready');
         setCardReady(true);
@@ -128,14 +129,34 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       });
 
       return () => {
+        console.log('Cleaning up CardElement event listeners');
         cardElement.off('ready');
         cardElement.off('change');
       };
     } else {
       console.error('CardElement not found');
-      setError('Card input not found. Please try again.');
+      // Retry after a short delay
+      const timeout = setTimeout(() => {
+        const retryCardElement = elements.getElement(CardElement);
+        if (retryCardElement) {
+          console.log('✅ CardElement found on retry');
+          retryCardElement.on('ready', () => {
+            console.log('✅ CardElement is ready (retry)');
+            setCardReady(true);
+          });
+          retryCardElement.on('change', (event) => {
+            console.log('CardElement change (retry):', event);
+            setCardComplete(event.complete);
+            setError(event.error ? event.error.message : null);
+          });
+        } else {
+          console.error('CardElement still not found after retry');
+          setError('Unable to load card input. Please refresh the page.');
+        }
+      }, 500);
+      return () => clearTimeout(timeout);
     }
-  }, [stripe, elements]);
+  }, [stripe, elements, currentStep]);
 
   // Fetch contract templates
   useEffect(() => {
