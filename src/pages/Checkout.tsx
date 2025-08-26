@@ -46,7 +46,7 @@ export const Checkout: React.FC = () => {
 
   useEffect(() => {
     // Initialize payment intent when checkout page loads
-    if (step === 1 && !clientSecret && !isInitializingPayment) {
+    if (step === 1 && !clientSecret && !isInitializingPayment && cartItems.length > 0 && totalAmount > 0) {
       setIsInitializingPayment(true);
       // Create a basic payment intent with complete customerInfo structure
       initializePaymentIntent({
