@@ -411,8 +411,7 @@ export const Home: React.FC = () => {
                         className="w-full mt-4"
                         onClick={(e) => { 
                           e.stopPropagation(); 
-                          addItem({ package: pkg });
-                          openCart();
+                          handleClaimDeal(pkg);
                         }}
                       >
                         Claim This Deal
