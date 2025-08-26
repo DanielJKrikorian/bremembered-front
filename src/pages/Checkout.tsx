@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, Check, ArrowLeft, Calendar, MapPin, Users, Mail, Phone, User, Shield, AlertCircle, Eye, EyeOff, FileText, Edit, ArrowRight } from 'lucide-react';
+import { CreditCard, Lock, Check, ArrowLeft, Calendar, MapPin, Users, Mail, Phone, User, Shield, AlertCircle, Eye, EyeOff, FileText, Edit, ArrowRight, Tag, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -45,18 +45,6 @@ interface CheckoutFormData {
   agreedToTerms: boolean;
 }
 
-interface DiscountState {
-  couponCode: string;
-  referralCode: string;
-  couponDiscount: number;
-  referralDiscount: number;
-  couponError: string | null;
-  referralError: string | null;
-  couponLoading: boolean;
-  referralLoading: boolean;
-  appliedCoupon: any | null;
-  appliedReferral: any | null;
-}
 interface ContractTemplate {
   id: string;
   service_type: string;
@@ -79,24 +67,17 @@ interface Contract {
 const CheckoutForm: React.FC<{
   cartItems: any[];
   totalAmount: number;
+  discountAmount: number;
+  referralCode: string;
+  onReferralCodeChange: (code: string) => void;
   onSuccess: () => void;
-}> = ({ cartItems, totalAmount, onSuccess }) => {
+}> = ({ cartItems, totalAmount, discountAmount, referralCode, onReferralCodeChange, onSuccess }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { user, isAuthenticated } = useAuth();
   const { couple } = useCouple();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [discountState, setDiscountState] = useState({
-    couponCode: '',
-    referralCode: '',
-    appliedCoupon: null as any,
-    appliedReferral: null as any,
-    validatingCoupon: false,
-    validatingReferral: false,
-    couponError: null as string | null,
-    referralError: null as string | null
-  });
   const [cardReady, setCardReady] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Contract, 3: Payment
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
@@ -104,6 +85,14 @@ const CheckoutForm: React.FC<{
   const [signatures, setSignatures] = useState<Record<string, string>>({});
   const [tempSignatures, setTempSignatures] = useState<Record<string, string>>({});
   const [contractsLoading, setContractsLoading] = useState(false);
+  
+  // Referral code validation state
+  const [referralState, setReferralState] = useState({
+    isValidating: false,
+    error: null as string | null,
+    appliedReferral: null as any
+  });
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
     partner2Name: '',
@@ -123,136 +112,39 @@ const CheckoutForm: React.FC<{
   });
 
   const subtotal = totalAmount;
-  const totalDiscount = discountState.couponDiscount + discountState.referralDiscount;
-  const depositAmount = Math.round((subtotal - totalDiscount) * 0.5);
+  const finalAmount = subtotal - discountAmount;
+  const depositAmount = Math.round(finalAmount * 0.5);
   const totalServiceFee = cartItems.length * 150;
   const grandTotal = depositAmount + totalServiceFee * 100;
 
-  const validateCoupon = async (code: string) => {
-    if (!code.trim()) {
-      setDiscountState(prev => ({ 
-        ...prev, 
-        couponError: null, 
-        couponDiscount: 0, 
-        appliedCoupon: null 
-      }));
-      return;
-    }
-
-    setDiscountState(prev => ({ ...prev, couponLoading: true, couponError: null }));
-
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock coupon validation for demo
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (code.toLowerCase() === 'save10') {
-        const discount = Math.round(subtotal * 0.1); // 10% discount
-        setDiscountState(prev => ({
-          ...prev,
-          couponDiscount: discount,
-          couponLoading: false,
-          appliedCoupon: { code: 'SAVE10', discount_percent: 10 }
-        }));
-      } else {
-        setDiscountState(prev => ({
-          ...prev,
-          couponError: 'Invalid coupon code',
-          couponLoading: false,
-          couponDiscount: 0,
-          appliedCoupon: null
-        }));
-      }
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', code.toUpperCase())
-        .eq('is_valid', true)
-        .single();
-
-      if (error || !data) {
-        setDiscountState(prev => ({
-          ...prev,
-          couponError: 'Invalid or expired coupon code',
-          couponLoading: false,
-          couponDiscount: 0,
-          appliedCoupon: null
-        }));
-        return;
-      }
-
-      // Check expiration
-      if (data.expiration_date && new Date(data.expiration_date) < new Date()) {
-        setDiscountState(prev => ({
-          ...prev,
-          couponError: 'This coupon has expired',
-          couponLoading: false,
-          couponDiscount: 0,
-          appliedCoupon: null
-        }));
-        return;
-      }
-
-      // Calculate discount
-      let discount = 0;
-      if (data.discount_percent > 0) {
-        discount = Math.round(subtotal * (data.discount_percent / 100));
-      } else if (data.discount_amount > 0) {
-        discount = data.discount_amount;
-      }
-
-      setDiscountState(prev => ({
-        ...prev,
-        couponDiscount: discount,
-        couponLoading: false,
-        appliedCoupon: data
-      }));
-    } catch (err) {
-      console.error('Error validating coupon:', err);
-      setDiscountState(prev => ({
-        ...prev,
-        couponError: 'Error validating coupon',
-        couponLoading: false,
-        couponDiscount: 0,
-        appliedCoupon: null
-      }));
-    }
-  };
-
+  // Validate referral code
   const validateReferralCode = async (code: string) => {
     if (!code.trim()) {
-      setDiscountState(prev => ({ 
-        ...prev, 
-        referralError: null, 
-        referralDiscount: 0, 
-        appliedReferral: null 
-      }));
+      setReferralState({
+        isValidating: false,
+        error: null,
+        appliedReferral: null
+      });
       return;
     }
 
-    setDiscountState(prev => ({ ...prev, referralLoading: true, referralError: null }));
+    setReferralState(prev => ({ ...prev, isValidating: true, error: null }));
 
     if (!supabase || !isSupabaseConfigured()) {
       // Mock referral validation for demo
       await new Promise(resolve => setTimeout(resolve, 500));
       if (code.toLowerCase().startsWith('ref')) {
-        const discount = 5000; // $50 discount
-        setDiscountState(prev => ({
-          ...prev,
-          referralDiscount: discount,
-          referralLoading: false,
+        setReferralState({
+          isValidating: false,
+          error: null,
           appliedReferral: { code: code.toUpperCase(), vendor_name: 'Demo Vendor' }
-        }));
+        });
       } else {
-        setDiscountState(prev => ({
-          ...prev,
-          referralError: 'Invalid referral code',
-          referralLoading: false,
-          referralDiscount: 0,
+        setReferralState({
+          isValidating: false,
+          error: 'Invalid referral code',
           appliedReferral: null
-        }));
+        });
       }
       return;
     }
@@ -272,65 +164,38 @@ const CheckoutForm: React.FC<{
         .single();
 
       if (error || !data) {
-        setDiscountState(prev => ({
-          ...prev,
-          referralError: 'Invalid referral code',
-          referralLoading: false,
-          referralDiscount: 0,
+        setReferralState({
+          isValidating: false,
+          error: 'Invalid referral code',
           appliedReferral: null
-        }));
+        });
         return;
       }
 
-      // Apply referral discount (e.g., $50 off)
-      const discount = 5000; // $50 in cents
-      setDiscountState(prev => ({
-        ...prev,
-        referralDiscount: discount,
-        referralLoading: false,
+      setReferralState({
+        isValidating: false,
+        error: null,
         appliedReferral: { ...data, vendor_name: data.vendors.name }
-      }));
+      });
     } catch (err) {
       console.error('Error validating referral code:', err);
-      setDiscountState(prev => ({
-        ...prev,
-        referralError: 'Error validating referral code',
-        referralLoading: false,
-        referralDiscount: 0,
+      setReferralState({
+        isValidating: false,
+        error: 'Error validating referral code',
         appliedReferral: null
-      }));
+      });
     }
   };
 
-  const handleCouponSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    validateCoupon(discountState.couponCode);
-  };
+  // Validate referral code when it changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      validateReferralCode(referralCode);
+    }, 500);
 
-  const handleReferralSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    validateReferralCode(discountState.referralCode);
-  };
+    return () => clearTimeout(timeoutId);
+  }, [referralCode]);
 
-  const removeCoupon = () => {
-    setDiscountState(prev => ({
-      ...prev,
-      couponCode: '',
-      couponDiscount: 0,
-      couponError: null,
-      appliedCoupon: null
-    }));
-  };
-
-  const removeReferral = () => {
-    setDiscountState(prev => ({
-      ...prev,
-      referralCode: '',
-      referralDiscount: 0,
-      referralError: null,
-      appliedReferral: null
-    }));
-  };
   // Fetch contract templates when component mounts
   useEffect(() => {
     const fetchContractTemplates = async () => {
@@ -399,7 +264,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
   // Pre-fill form with user data if authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      
       setFormData(prev => ({
         ...prev,
         partner1Name: couple?.partner1_name || user.user_metadata?.name || '',
@@ -560,6 +424,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             metadata: {
               type: 'wedding_booking',
               deposit_percentage: 50,
+              discount_amount: discountAmount,
+              referral_code: referralCode || null,
               items: cartItems.map(item => ({
                 package_id: item.package.id,
                 package_name: item.package.name,
@@ -912,6 +778,64 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
             </Card>
 
+            {/* Referral Code Section */}
+            <Card className="p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Tag className="w-5 h-5 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Referral Code</h3>
+              </div>
+              
+              <p className="text-gray-600 mb-4">
+                Have a referral code from one of our vendors? Enter it here to get a special discount.
+              </p>
+
+              {referralState.appliedReferral ? (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-blue-900">
+                        Referred by {referralState.appliedReferral.vendor_name}
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Code: {referralState.appliedReferral.code}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onReferralCodeChange('');
+                        setReferralState({
+                          isValidating: false,
+                          error: null,
+                          appliedReferral: null
+                        });
+                      }}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Enter referral code (e.g., REF123)"
+                    value={referralCode}
+                    onChange={(e) => onReferralCodeChange(e.target.value)}
+                    icon={Tag}
+                  />
+                  {referralState.isValidating && (
+                    <p className="text-sm text-blue-600">Validating referral code...</p>
+                  )}
+                  {referralState.error && (
+                    <p className="text-sm text-red-600">{referralState.error}</p>
+                  )}
+                </div>
+              )}
+            </Card>
+
             {/* Payment Information */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
@@ -1025,18 +949,16 @@ export const Checkout: React.FC = () => {
   const [step, setStep] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
-  const [discountState, setDiscountState] = useState<DiscountState>({
-    couponCode: '',
-    referralCode: '',
-    couponDiscount: 0,
-    referralDiscount: 0,
-    couponError: null,
-    referralError: null,
-    couponLoading: false,
-    referralLoading: false,
-    appliedCoupon: null,
-    appliedReferral: null
-  });
+  
+  // Discount state for order summary
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
+  
+  // Referral code state for payment step
+  const [referralCode, setReferralCode] = useState('');
 
   // Get cart data from either location state or cart context
   const cartItems = location.state?.cartItems || cartState.items;
@@ -1053,6 +975,94 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const validateDiscountCode = async (code: string) => {
+    if (!code.trim()) {
+      setDiscountAmount(0);
+      setDiscountError(null);
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setIsValidatingDiscount(true);
+    setDiscountError(null);
+
+    if (!supabase || !isSupabaseConfigured()) {
+      // Mock discount validation for demo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (code.toLowerCase() === 'save10') {
+        const discount = Math.round(totalAmount * 0.1); // 10% discount
+        setDiscountAmount(discount);
+        setAppliedDiscount({ code: 'SAVE10', discount_percent: 10 });
+      } else if (code.toLowerCase() === 'welcome50') {
+        const discount = 5000; // $50 discount
+        setDiscountAmount(discount);
+        setAppliedDiscount({ code: 'WELCOME50', discount_amount: 50 });
+      } else {
+        setDiscountError('Invalid discount code');
+        setDiscountAmount(0);
+        setAppliedDiscount(null);
+      }
+      setIsValidatingDiscount(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', code.toUpperCase())
+        .eq('is_valid', true)
+        .single();
+
+      if (error || !data) {
+        setDiscountError('Invalid or expired discount code');
+        setDiscountAmount(0);
+        setAppliedDiscount(null);
+        setIsValidatingDiscount(false);
+        return;
+      }
+
+      // Check expiration
+      if (data.expiration_date && new Date(data.expiration_date) < new Date()) {
+        setDiscountError('This discount code has expired');
+        setDiscountAmount(0);
+        setAppliedDiscount(null);
+        setIsValidatingDiscount(false);
+        return;
+      }
+
+      // Calculate discount
+      let discount = 0;
+      if (data.discount_percent > 0) {
+        discount = Math.round(totalAmount * (data.discount_percent / 100));
+      } else if (data.discount_amount > 0) {
+        discount = data.discount_amount;
+      }
+
+      setDiscountAmount(discount);
+      setAppliedDiscount(data);
+    } catch (err) {
+      console.error('Error validating discount code:', err);
+      setDiscountError('Error validating discount code');
+      setDiscountAmount(0);
+      setAppliedDiscount(null);
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
+
+  const handleDiscountSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    validateDiscountCode(discountCode);
+  };
+
+  const removeDiscount = () => {
+    setDiscountCode('');
+    setDiscountAmount(0);
+    setDiscountError(null);
+    setAppliedDiscount(null);
+  };
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -1076,14 +1086,9 @@ export const Checkout: React.FC = () => {
     // Continue with checkout process
   };
 
-  const handleProceedWithoutAuth = () => {
-    // Force authentication before final payment
-    setShowAuthModal(true);
-    setAuthMode('signup');
-  };
-
   const totalServiceFee = cartItems.length * 150; // $150 per service
-  const depositAmount = Math.round(totalAmount * 0.5); // 50% deposit
+  const finalAmount = totalAmount - discountAmount;
+  const depositAmount = Math.round(finalAmount * 0.5); // 50% deposit
   const grandTotal = depositAmount + totalServiceFee * 100; // Convert to cents
 
   if (cartItems.length === 0) {
@@ -1167,6 +1172,9 @@ export const Checkout: React.FC = () => {
                 <CheckoutForm
                   cartItems={cartItems}
                   totalAmount={totalAmount}
+                  discountAmount={discountAmount}
+                  referralCode={referralCode}
+                  onReferralCodeChange={setReferralCode}
                   onSuccess={handlePaymentSuccess}
                 />
               </Elements>
@@ -1206,10 +1214,83 @@ export const Checkout: React.FC = () => {
                   ))}
                 </div>
 
+                {/* Discount Code Section */}
+                <div className="border-t pt-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-gray-700">Discount Code</label>
+                    {appliedDiscount && (
+                      <button
+                        type="button"
+                        onClick={removeDiscount}
+                        className="text-xs text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  
+                  {appliedDiscount ? (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-green-900">
+                          {appliedDiscount.code} Applied
+                        </span>
+                        <span className="text-sm font-medium text-green-900">
+                          -{formatPrice(discountAmount)}
+                        </span>
+                      </div>
+                      {appliedDiscount.discount_percent && (
+                        <p className="text-xs text-green-700 mt-1">
+                          {appliedDiscount.discount_percent}% off your order
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <form onSubmit={handleDiscountSubmit} className="space-y-2">
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          placeholder="Enter discount code"
+                          value={discountCode}
+                          onChange={(e) => setDiscountCode(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="sm"
+                          loading={isValidatingDiscount}
+                          disabled={!discountCode.trim() || isValidatingDiscount}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                      {discountError && (
+                        <p className="text-xs text-red-600">{discountError}</p>
+                      )}
+                      {isValidatingDiscount && (
+                        <p className="text-xs text-blue-600">Validating code...</p>
+                      )}
+                    </form>
+                  )}
+                </div>
+
                 <div className="border-t pt-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Package Total</span>
                     <span className="font-medium">{formatPrice(totalAmount)}</span>
+                  </div>
+                  
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount Applied</span>
+                      <span>-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium">{formatPrice(finalAmount)}</span>
                   </div>
                   
                   <div className="flex justify-between">
@@ -1222,120 +1303,10 @@ export const Checkout: React.FC = () => {
                     <span className="font-medium">${totalServiceFee}</span>
                   </div>
                   
-                  {/* Discount Section */}
-                  <div className="space-y-3 pt-3 border-t border-gray-200">
-                    {/* Coupon Code */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">Discount Code</label>
-                        {discountState.appliedCoupon && (
-                          <button
-                            type="button"
-                            onClick={removeCoupon}
-                            className="text-xs text-red-600 hover:text-red-700"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      {discountState.appliedCoupon ? (
-                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-green-900">
-                              {discountState.appliedCoupon.code} Applied
-                            </span>
-                            <span className="text-sm font-medium text-green-900">
-                              -{formatPrice(discountState.couponDiscount)}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleCouponSubmit} className="flex space-x-2">
-                          <input
-                            type="text"
-                            placeholder="Enter discount code"
-                            value={discountState.couponCode}
-                            onChange={(e) => setDiscountState(prev => ({ ...prev, couponCode: e.target.value }))}
-                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            loading={discountState.couponLoading}
-                            disabled={!discountState.couponCode.trim() || discountState.couponLoading}
-                          >
-                            Apply
-                          </Button>
-                        </form>
-                      )}
-                      {discountState.couponError && (
-                        <p className="text-xs text-red-600 mt-1">{discountState.couponError}</p>
-                      )}
-                    </div>
-
-                    {/* Referral Code */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">Referral Code</label>
-                        {discountState.appliedReferral && (
-                          <button
-                            type="button"
-                            onClick={removeReferral}
-                            className="text-xs text-red-600 hover:text-red-700"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      {discountState.appliedReferral ? (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-blue-900">
-                              Referred by {discountState.appliedReferral.vendor_name}
-                            </span>
-                            <span className="text-sm font-medium text-blue-900">
-                              -{formatPrice(discountState.referralDiscount)}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleReferralSubmit} className="flex space-x-2">
-                          <input
-                            type="text"
-                            placeholder="Enter referral code"
-                            value={discountState.referralCode}
-                            onChange={(e) => setDiscountState(prev => ({ ...prev, referralCode: e.target.value }))}
-                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          />
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            loading={discountState.referralLoading}
-                            disabled={!discountState.referralCode.trim() || discountState.referralLoading}
-                          >
-                            Apply
-                          </Button>
-                        </form>
-                      )}
-                      {discountState.referralError && (
-                        <p className="text-xs text-red-600 mt-1">{discountState.referralError}</p>
-                      )}
-                    </div>
-                  </div>
-
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>Remaining Balance</span>
-                    <span>{formatPrice(totalAmount - depositAmount)} (due later)</span>
+                    <span>{formatPrice(finalAmount - depositAmount)} (due later)</span>
                   </div>
-                  
-                  {totalDiscount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Total Savings</span>
-                      <span>-{formatPrice(totalDiscount)}</span>
-                    </div>
-                  )}
                   
                   <div className="flex justify-between text-lg font-semibold border-t pt-3">
                     <span>Total Due Today</span>
@@ -1391,8 +1362,14 @@ export const Checkout: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Remaining Balance:</span>
-                  <span className="font-medium">{formatPrice(totalAmount - depositAmount)}</span>
+                  <span className="font-medium">{formatPrice(finalAmount - depositAmount)}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Total Savings:</span>
+                    <span className="font-medium">{formatPrice(discountAmount)}</span>
+                  </div>
+                )}
               </div>
             </div>
 
