@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight } from 'lucide-react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Button } from '../ui/Button';
@@ -66,6 +66,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
+  const cardElementRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
@@ -108,54 +109,76 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   useEffect(() => {
     if (currentStep !== 3 || !stripe || !elements) {
       console.log('Skipping CardElement setup: ', { currentStep, stripe: !!stripe, elements: !!elements });
-      if (!stripe || !elements) {
+      if (currentStep === 3 && (!stripe || !elements)) {
         setError('Payment system not initialized. Please try again later.');
       }
       return;
     }
 
     console.log('Attempting to initialize CardElement...');
-    const cardElement = elements.getElement(CardElement);
-    if (cardElement) {
-      console.log('✅ CardElement found');
-      cardElement.on('ready', () => {
-        console.log('✅ CardElement is ready');
-        setCardReady(true);
-      });
-      cardElement.on('change', (event) => {
-        console.log('CardElement change:', event);
-        setCardComplete(event.complete);
-        setError(event.error ? event.error.message : null);
-      });
+    const initializeCardElement = () => {
+      const cardElement = elements.getElement(CardElement);
+      if (cardElement) {
+        console.log('✅ CardElement found');
+        cardElement.on('ready', () => {
+          console.log('✅ CardElement is ready');
+          setCardReady(true);
+        });
+        cardElement.on('change', (event) => {
+          console.log('CardElement change:', event);
+          setCardComplete(event.complete);
+          setError(event.error ? event.error.message : null);
+        });
+        return cardElement;
+      } else {
+        console.error('CardElement not found');
+        setError('Unable to load card input. Please try again.');
+        return null;
+      }
+    };
 
-      return () => {
-        console.log('Cleaning up CardElement event listeners');
-        cardElement.off('ready');
-        cardElement.off('change');
-      };
-    } else {
-      console.error('CardElement not found');
-      // Retry after a short delay
-      const timeout = setTimeout(() => {
-        const retryCardElement = elements.getElement(CardElement);
-        if (retryCardElement) {
-          console.log('✅ CardElement found on retry');
-          retryCardElement.on('ready', () => {
-            console.log('✅ CardElement is ready (retry)');
+    let cardElement = initializeCardElement();
+
+    // Use MutationObserver to detect CardElement rendering
+    if (!cardElement && cardElementRef.current) {
+      const observer = new MutationObserver((mutations, obs) => {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          console.log('✅ CardElement found via MutationObserver');
+          cardElement.on('ready', () => {
+            console.log('✅ CardElement is ready');
             setCardReady(true);
           });
-          retryCardElement.on('change', (event) => {
-            console.log('CardElement change (retry):', event);
+          cardElement.on('change', (event) => {
+            console.log('CardElement change:', event);
             setCardComplete(event.complete);
             setError(event.error ? event.error.message : null);
           });
-        } else {
-          console.error('CardElement still not found after retry');
-          setError('Unable to load card input. Please refresh the page.');
+          obs.disconnect();
         }
-      }, 500);
-      return () => clearTimeout(timeout);
+      });
+
+      observer.observe(cardElementRef.current, {
+        childList: true,
+        subtree: true,
+      });
+
+      return () => {
+        observer.disconnect();
+        if (cardElement) {
+          cardElement.off('ready');
+          cardElement.off('change');
+        }
+      };
     }
+
+    return () => {
+      if (cardElement) {
+        console.log('Cleaning up CardElement event listeners');
+        cardElement.off('ready');
+        cardElement.off('change');
+      }
+    };
   }, [stripe, elements, currentStep]);
 
   // Fetch contract templates
@@ -818,16 +841,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
-                  {!stripe ? (
+                  {!stripe || !elements ? (
                     <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
                       <p className="text-sm text-red-600">Payment system not initialized. Please try again later.</p>
                     </div>
-                  ) : !cardReady ? (
-                    <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
-                      <div className="text-sm text-gray-500">Loading card input...</div>
-                    </div>
                   ) : (
-                    <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                    <div ref={cardElementRef} className="p-4 border border-gray-300 rounded-lg bg-white">
                       <CardElement
                         options={{
                           style: {
