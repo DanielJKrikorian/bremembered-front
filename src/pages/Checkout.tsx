@@ -12,7 +12,19 @@ import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { AuthModal } from '../components/auth/AuthModal';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+// Initialize Stripe with proper error handling
+const getStripePromise = () => {
+  const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  
+  if (!publishableKey || publishableKey === 'your_stripe_publishable_key_here') {
+    console.warn('Stripe publishable key not configured');
+    return null;
+  }
+  
+  return loadStripe(publishableKey);
+};
+
+const stripePromise = getStripePromise();
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -78,7 +90,9 @@ const CheckoutForm: React.FC<{
   const { couple } = useCouple();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Contract, 3: Payment
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -293,15 +307,40 @@ By signing below, both parties agree to the terms outlined in this contract.`,
   }, [cartItems]);
 
   useEffect(() => {
+    // Check if Stripe is properly configured
+    if (!stripePromise) {
+      setStripeError('Stripe is not configured. Please contact support to complete your payment.');
+      return;
+    }
+
     if (stripe && elements) {
       const cardElement = elements.getElement(CardElement);
       if (cardElement) {
-        cardElement.on('ready', () => setCardReady(true));
+        cardElement.on('ready', () => {
+          console.log('CardElement is ready');
+          setCardReady(true);
+        });
         cardElement.on('change', (event) => {
-          setError(event.error ? event.error.message : null);
+          console.log('CardElement change:', event);
+          setCardComplete(event.complete);
+          if (event.error) {
+            setError(event.error.message);
+          } else {
+            setError(null);
+          }
         });
       }
     }
+
+    return () => {
+      if (elements) {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          cardElement.off('ready');
+          cardElement.off('change');
+        }
+      }
+    };
   }, [stripe, elements]);
 
   const handleInputChange = (field: keyof CheckoutFormData, value: string | boolean) => {
@@ -382,6 +421,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       return;
     }
 
+    // Check if Stripe is configured
+    if (!stripePromise) {
+      setError('Payment system is not configured. Please contact support.');
+      return;
+    }
+
     // Final validation before payment
     if (!validateForm()) return;
 
@@ -395,7 +440,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
 
     if (!stripe || !elements) {
-      setError('Payment system not ready');
+      setError('Payment system is still loading. Please wait a moment and try again.');
       return;
     }
 
@@ -405,48 +450,69 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       return;
     }
 
+    if (!cardComplete) {
+      setError('Please complete your card information');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      // Check if we have a valid Supabase URL for the function
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey || supabaseUrl === 'https://placeholder.supabase.co') {
+        throw new Error('Payment processing is not configured. Please contact support.');
+      }
+
       // Create payment intent
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            amount: grandTotal, // Deposit + service fees
-            currency: 'usd',
-            metadata: {
-              type: 'wedding_booking',
-              deposit_percentage: 50,
-              discount_amount: discountAmount,
-              referral_code: referralCode || null,
-              items: cartItems.map(item => ({
-                package_id: item.package.id,
-                package_name: item.package.name,
-                service_type: item.package.service_type,
-                price: item.package.price,
-                deposit_amount: Math.round(item.package.price * 0.5)
-              }))
-            }
-          }),
-        }
-      );
+      console.log('Creating payment intent for amount:', grandTotal);
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: grandTotal,
+          currency: 'usd',
+          metadata: {
+            type: 'wedding_booking',
+            deposit_percentage: 50,
+            coupon_discount: couponDiscount,
+            referral_code: referralCode,
+            items: cartItems.map(item => ({
+              package_id: item.package.id,
+              package_name: item.package.name,
+              service_type: item.package.service_type,
+              price: item.package.price,
+              deposit_amount: Math.round(item.package.price * 0.5)
+            }))
+          }
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Payment intent creation failed:', errorData);
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Payment intent created:', data);
       const { client_secret } = data;
 
+      if (!client_secret) {
+        throw new Error('Invalid payment intent response');
+      }
+
       // Confirm payment
+      console.log('Confirming payment...');
       const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(client_secret, {
         payment_method: {
           card: cardElement,
@@ -468,12 +534,14 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       });
 
       if (stripeError) {
+        console.error('Stripe payment error:', stripeError);
         throw new Error(stripeError.message || 'Payment failed');
       }
 
+      console.log('Payment intent status:', paymentIntent?.status);
       if (paymentIntent?.status === 'succeeded') {
         // Save contracts to database if Supabase is configured
-        if (supabase && isSupabaseConfigured()) {
+        if (supabase && isSupabaseConfigured() && contractTemplates.length > 0) {
           try {
             const contractsToSave = contractTemplates.map(template => ({
               content: template.content,
@@ -494,6 +562,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           }
         }
 
+        console.log('Payment successful, calling onSuccess');
         onSuccess();
       } else {
         throw new Error('Payment was not completed successfully');
@@ -845,6 +914,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
               </div>
               
+              {/* Stripe Configuration Error */}
+              {stripeError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                    <p className="text-red-600">{stripeError}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Deposit Notice */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
@@ -853,6 +932,56 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </p>
               </div>
               
+              {/* Referral Code Section */}
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-900 mb-4">Referral Code (Optional)</h4>
+                {appliedReferral ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-blue-900">
+                          Referred by {appliedReferral.vendor_name}
+                        </p>
+                        <p className="text-sm text-blue-700">Thank you for using their referral!</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeReferral}
+                        className="text-sm text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <form onSubmit={handleReferralSubmit} className="flex space-x-3">
+                      <input
+                        type="text"
+                        placeholder="Enter vendor referral code (e.g., DANI1234)"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        loading={referralLoading}
+                        disabled={!referralCode.trim() || referralLoading}
+                      >
+                        Apply
+                      </Button>
+                    </form>
+                    {referralError && (
+                      <p className="text-sm text-red-600 mt-2">{referralError}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Have a referral code from one of our vendors? Enter it here for special recognition.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-6 mb-8">
                 <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
                   <Lock className="w-5 h-5 text-green-600" />
@@ -862,17 +991,22 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </div>
                 </div>
                 
-                <div>
+                {!stripeError && (
+                  <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Card Information
                   </label>
-                  <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                  <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[50px] flex items-center">
+                    {!cardReady && (
+                      <div className="text-gray-500 text-sm">Loading card input...</div>
+                    )}
                     <CardElement
                       options={{
                         style: {
                           base: {
                             fontSize: '16px',
                             color: '#1f2937',
+                            fontFamily: 'system-ui, -apple-system, sans-serif',
                             '::placeholder': {
                               color: '#6b7280',
                             },
@@ -880,11 +1014,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                           invalid: {
                             color: '#dc2626',
                           },
+                          complete: {
+                            color: '#059669',
+                          },
                         },
+                        hidePostalCode: true,
                       }}
                     />
                   </div>
-                </div>
+                  {cardReady && (
+                    <p className="text-xs text-green-600 mt-1">✓ Card input ready</p>
+                  )}
+                  </div>
+                )}
 
                 {/* Payment Options */}
                 <div className="space-y-4">
@@ -926,13 +1068,15 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && (!stripe || !elements || !cardReady))}
+              disabled={loading || stripeError !== null || (currentStep === 3 && (!stripe || !elements || !cardReady || !cardComplete))}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
               {currentStep === 1 ? 'Continue to Contracts' :
                currentStep === 2 ? 'Continue to Payment' :
-               loading ? 'Processing...' : `Pay ${formatPrice(grandTotal)}`}
+               loading ? 'Processing Payment...' : 
+               stripeError ? 'Payment Unavailable' :
+               `Pay ${formatPrice(grandTotal)}`}
             </Button>
           </div>
         </div>
@@ -1168,7 +1312,24 @@ export const Checkout: React.FC = () => {
                 </Card>
               )}
 
-              <Elements stripe={stripePromise}>
+              {stripePromise ? (
+                <Elements 
+                  stripe={stripePromise}
+                  options={{
+                    appearance: {
+                      theme: 'stripe',
+                      variables: {
+                        colorPrimary: '#f43f5e',
+                        colorBackground: '#ffffff',
+                        colorText: '#1f2937',
+                        colorDanger: '#dc2626',
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        spacingUnit: '4px',
+                        borderRadius: '8px',
+                      },
+                    },
+                  }}
+                >
                 <CheckoutForm
                   cartItems={cartItems}
                   totalAmount={totalAmount}
@@ -1177,7 +1338,26 @@ export const Checkout: React.FC = () => {
                   onReferralCodeChange={setReferralCode}
                   onSuccess={handlePaymentSuccess}
                 />
-              </Elements>
+                </Elements>
+              ) : (
+                <Card className="p-8 text-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Payment System Unavailable</h3>
+                  <p className="text-gray-600 mb-6">
+                    The payment system is not configured. Please contact our support team to complete your booking.
+                  </p>
+                  <div className="space-y-3">
+                    <Button variant="primary" onClick={() => window.location.href = 'mailto:hello@bremembered.io'}>
+                      Contact Support
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate('/cart')}>
+                      Back to Cart
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
 
             {/* Order Summary */}
