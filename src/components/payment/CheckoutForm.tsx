@@ -71,6 +71,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
+  const [cardElementMounted, setCardElementMounted] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
 
@@ -118,6 +119,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         const handleReady = () => {
           console.log('✅ CardElement is ready for input');
           setCardReady(true);
+          setCardElementMounted(true);
         };
         
         const handleChange = (event: any) => {
