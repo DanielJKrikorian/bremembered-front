@@ -40,6 +40,8 @@ interface CheckoutFormProps {
   discountAmount: number;
   referralDiscount: number;
   onSuccess: () => void;
+  onReferralApplied: (discount: number, referral: any) => void;
+  onReferralRemoved: () => void;
 }
 
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
@@ -48,6 +50,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   discountAmount,
   referralDiscount,
   onSuccess,
+  onReferralApplied,
+  onReferralRemoved,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -130,6 +134,15 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           setCardComplete(event.complete);
           setError(event.error ? event.error.message : null);
         });
+        // Log iframe details
+        if (cardElementRef.current) {
+          const iframe = cardElementRef.current.querySelector('iframe');
+          console.log('CardElement iframe:', iframe ? iframe.src : 'No iframe found');
+          if (iframe) {
+            iframe.addEventListener('load', () => console.log('CardElement iframe loaded'));
+            iframe.addEventListener('error', (e) => console.error('CardElement iframe error:', e));
+          }
+        }
         return cardElement;
       } else {
         console.error('CardElement not found');
@@ -156,6 +169,15 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
             setCardComplete(event.complete);
             setError(event.error ? event.error.message : null);
           });
+          // Log iframe details
+          if (cardElementRef.current) {
+            const iframe = cardElementRef.current.querySelector('iframe');
+            console.log('CardElement iframe (MutationObserver):', iframe ? iframe.src : 'No iframe found');
+            if (iframe) {
+              iframe.addEventListener('load', () => console.log('CardElement iframe loaded'));
+              iframe.addEventListener('error', (e) => console.error('CardElement iframe error:', e));
+            }
+          }
           obs.disconnect();
         }
       });
@@ -169,7 +191,14 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       const timeout = setTimeout(() => {
         if (!cardReady) {
           console.log('CardElement ready event not fired, forcing re-render...');
-          setForceRemount((prev) => prev + 1);
+          if (elements && cardElementRef.current) {
+            const cardElement = elements.getElement(CardElement);
+            if (cardElement) {
+              cardElement.destroy();
+              console.log('Destroyed existing CardElement');
+            }
+            setForceRemount((prev) => prev + 1);
+          }
         }
       }, 5000);
 
@@ -285,6 +314,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     if (!code.trim()) {
       setReferralError(null);
       setAppliedReferral(null);
+      onReferralRemoved();
       return;
     }
     setReferralLoading(true);
@@ -292,11 +322,13 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     if (!supabase || !isSupabaseConfigured()) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (code.toLowerCase().startsWith('ref') || code.toLowerCase().includes('dani')) {
-        setAppliedReferral({
+        const referral = {
           code: code.toUpperCase(),
           vendor_name: 'Demo Vendor',
           discount: 5000,
-        });
+        };
+        setAppliedReferral(referral);
+        onReferralApplied(5000, referral);
       } else {
         setReferralError('Invalid referral code');
       }
@@ -322,18 +354,22 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       if (!data) {
         setReferralError('Invalid referral code');
         setAppliedReferral(null);
+        onReferralRemoved();
       } else {
-        setAppliedReferral({
+        const referral = {
           ...data,
           vendor_name: data.vendors.name,
           discount: 5000,
-        });
+        };
+        setAppliedReferral(referral);
+        onReferralApplied(5000, referral);
         setReferralError(null);
       }
     } catch (err) {
       console.error('Error validating referral code:', err);
       setReferralError('Error validating referral code');
       setAppliedReferral(null);
+      onReferralRemoved();
     } finally {
       setReferralLoading(false);
     }
@@ -347,6 +383,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     setReferralCode('');
     setAppliedReferral(null);
     setReferralError(null);
+    onReferralRemoved();
   };
 
   const handleInputChange = (field: keyof CheckoutFormData, value: string | boolean) => {
@@ -718,7 +755,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               </div>
                             </div>
                           ) : (
-                            <div className="bg-green-50 border border-gray-200 rounded-lg p-3">
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                               <div className="flex items-center space-x-2 text-green-800">
                                 <Check className="w-4 h-4" />
                                 <span className="font-medium">Signed by: {signatures[template.service_type]}</span>
@@ -801,7 +838,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     <button
                       type="button"
                       onClick={removeReferral}
-                      className="text-sm text-red-600 hover:text-red-700"
+                      className="text-sm text-red-600 hover:text-rose-700"
                     >
                       Remove
                     </button>
@@ -861,7 +898,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     <div
                       ref={cardElementRef}
                       className="p-4 border border-gray-300 rounded-lg bg-white"
-                      style={{ minHeight: '40px' }}
+                      style={{ minHeight: '40px', width: '100%' }}
                       key={forceRemount}
                     >
                       <CardElement
