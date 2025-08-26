@@ -42,6 +42,7 @@ export const Home: React.FC = () => {
         },
         body: JSON.stringify({
           packageId: pkg.id,
+          packageName: pkg.name,
           serviceType: pkg.service_type,
           discountPercent: 10
         })
