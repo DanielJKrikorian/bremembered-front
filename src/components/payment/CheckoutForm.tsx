@@ -573,105 +573,103 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         )}
         {/* Step 2: Contract Signing */}
         {currentStep === 2 && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-amber-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Service Contracts</h3>
+          <Card className="p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <FileText className="w-5 h-5 text-amber-600" />
               </div>
-              <p className="text-gray-600 mb-6">
-                Please review and sign the contracts for each service before proceeding to payment.
-              </p>
-              {contractsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading contracts...</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {contractTemplates.map((template) => {
-                    const isSigned = signatures[template.service_type] && signatures[template.service_type].trim() !== '';
-                    return (
-                      <div key={template.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                        <div
-                          className={`p-4 ${
-                            isSigned ? 'bg-green-50 border-b border-green-200' : 'bg-gray-50 border-b border-gray-200'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-gray-900">{template.service_type} Service Agreement</h4>
-                            <div
-                              className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
-                                isSigned ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              {isSigned ? (
-                                <>
-                                  <Check className="w-4 h-4" />
-                                  <span>Signed</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Edit className="w-4 h-4" />
-                                  <span>Signature Required</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
-                            <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
-                              {template.content}
-                            </div>
-                          </div>
-                          {!isSigned ? (
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
-                              <input
-                                type="text"
-                                placeholder="Type your full legal name to sign"
-                                value={tempSignatures[template.service_type] || ''}
-                                onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                                required
-                              />
-                              <p className="text-sm text-gray-500 mt-1">
-                                By typing your name, you agree to be legally bound by this contract
-                              </p>
-                              <div className="mt-3">
-                                <Button
-                                  type="button"
-                                  variant="primary"
-                                  size="sm"
-                                  onClick={() => confirmSignature(template.service_type)}
-                                  disabled={
-                                    !tempSignatures[template.service_type] ||
-                                    !tempSignatures[template.service_type].trim()
-                                  }
-                                >
-                                  Confirm Signature
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-green-50 border border-gray-200 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 text-green-800">
+              <h3 className="text-xl font-semibold text-gray-900">Service Contracts</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Please review and sign the contracts for each service before proceeding to payment.
+            </p>
+            {contractsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading contracts...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {contractTemplates.map((template) => {
+                  const isSigned = signatures[template.service_type] && signatures[template.service_type].trim() !== '';
+                  return (
+                    <div key={template.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div
+                        className={`p-4 ${
+                          isSigned ? 'bg-green-50 border-b border-green-200' : 'bg-gray-50 border-b border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold text-gray-900">{template.service_type} Service Agreement</h4>
+                          <div
+                            className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                              isSigned ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {isSigned ? (
+                              <>
                                 <Check className="w-4 h-4" />
-                                <span className="font-medium">Signed by: {signatures[template.service_type]}</span>
-                              </div>
-                            </div>
-                          )}
+                                <span>Signed</span>
+                              </>
+                            ) : (
+                              <>
+                                <Edit className="w-4 h-4" />
+                                <span>Signature Required</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-          </div>
+                      <div className="p-4">
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
+                          <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
+                            {template.content}
+                          </div>
+                        </div>
+                        {!isSigned ? (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
+                            <input
+                              type="text"
+                              placeholder="Type your full legal name to sign"
+                              value={tempSignatures[template.service_type] || ''}
+                              onChange={(e) => handleSignatureChange(template.service_type, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                              required
+                            />
+                            <p className="text-sm text-gray-500 mt-1">
+                              By typing your name, you agree to be legally bound by this contract
+                            </p>
+                            <div className="mt-3">
+                              <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
+                                onClick={() => confirmSignature(template.service_type)}
+                                disabled={
+                                  !tempSignatures[template.service_type] ||
+                                  !tempSignatures[template.service_type].trim()
+                                }
+                              >
+                                Confirm Signature
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-green-50 border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-center space-x-2 text-green-800">
+                              <Check className="w-4 h-4" />
+                              <span className="font-medium">Signed by: {signatures[template.service_type]}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         )}
         {/* Step 3: Payment Information */}
         {currentStep === 3 && (
@@ -815,46 +813,49 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
               <p className="text-gray-600 text-sm mb-4">
                 Have a referral code from one of our vendors? Enter it here for a special discount.
               </p>
-              {appliedReferral ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-blue-900">
-                        Referred by {appliedReferral.vendor_name}
-                      </span>
-                      <p className="text-xs text-blue-700">$50 discount applied</p>
+              <div className="space-y-4">
+                {appliedReferral ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-blue-900">
+                          Referred by {appliedReferral.vendor_name}
+                        </span>
+                        <p className="text-xs text-blue-700">$50 discount applied</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeReferral}
+                        className="text-sm text-red-600 hover:text-rose-700"
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={removeReferral}
-                      className="text-sm text-red-600 hover:text-rose-700"
-                    >
-                      Remove
-                    </button>
                   </div>
-                </div>
-              ) : (
-                <div className="flex space-x-3">
-                  <input
-                    type="text"
-                    placeholder="Enter referral code (e.g., DANI1234)"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleReferralSubmit}
-                    loading={referralLoading}
-                    disabled={!referralCode.trim() || referralLoading}
-                  >
-                    Apply
-                  </Button>
-                </div>
-              )}
-              {referralError && <p className="text-xs text-red-600 mt-2">{referralError}</p>}
-            </div>
+                ) : (
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      placeholder="Enter referral code (e.g., DANI1234)"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleReferralSubmit}
+                      loading={referralLoading}
+                      disabled={!referralCode.trim() || referralLoading}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                )}
+                {referralError && <p className="text-xs text-red-600 mt-2">{referralError}</p>}
+              </div>
+            </Card>
+            {/* Removed extra secure payment notice Card to avoid redundancy */}
           </div>
         )}
         <div className="flex justify-between">
