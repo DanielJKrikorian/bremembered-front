@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { AuthModal } from '../auth/AuthModal';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -84,14 +85,7 @@ export const Header: React.FC = () => {
                     ? 'text-rose-600 font-medium' 
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
-              >
-                Support
-              </button>
-            </nav>
-
-            {/* Actions */}
-            <div className="flex items-center space-x-4">
-              {/* Search Icon for Mobile */}
+              <NotificationBell />
               <Button 
                 variant="ghost" 
                 icon={Search} 
