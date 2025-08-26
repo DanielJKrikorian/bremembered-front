@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Calendar, Users, CreditCard } from 'lucide-react';
+import { Check, Calendar, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -16,7 +16,7 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   cartItems,
   totalAmount,
   depositAmount,
-  onCreateAccount
+  onCreateAccount,
 }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -26,7 +26,7 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(price / 100);
   };
 
@@ -39,7 +39,6 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       <p className="text-xl text-gray-600 mb-6">
         Thank you for choosing B. Remembered! Your wedding booking has been successfully confirmed.
       </p>
-      
       <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
         <h3 className="font-semibold text-gray-900 mb-4">Booking Details</h3>
         <div className="space-y-2 text-sm">
@@ -61,25 +60,14 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
           </div>
         </div>
       </div>
-
       <div className="space-y-4">
-        <Button 
-          variant="primary" 
-          className="w-full"
-          onClick={() => navigate('/my-bookings')}
-          icon={Calendar}
-        >
+        <Button variant="primary" className="w-full" onClick={() => navigate('/my-bookings')} icon={Calendar}>
           View My Bookings
         </Button>
-        <Button 
-          variant="outline" 
-          className="w-full"
-          onClick={() => navigate('/')}
-        >
+        <Button variant="outline" className="w-full" onClick={() => navigate('/')}>
           Continue Shopping
         </Button>
       </div>
-
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2">What's Next?</h4>
         <ul className="text-sm text-blue-800 space-y-1">
@@ -89,15 +77,9 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
           <li>• {!isAuthenticated ? 'Create an account to message vendors and track progress' : 'Use your dashboard to track progress and message vendors'}</li>
         </ul>
       </div>
-
       {!isAuthenticated && (
         <div className="mt-6">
-          <Button
-            variant="outline"
-            onClick={onCreateAccount}
-            className="w-full"
-            icon={Users}
-          >
+          <Button variant="outline" onClick={onCreateAccount} className="w-full" icon={Users}>
             Create Account to Message Vendors
           </Button>
         </div>
