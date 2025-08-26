@@ -28,6 +28,8 @@ export const Checkout: React.FC = () => {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [referralDiscount, setReferralDiscount] = useState<number>(0);
+  const [appliedReferral, setAppliedReferral] = useState<any>(null);
 
   const cartItems = location.state?.cartItems || cartState.items;
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
@@ -61,6 +63,16 @@ export const Checkout: React.FC = () => {
   const handleDiscountRemoved = () => {
     setAppliedDiscount(0);
     setAppliedCoupon(null);
+  };
+
+  const handleReferralApplied = (discount: number, referral: any) => {
+    setReferralDiscount(discount);
+    setAppliedReferral(referral);
+  };
+
+  const handleReferralRemoved = () => {
+    setReferralDiscount(0);
+    setAppliedReferral(null);
   };
 
   const handleCreateAccount = () => {
@@ -146,8 +158,10 @@ export const Checkout: React.FC = () => {
                     cartItems={cartItems}
                     totalAmount={totalAmount}
                     discountAmount={appliedDiscount}
-                    referralDiscount={0} // Adjust if referral discount is handled separately
+                    referralDiscount={referralDiscount}
                     onSuccess={handlePaymentSuccess}
+                    onReferralApplied={handleReferralApplied}
+                    onReferralRemoved={handleReferralRemoved}
                   />
                 </Elements>
               ) : (
@@ -186,7 +200,7 @@ export const Checkout: React.FC = () => {
           <BookingConfirmation
             cartItems={cartItems}
             totalAmount={totalAmount}
-            depositAmount={Math.round((totalAmount - appliedDiscount) * 0.5) + cartItems.length * 150 * 100}
+            depositAmount={Math.round((totalAmount - appliedDiscount - referralDiscount) * 0.5) + cartItems.length * 150 * 100}
             onCreateAccount={handleCreateAccount}
           />
         )}
