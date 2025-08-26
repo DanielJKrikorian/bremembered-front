@@ -1025,6 +1025,18 @@ export const Checkout: React.FC = () => {
   const [step, setStep] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
+  const [discountState, setDiscountState] = useState<DiscountState>({
+    couponCode: '',
+    referralCode: '',
+    couponDiscount: 0,
+    referralDiscount: 0,
+    couponError: null,
+    referralError: null,
+    couponLoading: false,
+    referralLoading: false,
+    appliedCoupon: null,
+    appliedReferral: null
+  });
 
   // Get cart data from either location state or cart context
   const cartItems = location.state?.cartItems || cartState.items;
