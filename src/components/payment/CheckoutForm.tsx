@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight } from 'lucide-react';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
+import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight, DollarSign } from 'lucide-react';
+import { useStripe, useElements, CardElement, PaymentElement } from '@stripe/react-stripe-js';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -70,9 +70,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
-  const [cardReady, setCardReady] = useState(false);
-  const [cardError, setCardError] = useState<string | null>(null);
-  const [cardComplete, setCardComplete] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'affirm'>('card');
 
   // Debug Stripe initialization
   useEffect(() => {
@@ -107,22 +105,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       initializePaymentIntent();
     }
   }, [currentStep, clientSecret, stripe, elements]);
-
-  // CardElement event handlers
-  const handleCardReady = () => {
-    console.log('✅ CardElement is ready for input');
-    setCardReady(true);
-  };
-  
-  const handleCardChange = (event: any) => {
-    console.log('CardElement change event:', { 
-      complete: event.complete, 
-      error: event.error?.message,
-      empty: event.empty 
-    });
-    setCardError(event.error ? event.error.message : null);
-    setCardComplete(event.complete);
-  };
 
   const initializePaymentIntent = async () => {
     try {
@@ -416,6 +398,83 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
   };
 
+  const handleStripePayment = async () => {
+    if (!stripe || !elements || !clientSecret) {
+      setError('Payment system not ready');
+      return false;
+    }
+
+    try {
+      let result;
+      
+      if (paymentMethod === 'card') {
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          setError('Card information not found');
+          return false;
+        }
+
+        result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: `${formData.partner1Name}${formData.partner2Name ? ` & ${formData.partner2Name}` : ''}`,
+              email: formData.email,
+              phone: formData.phone,
+              address: {
+                line1: formData.billingAddress,
+                city: formData.city,
+                state: formData.state,
+                postal_code: formData.zipCode,
+                country: 'US',
+              },
+            },
+          },
+        });
+      } else {
+        // Use PaymentElement for Affirm and other payment methods
+        result = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/checkout/success`,
+            payment_method_data: {
+              billing_details: {
+                name: `${formData.partner1Name}${formData.partner2Name ? ` & ${formData.partner2Name}` : ''}`,
+                email: formData.email,
+                phone: formData.phone,
+                address: {
+                  line1: formData.billingAddress,
+                  city: formData.city,
+                  state: formData.state,
+                  postal_code: formData.zipCode,
+                  country: 'US',
+                },
+              },
+            },
+          },
+          redirect: 'if_required',
+        });
+      }
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      if (result.paymentIntent?.status === 'succeeded') {
+        return true;
+      } else if (result.paymentIntent?.status === 'requires_action') {
+        // Handle 3D Secure or other authentication
+        return false;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed');
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -424,7 +483,37 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       return;
     }
 
-    await handleStripeCheckout();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const paymentSuccess = await handleStripePayment();
+      
+      if (paymentSuccess) {
+        // Save booking data to database
+        if (supabase && isSupabaseConfigured()) {
+          // Save contracts with signatures
+          for (const template of contractTemplates) {
+            const signature = signatures[template.service_type];
+            if (signature) {
+              await supabase.from('contracts').insert({
+                content: template.content,
+                signature: signature,
+                signed_at: new Date().toISOString(),
+                status: 'signed'
+              });
+            }
+          }
+        }
+
+        onSuccess();
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setError(err instanceof Error ? err.message : 'Checkout failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -708,13 +797,48 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
             </Card>
 
-            {/* Card Payment Section */}
+            {/* Payment Method Selection */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                   <CreditCard className="w-5 h-5 text-green-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Payment Method</h3>
+              </div>
+
+              {/* Payment Method Tabs */}
+              <div className="flex space-x-4 mb-6">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('card')}
+                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    paymentMethod === 'card'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <CreditCard className="w-5 h-5" />
+                    <span className="font-medium">Credit Card</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">Visa, Mastercard, Amex</p>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('affirm')}
+                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    paymentMethod === 'affirm'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <DollarSign className="w-5 h-5" />
+                    <span className="font-medium">Affirm</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">Pay over time</p>
+                </button>
               </div>
 
               <div className="space-y-4">
@@ -725,62 +849,55 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       Initializing secure payment...
                     </p>
                   </div>
-                ) : !cardElementMounted ? (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-800 text-sm">Loading card input...</p>
-                  </div>
                 ) : (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Information
+                      {paymentMethod === 'card' ? 'Card Information' : 'Payment Information'}
                     </label>
                     <div className="p-4 border border-gray-300 rounded-lg bg-white">
-                      <CardElement
-                        onReady={handleCardReady}
-                        onChange={handleCardChange}
-                        options={{
-                          style: {
-                            base: {
-                              fontSize: '16px',
-                              color: '#1f2937',
-                              fontFamily: 'system-ui, sans-serif',
-                              fontWeight: '400',
-                              lineHeight: '24px',
-                              iconColor: '#6b7280',
-                              '::placeholder': {
-                                color: '#9ca3af',
+                      {paymentMethod === 'card' ? (
+                        <CardElement
+                          options={{
+                            style: {
+                              base: {
+                                fontSize: '16px',
+                                color: '#1f2937',
+                                fontFamily: 'system-ui, sans-serif',
+                                fontWeight: '400',
+                                lineHeight: '24px',
+                                iconColor: '#6b7280',
+                                '::placeholder': {
+                                  color: '#9ca3af',
+                                },
+                              },
+                              focus: {
+                                color: '#1f2937',
+                                iconColor: '#f43f5e',
+                                '::placeholder': {
+                                  color: '#6b7280',
+                                },
+                              },
+                              invalid: {
+                                color: '#dc2626',
+                                iconColor: '#dc2626',
+                              },
+                              complete: {
+                                color: '#059669',
+                                iconColor: '#059669',
                               },
                             },
-                            focus: {
-                              color: '#1f2937',
-                              iconColor: '#f43f5e',
-                              '::placeholder': {
-                                color: '#6b7280',
-                              },
-                            },
-                            invalid: {
-                              color: '#dc2626',
-                              iconColor: '#dc2626',
-                            },
-                            complete: {
-                              color: '#059669',
-                              iconColor: '#059669',
-                            },
-                          },
-                          hidePostalCode: true,
-                        }}
-                      />
+                            hidePostalCode: true,
+                          }}
+                        />
+                      ) : (
+                        <PaymentElement
+                          options={{
+                            paymentMethodTypes: ['affirm'],
+                            layout: 'tabs',
+                          }}
+                        />
+                      )}
                     </div>
-                    {cardError && (
-                      <p className="text-sm text-red-600 mt-1">{cardError}</p>
-                    )}
-                    {cardReady && !cardError && (
-                      <p className="text-sm text-green-600 mt-1 flex items-center">
-                        <Check className="w-3 h-3 mr-1" />
-                        Card input ready
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -849,7 +966,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 <div>
                   <p className="text-sm font-medium text-green-800">Secure Payment with Stripe</p>
                   <p className="text-xs text-green-700">
-                    You'll be redirected to Stripe's secure checkout to complete your payment
+                    Choose between credit card or Affirm payment options
                   </p>
                 </div>
               </div>
@@ -868,7 +985,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && (!clientSecret || !cardComplete))}
+              disabled={loading || (currentStep === 3 && !clientSecret)}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >

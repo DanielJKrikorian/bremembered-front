@@ -43,6 +43,10 @@ Deno.serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: grandTotal,
       currency: 'usd',
+      payment_method_types: ['card', 'affirm'],
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         type: 'wedding_booking_deposit',
         customer_name: customerInfo.partner2Name 

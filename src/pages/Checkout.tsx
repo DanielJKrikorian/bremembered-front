@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, AlertCircle, Shield, Phone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
@@ -9,8 +11,9 @@ import { CheckoutForm } from '../components/payment/CheckoutForm';
 import { OrderSummary } from '../components/checkout/OrderSummary';
 import { BookingConfirmation } from '../components/checkout/BookingConfirmation';
 import { AuthModal } from '../components/auth/AuthModal';
-import { Elements } from '@stripe/react-stripe-js';
-import { stripePromise } from '../lib/stripe';
+
+// Initialize Stripe
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 export const Checkout: React.FC = () => {
   const location = useLocation();
@@ -24,6 +27,7 @@ export const Checkout: React.FC = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [referralDiscount, setReferralDiscount] = useState<number>(0);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   const cartItems = location.state?.cartItems || cartState.items;
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
@@ -37,6 +41,45 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // Initialize payment intent when component mounts
+  useEffect(() => {
+    if (cartItems.length > 0 && !clientSecret) {
+      initializePaymentIntent();
+    }
+  }, [cartItems.length, clientSecret]);
+
+  const initializePaymentIntent = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          cartItems,
+          totalAmount,
+          discountAmount: appliedDiscount,
+          referralDiscount,
+          customerInfo: {
+            name: 'Wedding Customer',
+            email: 'customer@example.com',
+            phone: '(555) 123-4567',
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setClientSecret(data.clientSecret);
+    } catch (err) {
+      console.error('Error creating payment intent:', err);
+    }
+  };
 
   const handlePaymentSuccess = () => {
     setStep(2);
@@ -92,7 +135,18 @@ export const Checkout: React.FC = () => {
         {step === 1 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Elements stripe={stripePromise}>
+              <Elements 
+                stripe={stripePromise}
+                options={{
+                  clientSecret,
+                  appearance: {
+                    theme: 'stripe',
+                    variables: {
+                      colorPrimary: '#f43f5e',
+                    },
+                  },
+                }}
+              >
                 <CheckoutForm
                   cartItems={cartItems}
                   totalAmount={totalAmount}
@@ -103,6 +157,7 @@ export const Checkout: React.FC = () => {
                   onReferralRemoved={handleReferralRemoved}
                 />
               </Elements>
+              
               {!isAuthenticated && (
                 <Card className="p-6 mb-8 bg-amber-50 border-amber-200">
                   <div className="flex items-center justify-between">
