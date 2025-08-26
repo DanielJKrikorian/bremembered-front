@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight } from 'lucide-react';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { Button } from '../ui/Button';
@@ -73,15 +73,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [cardReady, setCardReady] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
-
-  // Debug Stripe initialization
-  useEffect(() => {
-    console.log('=== STRIPE INITIALIZATION DEBUG ===');
-    console.log('Stripe instance:', !!stripe);
-    console.log('Elements instance:', !!elements);
-    console.log('Current step:', currentStep);
-    console.log('Client secret:', !!clientSecret);
-  }, [stripe, elements, currentStep, clientSecret]);
+  const cardElementRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
@@ -100,89 +92,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     savePaymentMethod: false,
     agreedToTerms: false,
   });
-
-  // Initialize payment intent when we reach step 3
-  useEffect(() => {
-    if (currentStep === 3 && !clientSecret && stripe && elements) {
-      initializePaymentIntent();
-    }
-  }, [currentStep, clientSecret, stripe, elements]);
-
-  // Set up CardElement event listeners
-  useEffect(() => {
-    if (stripe && elements && currentStep === 3) {
-      const cardElement = elements.getElement(CardElement);
-      if (cardElement) {
-        console.log('✅ Setting up CardElement event listeners', { cardElement: !!cardElement });
-        
-        const handleReady = () => {
-          console.log('✅ CardElement is ready for input');
-          setCardReady(true);
-        };
-        
-        const handleChange = (event: any) => {
-          console.log('CardElement change event:', { 
-            complete: event.complete, 
-            error: event.error?.message,
-            empty: event.empty 
-          });
-          setCardError(event.error ? event.error.message : null);
-          setCardComplete(event.complete);
-        };
-        
-        cardElement.on('ready', handleReady);
-        cardElement.on('change', handleChange);
-        
-        return () => {
-          cardElement.off('ready', handleReady);
-          cardElement.off('change', handleChange);
-        };
-      } else {
-        console.error('❌ CardElement not found in elements');
-      }
-    } else {
-      console.log('CardElement setup skipped:', {
-        stripe: !!stripe,
-        elements: !!elements,
-        clientSecret: !!clientSecret
-      });
-    }
-  }, [stripe, elements, currentStep]);
-
-  const initializePaymentIntent = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          cartItems,
-          totalAmount,
-          discountAmount,
-          referralDiscount,
-          customerInfo: {
-            name: `${formData.partner1Name}${formData.partner2Name ? ` & ${formData.partner2Name}` : ''}`,
-            email: formData.email,
-            phone: formData.phone,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Payment intent created:', data);
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
-    } catch (err) {
-      console.error('Error creating payment intent:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
-    }
-  };
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
@@ -203,6 +112,193 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const totalServiceFee = cartItems.length * 150;
   const grandTotal = depositAmount + totalServiceFee * 100;
 
+  // Debug Stripe initialization
+  useEffect(() => {
+    console.log('=== STRIPE INITIALIZATION DEBUG ===');
+    console.log('Stripe instance:', !!stripe);
+    console.log('Elements instance:', !!elements);
+    console.log('Current step:', currentStep);
+    console.log('Client secret:', !!clientSecret);
+  }, [stripe, elements, currentStep, clientSecret]);
+
+  // Initialize payment intent when we reach step 3
+  useEffect(() => {
+    if (currentStep === 3 && !clientSecret && stripe && elements) {
+      initializePaymentIntent();
+    }
+  }, [currentStep, clientSecret, stripe, elements]);
+
+  // Set up CardElement event listeners
+  useEffect(() => {
+    if (stripe && elements && currentStep === 3 && clientSecret) {
+      const cardElement = elements.getElement(CardElement);
+      if (cardElement) {
+        console.log('✅ Setting up CardElement event listeners', { cardElement: !!cardElement });
+        cardElement.on('ready', () => {
+          console.log('✅ CardElement is ready');
+          setCardReady(true);
+        });
+        cardElement.on('change', (event) => {
+          console.log('CardElement change:', {
+            complete: event.complete,
+            error: event.error?.message,
+            empty: event.empty,
+          });
+          setCardError(event.error ? event.error.message : null);
+          setCardComplete(event.complete);
+        });
+        // Log iframe details
+        if (cardElementRef.current) {
+          const iframe = cardElementRef.current.querySelector('iframe');
+          console.log('CardElement iframe:', iframe ? iframe.src : 'No iframe found');
+          if (iframe) {
+            iframe.addEventListener('load', () => console.log('✅ CardElement iframe loaded'));
+            iframe.addEventListener('error', (e) => console.error('❌ CardElement iframe error:', e));
+          }
+        }
+        // Force re-render if ready event doesn't fire
+        const timeout = setTimeout(() => {
+          if (!cardReady) {
+            console.log('CardElement ready event not fired, forcing re-render...');
+            cardElement.destroy();
+            console.log('Destroyed existing CardElement');
+            elements.create('card').mount(cardElementRef.current!);
+            console.log('Recreated CardElement');
+          }
+        }, 5000);
+
+        return () => {
+          clearTimeout(timeout);
+          cardElement.off('ready');
+          cardElement.off('change');
+          console.log('Cleaned up CardElement event listeners');
+        };
+      } else {
+        console.error('❌ CardElement not found in elements');
+        setError('Unable to load card input. Please try again.');
+      }
+    } else {
+      console.log('CardElement setup skipped:', {
+        stripe: !!stripe,
+        elements: !!elements,
+        clientSecret: !!clientSecret,
+        currentStep,
+      });
+    }
+  }, [stripe, elements, currentStep, clientSecret, cardReady]);
+
+  const initializePaymentIntent = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          cartItems,
+          totalAmount,
+          discountAmount,
+          referralDiscount,
+          customerInfo: {
+            partner1Name: formData.partner1Name,
+            partner2Name: formData.partner2Name,
+            email: formData.email,
+            phone: formData.phone,
+            eventDate: formData.eventDate,
+            eventLocation: formData.eventLocation,
+            guestCount: formData.guestCount,
+            specialRequests: formData.specialRequests,
+            referralCode: appliedReferral?.code || '',
+          },
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Payment intent created:', data);
+      setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+    } catch (err) {
+      console.error('Error creating payment intent:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStripeCheckout = async () => {
+    if (!stripe || !elements || !clientSecret) {
+      setError('Payment system not ready');
+      return;
+    }
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setError('Card information not found');
+      return;
+    }
+    if (!cardComplete) {
+      setError('Please complete your card information');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: formData.partner2Name
+              ? `${formData.partner1Name} & ${formData.partner2Name}`
+              : formData.partner1Name,
+            email: formData.email,
+            phone: formData.phone,
+            address: {
+              line1: formData.billingAddress,
+              city: formData.city,
+              state: formData.state,
+              postal_code: formData.zipCode,
+              country: 'US',
+            },
+          },
+        },
+      });
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Payment failed');
+      }
+      if (paymentIntent?.status === 'succeeded') {
+        console.log('✅ Payment successful!');
+        if (supabase && isSupabaseConfigured()) {
+          try {
+            const contractsToSave = contractTemplates.map((template) => ({
+              content: template.content,
+              signature: signatures[template.service_type],
+              signed_at: new Date().toISOString(),
+              status: 'signed',
+            }));
+            const { error: contractError } = await supabase.from('contracts').insert(contractsToSave);
+            if (contractError) {
+              console.error('Error saving contracts:', contractError);
+            }
+          } catch (contractErr) {
+            console.error('Error saving contracts:', contractErr);
+          }
+        }
+        onSuccess();
+      } else {
+        throw new Error('Payment was not completed successfully');
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch contract templates
   useEffect(() => {
     const fetchContractTemplates = async () => {
@@ -211,25 +307,20 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           id: `template-${item.package.service_type}`,
           service_type: item.package.service_type,
           content: `${item.package.service_type.toUpperCase()} SERVICE AGREEMENT
-
 This agreement is between ${formData.partner1Name || '[Partner 1 Name]'}${
             formData.partner2Name ? ` & ${formData.partner2Name}` : ''
           } (Client) and the selected vendor (Service Provider) for ${item.package.service_type.toLowerCase()} services.
-
 EVENT DETAILS:
 - Date: ${formData.eventDate || '[Event Date]'}
 - Location: ${formData.eventLocation || '[Event Location]'}
 - Service: ${item.package.name}
-
 SERVICES PROVIDED:
 ${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${item.package.service_type.toLowerCase()} services`}
-
 PAYMENT TERMS:
 - Total Amount: ${formatPrice(item.package.price)}
 - Deposit (50%): ${formatPrice(Math.round(item.package.price * 0.5))}
 - Balance Due: ${formatPrice(Math.round(item.package.price * 0.5))}
 - Service Fee: $150
-
 TERMS AND CONDITIONS:
 1. The Service Provider agrees to provide professional ${item.package.service_type.toLowerCase()} services for the specified event.
 2. The Client agrees to pay the total amount as outlined in the payment schedule.
@@ -237,7 +328,6 @@ TERMS AND CONDITIONS:
 4. The Service Provider retains copyright to all work but grants usage rights to the Client.
 5. Weather contingency plans will be discussed prior to the event.
 6. Any changes to services must be agreed upon in writing by both parties.
-
 By signing below, both parties agree to the terms outlined in this contract.`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -245,7 +335,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         setContractTemplates(mockTemplates);
         return;
       }
-
       setContractsLoading(true);
       try {
         const serviceTypes = [...new Set(cartItems.map((item) => item.package.service_type))];
@@ -262,7 +351,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         setContractsLoading(false);
       }
     };
-
     if (cartItems.length > 0) {
       fetchContractTemplates();
     }
@@ -306,10 +394,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       onReferralRemoved();
       return;
     }
-
     setReferralLoading(true);
     setReferralError(null);
-
     if (!supabase || !isSupabaseConfigured()) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (code.toLowerCase().startsWith('ref') || code.toLowerCase().includes('dani')) {
@@ -326,7 +412,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setReferralLoading(false);
       return;
     }
-
     try {
       const { data, error } = await supabase
         .from('vendor_referral_codes')
@@ -340,11 +425,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
         .maybeSingle();
-
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
-
       if (!data) {
         setReferralError('Invalid referral code');
         setAppliedReferral(null);
@@ -390,7 +473,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     if (currentStep === 3) {
       required.push('billingAddress', 'city', 'state', 'zipCode');
     }
-
     for (const field of required) {
       if (!formData[field as keyof CheckoutFormData]) {
         const fieldName = field === 'partner1Name' ? 'partner 1 name' : field.replace(/([A-Z])/g, ' $1').toLowerCase();
@@ -398,12 +480,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         return false;
       }
     }
-
     if (!formData.agreedToTerms) {
       setError('Please agree to the terms and conditions');
       return false;
     }
-
     return true;
   };
 
@@ -438,18 +518,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     const signature = tempSignatures[serviceType];
     if (signature && signature.trim()) {
       setSignatures((prev) => ({ ...prev, [serviceType]: signature.trim() }));
+      setTempSignatures((prev) => ({ ...prev, [serviceType]: '' }));
+      if (error) setError(null);
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (currentStep !== 3) {
-      handleNextStep();
-      return;
-    }
-
-    await handleStripeCheckout();
   };
 
   return (
@@ -462,7 +533,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           </div>
         </div>
       )}
-
       {/* Step Progress */}
       <div className="flex items-center justify-center space-x-4 mb-8">
         {[
@@ -494,7 +564,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           </div>
         ))}
       </div>
-
       <form onSubmit={handleSubmit}>
         {/* Step 1: Personal Information */}
         {currentStep === 1 && (
@@ -505,7 +574,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
               <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 label="Partner 1 Name"
@@ -541,7 +609,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 required
               />
             </div>
-
             <div className="mt-6 pt-6 border-t border-gray-200">
               <label className="flex items-start space-x-3">
                 <input
@@ -560,7 +627,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             </div>
           </Card>
         )}
-
         {/* Step 2: Contract Signing */}
         {currentStep === 2 && (
           <div className="space-y-6">
@@ -571,11 +637,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">Service Contracts</h3>
               </div>
-
               <p className="text-gray-600 mb-6">
                 Please review and sign the contracts for each service before proceeding to payment.
               </p>
-
               {contractsLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -585,7 +649,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 <div className="space-y-6">
                   {contractTemplates.map((template) => {
                     const isSigned = signatures[template.service_type] && signatures[template.service_type].trim() !== '';
-                    
                     return (
                       <div key={template.id} className="border border-gray-200 rounded-lg overflow-hidden">
                         <div
@@ -614,14 +677,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                             </div>
                           </div>
                         </div>
-
                         <div className="p-4">
                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
                             <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
                               {template.content}
                             </div>
                           </div>
-
                           {!isSigned ? (
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
@@ -652,7 +713,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               </div>
                             </div>
                           ) : (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="bg-green-50 border border-gray-200 rounded-lg p-3">
                               <div className="flex items-center space-x-2 text-green-800">
                                 <Check className="w-4 h-4" />
                                 <span className="font-medium">Signed by: {signatures[template.service_type]}</span>
@@ -668,7 +729,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             </Card>
           </div>
         )}
-
         {/* Step 3: Payment Information */}
         {currentStep === 3 && (
           <div className="space-y-6">
@@ -681,7 +741,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </Card>
             )}
-
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -689,7 +748,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">Billing Address</h3>
               </div>
-
               <div className="grid grid-cols-1 gap-6">
                 <Input
                   label="Street Address"
@@ -716,9 +774,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     >
                       <option value="">Select State</option>
                       {states.map((state) => (
-                        <option key={state} value={state}>
-                          {state}
-                        </option>
+                        <option key={state} value={state}>{state}</option>
                       ))}
                     </select>
                   </div>
@@ -732,84 +788,86 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </div>
             </Card>
-
-            {/* Card Payment Section */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-purple-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Card Information
-                  </label>
-                  <div className="p-4 border border-gray-300 rounded-lg bg-white">
-                    <CardElement
-                      options={{
-                        style: {
-                          base: {
-                            fontSize: '16px',
-                            color: '#1f2937',
-                            fontFamily: 'system-ui, sans-serif',
-                            fontWeight: '400',
-                            lineHeight: '24px',
-                            iconColor: '#6b7280',
-                            '::placeholder': {
-                              color: '#9ca3af',
-                            },
-                          },
-                          focus: {
-                            color: '#1f2937',
-                            iconColor: '#f43f5e',
-                            '::placeholder': {
-                              color: '#6b7280',
-                            },
-                          },
-                          invalid: {
-                            color: '#dc2626',
-                            iconColor: '#dc2626',
-                          },
-                          complete: {
-                            color: '#059669',
-                            iconColor: '#059669',
-                          },
-                        },
-                        hidePostalCode: true,
-                      }}
-                    />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
+                <p className="text-blue-800 text-sm">
+                  You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due 7
+                  days before your event.
+                </p>
+              </div>
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <Lock className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">Secure Payment</p>
+                    <p className="text-xs text-green-700">Your payment information is encrypted and secure</p>
                   </div>
-                  {cardError && (
-                    <p className="text-sm text-red-600 mt-1">{cardError}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
+                  {!stripe || !elements ? (
+                    <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
+                      <p className="text-sm text-red-600">Payment system not initialized. Please try again later.</p>
+                    </div>
+                  ) : (
+                    <div
+                      ref={cardElementRef}
+                      className="p-4 border border-gray-300 rounded-lg bg-white"
+                      style={{ minHeight: '40px', width: '100%' }}
+                    >
+                      <CardElement
+                        options={{
+                          style: {
+                            base: {
+                              fontSize: '16px',
+                              color: '#1f2937',
+                              fontFamily: 'system-ui, sans-serif',
+                              '::placeholder': {
+                                color: '#6b7280',
+                              },
+                            },
+                            invalid: {
+                              color: '#dc2626',
+                            },
+                          },
+                          hidePostalCode: true,
+                        }}
+                      />
+                    </div>
                   )}
-                  {cardReady && !cardError && (
-                    <p className="text-sm text-green-600 mt-1 flex items-center">
+                  {cardReady && (
+                    <p className="text-xs text-green-600 mt-1 flex items-center">
                       <Check className="w-3 h-3 mr-1" />
                       Card input ready
                     </p>
                   )}
                 </div>
-
-                {/* Security Notice */}
-                <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <Lock className="w-4 h-4 text-green-600" />
-                  <span className="text-sm text-green-800">
-                    Your payment is secured by 256-bit SSL encryption
-                  </span>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="save-payment"
+                    checked={formData.savePaymentMethod}
+                    onChange={(e) => handleInputChange('savePaymentMethod', e.target.checked)}
+                    className="text-rose-500 focus:ring-rose-500 rounded"
+                  />
+                  <label htmlFor="save-payment" className="text-sm text-gray-700">
+                    Save payment method for future bookings
+                  </label>
                 </div>
               </div>
             </Card>
-
-            {/* Referral Code Section */}
             <Card className="p-6">
               <h4 className="font-semibold text-gray-900 mb-4">Referral Code (Optional)</h4>
               <p className="text-gray-600 text-sm mb-4">
                 Have a referral code from one of our vendors? Enter it here for a special discount.
               </p>
-
               {appliedReferral ? (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center justify-between">
@@ -822,7 +880,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     <button
                       type="button"
                       onClick={removeReferral}
-                      className="text-sm text-red-600 hover:text-red-700"
+                      className="text-sm text-red-600 hover:text-rose-700"
                     >
                       Remove
                     </button>
@@ -841,8 +899,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     type="button"
                     variant="outline"
                     onClick={handleReferralSubmit}
-                    disabled={referralLoading || !referralCode.trim()}
                     loading={referralLoading}
+                    disabled={!referralCode.trim() || referralLoading}
                   >
                     Apply
                   </Button>
@@ -850,23 +908,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               )}
               {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
             </Card>
-
-            {/* Secure Payment Notice */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                <Lock className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-800">Secure Payment with Stripe</p>
-                  <p className="text-xs text-green-700">
-                    You'll be redirected to Stripe's secure checkout to complete your payment
-                  </p>
-                </div>
-              </div>
-            </Card>
           </div>
         )}
-
-        {/* Navigation Buttons */}
         <div className="flex justify-between">
           {currentStep > 1 && (
             <Button type="button" variant="outline" onClick={handlePrevStep} icon={ArrowLeft}>
@@ -877,7 +920,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && (!clientSecret || !cardReady))}
+              disabled={loading || (currentStep === 3 && (!stripe || !elements || !clientSecret || !cardReady || !cardComplete))}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
@@ -886,8 +929,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 : currentStep === 2
                 ? 'Continue to Payment'
                 : loading
-                ? 'Processing Payment...'
-                : `Pay ${formatPrice(grandTotal)} Deposit`}
+                ? 'Processing...'
+                : `Pay ${formatPrice(grandTotal)}`}
             </Button>
           </div>
         </div>
