@@ -26,12 +26,8 @@ export const Checkout: React.FC = () => {
   const [step, setStep] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
-  const [discountCode, setDiscountCode] = useState('');
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [referralDiscount, setReferralDiscount] = useState(0);
-  const [discountError, setDiscountError] = useState<string | null>(null);
-  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
-  const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
   const cartItems = location.state?.cartItems || cartState.items;
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
@@ -55,6 +51,21 @@ export const Checkout: React.FC = () => {
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
+  };
+
+  const handleDiscountApplied = (discount: number, coupon: any) => {
+    setAppliedDiscount(discount);
+    setAppliedCoupon(coupon);
+  };
+
+  const handleDiscountRemoved = () => {
+    setAppliedDiscount(0);
+    setAppliedCoupon(null);
+  };
+
+  const handleCreateAccount = () => {
+    setAuthMode('signup');
+    setShowAuthModal(true);
   };
 
   return (
@@ -134,8 +145,8 @@ export const Checkout: React.FC = () => {
                   <CheckoutForm
                     cartItems={cartItems}
                     totalAmount={totalAmount}
-                    discountAmount={discountAmount}
-                    referralDiscount={referralDiscount}
+                    discountAmount={appliedDiscount}
+                    referralDiscount={0} // Adjust if referral discount is handled separately
                     onSuccess={handlePaymentSuccess}
                   />
                 </Elements>
@@ -165,26 +176,18 @@ export const Checkout: React.FC = () => {
             <OrderSummary
               cartItems={cartItems}
               totalAmount={totalAmount}
-              discountAmount={discountAmount}
-              referralDiscount={referralDiscount}
-              discountCode={discountCode}
-              setDiscountCode={setDiscountCode}
-              discountError={discountError}
-              setDiscountError={setDiscountError}
-              isValidatingDiscount={isValidatingDiscount}
-              setIsValidatingDiscount={setIsValidatingDiscount}
+              onDiscountApplied={handleDiscountApplied}
+              onDiscountRemoved={handleDiscountRemoved}
               appliedDiscount={appliedDiscount}
-              setAppliedDiscount={setAppliedDiscount}
+              appliedCoupon={appliedCoupon}
             />
           </div>
         ) : (
           <BookingConfirmation
             cartItems={cartItems}
             totalAmount={totalAmount}
-            discountAmount={discountAmount}
-            referralDiscount={referralDiscount}
-            onViewBookings={() => navigate('/my-bookings')}
-            onContinueShopping={() => navigate('/')}
+            depositAmount={Math.round((totalAmount - appliedDiscount) * 0.5) + cartItems.length * 150 * 100}
+            onCreateAccount={handleCreateAccount}
           />
         )}
       </div>
