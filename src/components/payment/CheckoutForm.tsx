@@ -70,8 +70,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
-  const [forceRemount, setForceRemount] = useState(0);
-  const cardElementRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
@@ -110,120 +108,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const totalServiceFee = cartItems.length * 150;
   const grandTotal = depositAmount + totalServiceFee * 100;
 
-  // Debug Stripe initialization
-  useEffect(() => {
-    if (!stripe || !elements) {
-      console.log('Stripe not ready: ', { stripe: !!stripe, elements: !!elements });
-      return;
-    }
-
-    console.log('Attempting to initialize CardElement...');
-    const initializeCardElement = () => {
-      const cardElement = elements.getElement(CardElement);
-      if (cardElement) {
-        console.log('✅ CardElement found');
-        cardElement.on('ready', () => {
-          console.log('✅ CardElement is ready');
-          setCardReady(true);
-        });
-        cardElement.on('change', (event) => {
-          console.log('CardElement change:', event);
-          setCardComplete(event.complete);
-          if (currentStep === 3) {
-            setError(event.error ? event.error.message : null);
-          }
-        });
-        // Log iframe details
-        if (cardElementRef.current) {
-          const iframe = cardElementRef.current.querySelector('iframe');
-          console.log('CardElement iframe:', iframe ? iframe.src : 'No iframe found');
-          if (iframe) {
-            iframe.addEventListener('load', () => console.log('CardElement iframe loaded'));
-            iframe.addEventListener('error', (e) => console.error('CardElement iframe error:', e));
-          }
-        }
-        return cardElement;
-      } else {
-        console.error('CardElement not found');
-        if (currentStep === 3) {
-          setError('Unable to load card input. Retrying...');
-        }
-        return null;
-      }
-    };
-
-    let cardElement = initializeCardElement();
-
-    // Use MutationObserver to detect CardElement rendering
-    if (!cardElement && cardElementRef.current) {
-      console.log('Setting up MutationObserver for CardElement...');
-      const observer = new MutationObserver((mutations, obs) => {
-        const cardElement = elements.getElement(CardElement);
-        if (cardElement) {
-          console.log('✅ CardElement found via MutationObserver');
-          cardElement.on('ready', () => {
-            console.log('✅ CardElement is ready');
-            setCardReady(true);
-          });
-          cardElement.on('change', (event) => {
-            console.log('CardElement change:', event);
-            setCardComplete(event.complete);
-            if (currentStep === 3) {
-              setError(event.error ? event.error.message : null);
-            }
-          });
-          // Log iframe details
-          if (cardElementRef.current) {
-            const iframe = cardElementRef.current.querySelector('iframe');
-            console.log('CardElement iframe (MutationObserver):', iframe ? iframe.src : 'No iframe found');
-            if (iframe) {
-              iframe.addEventListener('load', () => console.log('CardElement iframe loaded'));
-              iframe.addEventListener('error', (e) => console.error('CardElement iframe error:', e));
-            }
-          }
-          obs.disconnect();
-        }
-      });
-
-      observer.observe(cardElementRef.current, {
-        childList: true,
-        subtree: true,
-      });
-
-      // Force re-render if ready event doesn't fire within 5 seconds
-      const timeout = setTimeout(() => {
-        if (!cardReady) {
-          console.log('CardElement ready event not fired, forcing re-render...');
-          if (elements && cardElementRef.current) {
-            const cardElement = elements.getElement(CardElement);
-            if (cardElement) {
-              cardElement.destroy();
-              console.log('Destroyed existing CardElement');
-            }
-            setForceRemount((prev) => prev + 1);
-          }
-        }
-      }, 5000);
-
-      return () => {
-        observer.disconnect();
-        clearTimeout(timeout);
-        if (cardElement) {
-          console.log('Cleaning up CardElement event listeners');
-          cardElement.off('ready');
-          cardElement.off('change');
-        }
-      };
-    }
-
-    return () => {
-      if (cardElement) {
-        console.log('Cleaning up CardElement event listeners');
-        cardElement.off('ready');
-        cardElement.off('change');
-      }
-    };
-  }, [stripe, elements, cardReady, forceRemount, currentStep]);
 
   // Fetch contract templates
   useEffect(() => {
@@ -884,16 +768,26 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <label className="block text-sm font-medium text-gray-700 mb-2">Card Information</label>
                   {!stripe || !elements ? (
                     <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
-                      <p className="text-sm text-red-600">Payment system not initialized. Please try again later.</p>
+                      <div className="animate-spin w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading card input...</p>
                     </div>
                   ) : (
                     <div
-                      ref={cardElementRef}
                       className="p-4 border border-gray-300 rounded-lg bg-white"
                       style={{ minHeight: '40px', width: '100%' }}
-                      key={forceRemount}
                     >
                       <CardElement
+                        onReady={() => {
+                          console.log('✅ CardElement is ready');
+                          setCardReady(true);
+                        }}
+                        onChange={(event) => {
+                          console.log('CardElement change:', event);
+                          setCardComplete(event.complete);
+                          if (currentStep === 3) {
+                            setError(event.error ? event.error.message : null);
+                          }
+                        }}
                         options={{
                           style: {
                             base: {
