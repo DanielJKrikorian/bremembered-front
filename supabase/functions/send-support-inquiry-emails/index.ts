@@ -19,6 +19,8 @@ Deno.serve(async (req) => {
     // Get the inquiry data from the request
     const { record } = await req.json()
     
+    console.log('Received trigger data:', JSON.stringify(record, null, 2))
+    
     if (!record) {
       throw new Error('No inquiry record provided')
     }
@@ -27,13 +29,17 @@ Deno.serve(async (req) => {
 
     // Validate required fields
     if (!email || !name || !subject || !message) {
+      console.error('Missing required fields:', { email: !!email, name: !!name, subject: !!subject, message: !!message })
       throw new Error('Missing required fields in inquiry record')
     }
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     if (!resendApiKey) {
+      console.error('RESEND_API_KEY environment variable not set')
       throw new Error('RESEND_API_KEY environment variable not set')
     }
+    
+    console.log('Resend API key configured:', !!resendApiKey)
 
     // Format priority for display
     const priorityDisplay = priority.charAt(0).toUpperCase() + priority.slice(1)
@@ -49,6 +55,7 @@ Deno.serve(async (req) => {
       timeZoneName: 'short'
     })
 
+    console.log('Sending customer confirmation email...')
     // Email 1: Confirmation to customer
     const customerEmailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -138,9 +145,14 @@ Deno.serve(async (req) => {
 
     if (!customerEmailResponse.ok) {
       const errorText = await customerEmailResponse.text()
+      console.error('Customer email failed:', errorText)
       throw new Error(`Failed to send customer email: ${errorText}`)
     }
+    
+    const customerEmailResult = await customerEmailResponse.json()
+    console.log('Customer email sent successfully:', customerEmailResult)
 
+    console.log('Sending admin alert email...')
     // Email 2: Alert to Daniel
     const adminEmailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -235,15 +247,21 @@ Deno.serve(async (req) => {
 
     if (!adminEmailResponse.ok) {
       const errorText = await adminEmailResponse.text()
+      console.error('Admin email failed:', errorText)
       throw new Error(`Failed to send admin email: ${errorText}`)
     }
 
-    console.log('Support inquiry emails sent successfully')
+    const adminEmailResult = await adminEmailResponse.json()
+    console.log('Admin email sent successfully:', adminEmailResult)
+    
+    console.log('Both support inquiry emails sent successfully')
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Support inquiry emails sent successfully'
+        message: 'Support inquiry emails sent successfully',
+        customerEmailId: customerEmailResult.id,
+        adminEmailId: adminEmailResult.id
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
