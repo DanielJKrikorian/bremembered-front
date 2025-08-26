@@ -73,7 +73,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [cardReady, setCardReady] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
-  const [cardElementMounted, setCardElementMounted] = useState(false);
 
   // Debug Stripe initialization
   useEffect(() => {
@@ -119,7 +118,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         const handleReady = () => {
           console.log('✅ CardElement is ready for input');
           setCardReady(true);
-          setCardElementMounted(true);
         };
         
         const handleChange = (event: any) => {
@@ -801,7 +799,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     {cardError && (
                       <p className="text-sm text-red-600 mt-1">{cardError}</p>
                     )}
-                    {cardElementMounted && !cardError && (
+                    {cardReady && !cardError && (
                       <p className="text-sm text-green-600 mt-1 flex items-center">
                         <Check className="w-3 h-3 mr-1" />
                         Card input ready
