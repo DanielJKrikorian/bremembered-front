@@ -11,16 +11,43 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Check for required environment variables
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!stripeSecretKey) {
+      console.error('Missing STRIPE_SECRET_KEY environment variable')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: Missing Stripe configuration' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error('Missing Supabase environment variables')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: Missing Supabase configuration' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
     const stripe = new (await import('npm:stripe@14.21.0')).default(
-      Deno.env.get('STRIPE_SECRET_KEY') ?? '',
+      stripeSecretKey,
       {
         apiVersion: '2023-10-16',
       }
     )
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      supabaseUrl,
+      supabaseServiceRoleKey
     )
 
     const { 
