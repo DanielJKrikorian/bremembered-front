@@ -208,7 +208,7 @@ export const Home: React.FC = () => {
                   <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold mb-2 sm:mb-4 leading-tight">
                     The Smarter Way to
                     <br />
-                    <span className="text-rose-300">Book Weddings</span>
+                    <span className="text-rose-300">Book Your Big Day</span>
                   </h1>
                   <p className="text-sm sm:text-lg text-white/90 max-w-md">
                     Connect with verified vendors who will make your wedding day absolutely magical ✨
