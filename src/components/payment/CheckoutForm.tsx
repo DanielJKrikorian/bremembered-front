@@ -112,11 +112,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Debug Stripe initialization
   useEffect(() => {
-    if (currentStep !== 3 || !stripe || !elements) {
-      console.log('Skipping CardElement setup: ', { currentStep, stripe: !!stripe, elements: !!elements });
-      if (currentStep === 3 && (!stripe || !elements)) {
-        setError('Payment system not initialized. Please try again later.');
-      }
+    if (!stripe || !elements) {
+      console.log('Stripe not ready: ', { stripe: !!stripe, elements: !!elements });
       return;
     }
 
@@ -132,7 +129,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         cardElement.on('change', (event) => {
           console.log('CardElement change:', event);
           setCardComplete(event.complete);
-          setError(event.error ? event.error.message : null);
+          if (currentStep === 3) {
+            setError(event.error ? event.error.message : null);
+          }
         });
         // Log iframe details
         if (cardElementRef.current) {
@@ -146,7 +145,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         return cardElement;
       } else {
         console.error('CardElement not found');
-        setError('Unable to load card input. Retrying...');
+        if (currentStep === 3) {
+          setError('Unable to load card input. Retrying...');
+        }
         return null;
       }
     };
@@ -167,7 +168,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           cardElement.on('change', (event) => {
             console.log('CardElement change:', event);
             setCardComplete(event.complete);
-            setError(event.error ? event.error.message : null);
+            if (currentStep === 3) {
+              setError(event.error ? event.error.message : null);
+            }
           });
           // Log iframe details
           if (cardElementRef.current) {
@@ -220,7 +223,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         cardElement.off('change');
       }
     };
-  }, [stripe, elements, currentStep, cardReady, forceRemount]);
+  }, [stripe, elements, cardReady, forceRemount, currentStep]);
 
   // Fetch contract templates
   useEffect(() => {
@@ -849,37 +852,38 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <input
                     type="text"
                     placeholder="Enter referral code (e.g., DANI1234)"
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleReferralSubmit}
-                    loading={referralLoading}
-                    disabled={!referralCode.trim() || referralLoading}
-                  >
-                    Apply
-                  </Button>
+                <div
+                  ref={cardElementRef}
+                  className="p-4 border border-gray-300 rounded-lg bg-white"
+                  style={{ minHeight: '40px', width: '100%' }}
+                  key={forceRemount}
+                >
+                  {!stripe || !elements ? (
+                    <div className="text-center text-gray-500">
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-rose-500 rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm">Loading payment system...</p>
+                    </div>
+                  ) : (
+                    <CardElement
+                      options={{
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#1f2937',
+                            fontFamily: 'system-ui, sans-serif',
+                            '::placeholder': {
+                              color: '#6b7280',
+                            },
+                          },
+                          invalid: {
+                            color: '#dc2626',
+                          },
+                        },
+                        hidePostalCode: true,
+                      }}
+                    />
+                  )}
                 </div>
-              )}
-              {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
-            </Card>
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 className="font-medium text-blue-900 mb-2">Deposit Payment</h4>
-                <p className="text-blue-800 text-sm">
-                  You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due 7
-                  days before your event.
-                </p>
-              </div>
               <div className="space-y-6">
                 <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
                   <Lock className="w-5 h-5 text-green-600" />
