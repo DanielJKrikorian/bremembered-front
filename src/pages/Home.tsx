@@ -499,9 +499,9 @@ export const Home: React.FC = () => {
                                 e.stopPropagation();
                                 copyToClipboard(claimedDeals[pkg.id].code);
                               }}
-                              className="text-gray-500 hover:text-gray-700 transition-colors"
+                              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium text-gray-700 transition-colors"
                             >
-                              📋
+                              Copy
                             </button>
                           </div>
                           <p className="text-xs text-green-700">
@@ -513,6 +513,20 @@ export const Home: React.FC = () => {
                               minute: '2-digit'
                             })}
                           </p>
+                          <div className="mt-3">
+                            <Button 
+                              size="sm" 
+                              variant="primary" 
+                              className="w-full"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                addItem({ package: pkg });
+                                openCart();
+                              }}
+                            >
+                              Add to Cart
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <Button 
