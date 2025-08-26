@@ -463,12 +463,12 @@ export const useMessages = (conversationId: string) => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .insert([{
+        .insert({
           sender_id: user.id,
           message_text: messageText,
           conversation_id: conversationId,
           read_by: [user.id]
-        }])
+        })
         .select()
         .single();
 
