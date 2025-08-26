@@ -72,8 +72,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [contractsLoading, setContractsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [referralLoading, setReferralLoading] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'affirm'>('card');
 
   // Debug Stripe initialization
