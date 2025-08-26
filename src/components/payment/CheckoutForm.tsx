@@ -66,6 +66,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
+  const [forceRemount, setForceRemount] = useState(0);
   const cardElementRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -132,7 +133,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         return cardElement;
       } else {
         console.error('CardElement not found');
-        setError('Unable to load card input. Please try again.');
+        setError('Unable to load card input. Retrying...');
         return null;
       }
     };
@@ -141,6 +142,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
     // Use MutationObserver to detect CardElement rendering
     if (!cardElement && cardElementRef.current) {
+      console.log('Setting up MutationObserver for CardElement...');
       const observer = new MutationObserver((mutations, obs) => {
         const cardElement = elements.getElement(CardElement);
         if (cardElement) {
@@ -163,9 +165,19 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         subtree: true,
       });
 
+      // Force re-render if ready event doesn't fire within 5 seconds
+      const timeout = setTimeout(() => {
+        if (!cardReady) {
+          console.log('CardElement ready event not fired, forcing re-render...');
+          setForceRemount((prev) => prev + 1);
+        }
+      }, 5000);
+
       return () => {
         observer.disconnect();
+        clearTimeout(timeout);
         if (cardElement) {
+          console.log('Cleaning up CardElement event listeners');
           cardElement.off('ready');
           cardElement.off('change');
         }
@@ -179,7 +191,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         cardElement.off('change');
       }
     };
-  }, [stripe, elements, currentStep]);
+  }, [stripe, elements, currentStep, cardReady, forceRemount]);
 
   // Fetch contract templates
   useEffect(() => {
@@ -706,7 +718,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               </div>
                             </div>
                           ) : (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="bg-green-50 border border-gray-200 rounded-lg p-3">
                               <div className="flex items-center space-x-2 text-green-800">
                                 <Check className="w-4 h-4" />
                                 <span className="font-medium">Signed by: {signatures[template.service_type]}</span>
@@ -846,7 +858,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       <p className="text-sm text-red-600">Payment system not initialized. Please try again later.</p>
                     </div>
                   ) : (
-                    <div ref={cardElementRef} className="p-4 border border-gray-300 rounded-lg bg-white">
+                    <div
+                      ref={cardElementRef}
+                      className="p-4 border border-gray-300 rounded-lg bg-white"
+                      style={{ minHeight: '40px' }}
+                      key={forceRemount}
+                    >
                       <CardElement
                         options={{
                           style: {
