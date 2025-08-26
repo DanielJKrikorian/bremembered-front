@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight, ExternalLink } from 'lucide-react';
+import { CreditCard, Lock, Check, ArrowLeft, User, AlertCircle, FileText, Edit, ArrowRight } from 'lucide-react';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -52,6 +53,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   onReferralApplied,
   onReferralRemoved,
 }) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const { user, isAuthenticated } = useAuth();
   const { couple } = useCouple();
   const [loading, setLoading] = useState(false);
@@ -65,6 +68,11 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [referralLoading, setReferralLoading] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [cardReady, setCardReady] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [cardComplete, setCardComplete] = useState(false);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
@@ -83,6 +91,30 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     savePaymentMethod: false,
     agreedToTerms: false,
   });
+
+  // Initialize payment intent when we reach step 3
+  useEffect(() => {
+    if (currentStep === 3 && !clientSecret) {
+      initializePaymentIntent();
+    }
+  }, [currentStep]);
+
+  const initializePaymentIntent = async () => {
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card information not found');
+      }
+
+      const data = await response.json();
+      console.log('Payment intent created:', data);
+      setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
+    } catch (err) {
+      console.error('Error creating payment intent:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.');
+    }
+  };
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
@@ -338,86 +370,40 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     const signature = tempSignatures[serviceType];
     if (signature && signature.trim()) {
       setSignatures((prev) => ({ ...prev, [serviceType]: signature.trim() }));
-      setTempSignatures((prev) => ({ ...prev, [serviceType]: '' }));
-      if (error) setError(null);
-    }
-  };
-
-  const handleStripeCheckout = async () => {
-    if (!validateForm()) return;
-
-    const allSigned = contractTemplates.every(
-      (template) => signatures[template.service_type] && signatures[template.service_type].trim() !== ''
-    );
-    if (!allSigned) {
-      setError('Please sign all contracts before completing payment');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      console.log('Creating Stripe Checkout session...');
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase configuration is missing');
-      }
-
-      const customerInfo = {
-        partner1Name: formData.partner1Name,
-        partner2Name: formData.partner2Name,
-        email: formData.email,
-        phone: formData.phone,
-        billingAddress: formData.billingAddress,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        eventDate: formData.eventDate,
-        eventTime: formData.eventTime,
-        eventLocation: formData.eventLocation,
-        guestCount: formData.guestCount,
-        specialRequests: formData.specialRequests,
-        referralCode: appliedReferral?.code || ''
-      };
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/card-checkout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          cartItems,
-          totalAmount,
-          discountAmount,
-          referralDiscount,
-          customerInfo,
-          successUrl: `${window.location.origin}/checkout?success=true`,
-          cancelUrl: `${window.location.origin}/checkout?canceled=true`
-        }),
+      console.log('Confirming payment with Stripe...');
+      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: formData.partner2Name 
+              ? `${formData.partner1Name} & ${formData.partner2Name}`
+              : formData.partner1Name,
+            email: formData.email,
+            phone: formData.phone,
+            address: {
+              line1: formData.billingAddress,
+              city: formData.city,
+              state: formData.state,
+              postal_code: formData.zipCode,
+              country: 'US'
+            }
+          }
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error: ${response.status}`);
+      if (stripeError) {
+        throw new Error(stripeError.message || 'Payment failed');
       }
 
-      const data = await response.json();
-      console.log('Checkout session created:', data);
-
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url;
+      if (paymentIntent?.status === 'succeeded') {
+        console.log('✅ Payment successful!');
+        onSuccess();
       } else {
-        throw new Error('No checkout URL returned');
+        throw new Error('Payment was not completed successfully');
       }
     } catch (err) {
       console.error('Checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create checkout session. Please try again.');
+      setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -654,6 +640,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         {/* Step 3: Payment Information */}
         {currentStep === 3 && (
           <div className="space-y-6">
+            {/* Payment Intent Status */}
+            {!clientSecret && (
+              <Card className="p-4 bg-blue-50 border border-blue-200">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                  <span className="text-blue-800">Initializing secure payment...</span>
+                </div>
+              </Card>
+            )}
+
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -704,6 +700,72 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </div>
             </Card>
+
+            {/* Card Payment Section */}
+            {clientSecret && (
+              <Card className="p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Card Information
+                    </label>
+                    <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                      <CardElement
+                        options={{
+                          style: {
+                            base: {
+                              fontSize: '16px',
+                              color: '#1f2937',
+                              fontFamily: 'system-ui, sans-serif',
+                              '::placeholder': {
+                                color: '#6b7280',
+                              },
+                            },
+                            invalid: {
+                              color: '#dc2626',
+                            },
+                          },
+                          hidePostalCode: true,
+                        }}
+                        onReady={() => {
+                          console.log('✅ CardElement is ready');
+                          setCardReady(true);
+                        }}
+                        onChange={(event) => {
+                          console.log('CardElement change:', event);
+                          setCardError(event.error ? event.error.message : null);
+                          setCardComplete(event.complete);
+                        }}
+                      />
+                    </div>
+                    {cardError && (
+                      <p className="text-sm text-red-600 mt-1">{cardError}</p>
+                    )}
+                    {cardReady && !cardError && (
+                      <p className="text-sm text-green-600 mt-1 flex items-center">
+                        <Check className="w-3 h-3 mr-1" />
+                        Card input ready
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Security Notice */}
+                  <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <Lock className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-800">
+                      Your payment is secured by 256-bit SSL encryption
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Referral Code Section */}
             <Card className="p-6">
@@ -779,17 +841,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading}
+              disabled={loading || (currentStep === 3 && (!clientSecret || !cardReady || !cardComplete))}
               loading={loading}
-              icon={currentStep === 3 ? ExternalLink : ArrowRight}
+              icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
               {currentStep === 1
                 ? 'Continue to Contracts'
                 : currentStep === 2
                 ? 'Continue to Payment'
                 : loading
-                ? 'Creating Checkout...'
-                : `Pay ${formatPrice(grandTotal)} with Stripe`}
+                ? 'Processing Payment...'
+                : `Pay ${formatPrice(grandTotal)} Deposit`}
             </Button>
           </div>
         </div>

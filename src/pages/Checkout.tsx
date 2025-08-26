@@ -9,6 +9,8 @@ import { CheckoutForm } from '../components/payment/CheckoutForm';
 import { OrderSummary } from '../components/checkout/OrderSummary';
 import { BookingConfirmation } from '../components/checkout/BookingConfirmation';
 import { AuthModal } from '../components/auth/AuthModal';
+import { Elements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../lib/stripe';
 
 export const Checkout: React.FC = () => {
   const location = useLocation();
@@ -146,14 +148,17 @@ export const Checkout: React.FC = () => {
             />
           </div>
         ) : (
-          <BookingConfirmation
-            cartItems={cartItems}
-            totalAmount={totalAmount}
-            depositAmount={Math.round((totalAmount - appliedDiscount - referralDiscount) * 0.5) + cartItems.length * 150 * 100}
-            onCreateAccount={handleCreateAccount}
-          />
+          <Elements stripe={stripePromise}>
+            <BookingConfirmation
+              cartItems={cartItems}
+              totalAmount={totalAmount}
+              depositAmount={Math.round((totalAmount - appliedDiscount - referralDiscount) * 0.5) + cartItems.length * 150 * 100}
+              onCreateAccount={handleCreateAccount}
+            />
+          </Elements>
         )}
       </div>
+      
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode={authMode} />
     </div>
   );
