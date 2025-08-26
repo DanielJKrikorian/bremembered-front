@@ -94,10 +94,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret && cardReady) {
+    if (currentStep === 3 && !clientSecret) {
       initializePaymentIntent();
     }
-  }, [currentStep, cardReady, clientSecret]);
+  }, [currentStep, clientSecret]);
 
   const initializePaymentIntent = async () => {
     try {
@@ -689,16 +689,21 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             </Card>
 
             {/* Card Payment Section */}
-            {clientSecret && (
-              <Card className="p-6">
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
+            <Card className="p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-green-600" />
                 </div>
+                <h3 className="text-xl font-semibold text-gray-900">Payment Information</h3>
+              </div>
 
-                <div className="space-y-4">
+              <div className="space-y-4">
+                {!clientSecret ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p className="text-blue-800 text-sm">Initializing secure payment...</p>
+                  </div>
+                ) : (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Card Information
@@ -742,17 +747,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       </p>
                     )}
                   </div>
+                )}
 
-                  {/* Security Notice */}
-                  <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <Lock className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-green-800">
-                      Your payment is secured by 256-bit SSL encryption
-                    </span>
-                  </div>
+                {/* Security Notice */}
+                <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <Lock className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-800">
+                    Your payment is secured by 256-bit SSL encryption
+                  </span>
                 </div>
-              </Card>
-            )}
+              </div>
+            </Card>
 
             {/* Referral Code Section */}
             <Card className="p-6">
