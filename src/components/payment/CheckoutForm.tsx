@@ -71,7 +71,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [cardReady, setCardReady] = useState(false);
-  const [cardElementMounted, setCardElementMounted] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
 
@@ -109,48 +108,21 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     }
   }, [currentStep, clientSecret, stripe, elements]);
 
-  // Set up CardElement event listeners
-  useEffect(() => {
-    if (stripe && elements && currentStep === 3 && clientSecret) {
-      const cardElement = elements.getElement(CardElement);
-      if (cardElement) {
-        console.log('✅ Setting up CardElement event listeners', { cardElement: !!cardElement });
-        
-        const handleReady = () => {
-          console.log('✅ CardElement is ready for input');
-          setCardReady(true);
-          setCardElementMounted(true);
-        };
-        
-        const handleChange = (event: any) => {
-          console.log('CardElement change event:', { 
-            complete: event.complete, 
-            error: event.error?.message,
-            empty: event.empty 
-          });
-          setCardError(event.error ? event.error.message : null);
-          setCardComplete(event.complete);
-        };
-        
-        cardElement.on('ready', handleReady);
-        cardElement.on('change', handleChange);
-        
-        return () => {
-          cardElement.off('ready', handleReady);
-          cardElement.off('change', handleChange);
-        };
-      } else {
-        console.error('❌ CardElement not found in elements');
-      }
-    } else {
-      console.log('CardElement setup skipped:', {
-        stripe: !!stripe,
-        elements: !!elements,
-        step: currentStep,
-        clientSecret: !!clientSecret
-      });
-    }
-  }, [stripe, elements, currentStep, clientSecret]);
+  // CardElement event handlers
+  const handleCardReady = () => {
+    console.log('✅ CardElement is ready for input');
+    setCardReady(true);
+  };
+  
+  const handleCardChange = (event: any) => {
+    console.log('CardElement change event:', { 
+      complete: event.complete, 
+      error: event.error?.message,
+      empty: event.empty 
+    });
+    setCardError(event.error ? event.error.message : null);
+    setCardComplete(event.complete);
+  };
 
   const initializePaymentIntent = async () => {
     try {
@@ -765,6 +737,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     </label>
                     <div className="p-4 border border-gray-300 rounded-lg bg-white">
                       <CardElement
+                        onReady={handleCardReady}
+                        onChange={handleCardChange}
                         options={{
                           style: {
                             base: {
