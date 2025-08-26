@@ -162,7 +162,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
             console.log('CardElement ready event not fired, forcing re-render...');
             cardElement.destroy();
             console.log('Destroyed existing CardElement');
-            elements.create('card').mount(cardElementRef.current!);
+            elements.create('card', {
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#1f2937',
+                  fontFamily: 'system-ui, sans-serif',
+                  '::placeholder': {
+                    color: '#6b7280',
+                  },
+                },
+                invalid: {
+                  color: '#dc2626',
+                },
+              },
+              hidePostalCode: true,
+            }).mount(cardElementRef.current!);
             console.log('Recreated CardElement');
           }
         }, 5000);
@@ -299,93 +314,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     }
   };
 
-  // Fetch contract templates
-  useEffect(() => {
-    const fetchContractTemplates = async () => {
-      if (!supabase || !isSupabaseConfigured()) {
-        const mockTemplates: ContractTemplate[] = cartItems.map((item) => ({
-          id: `template-${item.package.service_type}`,
-          service_type: item.package.service_type,
-          content: `${item.package.service_type.toUpperCase()} SERVICE AGREEMENT
-This agreement is between ${formData.partner1Name || '[Partner 1 Name]'}${
-            formData.partner2Name ? ` & ${formData.partner2Name}` : ''
-          } (Client) and the selected vendor (Service Provider) for ${item.package.service_type.toLowerCase()} services.
-EVENT DETAILS:
-- Date: ${formData.eventDate || '[Event Date]'}
-- Location: ${formData.eventLocation || '[Event Location]'}
-- Service: ${item.package.name}
-SERVICES PROVIDED:
-${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${item.package.service_type.toLowerCase()} services`}
-PAYMENT TERMS:
-- Total Amount: ${formatPrice(item.package.price)}
-- Deposit (50%): ${formatPrice(Math.round(item.package.price * 0.5))}
-- Balance Due: ${formatPrice(Math.round(item.package.price * 0.5))}
-- Service Fee: $150
-TERMS AND CONDITIONS:
-1. The Service Provider agrees to provide professional ${item.package.service_type.toLowerCase()} services for the specified event.
-2. The Client agrees to pay the total amount as outlined in the payment schedule.
-3. Cancellation policy: 30 days notice required for partial refund of deposit.
-4. The Service Provider retains copyright to all work but grants usage rights to the Client.
-5. Weather contingency plans will be discussed prior to the event.
-6. Any changes to services must be agreed upon in writing by both parties.
-By signing below, both parties agree to the terms outlined in this contract.`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }));
-        setContractTemplates(mockTemplates);
-        return;
-      }
-      setContractsLoading(true);
-      try {
-        const serviceTypes = [...new Set(cartItems.map((item) => item.package.service_type))];
-        const { data, error } = await supabase
-          .from('contract_templates')
-          .select('*')
-          .in('service_type', serviceTypes);
-        if (error) throw error;
-        setContractTemplates(data || []);
-      } catch (err) {
-        console.error('Error fetching contract templates:', err);
-        setError('Failed to load contract templates');
-      } finally {
-        setContractsLoading(false);
-      }
-    };
-    if (cartItems.length > 0) {
-      fetchContractTemplates();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentStep !== 3) {
+      handleNextStep();
+      return;
     }
-  }, [cartItems, formData.partner1Name, formData.partner2Name, formData.eventDate, formData.eventLocation]);
-
-  // Pre-fill form with user data
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      setFormData((prev) => ({
-        ...prev,
-        partner1Name: couple?.partner1_name || user.user_metadata?.name || '',
-        partner2Name: couple?.partner2_name || '',
-        email: user.email || couple?.email || '',
-        phone: couple?.phone || '',
-        eventDate: couple?.wedding_date || '',
-        eventLocation: couple?.venue_name || '',
-        guestCount: couple?.guest_count?.toString() || '',
-      }));
+    if (!validateForm()) return;
+    const allSigned = contractTemplates.every(
+      (template) => signatures[template.service_type] && signatures[template.service_type].trim() !== ''
+    );
+    if (!allSigned) {
+      setError('Please sign all contracts before completing payment');
+      return;
     }
-  }, [isAuthenticated, user, couple]);
-
-  // Pre-fill from cart items
-  useEffect(() => {
-    if (cartItems.length > 0) {
-      const firstItemWithDetails = cartItems.find((item) => item.eventDate || item.venue);
-      if (firstItemWithDetails) {
-        setFormData((prev) => ({
-          ...prev,
-          eventDate: firstItemWithDetails.eventDate || prev.eventDate,
-          eventTime: firstItemWithDetails.eventTime || prev.eventTime,
-          eventLocation: firstItemWithDetails.venue?.name || prev.eventLocation,
-        }));
-      }
-    }
-  }, [cartItems]);
+    await handleStripeCheckout();
+  };
 
   const validateReferralCode = async (code: string) => {
     if (!code.trim()) {
@@ -848,6 +792,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       Card input ready
                     </p>
                   )}
+                  {cardError && (
+                    <p className="text-xs text-red-600 mt-1">{cardError}</p>
+                  )}
                 </div>
                 <div className="flex items-center space-x-3">
                   <input
@@ -906,8 +853,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </Button>
                 </div>
               )}
-              {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
-            </Card>
+              {referralError && <p className="text-xs text-red-600 mt-2">{referralError}</p>}
+            </div>
           </div>
         )}
         <div className="flex justify-between">
