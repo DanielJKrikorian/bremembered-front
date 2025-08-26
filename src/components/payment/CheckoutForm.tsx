@@ -430,6 +430,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       }
 
       if (result.paymentIntent?.status === 'succeeded') {
+        // Process the booking after successful payment
+        await processBookingPayment(result.paymentIntent.id);
         return true;
       } else if (result.paymentIntent?.status === 'requires_action') {
         // Handle 3D Secure or other authentication
@@ -441,6 +443,31 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.error('Payment error:', err);
       setError(err instanceof Error ? err.message : 'Payment failed');
       return false;
+    }
+  };
+
+  const processBookingPayment = async (paymentIntentId: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          paymentIntentId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Booking processed successfully:', data);
+    } catch (err) {
+      console.error('Error processing booking:', err);
+      // Don't throw here as payment was successful, just log the error
     }
   };
 
@@ -944,7 +971,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-8">
           {currentStep > 1 && (
             <Button type="button" variant="outline" onClick={handlePrevStep} icon={ArrowLeft}>
               Back

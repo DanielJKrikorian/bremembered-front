@@ -98,7 +98,13 @@ Deno.serve(async (req) => {
         discount_amount: discountAmount.toString(),
         referral_discount: referralDiscount.toString(),
         deposit_amount: depositAmount.toString(),
-        remaining_balance: (discountedTotal - depositAmount).toString()
+        remaining_balance: (discountedTotal - depositAmount).toString(),
+        customer_email: customerInfo.email || '',
+        customer_phone: customerInfo.phone || '',
+        billing_address: customerInfo.billingAddress || '',
+        city: customerInfo.city || '',
+        state: customerInfo.state || '',
+        zip_code: customerInfo.zipCode || ''
       }
     })
 
