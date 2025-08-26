@@ -94,10 +94,39 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret) {
+    if (currentStep === 3 && !clientSecret && stripe && elements) {
       initializePaymentIntent();
     }
-  }, [currentStep, clientSecret]);
+  }, [currentStep, clientSecret, stripe, elements]);
+
+  // Set up CardElement event listeners
+  useEffect(() => {
+    if (stripe && elements) {
+      const cardElement = elements.getElement(CardElement);
+      if (cardElement) {
+        console.log('✅ Setting up CardElement event listeners');
+        
+        const handleReady = () => {
+          console.log('✅ CardElement is ready for input');
+          setCardReady(true);
+        };
+        
+        const handleChange = (event: any) => {
+          console.log('CardElement change event:', event);
+          setCardError(event.error ? event.error.message : null);
+          setCardComplete(event.complete);
+        };
+        
+        cardElement.on('ready', handleReady);
+        cardElement.on('change', handleChange);
+        
+        return () => {
+          cardElement.off('ready', handleReady);
+          cardElement.off('change', handleChange);
+        };
+      }
+    }
+  }, [stripe, elements, currentStep]);
 
   const initializePaymentIntent = async () => {
     try {
@@ -711,6 +740,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               fontSize: '16px',
                               color: '#1f2937',
                               fontFamily: 'system-ui, sans-serif',
+                              fontWeight: '400',
+                              lineHeight: '24px',
                               '::placeholder': {
                                 color: '#6b7280',
                               },
@@ -718,17 +749,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                             invalid: {
                               color: '#dc2626',
                             },
+                            complete: {
+                              color: '#059669',
+                            },
                           },
                           hidePostalCode: true,
-                        }}
-                        onReady={() => {
-                          console.log('✅ CardElement is ready');
-                          setCardReady(true);
-                        }}
-                        onChange={(event) => {
-                          console.log('CardElement change:', event);
-                          setCardError(event.error ? event.error.message : null);
-                          setCardComplete(event.complete);
+                          disabled: false,
                         }}
                       />
                     </div>
