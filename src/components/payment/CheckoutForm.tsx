@@ -852,38 +852,26 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <input
                     type="text"
                     placeholder="Enter referral code (e.g., DANI1234)"
-                <div
-                  ref={cardElementRef}
-                  className="p-4 border border-gray-300 rounded-lg bg-white"
-                  style={{ minHeight: '40px', width: '100%' }}
-                  key={forceRemount}
-                >
-                  {!stripe || !elements ? (
-                    <div className="text-center text-gray-500">
-                      <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-rose-500 rounded-full mx-auto mb-2"></div>
-                      <p className="text-sm">Loading payment system...</p>
-                    </div>
-                  ) : (
-                    <CardElement
-                      options={{
-                        style: {
-                          base: {
-                            fontSize: '16px',
-                            color: '#1f2937',
-                            fontFamily: 'system-ui, sans-serif',
-                            '::placeholder': {
-                              color: '#6b7280',
-                            },
-                          },
-                          invalid: {
-                            color: '#dc2626',
-                          },
-                        },
-                        hidePostalCode: true,
-                      }}
-                    />
-                  )}
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleReferralSubmit}
+                    disabled={referralLoading || !referralCode.trim()}
+                    loading={referralLoading}
+                  >
+                    Apply
+                  </Button>
                 </div>
+              )}
+              {referralError && (
+                <p className="text-sm text-red-600 mt-2">{referralError}</p>
+              )}
+            </Card>
+            <Card className="p-6">
               <div className="space-y-6">
                 <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
                   <Lock className="w-5 h-5 text-green-600" />
