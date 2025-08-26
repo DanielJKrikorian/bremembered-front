@@ -48,11 +48,18 @@ export const Checkout: React.FC = () => {
     // Initialize payment intent when checkout page loads
     if (step === 1 && !clientSecret && !isInitializingPayment) {
       setIsInitializingPayment(true);
-      // Create a basic payment intent with minimal info
+      // Create a basic payment intent with complete customerInfo structure
       initializePaymentIntent({
-        name: 'Guest Customer',
-        email: 'guest@example.com',
-        phone: ''
+        partner1Name: '',
+        partner2Name: '',
+        email: '',
+        phone: '',
+        eventDate: '',
+        eventTime: '',
+        venueName: '',
+        venueAddress: '',
+        guestCount: '',
+        specialRequests: ''
       }, '').finally(() => {
         setIsInitializingPayment(false);
       });
