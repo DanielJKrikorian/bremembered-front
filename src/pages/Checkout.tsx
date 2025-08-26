@@ -29,6 +29,7 @@ export const Checkout: React.FC = () => {
   const [appliedReferral, setAppliedReferral] = useState<any>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [isInitializingPayment, setIsInitializingPayment] = useState(false);
 
   const cartItems = location.state?.cartItems || cartState.items;
   const totalAmount = location.state?.totalAmount || cartState.totalAmount;
@@ -42,6 +43,21 @@ export const Checkout: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  useEffect(() => {
+    // Initialize payment intent when checkout page loads
+    if (step === 1 && !clientSecret && !isInitializingPayment) {
+      setIsInitializingPayment(true);
+      // Create a basic payment intent with minimal info
+      initializePaymentIntent({
+        name: 'Guest Customer',
+        email: 'guest@example.com',
+        phone: ''
+      }, '').finally(() => {
+        setIsInitializingPayment(false);
+      });
+    }
+  }, [step, clientSecret, isInitializingPayment]);
 
   const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
     try {
@@ -127,31 +143,40 @@ export const Checkout: React.FC = () => {
         {step === 1 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Elements 
-                stripe={stripePromise}
-                options={{
-                  clientSecret,
-                  appearance: {
-                    theme: 'stripe',
-                    variables: {
-                      colorPrimary: '#f43f5e',
+              {clientSecret ? (
+                <Elements 
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: 'stripe',
+                      variables: {
+                        colorPrimary: '#f43f5e',
+                      },
                     },
-                  },
-                }}
-              >
-                <CheckoutForm
-                  cartItems={cartItems}
-                  totalAmount={totalAmount}
-                  discountAmount={appliedDiscount}
-                  referralDiscount={referralDiscount}
-                  clientSecret={clientSecret}
-                  paymentIntentId={paymentIntentId}
-                  onSuccess={handlePaymentSuccess}
-                  onReferralApplied={handleReferralApplied}
-                  onReferralRemoved={handleReferralRemoved}
-                  onInitializePayment={initializePaymentIntent}
-                />
-              </Elements>
+                  }}
+                >
+                  <CheckoutForm
+                    cartItems={cartItems}
+                    totalAmount={totalAmount}
+                    discountAmount={appliedDiscount}
+                    referralDiscount={referralDiscount}
+                    clientSecret={clientSecret}
+                    paymentIntentId={paymentIntentId}
+                    onSuccess={handlePaymentSuccess}
+                    onReferralApplied={handleReferralApplied}
+                    onReferralRemoved={handleReferralRemoved}
+                    onInitializePayment={initializePaymentIntent}
+                  />
+                </Elements>
+              ) : (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Initializing payment...</p>
+                  </div>
+                </div>
+              )}
               
               {!isAuthenticated && (
                 <Card className="p-6 mb-8 bg-amber-50 border-amber-200">
