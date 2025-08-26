@@ -94,16 +94,39 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret) {
+    if (currentStep === 3 && !clientSecret && cardReady) {
       initializePaymentIntent();
     }
-  }, [currentStep]);
+  }, [currentStep, cardReady, clientSecret]);
 
   const initializePaymentIntent = async () => {
     try {
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) {
         throw new Error('Card information not found');
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          cartItems,
+          totalAmount,
+          discountAmount,
+          referralDiscount,
+          customerInfo: {
+            name: `${formData.partner1Name}${formData.partner2Name ? ` & ${formData.partner2Name}` : ''}`,
+            email: formData.email,
+            phone: formData.phone,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
