@@ -468,8 +468,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       }
 
       // Create payment intent
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
       console.log('Creating payment intent for amount:', grandTotal);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-intent`, {
@@ -484,7 +482,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           metadata: {
             type: 'wedding_booking',
             deposit_percentage: 50,
-            coupon_discount: couponDiscount,
+            coupon_discount: discountAmount,
             referral_code: referralCode,
             items: cartItems.map(item => ({
               package_id: item.package.id,
@@ -930,56 +928,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 <p className="text-blue-800 text-sm">
                   You're paying a 50% deposit today ({formatPrice(depositAmount)}). The remaining balance will be due 7 days before your event.
                 </p>
-              </div>
-              
-              {/* Referral Code Section */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-4">Referral Code (Optional)</h4>
-                {appliedReferral ? (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-blue-900">
-                          Referred by {appliedReferral.vendor_name}
-                        </p>
-                        <p className="text-sm text-blue-700">Thank you for using their referral!</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={removeReferral}
-                        className="text-sm text-red-600 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <form onSubmit={handleReferralSubmit} className="flex space-x-3">
-                      <input
-                        type="text"
-                        placeholder="Enter vendor referral code (e.g., DANI1234)"
-                        value={referralCode}
-                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                      />
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        loading={referralLoading}
-                        disabled={!referralCode.trim() || referralLoading}
-                      >
-                        Apply
-                      </Button>
-                    </form>
-                    {referralError && (
-                      <p className="text-sm text-red-600 mt-2">{referralError}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-2">
-                      Have a referral code from one of our vendors? Enter it here for special recognition.
-                    </p>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-6 mb-8">
