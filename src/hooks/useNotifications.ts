@@ -167,9 +167,11 @@ export const useNotifications = () => {
     }
 
     try {
-      const { error } = await supabase.rpc('mark_notification_read', {
-        notification_id: notificationId
-      });
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
     } catch (err) {
@@ -192,7 +194,12 @@ export const useNotifications = () => {
     }
 
     try {
-      const { error } = await supabase.rpc('mark_all_notifications_read');
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user?.id)
+        .eq('read', false);
+        
       if (error) throw error;
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
