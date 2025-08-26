@@ -101,11 +101,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   const initializePaymentIntent = async () => {
     try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('Card information not found');
-      }
-
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
         method: 'POST',
         headers: {
