@@ -70,9 +70,9 @@ Deno.serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: grandTotal,
       currency: 'usd',
-      payment_method_types: ['card', 'affirm'],
       automatic_payment_methods: {
         enabled: true,
+        allow_redirects: 'always'
       },
       metadata: {
         type: 'wedding_booking_deposit',
