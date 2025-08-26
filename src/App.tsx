@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { BookingProvider } from './context/BookingContext';
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
-import { AppContent } from './components/AppContent';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
+import { Checkout } from '../pages/Checkout';
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <BookingProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </BookingProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/checkout" element={<Checkout />} />
+            {/* Other routes */}
+          </Routes>
+        </BrowserRouter>
       </CartProvider>
     </AuthProvider>
   );
