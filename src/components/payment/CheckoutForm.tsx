@@ -892,7 +892,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && (!clientSecret || !cardReady || !cardComplete))}
+              disabled={loading || (currentStep === 3 && (!clientSecret || !cardComplete))}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
