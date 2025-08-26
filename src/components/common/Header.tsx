@@ -120,14 +120,6 @@ export const Header: React.FC = () => {
                   </div>
                   <Button 
                     variant="ghost" 
-                    icon={Bell} 
-                    size="sm"
-                    className="relative"
-                  >
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
-                  </Button>
-                  <Button 
-                    variant="ghost" 
                     icon={Calendar} 
                     size="sm"
                     onClick={() => navigate('/my-bookings')}
