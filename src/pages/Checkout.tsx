@@ -161,7 +161,7 @@ const CheckoutForm: React.FC<{
         `)
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         setReferralState({
