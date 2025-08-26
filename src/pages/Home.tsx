@@ -18,8 +18,15 @@ export const Home: React.FC = () => {
 
   const handleClaimDeal = async (pkg: any) => {
     try {
+      console.log('Claiming deal for package:', pkg);
+      
       // Check if Supabase is configured
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey || 
+          supabaseUrl === 'https://placeholder.supabase.co' ||
+          supabaseAnonKey === 'placeholder-key') {
         console.log('Supabase not configured - using demo mode');
         // Generate a demo coupon code
         const servicePrefix = pkg.service_type.substring(0, 3).toUpperCase();
@@ -34,36 +41,47 @@ export const Home: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claim-deal`, {
+      console.log('Making request to edge function...');
+      const response = await fetch(`${supabaseUrl}/functions/v1/claim-deal`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           packageId: pkg.id,
           packageName: pkg.name,
-          serviceType: pkg.service_type,
-          discountPercent: 10
+          serviceType: pkg.service_type
         })
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Edge function error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Edge function response:', data);
       
-      setClaimedDeals(prev => ({
-        ...prev,
-        [pkg.id]: { 
-          code: data.code, 
-          expiresAt: data.expiration_date 
-        }
-      }));
+      if (data.success && data.coupon) {
+        setClaimedDeals(prev => ({
+          ...prev,
+          [pkg.id]: { 
+            code: data.coupon.code, 
+            expiresAt: data.coupon.expiration_date 
+          }
+        }));
+      } else {
+        throw new Error(data.error || 'Failed to claim deal');
+      }
     } catch (error) {
       console.error('Error claiming deal:', error);
-      alert('Sorry, there was an error claiming this deal. Please try again.');
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Sorry, there was an error claiming this deal: ${errorMessage}`);
     }
   };
 
