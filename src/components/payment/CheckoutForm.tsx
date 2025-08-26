@@ -73,7 +73,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [cardReady, setCardReady] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
-  const [cardElementMounted, setCardElementMounted] = useState(false);
 
   // Debug Stripe initialization
   useEffect(() => {
@@ -111,7 +110,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Set up CardElement event listeners
   useEffect(() => {
-    if (stripe && elements && currentStep === 3 && clientSecret) {
+    if (stripe && elements && currentStep === 3) {
       const cardElement = elements.getElement(CardElement);
       if (cardElement) {
         console.log('✅ Setting up CardElement event listeners', { cardElement: !!cardElement });
@@ -119,7 +118,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         const handleReady = () => {
           console.log('✅ CardElement is ready for input');
           setCardReady(true);
-          setCardElementMounted(true);
         };
         
         const handleChange = (event: any) => {
@@ -146,11 +144,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       console.log('CardElement setup skipped:', {
         stripe: !!stripe,
         elements: !!elements,
-        step: currentStep,
         clientSecret: !!clientSecret
       });
     }
-  }, [stripe, elements, currentStep, clientSecret]);
+  }, [stripe, elements, currentStep]);
 
   const initializePaymentIntent = async () => {
     try {
@@ -746,69 +743,55 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
 
               <div className="space-y-4">
-                {!clientSecret ? (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-800 text-sm">
-                      Initializing secure payment...
-                    </p>
-                  </div>
-                ) : !cardElementMounted ? (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-800 text-sm">Loading card input...</p>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Card Information
-                    </label>
-                    <div className="p-4 border border-gray-300 rounded-lg bg-white">
-                      <CardElement
-                        options={{
-                          style: {
-                            base: {
-                              fontSize: '16px',
-                              color: '#1f2937',
-                              fontFamily: 'system-ui, sans-serif',
-                              fontWeight: '400',
-                              lineHeight: '24px',
-                              iconColor: '#6b7280',
-                              '::placeholder': {
-                                color: '#9ca3af',
-                              },
-                            },
-                            focus: {
-                              color: '#1f2937',
-                              iconColor: '#f43f5e',
-                              '::placeholder': {
-                                color: '#6b7280',
-                              },
-                            },
-                            invalid: {
-                              color: '#dc2626',
-                              iconColor: '#dc2626',
-                            },
-                            complete: {
-                              color: '#059669',
-                              iconColor: '#059669',
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Card Information
+                  </label>
+                  <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                    <CardElement
+                      options={{
+                        style: {
+                          base: {
+                            fontSize: '16px',
+                            color: '#1f2937',
+                            fontFamily: 'system-ui, sans-serif',
+                            fontWeight: '400',
+                            lineHeight: '24px',
+                            iconColor: '#6b7280',
+                            '::placeholder': {
+                              color: '#9ca3af',
                             },
                           },
-                          hidePostalCode: true,
-                        }}
-                      />
-                    </div>
-                    {cardError && (
-                      <p className="text-sm text-red-600 mt-1">{cardError}</p>
-                    )}
-                    {cardElementMounted && !cardError && (
-                      <p className="text-sm text-green-600 mt-1 flex items-center">
-                        <Check className="w-3 h-3 mr-1" />
-                        Card input ready
-                      </p>
-                    )}
+                          focus: {
+                            color: '#1f2937',
+                            iconColor: '#f43f5e',
+                            '::placeholder': {
+                              color: '#6b7280',
+                            },
+                          },
+                          invalid: {
+                            color: '#dc2626',
+                            iconColor: '#dc2626',
+                          },
+                          complete: {
+                            color: '#059669',
+                            iconColor: '#059669',
+                          },
+                        },
+                        hidePostalCode: true,
+                      }}
+                    />
                   </div>
-                )}
+                  {cardError && (
+                    <p className="text-sm text-red-600 mt-1">{cardError}</p>
+                  )}
+                  {cardReady && !cardError && (
+                    <p className="text-sm text-green-600 mt-1 flex items-center">
+                      <Check className="w-3 h-3 mr-1" />
+                      Card input ready
+                    </p>
+                  )}
+                </div>
 
                 {/* Security Notice */}
                 <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
@@ -894,7 +877,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && (!clientSecret || !cardReady || !cardComplete))}
+              disabled={loading || (currentStep === 3 && (!clientSecret || !cardReady))}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
