@@ -73,6 +73,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [cardReady, setCardReady] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
+  const [cardElementMounted, setCardElementMounted] = useState(false);
 
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: '',
@@ -101,7 +102,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Set up CardElement event listeners
   useEffect(() => {
-    if (stripe && elements) {
+    if (stripe && elements && currentStep === 3) {
       const cardElement = elements.getElement(CardElement);
       if (cardElement) {
         console.log('✅ Setting up CardElement event listeners');
@@ -109,6 +110,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         const handleReady = () => {
           console.log('✅ CardElement is ready for input');
           setCardReady(true);
+          setCardElementMounted(true);
         };
         
         const handleChange = (event: any) => {
@@ -126,7 +128,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         };
       }
     }
-  }, [stripe, elements, currentStep]);
+  }, [stripe, elements, currentStep, clientSecret]);
 
   const initializePaymentIntent = async () => {
     try {
@@ -722,10 +724,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
 
               <div className="space-y-4">
-                {!clientSecret ? (
+                {!clientSecret || !cardElementMounted ? (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-800 text-sm">Initializing secure payment...</p>
+                    <p className="text-blue-800 text-sm">
+                      {!clientSecret ? 'Initializing secure payment...' : 'Loading card input...'}
+                    </p>
                   </div>
                 ) : (
                   <div>
@@ -742,19 +746,29 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               fontFamily: 'system-ui, sans-serif',
                               fontWeight: '400',
                               lineHeight: '24px',
+                              iconColor: '#6b7280',
+                              '::placeholder': {
+                                color: '#9ca3af',
+                              },
+                            },
+                            focus: {
+                              color: '#1f2937',
+                              iconColor: '#f43f5e',
                               '::placeholder': {
                                 color: '#6b7280',
                               },
                             },
                             invalid: {
                               color: '#dc2626',
+                              iconColor: '#dc2626',
                             },
                             complete: {
                               color: '#059669',
+                              iconColor: '#059669',
                             },
                           },
                           hidePostalCode: true,
-                          disabled: false,
+                          disabled: !clientSecret,
                         }}
                       />
                     </div>
