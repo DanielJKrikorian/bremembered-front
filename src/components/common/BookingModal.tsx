@@ -117,15 +117,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleNextQuestion = () => {
-    if (currentStep < 6) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 6) {
+    } else if (currentStep === 5) {
       // Start matching process
-      setCurrentStep(7);
+      setCurrentStep(6);
       
       // Auto-advance to results after 2 seconds
       setTimeout(() => {
-        setCurrentStep(8);
+        setCurrentStep(7);
       }, 2000);
     }
   };
@@ -141,7 +141,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       // Add package to cart
       addItem({ package: recommendedPackage });
       setAddedToCart(true);
-      setCurrentStep(9); // Success step
+      setCurrentStep(8); // Success step
     }
   };
 
@@ -201,7 +201,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 2: return localSelectedServices.length > 0;
       case 3: return preferenceType !== '';
       case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
-      case 6: return selectedBudget !== '';
+      case 5: return selectedBudget !== '';
       default: return false;
     }
   };
@@ -212,10 +212,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 2: return 'What services do you need?';
       case 3: return 'How would you like to choose?';
       case 4: return preferenceType === 'coverage' ? 'What moments to capture?' : 'How many hours?';
-      case 6: return 'What\'s your budget?';
-      case 7: return 'Finding your perfect match...';
-      case 8: return 'Your perfect match!';
-      case 9: return 'Added to cart!';
+      case 5: return 'What\'s your budget?';
+      case 6: return 'Finding your perfect match...';
+      case 7: return 'Your perfect match!';
+      case 8: return 'Added to cart!';
       default: return '';
     }
   };
@@ -252,16 +252,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     <>
       {/* Modal */}
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && handleXButtonClick()}>
-        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 8 || currentStep === 9 ? 'max-w-4xl' : 'max-w-2xl'}`} data-modal-content>
+        <div className={`bg-white rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-y-auto ${currentStep === 7 || currentStep === 8 ? 'max-w-4xl' : 'max-w-2xl'}`} data-modal-content>
           {/* Modal Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div>
               <h3 className="text-xl font-semibold text-gray-900">
                 {getQuestionTitle()}
               </h3>
-              {currentStep <= 7 && (
+              {currentStep <= 6 && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Question {currentStep} of 6
+                  Question {currentStep} of 5
                 </p>
               )}
             </div>
@@ -442,7 +442,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
 
-            {currentStep === 6 && (
+            {currentStep === 5 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -501,7 +501,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             )}
 
             {/* Step 6: Matching */}
-            {currentStep === 7 && (
+            {currentStep === 6 && (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
                   <Sparkles className="w-10 h-10 text-white" />
@@ -527,7 +527,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                 <Button
                   variant="primary"
                   size="lg"
-                  onClick={() => setCurrentStep(8)}
+                  onClick={() => setCurrentStep(7)}
                   icon={Heart}
                   className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
                 >
@@ -537,7 +537,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             )}
 
             {/* Step 8: Results */}
-            {currentStep === 8 && (
+            {currentStep === 7 && (
               <div className="space-y-6">
                 {recommendedPackage ? (
                   <>
@@ -731,7 +731,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             )}
 
             {/* Step 9: Success */}
-            {currentStep === 9 && (
+            {currentStep === 8 && (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
                   <Check className="w-10 h-10 text-white" />
