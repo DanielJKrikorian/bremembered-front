@@ -57,6 +57,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Anonymous lead tracking
   const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
+  const [leadError, setLeadError] = useState<string | null>(null);
 
   const hourOptions = [
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
@@ -145,22 +146,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Update lead data when answers change
   useEffect(() => {
-    if (lead && currentStep > 1) {
-      updateLead({
-        event_type: selectedEventType,
-        selected_services: localSelectedServices,
-        coverage_preferences: selectedCoverage,
-        hour_preferences: selectedHours,
-        budget_range: selectedBudget,
-        current_step: currentStep
-      });
+    if (currentStep > 1) {
+      // Only update lead if we have a valid lead object
+      if (lead) {
+        updateLead({
+          event_type: selectedEventType,
+          selected_services: localSelectedServices,
+          coverage_preferences: selectedCoverage,
+          hour_preferences: selectedHours,
+          budget_range: selectedBudget,
+          current_step: currentStep
+        }).catch(error => {
+          console.warn('Failed to update lead data:', error);
+          setLeadError('Failed to save progress, but you can continue');
+        });
+      }
     }
-  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, lead, updateLead]);
+  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, lead]);
 
   // Handle page/modal exit
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isOpen && currentStep > 1 && !lead?.email) {
+      if (isOpen && currentStep > 1 && lead && !lead.email) {
         e.preventDefault();
         setShowEmailCapture(true);
         return '';
@@ -168,7 +175,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden && isOpen && currentStep > 1 && !lead?.email) {
+      if (document.hidden && isOpen && currentStep > 1 && lead && !lead.email) {
         setShowEmailCapture(true);
       }
     };
@@ -352,10 +359,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleXButtonClick = () => {
-    if (currentStep > 1 && !lead?.email && currentStep !== 6 && currentStep !== 7) {
+    if (currentStep > 1 && lead && !lead.email && currentStep !== 6 && currentStep !== 7) {
       setShowEmailCapture(true);
-    } else if (currentStep === 6 || currentStep === 7) {
-      if (!lead?.email) {
+    } else if ((currentStep === 6 || currentStep === 7) && lead) {
+      if (!lead.email) {
         setShowEmailCapture(true);
       } else {
         handleCloseModal();
@@ -366,13 +373,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleEmailSave = async (email: string) => {
-    await saveEmail(email);
+    try {
+      await saveEmail(email);
+    } catch (error) {
+      console.warn('Failed to save email to lead:', error);
+      // Continue anyway since the modal functionality should work
+    }
     setShowEmailCapture(false);
     handleCloseModal();
   };
 
   const handleEmailSkip = async () => {
-    await abandonLead();
+    try {
+      await abandonLead();
+    } catch (error) {
+      console.warn('Failed to abandon lead:', error);
+      // Continue anyway
+    }
     setShowEmailCapture(false);
     onClose();
     resetModal();
