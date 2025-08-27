@@ -58,7 +58,7 @@ export const useAnonymousLead = () => {
         .maybeSingle();
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
+        if (fetchError.code === 'PGRST116' || (fetchError.details && fetchError.details.includes('0 rows'))) {
           // No rows found - treat as null
           existingLead = null;
         } else {
