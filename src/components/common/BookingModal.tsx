@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Eye, DollarSign } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, X, Check, Eye, DollarSign, ShoppingCart, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { EmailCaptureModal } from './EmailCaptureModal';
 import { EventTypeStep } from '../booking/EventTypeStep';
 import { ServiceSelectionStep } from '../booking/ServiceSelectionStep';
 import { PreferenceTypeStep } from '../booking/PreferenceTypeStep';
-import { PackageSummaryStep } from '../booking/PackageSummaryStep';
-import { VenueSelectionStep } from '../booking/VenueSelectionStep';
-import { DateTimeStep } from '../booking/DateTimeStep';
-import { LanguageSelectionStep } from '../booking/LanguageSelectionStep';
-import { StyleSelectionStep } from '../booking/StyleSelectionStep';
-import { VibeSelectionStep } from '../booking/VibeSelectionStep';
-import { VendorMatchingStep } from '../booking/VendorMatchingStep';
-import { VendorRevealStep } from '../booking/VendorRevealStep';
 import { useBooking } from '../../context/BookingContext';
+import { useCart } from '../../context/CartContext';
 import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
-import { useRecommendedVendors } from '../../hooks/useSupabase';
 import { ServicePackage, Venue } from '../../types/booking';
 
 interface BookingModalProps {
@@ -27,6 +18,7 @@ interface BookingModalProps {
 export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { setSelectedServices, setEventType } = useBooking();
+  const { addItem, openCart, state: cartState } = useCart();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedEventType, setSelectedEventType] = useState('');
   const [localSelectedServices, setLocalSelectedServices] = useState<string[]>([]);
@@ -34,25 +26,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   const [selectedHours, setSelectedHours] = useState('');
   const [selectedBudget, setSelectedBudget] = useState('');
   const [preferenceType, setPreferenceType] = useState<'hours' | 'coverage' | ''>('');
-  const [isMatching, setIsMatching] = useState(false);
-  const [matchedPackage, setMatchedPackage] = useState<any>(null);
-  const [showEmailCapture, setShowEmailCapture] = useState(false);
   const [recommendedPackage, setRecommendedPackage] = useState<ServicePackage | null>(null);
-  const [selectedPackages, setSelectedPackages] = useState<ServicePackage[]>([]);
-  const [loadingStep, setLoadingStep] = useState(0);
-
-  // Vendor questionnaire state
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState('');
-  const [eventDate, setEventDate] = useState('');
-  const [eventTime, setEventTime] = useState('');
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [selectedStyles, setSelectedStyles] = useState<number[]>([]);
-  const [selectedVibes, setSelectedVibes] = useState<number[]>([]);
-
-  // Vendor matching state
-  const [isVendorMatching, setIsVendorMatching] = useState(false);
-  const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   const hourOptions = [
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
@@ -85,25 +60,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     ) : undefined,
     budgetRange: shouldMatch ? selectedBudget : undefined
   });
-
-  // Get recommended vendors when we have all the data
-  const shouldMatchVendors = currentStep >= 15 && selectedPackages.length > 0 && eventDate && (selectedVenue || selectedRegion);
-  
-  const { vendors: matchedVendors, loading: vendorsLoading } = useRecommendedVendors({
-    servicePackageId: shouldMatchVendors ? selectedPackages[0]?.id || '' : '',
-    eventDate: shouldMatchVendors ? eventDate : '',
-    region: shouldMatchVendors ? (selectedVenue?.region || selectedRegion) : undefined,
-    languages: shouldMatchVendors ? selectedLanguages : undefined,
-    styles: shouldMatchVendors ? selectedStyles : undefined,
-    vibes: shouldMatchVendors ? selectedVibes : undefined
-  });
-
-  // Set recommended vendors when loaded
-  useEffect(() => {
-    if (matchedVendors && matchedVendors.length > 0 && !vendorsLoading) {
-      setRecommendedVendors(matchedVendors);
-    }
-  }, [matchedVendors, vendorsLoading]);
 
   // Set recommended package when packages are loaded
   useEffect(() => {
@@ -161,19 +117,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleNextQuestion = () => {
-    if (currentStep < 5) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
-    } else if (currentStep === 5) {
+    } else if (currentStep === 6) {
       // Start matching process
-      setCurrentStep(6);
+      setCurrentStep(7);
       
       // Auto-advance to results after 2 seconds
       setTimeout(() => {
         setCurrentStep(8);
       }, 2000);
-    } else if (currentStep >= 9) {
-      // Continue through vendor questionnaire
-      setCurrentStep(currentStep + 1);
     }
   };
 
@@ -183,26 +136,26 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     }
   };
 
-  const handleBookPackage = () => {
+  const handleAddToCart = () => {
     if (recommendedPackage) {
-      // Add package to selected packages and go to summary
-      setSelectedPackages([recommendedPackage]);
-      setCurrentStep(9); // Package summary step
+      // Add package to cart
+      addItem({ package: recommendedPackage });
+      setAddedToCart(true);
+      setCurrentStep(9); // Success step
     }
   };
 
-  const handleViewAllPackages = () => {
-    setSelectedServices(localSelectedServices);
-    setEventType(selectedEventType);
+  const handleViewCart = () => {
     onClose();
-    navigate('/booking/packages', {
+    openCart();
+  };
+
+  const handleBrowseMore = () => {
+    onClose();
+    navigate('/search', {
       state: {
-        selectedServices: localSelectedServices,
-        eventType: selectedEventType,
-        preferences: {
-          coverage: selectedCoverage,
-          hours: selectedHours,
-          budget: selectedBudget
+        filters: {
+          serviceTypes: localSelectedServices
         }
       }
     });
@@ -213,7 +166,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setSelectedBudget('150000-300000');
       setPreferenceType('hours');
       setSelectedHours('6');
-      setCurrentStep(6);
+      setCurrentStep(7);
       
       setTimeout(() => {
         setCurrentStep(8);
@@ -221,110 +174,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     }
   };
 
-  const handleContinueToVendors = () => {
-    // Start vendor questionnaire  
-    setCurrentStep(10); // Venue selection step
-  };
-
-  const handleAddMoreServices = () => {
-    // Go back to service selection to add more
-    setCurrentStep(2);
-  };
-
-  const handleLanguageToggle = (languageId: string) => {
-    setSelectedLanguages(prev => 
-      prev.includes(languageId)
-        ? prev.filter(id => id !== languageId)
-        : [...prev, languageId]
-    );
-  };
-
-  const handleStyleToggle = (styleId: number) => {
-    setSelectedStyles(prev => 
-      prev.includes(styleId)
-        ? prev.filter(id => id !== styleId)
-        : [...prev, styleId]
-    );
-  };
-
-  const handleVibeToggle = (vibeId: number) => {
-    setSelectedVibes(prev => 
-      prev.includes(vibeId)
-        ? prev.filter(id => id !== vibeId)
-        : [...prev, vibeId]
-    );
-  };
-
-  const handleFinalContinue = () => {
-    // Start vendor matching process
-    setCurrentStep(15); // Vendor matching step
-    
-    // Auto-advance to vendor results after 2 seconds
-    setTimeout(() => {
-      setCurrentStep(16);
-    }, 2000);
-  };
-
-  const handleContinueToBooking = () => {
-    // Close modal and navigate to final booking with all data
-    setSelectedServices(localSelectedServices);
-    setEventType(selectedEventType);
-    onClose();
-    navigate('/booking/final-booking', {
-      state: {
-        selectedPackages,
-        selectedServices: localSelectedServices,
-        eventType: selectedEventType,
-        eventDate,
-        eventTime,
-        venue: selectedVenue,
-        region: selectedVenue?.region || selectedRegion,
-        languages: selectedLanguages,
-        styles: selectedStyles,
-        vibes: selectedVibes,
-        recommendedVendors
-      }
-    });
-  };
-
-  const handleViewAllVendors = () => {
-    // Close modal and navigate to vendor browsing with filters
-    setSelectedServices(localSelectedServices);
-    setEventType(selectedEventType);
-    onClose();
-    navigate('/booking/vendors', {
-      state: {
-        selectedPackages,
-        selectedServices: localSelectedServices,
-        eventType: selectedEventType,
-        eventDate,
-        eventTime,
-        venue: selectedVenue,
-        region: selectedVenue?.region || selectedRegion,
-        languages: selectedLanguages,
-        styles: selectedStyles,
-        vibes: selectedVibes
-      }
-    });
-  };
-
   const handleXButtonClick = () => {
     handleCloseModal();
   };
 
-  const handleEmailSave = async (email: string) => {
-    // For now, just close the modal - email saving can be implemented later
-    setShowEmailCapture(false);
-    handleCloseModal();
-  };
-
-  const handleEmailSkip = async () => {
-    setShowEmailCapture(false);
-    handleCloseModal();
-  };
-
   const handleCloseModal = () => {
-    setShowEmailCapture(false);
     onClose();
     resetModal();
   };
@@ -337,18 +191,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
     setSelectedCoverage([]);
     setSelectedHours('');
     setSelectedBudget('');
-    setIsMatching(false);
-    setMatchedPackage(null);
     setRecommendedPackage(null);
-    setSelectedPackages([]);
-    // Reset vendor questionnaire
-    setSelectedVenue(null);
-    setSelectedRegion('');
-    setEventDate('');
-    setEventTime('');
-    setSelectedLanguages([]);
-    setSelectedStyles([]);
-    setSelectedVibes([]);
+    setAddedToCart(false);
   };
 
   const canProceedQuestion = () => {
@@ -357,14 +201,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 2: return localSelectedServices.length > 0;
       case 3: return preferenceType !== '';
       case 4: return preferenceType === 'coverage' ? selectedCoverage.length > 0 : selectedHours !== '';
-      case 5: return selectedBudget !== '';
-      case 10: return selectedVenue || selectedRegion;
-      case 11: return eventDate && eventTime;
-      case 12: return selectedLanguages.length > 0;
-      case 13: return selectedStyles.length > 0;
-      case 14: return selectedVibes.length > 0;
-      case 15: return true; // Vendor matching step
-      case 16: return true; // Vendor reveal step
+      case 6: return selectedBudget !== '';
       default: return false;
     }
   };
@@ -375,17 +212,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       case 2: return 'What services do you need?';
       case 3: return 'How would you like to choose?';
       case 4: return preferenceType === 'coverage' ? 'What moments to capture?' : 'How many hours?';
-      case 5: return 'What\'s your budget?';
-      case 6: return 'Finding your perfect match...';
+      case 6: return 'What\'s your budget?';
+      case 7: return 'Finding your perfect match...';
       case 8: return 'Your perfect match!';
-      case 9: return 'Your selected packages';
-      case 10: return 'Where is your event?';
-      case 11: return 'When is your event?';
-      case 12: return 'Language preferences?';
-      case 13: return 'What style do you love?';
-      case 14: return 'What vibe are you going for?';
-      case 15: return 'Finding your perfect vendors...';
-      case 16: return 'Your perfect vendor matches!';
+      case 9: return 'Added to cart!';
       default: return '';
     }
   };
@@ -429,12 +259,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               <h3 className="text-xl font-semibold text-gray-900">
                 {getQuestionTitle()}
               </h3>
-              {(currentStep <= 6 || currentStep >= 10) && (
+              {currentStep <= 7 && (
                 <p className="text-sm text-gray-600 mt-1">
-                  {currentStep <= 6 
-                    ? `Question ${currentStep} of 6`
-                    : currentStep < 16 ? `Step ${currentStep - 9} of 5` : ''
-                  }
+                  Question {currentStep} of 6
                 </p>
               )}
             </div>
@@ -615,7 +442,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
               </div>
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 6 && (
               <div className="space-y-6">
                 <div className="text-center">
                   <h4 className="text-2xl font-bold text-gray-900 mb-3">
@@ -674,7 +501,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
             )}
 
             {/* Step 6: Matching */}
-            {currentStep === 6 && (
+            {currentStep === 7 && (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse">
                   <Sparkles className="w-10 h-10 text-white" />
@@ -800,9 +627,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                   variant="outline"
                                   size="lg"
                                   className="w-full border-white text-white hover:bg-white/10 text-sm leading-tight py-3"
-                                  onClick={handleBookPackage}
+                                  onClick={handleAddToCart}
                                 >
-                                  Select This<br />Package
+                                  Add to Cart
                                 </Button>
                               </div>
                             </div>
@@ -847,185 +674,4 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                     <h5 className="font-medium text-gray-700 mb-2 text-sm">Coverage</h5>
                                     <div className="flex flex-wrap gap-1">
                                       {getPackageCoverage(pkg.coverage || {}).slice(0, 2).map((coverage, idx) => (
-                                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-emerald-100 text-emerald-800">
-                                          {coverage}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full bg-gradient-to-r from-rose-500 to-amber-500 text-white border-0 hover:from-rose-600 hover:to-amber-600 group-hover:shadow-md transition-all"
-                                  onClick={() => {
-                                    setRecommendedPackage(pkg);
-                                    const modal = document.querySelector('[data-modal-content]');
-                                    if (modal) {
-                                      modal.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }
-                                  }}
-                                >
-                                  Select This Package
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Browse All Packages Button */}
-                    <div className="text-center">
-                      <Button
-                        variant="outline"
-                        onClick={handleViewAllPackages}
-                        icon={Eye}
-                        className="px-6"
-                      >
-                        Browse All {localSelectedServices[0]} Packages
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  /* No Package Found */
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Sparkles className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      No Perfect Match Found
-                    </h2>
-                    <p className="text-gray-600 mb-6">
-                      We couldn't find a package that exactly matches your preferences, but we have other great options available.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                      <Button
-                        variant="outline"
-                        onClick={() => setCurrentStep(3)}
-                      >
-                        Adjust Preferences
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleViewAllPackages}
-                      >
-                        View All Packages
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 9: Package Summary */}
-            {currentStep === 9 && (
-              <PackageSummaryStep
-                selectedPackages={selectedPackages}
-                selectedServices={localSelectedServices}
-                selectedEventType={selectedEventType}
-                onContinueToVendors={handleContinueToVendors}
-                onAddMoreServices={handleAddMoreServices}
-                formatPrice={formatPrice}
-              />
-            )}
-
-            {/* Step 10: Venue Selection */}
-            {currentStep === 10 && (
-              <VenueSelectionStep
-                selectedVenue={selectedVenue}
-                selectedRegion={selectedRegion}
-                onVenueSelect={setSelectedVenue}
-                onRegionSelect={setSelectedRegion}
-                onNext={handleNextQuestion}
-                onPrev={handlePrevQuestion}
-                canProceed={canProceedQuestion()}
-              />
-            )}
-
-            {/* Step 11: Date & Time */}
-            {currentStep === 11 && (
-              <DateTimeStep
-                eventDate={eventDate}
-                eventTime={eventTime}
-                eventType={selectedEventType}
-                onEventDateChange={setEventDate}
-                onEventTimeChange={setEventTime}
-                onNext={handleNextQuestion}
-                onPrev={handlePrevQuestion}
-                canProceed={canProceedQuestion()}
-              />
-            )}
-
-            {/* Step 12: Language Selection */}
-            {currentStep === 12 && (
-              <LanguageSelectionStep
-                selectedLanguages={selectedLanguages}
-                onLanguageToggle={handleLanguageToggle}
-                onNext={handleNextQuestion}
-                onPrev={handlePrevQuestion}
-                onSkip={() => setCurrentStep(13)}
-                canProceed={canProceedQuestion()}
-              />
-            )}
-
-            {/* Step 13: Style Selection */}
-            {currentStep === 13 && (
-              <StyleSelectionStep
-                selectedStyles={selectedStyles}
-                onStyleToggle={handleStyleToggle}
-                onNext={handleNextQuestion}
-                onPrev={handlePrevQuestion}
-                onSkip={() => setCurrentStep(14)}
-                canProceed={canProceedQuestion()}
-              />
-            )}
-
-            {/* Step 14: Vibe Selection */}
-            {currentStep === 14 && (
-              <VibeSelectionStep
-                selectedVibes={selectedVibes}
-                eventType={selectedEventType}
-                onVibeToggle={handleVibeToggle}
-                onNext={handleFinalContinue}
-                onPrev={handlePrevQuestion}
-                onSkip={handleFinalContinue}
-                canProceed={canProceedQuestion()}
-              />
-            )}
-
-            {/* Step 15: Vendor Matching */}
-            {currentStep === 15 && (
-              <VendorMatchingStep
-                selectedServices={localSelectedServices}
-                selectedEventType={selectedEventType}
-                onRevealVendors={() => setCurrentStep(16)}
-              />
-            )}
-
-            {/* Step 16: Vendor Reveal */}
-            {currentStep === 16 && (
-              <VendorRevealStep
-                selectedPackages={selectedPackages}
-                selectedServices={localSelectedServices}
-                selectedEventType={selectedEventType}
-                vendors={recommendedVendors}
-                onContinueToBooking={handleContinueToBooking}
-                onViewAllVendors={handleViewAllVendors}
-                formatPrice={formatPrice}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Email Capture Modal */}
-      <EmailCaptureModal
-        isOpen={showEmailCapture}
-        onClose={() => setShowEmailCapture(false)}
-        onSave={handleEmailSave}
-        onSkip={handleEmailSkip}
-      />
-    </>
-  );
-};
+                                        <span key={idx} className
