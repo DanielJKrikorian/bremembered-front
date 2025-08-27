@@ -15,7 +15,6 @@ import { VibeSelectionStep } from '../booking/VibeSelectionStep';
 import { VendorMatchingStep } from '../booking/VendorMatchingStep';
 import { VendorRevealStep } from '../booking/VendorRevealStep';
 import { useBooking } from '../../context/BookingContext';
-import { useAnonymousLead } from '../../hooks/useAnonymousLead';
 import { usePackageMatching, convertBudgetRange, convertCoverageToString } from '../../hooks/usePackageMatching';
 import { useRecommendedVendors } from '../../hooks/useSupabase';
 import { ServicePackage, Venue } from '../../types/booking';
@@ -54,10 +53,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   // Vendor matching state
   const [isVendorMatching, setIsVendorMatching] = useState(false);
   const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
-
-  // Anonymous lead tracking
-  const { lead, updateLead, saveEmail, abandonLead } = useAnonymousLead();
-  const [leadError, setLeadError] = useState<string | null>(null);
+  const [showEmailCapture, setShowEmailCapture] = useState(false);
 
   const hourOptions = [
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
@@ -143,53 +139,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
       setRecommendedPackage(bestPackage);
     }
   }, [matchedPackages, matchedRecommendedPackage, packagesLoading, preferenceType, selectedHours, selectedCoverage]);
-
-  // Update lead data when answers change
-  useEffect(() => {
-    if (currentStep > 1 && lead && updateLead) {
-      // Debounce the update to prevent excessive calls
-      const timeoutId = setTimeout(() => {
-        updateLead({
-          event_type: selectedEventType,
-          selected_services: localSelectedServices,
-          coverage_preferences: selectedCoverage,
-          hour_preferences: selectedHours,
-          budget_range: selectedBudget,
-          current_step: currentStep
-        }).catch(error => {
-          console.warn('Failed to update lead data:', error);
-          setLeadError('Failed to save progress, but you can continue');
-        });
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep]);
-
-  // Handle page/modal exit
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isOpen && currentStep > 1 && lead && !lead.email) {
-        e.preventDefault();
-        setShowEmailCapture(true);
-        return '';
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden && isOpen && currentStep > 1 && lead && !lead.email) {
-        setShowEmailCapture(true);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isOpen, currentStep, lead?.email]);
 
   const handleEventTypeSelect = (eventType: string) => {
     setSelectedEventType(eventType);
@@ -361,41 +310,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleXButtonClick = () => {
-    if (currentStep > 1 && lead && !lead.email && currentStep !== 6 && currentStep !== 7) {
-      setShowEmailCapture(true);
-    } else if ((currentStep === 6 || currentStep === 7) && lead) {
-      if (!lead.email) {
-        setShowEmailCapture(true);
-      } else {
-        handleCloseModal();
-      }
-    } else {
-      handleCloseModal();
-    }
+    handleCloseModal();
   };
 
   const handleEmailSave = async (email: string) => {
-    try {
-      await saveEmail(email);
-    } catch (error) {
-      console.warn('Failed to save email to lead:', error);
-      // Continue anyway since the modal functionality should work
-    }
+    // For now, just close the modal - email saving can be implemented later
     setShowEmailCapture(false);
     handleCloseModal();
   };
 
   const handleEmailSkip = async () => {
-    try {
-      await abandonLead();
-    } catch (error) {
-      console.warn('Failed to abandon lead:', error);
-      // Continue anyway
-    }
     setShowEmailCapture(false);
-    onClose();
-    resetModal();
-    navigate('/');
+    handleCloseModal();
   };
 
   const handleCloseModal = () => {
