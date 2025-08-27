@@ -674,4 +674,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                     <h5 className="font-medium text-gray-700 mb-2 text-sm">Coverage</h5>
                                     <div className="flex flex-wrap gap-1">
                                       {getPackageCoverage(pkg.coverage || {}).slice(0, 2).map((coverage, idx) => (
-                                        <span key={idx} className
+                                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                          {coverage}
+                                        </span>
