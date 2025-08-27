@@ -146,9 +146,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
 
   // Update lead data when answers change
   useEffect(() => {
-    if (currentStep > 1) {
-      // Only update lead if we have a valid lead object
-      if (lead) {
+    if (currentStep > 1 && lead && updateLead) {
+      // Debounce the update to prevent excessive calls
+      const timeoutId = setTimeout(() => {
         updateLead({
           event_type: selectedEventType,
           selected_services: localSelectedServices,
@@ -160,9 +160,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
           console.warn('Failed to update lead data:', error);
           setLeadError('Failed to save progress, but you can continue');
         });
-      }
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep, lead]);
+  }, [selectedEventType, localSelectedServices, selectedCoverage, selectedHours, selectedBudget, currentStep]);
 
   // Handle page/modal exit
   useEffect(() => {
