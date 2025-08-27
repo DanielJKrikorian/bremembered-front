@@ -53,7 +53,6 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
   // Vendor matching state
   const [isVendorMatching, setIsVendorMatching] = useState(false);
   const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
-  const [showEmailCapture, setShowEmailCapture] = useState(false);
 
   const hourOptions = [
     { value: '2', label: '2 hours', description: 'Perfect for elopements' },
