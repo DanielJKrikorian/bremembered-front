@@ -677,3 +677,94 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) =
                                         <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                                           {coverage}
                                         </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <X className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                      No Perfect Match Found
+                    </h2>
+                    <p className="text-gray-600 mb-8">
+                      We couldn't find packages that match your exact preferences, but we have many other great options available.
+                    </p>
+                    <Button
+                      variant="primary"
+                      onClick={handleBrowseMore}
+                      icon={ArrowRight}
+                    >
+                      Browse All Packages
+                    </Button>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-6 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={handleBrowseMore}
+                    icon={Eye}
+                  >
+                    Browse More Options
+                  </Button>
+                  {cartState.items.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      onClick={handleViewCart}
+                      icon={ShoppingCart}
+                    >
+                      View Cart ({cartState.items.length})
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 9: Success */}
+            {currentStep === 9 && (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <Check className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  🎉 Added to Cart!
+                </h2>
+                <p className="text-gray-600 text-lg mb-8">
+                  Your perfect {localSelectedServices[0]} package has been added to your cart. You can continue shopping or proceed to checkout.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleBrowseMore}
+                    icon={Plus}
+                  >
+                    Add More Services
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleViewCart}
+                    icon={ShoppingCart}
+                    size="lg"
+                  >
+                    View Cart & Checkout
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
