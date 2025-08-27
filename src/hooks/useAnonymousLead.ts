@@ -81,13 +81,19 @@ export const useAnonymousLead = () => {
         if (insertError) throw insertError;
         setLead(data);
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Failed to initialize lead in database:', err);
       // Create local-only lead as fallback
       const sessionId = getSessionId();
       setLead({
         session_id: sessionId,
         current_step: 1
       });
+      
+      // Only show error for non-network issues
+      if (!(err.name === 'TypeError' && err.message === 'Failed to fetch')) {
+        setError('Database connection issue. Working in offline mode.');
+      }
     } finally {
       setLoading(false);
     }
