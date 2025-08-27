@@ -51,20 +51,17 @@ export const useAnonymousLead = () => {
       const sessionId = getSessionId();
 
       // Check if lead already exists
-      let { data: existingLead, error: fetchError } = await supabase
+      let { data, error: fetchError } = await supabase
         .from('anonymous_leads')
         .select('*')
-        .eq('session_id', sessionId)
-        .maybeSingle();
+        .eq('session_id', sessionId);
 
       if (fetchError) {
-        if (fetchError.code === 'PGRST116' || (fetchError.details && fetchError.details.includes('0 rows'))) {
-          // No rows found - treat as null
-          existingLead = null;
-        } else {
-          throw fetchError;
-        }
+        throw fetchError;
       }
+
+      // Manually check if any rows were returned
+      const existingLead = data && data.length > 0 ? data[0] : null;
 
       if (existingLead) {
         setLead(existingLead);
@@ -125,9 +122,20 @@ export const useAnonymousLead = () => {
       if (data) {
         setLead(data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update lead in database:', err);
-      setError('Failed to save progress. Your selections are saved locally.');
+      
+      // Handle different types of errors gracefully
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        // Network/connectivity issue - don't show error to user, just continue with local state
+        console.warn('Network connectivity issue - continuing with local state only');
+      } else if (err.code === 'PGRST116') {
+        // No rows found - this is expected for new sessions
+        console.log('No existing lead found - this is normal for new sessions');
+      } else {
+        // Other errors - show user-friendly message
+        setError('Failed to save progress. Your selections are saved locally.');
+      }
       // Local state is already updated above, so we can continue
     }
   };
@@ -160,7 +168,13 @@ export const useAnonymousLead = () => {
       if (data) {
         setLead(data);
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Failed to save email in database:', err);
+      
+      // Handle network errors gracefully - don't show error for fetch failures
+      if (!(err.name === 'TypeError' && err.message === 'Failed to fetch')) {
+        setError('Failed to save email. Your information is saved locally.');
+      }
       // Local state is already updated above, so we can continue
     }
   };
