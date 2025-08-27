@@ -1466,18 +1466,6 @@ export const WeddingTimeline: React.FC = () => {
                             <p className="text-gray-600 mb-3">{event.description}</p>
                           )}
 
-                          {/* Photo Shotlist Information */}
-                          {event.photo_shotlist && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                              <div className="flex items-center mb-2">
-                                <Camera className="w-4 h-4 text-blue-600 mr-2" />
-                                <span className="text-sm font-medium text-blue-900">Photo Shotlist</span>
-                              </div>
-                              <p className="text-sm text-blue-800">
-                                <strong>Must-have shots:</strong> {event.photo_shotlist}
-                              </p>
-                            </div>
-                          )}
                           <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-1" />
