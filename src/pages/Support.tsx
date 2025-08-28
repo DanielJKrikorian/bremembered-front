@@ -43,11 +43,6 @@ export const Support: React.FC = () => {
     },
     {
       category: 'booking',
-      question: 'Can I cancel or modify my booking?',
-      answer: 'Cancellation and modification policies vary by vendor, and you should review each vendor\'s specific terms before booking. Here are the key points: **Rescheduling:** Requests to reschedule are subject to vendor availability and approval. Our service fee remains non-refundable in the event of rescheduling. **B. Remembered Service Fee:** All B. Remembered service fees and platform percentage fees collected at checkout are non-refundable under all circumstances. These fees cover platform use, payment processing, and administrative costs, and remain due regardless of whether the event is canceled, rescheduled, or disputed. **Vendor Payments:** Refunds for vendor services (outside of our non-refundable service fees) are determined by the vendor\'s individual cancellation policy. Any disputes, changes, or refund requests must be resolved directly with the vendor. B. Remembered is not responsible for vendor decisions regarding cancellations or refunds. **Booking Insurance (Optional):** If you purchase booking insurance (when available), you may be eligible for a refund of your down payment in the event of a covered cancellation. The insurance fee itself and our service fee remain non-refundable. Coverage and eligibility are determined by the terms of the insurance provider.'
-    },
-    {
-      category: 'booking',
       question: 'What is your cancellation policy?',
       answer: 'Cancellation policies vary by vendor, and you should review each vendor\'s specific terms before booking. Each vendor sets their own cancellation terms, which may include free cancellation periods, partial refunds, or no-refund policies. Please note that all B. Remembered service fees and platform percentage fees are non-refundable under all circumstances, regardless of the vendor\'s cancellation policy.'
     },
