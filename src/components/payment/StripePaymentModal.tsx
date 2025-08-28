@@ -308,7 +308,7 @@ const PaymentForm: React.FC<{
           />
           <span className="text-xs text-gray-600">
             I agree to the <a href="/terms" className="text-rose-600 hover:text-rose-700">Terms</a> and{' '}
-            <a href="/terms" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. Monthly
+            <a href="/privacy" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. Monthly
             subscription, cancel anytime.
           </span>
         </label>

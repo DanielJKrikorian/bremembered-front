@@ -184,7 +184,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => navigate('/terms')}
+                  onClick={() => navigate('/privacy')}
                   className="flex items-center text-gray-300 hover:text-white transition-colors"
                 >
                   <Shield className="w-4 h-4 mr-2" />
