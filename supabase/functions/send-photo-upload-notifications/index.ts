@@ -5,14 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// In-memory store for batching uploads (resets when function restarts)
-const uploadBatches = new Map<string, {
-  files: any[],
-  timeoutId: any,
-  vendor: any,
-  couple: any
-}>()
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -41,86 +33,103 @@ Deno.serve(async (req) => {
       throw new Error('Missing required fields in file upload record')
     }
 
-    // Create a batch key for this vendor-couple combination
-    const batchKey = `${vendor_id}-${couple_id}`
+    // Check if there are other recent uploads from the same vendor to the same couple
+    // Look for uploads within the last 2 minutes
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    
+    const { data: recentUploads, error: recentError } = await supabase
+      .from('file_uploads')
+      .select('id, file_name, file_size, upload_date')
+      .eq('vendor_id', vendor_id)
+      .eq('couple_id', couple_id)
+      .gte('upload_date', twoMinutesAgo)
+      .order('upload_date', { ascending: true })
 
-    // Get or create batch for this vendor-couple combination
-    let batch = uploadBatches.get(batchKey)
-
-    if (!batch) {
-      // Get couple information
-      const { data: couple, error: coupleError } = await supabase
-        .from('couples')
-        .select('name, email, partner1_name, partner2_name')
-        .eq('id', couple_id)
-        .single()
-
-      if (coupleError) {
-        throw new Error(`Failed to fetch couple: ${coupleError.message}`)
-      }
-
-      if (!couple.email) {
-        console.log('No email found for couple')
-        return new Response(
-          JSON.stringify({ success: true, message: 'No email to send to' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        )
-      }
-
-      // Get vendor information
-      const { data: vendor, error: vendorError } = await supabase
-        .from('vendors')
-        .select('name, profile_photo')
-        .eq('id', vendor_id)
-        .single()
-
-      if (vendorError) {
-        throw new Error(`Failed to fetch vendor: ${vendorError.message}`)
-      }
-
-      // Create new batch
-      batch = {
-        files: [],
-        timeoutId: null,
-        vendor,
-        couple
-      }
-      uploadBatches.set(batchKey, batch)
+    if (recentError) {
+      throw new Error(`Failed to fetch recent uploads: ${recentError.message}`)
     }
 
-    // Add this file to the batch
-    batch.files.push({
-      id,
-      file_name,
-      file_size,
-      upload_date,
-      file_type: getFileType(file_name)
-    })
+    console.log(`Found ${recentUploads?.length || 0} recent uploads in the last 2 minutes`)
 
-    // Clear existing timeout if any
-    if (batch.timeoutId) {
-      clearTimeout(batch.timeoutId)
+    // If this is the first upload in the batch, wait 30 seconds then send notification
+    // If there are already recent uploads, this means we're in the middle of a batch
+    const isFirstInBatch = !recentUploads || recentUploads.length <= 1
+
+    if (!isFirstInBatch) {
+      console.log('Not the first upload in batch, skipping notification (will be handled by the first upload)')
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Upload added to existing batch, notification will be sent by first upload'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
     }
 
-    // Set new timeout to send email after 30 seconds of no new uploads
-    batch.timeoutId = setTimeout(async () => {
-      try {
-        await sendBatchNotification(batchKey, batch!)
-        uploadBatches.delete(batchKey)
-      } catch (error) {
-        console.error('Error sending batch notification:', error)
-        uploadBatches.delete(batchKey)
-      }
-    }, 30000) // 30 second delay
+    console.log('This is the first upload in the batch, setting up delayed notification...')
 
-    console.log(`Added file to batch ${batchKey}. Total files in batch: ${batch.files.length}`)
+    // Wait 30 seconds to collect any additional uploads
+    await new Promise(resolve => setTimeout(resolve, 30000))
+
+    // Now fetch all uploads from the last 2.5 minutes (to account for the 30 second delay)
+    const batchCutoff = new Date(Date.now() - 2.5 * 60 * 1000).toISOString()
+    
+    const { data: batchUploads, error: batchError } = await supabase
+      .from('file_uploads')
+      .select('id, file_name, file_size, upload_date')
+      .eq('vendor_id', vendor_id)
+      .eq('couple_id', couple_id)
+      .gte('upload_date', batchCutoff)
+      .order('upload_date', { ascending: true })
+
+    if (batchError) {
+      throw new Error(`Failed to fetch batch uploads: ${batchError.message}`)
+    }
+
+    const files = batchUploads || []
+    console.log(`Sending notification for ${files.length} files`)
+
+    // Get couple information
+    const { data: couple, error: coupleError } = await supabase
+      .from('couples')
+      .select('name, email, partner1_name, partner2_name')
+      .eq('id', couple_id)
+      .single()
+
+    if (coupleError) {
+      throw new Error(`Failed to fetch couple: ${coupleError.message}`)
+    }
+
+    if (!couple.email) {
+      console.log('No email found for couple')
+      return new Response(
+        JSON.stringify({ success: true, message: 'No email to send to' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+
+    // Get vendor information
+    const { data: vendor, error: vendorError } = await supabase
+      .from('vendors')
+      .select('name, profile_photo')
+      .eq('id', vendor_id)
+      .single()
+
+    if (vendorError) {
+      throw new Error(`Failed to fetch vendor: ${vendorError.message}`)
+    }
+
+    // Process files and send notification
+    await sendBatchNotification(files, vendor, couple)
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'File added to upload batch',
-        batchKey,
-        filesInBatch: batch.files.length
+        message: 'Batch notification sent successfully',
+        filesCount: files.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -147,18 +156,16 @@ function getFileType(fileName: string): string {
   return isVideo ? 'video' : isPhoto ? 'photo' : 'file'
 }
 
-async function sendBatchNotification(batchKey: string, batch: any) {
+async function sendBatchNotification(files: any[], vendor: any, couple: any) {
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
   if (!resendApiKey) {
     throw new Error('RESEND_API_KEY environment variable not set')
   }
 
-  const { files, vendor, couple } = batch
-  
   // Count file types
-  const photos = files.filter((f: any) => f.file_type === 'photo')
-  const videos = files.filter((f: any) => f.file_type === 'video')
-  const otherFiles = files.filter((f: any) => f.file_type === 'file')
+  const photos = files.filter((f: any) => getFileType(f.file_name) === 'photo')
+  const videos = files.filter((f: any) => getFileType(f.file_name) === 'video')
+  const otherFiles = files.filter((f: any) => getFileType(f.file_name) === 'file')
 
   // Create summary text
   const summaryParts = []
