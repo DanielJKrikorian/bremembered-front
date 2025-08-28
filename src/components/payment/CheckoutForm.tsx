@@ -105,7 +105,15 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
+    console.log('=== CHECKOUT FORM PAYMENT INIT EFFECT ===');
+    console.log('- Client secret exists:', !!clientSecret);
+    console.log('- Cart items length:', cartItems.length);
+    console.log('- Loading state:', loading);
+    console.log('- Is initializing payment:', isInitializingPayment);
+    console.log('- Form data email:', formData.email);
+    
     if (!clientSecret && cartItems.length > 0 && !loading && !isInitializingPayment) {
+      console.log('CONDITIONS MET - Calling onInitializePayment');
       console.log('Initializing payment for', cartItems.length, 'items');
       console.log('Cart items:', cartItems.map(item => ({ 
         id: item.id, 
@@ -113,6 +121,12 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         price: item.package.price 
       })));
       onInitializePayment(formData, referralCode);
+    } else {
+      console.log('CONDITIONS NOT MET - Skipping payment initialization');
+      console.log('- Has client secret:', !!clientSecret);
+      console.log('- Has cart items:', cartItems.length > 0);
+      console.log('- Not loading:', !loading);
+      console.log('- Not initializing:', !isInitializingPayment);
     }
   }, [clientSecret, cartItems.length, loading, isInitializingPayment, formData.email]);
 

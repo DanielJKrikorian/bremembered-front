@@ -45,6 +45,16 @@ export const Checkout: React.FC = () => {
   }, []);
 
   const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
+    console.log('=== PAYMENT INIT DEBUG ===');
+    console.log('Function called with:');
+    console.log('- Cart items count:', cartItems.length);
+    console.log('- Total amount:', totalAmount);
+    console.log('- Customer info:', customerInfo);
+    console.log('- Applied discount:', appliedDiscount);
+    console.log('- Referral discount:', referralDiscount);
+    console.log('- Current clientSecret:', clientSecret);
+    console.log('- Is initializing:', isInitializingPayment);
+    
     console.log('=== FRONTEND PAYMENT INIT DEBUG ===')
     console.log('Cart items:', cartItems.length)
     console.log('Total amount:', totalAmount)
@@ -64,6 +74,8 @@ export const Checkout: React.FC = () => {
       
       console.log('Sending request body:', JSON.stringify(requestBody, null, 2))
       
+      console.log('Making fetch request to:', `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`);
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
         method: 'POST',
         headers: {
@@ -73,16 +85,19 @@ export const Checkout: React.FC = () => {
         body: JSON.stringify(requestBody),
       });
 
+      console.log('Response received:');
       console.log('Response status:', response.status)
       console.log('Response ok:', response.ok)
       
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Response error text:', errorText);
         console.error('Payment intent creation failed:', response.status, errorText);
         throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Response data:', data);
       console.log('Payment intent response:', data)
       setClientSecret(data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
@@ -97,6 +112,7 @@ export const Checkout: React.FC = () => {
       setClientSecret('failed');
     } finally {
       setIsInitializingPayment(false);
+      console.log('=== PAYMENT INIT COMPLETE ===');
     }
   };
 
