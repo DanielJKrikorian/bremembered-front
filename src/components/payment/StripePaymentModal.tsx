@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Lock, Check, Loader, Mail } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../../lib/stripe';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -29,22 +30,6 @@ interface StoragePlan {
   storage_limit: number;
   plan_type: string;
 }
-
-const getStripeConfig = () => {
-  const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-  console.log('=== STRIPE CONFIG DEBUG ===');
-  console.log('Publishable Key exists:', !!publishableKey);
-  console.log('Key length:', publishableKey?.length || 0);
-  console.log('Key starts with pk_:', publishableKey?.startsWith('pk_'));
-
-  if (!publishableKey || publishableKey === 'your_stripe_publishable_key_here' || !publishableKey.startsWith('pk_')) {
-    console.error('❌ Stripe publishable key not properly configured');
-    return null;
-  }
-
-  console.log('✅ Stripe key properly configured');
-  return publishableKey;
-};
 
 const PaymentForm: React.FC<{
   plan: StoragePlan;
@@ -361,17 +346,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const [email, setEmail] = useState(user?.email || '');
   const [stripeError, setStripeError] = useState<string | null>(null);
 
-  // Initialize stripePromise only once
-  const stripePromise = useMemo(() => {
-    const publishableKey = getStripeConfig();
-    if (!publishableKey) {
-      setStripeError('Stripe is not configured. Please contact support.');
-      return null;
-    }
-    console.log('Loading Stripe with key:', publishableKey.substring(0, 10) + '...');
-    return loadStripe(publishableKey);
-  }, []); // Empty dependency array to ensure single initialization
-
   // Handle stripePromise resolution
   useEffect(() => {
     if (!isOpen || !stripePromise) return;
@@ -388,7 +362,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
       console.error('❌ Stripe loading error:', error);
       setStripeError('Failed to load payment system. Please refresh and try again.');
     });
-  }, [isOpen, stripePromise]);
+  }, [isOpen]);
 
   // Fetch the storage plan details
   useEffect(() => {
