@@ -21,6 +21,11 @@ export const MyBookings: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Redirect to auth if not authenticated
   if (!isAuthenticated) {
     return (
