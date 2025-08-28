@@ -742,7 +742,7 @@ export const useLatestReviews = (limit: number = 3) => {
         for (const review of data || []) {
           let serviceType = null;
           
-          // Only query bookings if we have valid vendor_id and couple_id
+          // Only query bookings if we have valid vendor_id and couple_id  
           if (review.vendor_id && review.couple_id) {
             const { data: booking } = await supabase
               .from('bookings')
@@ -762,7 +762,7 @@ export const useLatestReviews = (limit: number = 3) => {
             vendor: review.vendors,
             couple: review.couples,
             created_at: review.created_at,
-            service_type: booking?.service_type || null
+            service_type: serviceType
           });
         }
         
