@@ -45,6 +45,7 @@ export const Checkout: React.FC = () => {
   }, []);
 
   const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
+    setIsInitializingPayment(true);
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
         method: 'POST',
@@ -62,7 +63,9 @@ export const Checkout: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Payment intent creation failed:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -71,6 +74,10 @@ export const Checkout: React.FC = () => {
       console.log('Payment intent created:', data);
     } catch (err) {
       console.error('Error creating payment intent:', err);
+      // Set a fallback client secret to prevent infinite loading
+      setClientSecret('failed');
+    } finally {
+      setIsInitializingPayment(false);
     }
   };
 

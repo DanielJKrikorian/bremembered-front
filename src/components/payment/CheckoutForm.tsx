@@ -105,11 +105,16 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret && cartItems.length > 0) {
+    if (currentStep === 3 && !clientSecret && cartItems.length > 0 && !loading) {
       console.log('Initializing payment for', cartItems.length, 'items');
+      console.log('Cart items:', cartItems.map(item => ({ 
+        id: item.id, 
+        name: item.package.name, 
+        price: item.package.price 
+      })));
       onInitializePayment(formData, referralCode);
     }
-  }, [currentStep, clientSecret, onInitializePayment, formData, referralCode, cartItems.length]);
+  }, [currentStep, clientSecret, cartItems.length, loading]);
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
@@ -734,11 +739,20 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         {currentStep === 3 && (
           <div className="space-y-6">
             {/* Payment Intent Status */}
-            {!clientSecret && (
+            {(!clientSecret || clientSecret === 'failed') && (
               <Card className="p-4 bg-blue-50 border border-blue-200">
                 <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                  <span className="text-blue-800">Initializing secure payment...</span>
+                  {clientSecret === 'failed' ? (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-red-800">Payment initialization failed. Please refresh and try again.</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                      <span className="text-blue-800">Initializing secure payment...</span>
+                    </>
+                  )}
                 </div>
               </Card>
             )}
@@ -839,12 +853,32 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
 
               <div className="space-y-4">
-                {!clientSecret ? (
+                {!clientSecret || clientSecret === 'failed' ? (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                    <p className="text-blue-800 text-sm">
-                      Initializing secure payment...
-                    </p>
+                    {clientSecret === 'failed' ? (
+                      <>
+                        <AlertCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                        <p className="text-red-800 text-sm">
+                          Payment initialization failed. Please refresh the page and try again.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.reload()}
+                          className="mt-3"
+                        >
+                          Refresh Page
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                        <p className="text-blue-800 text-sm">
+                          Initializing secure payment...
+                        </p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -982,7 +1016,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || (currentStep === 3 && !clientSecret)}
+              disabled={loading || (currentStep === 3 && (!clientSecret || clientSecret === 'failed'))}
               loading={loading}
               icon={currentStep === 3 ? CreditCard : ArrowRight}
             >
