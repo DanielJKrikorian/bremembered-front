@@ -326,15 +326,16 @@ export const HowItWorks: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {reviews.map((review, index) => {
-                // Generate consistent images based on review ID
-                const images = [
+                // Use couple's profile photo or fallback to generated images
+                const fallbackImages = [
                   'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
                   'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
                   'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=400',
                   'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=400',
                   'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400'
                 ];
-                const imageIndex = index % images.length;
+                const imageIndex = index % fallbackImages.length;
+                const coupleImage = review.couple?.profile_photo || fallbackImages[imageIndex];
                 
                 return (
                   <Card key={review.id} className="p-6">
@@ -351,7 +352,7 @@ export const HowItWorks: React.FC = () => {
                     <blockquote className="text-gray-600 mb-6 italic">"{review.feedback}"</blockquote>
                     <div className="flex items-center">
                       <img
-                        src={images[imageIndex]}
+                        src={coupleImage}
                         alt={review.couple?.name || 'Happy Couple'}
                         className="w-12 h-12 rounded-full object-cover mr-3"
                       />
