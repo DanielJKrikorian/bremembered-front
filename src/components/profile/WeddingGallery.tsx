@@ -210,7 +210,51 @@ export const WeddingGallery: React.FC = () => {
       )}
 
       {/* Gallery Content */}
-      {files.length === 0 ? (
+      {isAccessExpired() ? (
+        /* Subscription Required */
+        <Card className="p-12 text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-red-600" />
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-900 mb-4">Subscription Required</h3>
+          <p className="text-gray-600 mb-6">
+            Subscribe to access your wedding photos and videos. Your memories are safely stored and waiting for you.
+          </p>
+          <div className="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200 rounded-lg p-6 mb-8 max-w-md mx-auto">
+            <h4 className="font-semibold text-rose-900 mb-3">What you'll get:</h4>
+            <ul className="text-sm text-rose-800 space-y-2 text-left">
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Unlimited access to all your photos & videos
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                HD streaming and full-resolution downloads
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Secure cloud storage forever
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Share with family and friends
+              </li>
+            </ul>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Crown}
+            onClick={() => setShowSubscriptionModal(true)}
+            className="px-8"
+          >
+            Subscribe for $4.99/month
+          </Button>
+          <p className="text-sm text-gray-500 mt-4">
+            Cancel anytime. Your photos are always safe with us.
+          </p>
+        </Card>
+      ) : files.length === 0 ? (
         <Card className="p-12 text-center">
           <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No photos or videos yet</h3>
