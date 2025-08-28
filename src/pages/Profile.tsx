@@ -776,7 +776,16 @@ export const Profile: React.FC = () => {
                     <Button
                       variant="outline"
                       icon={Download}
-                      onClick={downloadAllFiles}
+                     onClick={() => {
+                       // Check subscription before allowing download
+                       if (!hasSubscription) {
+                         console.log('No subscription - showing payment modal for download');
+                         setShowPaymentModal(true);
+                         return;
+                       }
+                       console.log('Subscription found - starting download');
+                       downloadAllFiles();
+                     }}
                       disabled={files.length === 0 || downloadingAll}
                       loading={downloadingAll}
                     >
