@@ -18,7 +18,7 @@ export const BlogPost: React.FC = () => {
   const { post, loading, error } = useBlogPost(slug || '');
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
-  const { addBlogPostToFavorites } = useWeddingBoard();
+  const { addToFavorites } = useWeddingBoard();
   const { isAuthenticated } = useAuth();
 
   // Scroll to top when component mounts or slug changes
@@ -69,7 +69,7 @@ export const BlogPost: React.FC = () => {
       // If user is authenticated and post exists, also add to wedding board
       if (isAuthenticated && post && !isLiked) {
         try {
-          await addBlogPostToFavorites(post.id, `Loved this article: ${post.title}`);
+          await addToFavorites('blog_post', post.id, `Loved this article: ${post.title}`);
         } catch (error) {
           // Only log error if it's not about duplicate saves
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';

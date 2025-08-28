@@ -54,40 +54,37 @@ const PaymentForm: React.FC<{
     console.log('User authenticated:', !!user);
 
     if (stripe && elements) {
-      const cardElement = elements.getElement(CardElement);
-      if (cardElement) {
-        console.log('✅ CardElement found');
-        cardElement.on('ready', () => {
-          console.log('✅ CardElement is ready for input');
-          setCardReady(true);
-        });
-        cardElement.on('change', (event) => {
-          console.log('CardElement change event:', event);
-          setCardError(event.error ? event.error.message : null);
-        });
-        cardElement.on('focus', () => console.log('CardElement focused'));
-        cardElement.on('blur', () => console.log('CardElement blurred'));
-      } else {
-        console.error('❌ CardElement not found');
-        setCardError('Unable to load card input. Please refresh the page.');
+      // Only try to get CardElement if it should be rendered
+      if (cardReady) {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          console.log('✅ CardElement found');
+          cardElement.on('change', (event) => {
+            console.log('CardElement change event:', event);
+            setCardError(event.error ? event.error.message : null);
+          });
+          cardElement.on('focus', () => console.log('CardElement focused'));
+          cardElement.on('blur', () => console.log('CardElement blurred'));
+        } else {
+          console.error('❌ CardElement not found');
+          setCardError('Unable to load card input. Please refresh the page.');
+        }
       }
     } else {
       console.error('❌ Stripe or Elements instance not available');
-      setCardError('Payment system not initialized. Please refresh the page.');
     }
 
     return () => {
-      if (elements) {
+      if (elements && cardReady) {
         const cardElement = elements.getElement(CardElement);
         if (cardElement) {
-          cardElement.off('ready');
           cardElement.off('change');
           cardElement.off('focus');
           cardElement.off('blur');
         }
       }
     };
-  }, [stripe, elements, user]);
+  }, [stripe, elements, user, cardReady]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,6 +268,10 @@ const PaymentForm: React.FC<{
           {cardReady && (
             <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[40px]">
               <CardElement
+                onReady={() => {
+                  console.log('✅ CardElement is ready for input');
+                  setCardReady(true);
+                }}
                 options={{
                   style: {
                     base: {

@@ -44,27 +44,6 @@ export const Checkout: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  useEffect(() => {
-    // Initialize payment intent when checkout page loads
-    if (step === 1 && !clientSecret && !isInitializingPayment && cartItems.length > 0 && totalAmount > 0) {
-      setIsInitializingPayment(true);
-      // Create a basic payment intent with complete customerInfo structure
-      initializePaymentIntent({
-        partner1Name: '',
-        partner2Name: '',
-        email: '',
-        phone: '',
-        eventDate: '',
-        eventTime: '',
-        eventLocation: '',
-        guestCount: '',
-        specialRequests: ''
-      }, '').finally(() => {
-        setIsInitializingPayment(false);
-      });
-    }
-  }, [step, clientSecret, isInitializingPayment]);
-
   const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
