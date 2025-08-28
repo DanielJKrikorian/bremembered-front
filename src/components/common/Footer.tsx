@@ -207,21 +207,20 @@ export const Footer: React.FC = () => {
                   <HelpCircle className="w-4 h-4 mr-2" />
                   <button 
                     onClick={() => {
-                      navigate('/how-it-works');
-                     // Scroll to FAQ section after navigation with more specific targeting
+                      navigate('/support');
+                      // Scroll to FAQ section after navigation
                       setTimeout(() => {
-                       // Try multiple selectors to find the FAQ section
-                       const faqElement = document.querySelector('h2[class*="font-bold"]:has-text("Frequently Asked Questions")') ||
-                                         Array.from(document.querySelectorAll('h2')).find(el => 
+                        // Find the FAQ section on the support page
+                        const faqElement = Array.from(document.querySelectorAll('h2')).find(el => 
                                            el.textContent?.includes('Frequently Asked Questions')
                                          );
-                       if (faqElement) {
-                         faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                       } else {
-                         // Fallback: scroll to a position that should be around the FAQ section
-                         window.scrollTo({ top: document.body.scrollHeight * 0.7, behavior: 'smooth' });
+                        if (faqElement) {
+                          faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                          // Fallback: scroll to a position that should be around the FAQ section
+                          window.scrollTo({ top: document.body.scrollHeight * 0.7, behavior: 'smooth' });
                         }
-                     }, 300);
+                      }, 300);
                     }}
                     className="text-gray-300 hover:text-white transition-colors"
                   >
