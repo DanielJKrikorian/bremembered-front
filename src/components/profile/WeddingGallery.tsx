@@ -40,6 +40,11 @@ export const WeddingGallery: React.FC = () => {
   console.log('Is access expired?', isAccessExpired());
   console.log('Files length:', files.length);
 
+  // Check access status once and store result
+  const accessExpired = isAccessExpired();
+  console.log('=== GALLERY ACCESS CHECK ===');
+  console.log('Access expired:', accessExpired);
+
   const handleFolderClick = (folder: any) => {
     console.log('Folder clicked, checking access...');
     if (isAccessExpired()) {
@@ -132,13 +137,9 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  // CRITICAL: Check subscription access BEFORE rendering any gallery content
-  console.log('About to check if access is expired...');
-  const accessExpired = isAccessExpired();
-  console.log('Access expired result:', accessExpired);
-  
+  // CRITICAL: Block all access if subscription is expired
   if (accessExpired) {
-    console.log('BLOCKING ACCESS - Rendering subscription required screen');
+    console.log('BLOCKING ALL GALLERY ACCESS - subscription expired');
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -236,6 +237,7 @@ export const WeddingGallery: React.FC = () => {
   }
 
   console.log('ACCESS ALLOWED - Rendering full gallery');
+
   return (
     <div className="space-y-6">
       {/* Gallery Header */}
@@ -341,7 +343,15 @@ export const WeddingGallery: React.FC = () => {
                   <Card 
                     key={folder.path} 
                     className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleFolderClick(folder)}
+                    onClick={() => {
+                      console.log('Folder clicked, access expired:', accessExpired);
+                      if (accessExpired) {
+                        console.log('Blocking folder access - showing subscription modal');
+                        setShowSubscriptionModal(true);
+                        return;
+                      }
+                      setCurrentFolder(folder.path);
+                    }}
                   >
                     <div className="aspect-video relative">
                       <img
@@ -460,6 +470,12 @@ export const WeddingGallery: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Download clicked, access expired:', accessExpired);
+                                if (accessExpired) {
+                                  console.log('Blocking download - showing subscription modal');
+                                  setShowSubscriptionModal(true);
+                                  return;
+                                }
                                 handleDownloadClick(file);
                               }}
                               className="p-1.5 bg-black/70 text-white rounded-full hover:bg-black/80 transition-colors"
@@ -560,6 +576,12 @@ export const WeddingGallery: React.FC = () => {
                             icon={Download}
                             onClick={(e) => {
                               e.stopPropagation();
+                              console.log('List download clicked, access expired:', accessExpired);
+                              if (accessExpired) {
+                                console.log('Blocking list download - showing subscription modal');
+                                setShowSubscriptionModal(true);
+                                return;
+                              }
                               handleDownloadClick(file);
                             }}
                           >
