@@ -309,14 +309,26 @@ export const useWeddingGallery = () => {
   };
   const downloadFile = async (file: FileUpload) => {
     try {
+      // Fetch the file as a blob and trigger download
+      const response = await fetch(file.public_url || file.file_path);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
       // Create a temporary link to download the file
       const link = document.createElement('a');
-      link.href = file.public_url || file.file_path;
+      link.href = url;
       link.download = file.file_name;
-      link.target = '_blank';
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error downloading file:', err);
       throw new Error('Failed to download file');
@@ -352,9 +364,12 @@ export const useWeddingGallery = () => {
     if (subscription.free_period_expiry) {
       const expiryDate = new Date(subscription.free_period_expiry);
       const now = new Date();
-      return now > expiryDate && subscription.payment_status !== 'active';
+      const hasExpired = now > expiryDate;
+      const hasActivePayment = subscription.payment_status === 'active';
+      return hasExpired && !hasActivePayment;
     }
     
+    // If no free period expiry is set, check payment status
     return subscription.payment_status !== 'active';
   };
 
