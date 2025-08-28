@@ -740,14 +740,20 @@ export const useLatestReviews = (limit: number = 3) => {
         const transformedReviews = [];
         
         for (const review of data || []) {
-          // Get the service type from bookings table
-          const { data: bookingData, error: bookingError } = await supabase
-            .from('bookings')
-            .select('service_type')
-            .eq('vendor_id', review.vendor_id)
-            .eq('couple_id', review.couple_id)
-            .limit(1)
-            .single();
+          let serviceType = null;
+          
+          // Only query bookings if we have valid vendor_id and couple_id
+          if (review.vendor_id && review.couple_id) {
+            const { data: booking } = await supabase
+              .from('bookings')
+              .select('service_type')
+              .eq('vendor_id', review.vendor_id)
+              .eq('couple_id', review.couple_id)
+              .limit(1)
+              .single();
+            
+            serviceType = booking?.service_type;
+          }
           
           transformedReviews.push({
             id: review.id,
@@ -868,7 +874,7 @@ export const useLeadInformation = () => {
             selected_vendors: {},
             total_estimated_cost: 0,
             current_step: 'service_selection',
-            completed_steps: []
+            service_type: serviceType
           };
           
           const { data: createdLead, error: createError } = await supabase!
