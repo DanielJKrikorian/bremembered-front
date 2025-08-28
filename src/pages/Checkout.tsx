@@ -170,7 +170,7 @@ export const Checkout: React.FC = () => {
         {step === 1 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              {clientSecret ? (
+              {clientSecret && clientSecret !== 'failed' ? (
                 <Elements 
                   stripe={stripePromise}
                   options={{
@@ -196,13 +196,36 @@ export const Checkout: React.FC = () => {
                     onInitializePayment={initializePaymentIntent}
                   />
                 </Elements>
+              ) : clientSecret === 'failed' ? (
+                <Card className="p-8 text-center">
+                  <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Payment Initialization Failed</h3>
+                  <p className="text-gray-600 mb-4">There was an error setting up your payment. Please try again.</p>
+                  <Button variant="primary" onClick={() => window.location.reload()}>
+                    Refresh Page
+                  </Button>
+                </Card>
               ) : (
+                <>
+                  <CheckoutForm
+                    cartItems={cartItems}
+                    totalAmount={totalAmount}
+                    discountAmount={appliedDiscount}
+                    referralDiscount={referralDiscount}
+                    clientSecret={clientSecret}
+                    paymentIntentId={paymentIntentId}
+                    onSuccess={handlePaymentSuccess}
+                    onReferralApplied={handleReferralApplied}
+                    onReferralRemoved={handleReferralRemoved}
+                    onInitializePayment={initializePaymentIntent}
+                  />
                 <div className="flex items-center justify-center p-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto mb-4"></div>
                     <p className="text-gray-600">Initializing payment...</p>
                   </div>
                 </div>
+                </>
               )}
               
               {!isAuthenticated && (
