@@ -208,13 +208,20 @@ export const Footer: React.FC = () => {
                   <button 
                     onClick={() => {
                       navigate('/how-it-works');
-                      // Scroll to FAQ section after navigation
+                     // Scroll to FAQ section after navigation with more specific targeting
                       setTimeout(() => {
-                        const element = document.querySelector('h2');
-                        if (element && element.textContent?.includes('Frequently Asked Questions')) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                       // Try multiple selectors to find the FAQ section
+                       const faqElement = document.querySelector('h2[class*="font-bold"]:has-text("Frequently Asked Questions")') ||
+                                         Array.from(document.querySelectorAll('h2')).find(el => 
+                                           el.textContent?.includes('Frequently Asked Questions')
+                                         );
+                       if (faqElement) {
+                         faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                       } else {
+                         // Fallback: scroll to a position that should be around the FAQ section
+                         window.scrollTo({ top: document.body.scrollHeight * 0.7, behavior: 'smooth' });
                         }
-                      }, 100);
+                     }, 300);
                     }}
                     className="text-gray-300 hover:text-white transition-colors"
                   >
