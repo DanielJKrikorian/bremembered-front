@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, Video, Download, Eye, Folder, Calendar, User, Lock, Crown, AlertCircle, Play, Image, FileText, Clock, Shield, Star } from 'lucide-react';
+import { Camera, Video, Download, Eye, Folder, Calendar, User, Lock, Crown, AlertCircle, Play, Image, FileText, Clock, Shield, Star, X, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useWeddingGallery } from '../../hooks/useWeddingGallery';
@@ -109,6 +109,104 @@ export const WeddingGallery: React.FC = () => {
           Try Again
         </Button>
       </Card>
+    );
+  }
+
+  // Check subscription access BEFORE rendering any gallery content
+  if (isAccessExpired()) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Gallery</h3>
+              <p className="text-gray-600">
+                Your photos and videos from vendors
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-500">Expired</div>
+              <div className="text-sm text-gray-600">Access</div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Lock className="w-6 h-6 text-red-600" />
+                <div>
+                  <h4 className="font-medium text-red-900">Gallery Access Expired</h4>
+                  <p className="text-red-700 text-sm">
+                    Your free access period has ended. Subscribe to continue viewing and downloading your photos.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                icon={Crown}
+                onClick={() => setShowSubscriptionModal(true)}
+              >
+                Subscribe Now
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Subscription Required */}
+        <Card className="p-12 text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-red-600" />
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-900 mb-4">Subscription Required</h3>
+          <p className="text-gray-600 mb-6">
+            Subscribe to access your wedding photos and videos. Your memories are safely stored and waiting for you.
+          </p>
+          <div className="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200 rounded-lg p-6 mb-8 max-w-md mx-auto">
+            <h4 className="font-semibold text-rose-900 mb-3">What you'll get:</h4>
+            <ul className="text-sm text-rose-800 space-y-2 text-left">
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Unlimited access to all your photos & videos
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                HD streaming and full-resolution downloads
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Secure cloud storage forever
+              </li>
+              <li className="flex items-center">
+                <Check className="w-4 h-4 mr-2 text-rose-600" />
+                Share with family and friends
+              </li>
+            </ul>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Crown}
+            onClick={() => setShowSubscriptionModal(true)}
+            className="px-8"
+          >
+            Subscribe for $4.99/month
+          </Button>
+          <p className="text-sm text-gray-500 mt-4">
+            Cancel anytime. Your photos are always safe with us.
+          </p>
+        </Card>
+
+        {/* Subscription Modal */}
+        <StripePaymentModal
+          isOpen={showSubscriptionModal}
+          onClose={() => setShowSubscriptionModal(false)}
+          onSuccess={handleSubscriptionSuccess}
+          planId="Couple_Capsule"
+          planName="Wedding Gallery"
+          amount={499}
+        />
+      </div>
     );
   }
 
