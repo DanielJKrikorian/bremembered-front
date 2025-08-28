@@ -125,7 +125,21 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => {
+                    navigate('/vendor-onboarding');
+                    // Scroll to "What is B. Remembered?" section after navigation
+                    setTimeout(() => {
+                      const element = document.querySelector('h2');
+                      if (element && element.textContent?.includes('What is B. Remembered')) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }, 100);
+                  }}
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
                   Vendor Resources
+                </button>
                 </a>
               </li>
               <li>
