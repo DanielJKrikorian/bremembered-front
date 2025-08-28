@@ -114,6 +114,7 @@ export const useWeddingGallery = () => {
               profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
             }
           }
+        ]
 
         setFiles(mockFiles);
         setSubscription(null);
