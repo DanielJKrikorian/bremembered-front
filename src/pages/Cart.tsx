@@ -87,7 +87,7 @@ export const Cart: React.FC = () => {
     navigate('/search');
   };
 
-  const totalServiceFee = state.items.length * 150; // $150 per service
+  const totalServiceFee = state.items.length > 0 ? 150 : 0; // $150 per booking
   const grandTotal = state.totalAmount + totalServiceFee * 100; // Convert to cents
 
   return (
@@ -340,7 +340,7 @@ export const Cart: React.FC = () => {
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Service Fees ({state.items.length} × $150)</span>
+                    <span className="text-gray-600">Service Fee</span>
                     <span className="font-medium">${totalServiceFee}</span>
                   </div>
                   

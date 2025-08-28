@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
 
     // Process each cart item
     const bookingIds = []
-    const totalPlatformFee = cartItems.length * 150 * 100 // $150 per service in cents
+    const totalPlatformFee = cartItems.length > 0 ? 150 * 100 : 0 // $150 per booking in cents
 
     for (const item of cartItems) {
       const vendor = item.vendor_id ? await getVendorById(supabase, item.vendor_id) : null
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
 
       // Calculate amounts for this specific item
       const itemDepositAmount = Math.round(item.price * 0.5) // 50% deposit
-      const itemPlatformFee = 150 * 100 // $150 service fee per item
+      const itemPlatformFee = 0 // No individual service fee per item
       const vendorTransferAmount = Math.round(itemDepositAmount * 0.5) // 50% of deposit to vendor
       
       // Create event

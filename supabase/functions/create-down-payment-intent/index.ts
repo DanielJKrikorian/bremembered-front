@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const totalDiscount = discountAmount + referralDiscount
     const discountedTotal = Math.max(0, subtotal - totalDiscount)
     const depositAmount = Math.round(discountedTotal * 0.5)
-    const totalServiceFee = cartItems.length * 150 * 100 // Convert to cents
+    const totalServiceFee = cartItems.length > 0 ? 150 * 100 : 0 // $150 per booking, convert to cents
     const grandTotal = depositAmount + totalServiceFee
 
     // Create payment intent

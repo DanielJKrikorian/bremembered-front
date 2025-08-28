@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const totalDiscount = discountAmount + referralDiscount
     const discountedTotal = Math.max(0, subtotal - totalDiscount)
     const depositAmount = Math.round(discountedTotal * 0.5)
-    const totalServiceFee = cartItems.length * 150 * 100 // Convert to cents
+    const totalServiceFee = cartItems.length > 0 ? 150 * 100 : 0 // $150 per booking, convert to cents
     const grandTotal = depositAmount + totalServiceFee
 
     // Create line items for Stripe Checkout
@@ -74,11 +74,11 @@ Deno.serve(async (req) => {
         currency: 'usd',
         product_data: {
           name: 'Service Fees',
-          description: `Platform service fees (${cartItems.length} × $150)`,
+          description: 'Platform service fee',
         },
         unit_amount: 15000, // $150 in cents
       },
-      quantity: cartItems.length,
+      quantity: 1,
     })
 
     // Apply discounts if any

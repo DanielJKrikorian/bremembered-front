@@ -126,7 +126,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const totalDiscount = discountAmount + referralDiscount;
   const discountedTotal = Math.max(0, subtotal - totalDiscount);
   const depositAmount = Math.round(discountedTotal * 0.5);
-  const totalServiceFee = cartItems.length * 150;
+  const totalServiceFee = cartItems.length > 0 ? 150 : 0;
   const grandTotal = depositAmount + totalServiceFee * 100;
 
   // Fetch contract templates

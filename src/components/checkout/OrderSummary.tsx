@@ -120,7 +120,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     onDiscountRemoved();
   };
 
-  const totalServiceFee = cartItems.length * 150;
+  const totalServiceFee = cartItems.length > 0 ? 150 : 0;
   const discountedTotal = Math.max(0, totalAmount - appliedDiscount);
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + totalServiceFee * 100;
@@ -209,7 +209,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <span className="font-medium">{formatPrice(depositAmount)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Service Fees ({cartItems.length} × $150)</span>
+          <span className="text-gray-600">Service Fee</span>
           <span className="font-medium">${totalServiceFee}</span>
         </div>
         <div className="flex justify-between text-sm text-gray-500">
