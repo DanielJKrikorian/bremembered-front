@@ -9,6 +9,11 @@ export const HowItWorks: React.FC = () => {
   const navigate = useNavigate();
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const steps = [
     {
       number: '01',
