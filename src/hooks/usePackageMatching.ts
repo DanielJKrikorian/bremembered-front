@@ -151,16 +151,45 @@ export const usePackageMatching = ({
             status: p.status
           })));
           
-          setMatchedPackages(packages || []);
+          // If no packages found and budget is premium/luxury, show highest priced package
+          if ((!packages || packages.length === 0) && budgetRange && 
+              (budgetRange === '300000-500000' || budgetRange === '500000-1000000')) {
+            console.log('No packages in premium/luxury range, fetching highest priced package...');
+            
+            let fallbackQuery = supabase
+              .from('service_packages')
+              .select('*');
+            
+            if (approvedPackages.length > 0) {
+              fallbackQuery = fallbackQuery.eq('status', 'approved');
+            }
+            
+            if (serviceType === 'DJ Services') {
+              fallbackQuery = fallbackQuery.eq('lookup_key', 'dj');
+            } else {
+              fallbackQuery = fallbackQuery.eq('service_type', mappedServiceType);
+            }
+            
+            const { data: fallbackPackages } = await fallbackQuery
+              .order('price', { ascending: false })
+              .limit(5);
+            
+            console.log('Fallback highest priced packages found:', fallbackPackages?.length || 0);
+            setMatchedPackages(fallbackPackages || []);
+            setRecommendedPackage(fallbackPackages?.[0] || null);
+          } else {
+            setMatchedPackages(packages || []);
+          }
           
           // Find best matching package
-          if (packages && packages.length > 0) {
-            let bestPackage = packages[0];
+          const packagesToProcess = packages && packages.length > 0 ? packages : matchedPackages;
+          if (packagesToProcess && packagesToProcess.length > 0) {
+            let bestPackage = packagesToProcess[0];
             
             if (preferenceType === 'hours' && typeof preferenceValue === 'string' && preferenceValue) {
               const targetHours = parseInt(preferenceValue);
               if (!isNaN(targetHours)) {
-                bestPackage = packages.reduce((best, current) => {
+                bestPackage = packagesToProcess.reduce((best, current) => {
                   const bestDiff = Math.abs((best.hour_amount || 0) - targetHours);
                   const currentDiff = Math.abs((current.hour_amount || 0) - targetHours);
                   return currentDiff < bestDiff ? current : best;
@@ -168,7 +197,7 @@ export const usePackageMatching = ({
               }
             } else if (preferenceType === 'coverage' && Array.isArray(preferenceValue)) {
               // Find package that covers the most selected events
-              bestPackage = packages.reduce((best, current) => {
+              bestPackage = packagesToProcess.reduce((best, current) => {
                 const bestCoverage = getPackageCoverage(best.coverage || {});
                 const currentCoverage = getPackageCoverage(current.coverage || {});
                 
