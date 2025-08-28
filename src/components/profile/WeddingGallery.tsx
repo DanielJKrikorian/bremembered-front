@@ -32,73 +32,6 @@ export const WeddingGallery: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
-  // Debug the access check
-  console.log('=== GALLERY COMPONENT DEBUG ===');
-  console.log('Loading:', loading);
-  console.log('Error:', error);
-  console.log('Subscription:', subscription);
-  console.log('Is access expired?', isAccessExpired());
-  console.log('Files length:', files.length);
-
-  // Check access status once and store result
-  const accessExpired = isAccessExpired();
-  console.log('=== GALLERY ACCESS CHECK ===');
-  console.log('Access expired:', accessExpired);
-
-  const handleFolderClick = (folder: any) => {
-    console.log('Folder clicked, checking access...');
-    if (isAccessExpired()) {
-      console.log('Access expired - showing subscription modal');
-      setShowSubscriptionModal(true);
-      return;
-    }
-    console.log('Access OK - opening folder');
-    setCurrentFolder(folder.path);
-  };
-
-  const handleFileClick = (file: any) => {
-    console.log('File clicked, checking access...');
-    if (isAccessExpired()) {
-      console.log('Access expired - showing subscription modal');
-      setShowSubscriptionModal(true);
-      return;
-    }
-    console.log('Access OK - opening file');
-    setSelectedFile(file);
-  };
-
-  const handleDownloadClick = async (file: any) => {
-    console.log('Download clicked, checking access...');
-    if (isAccessExpired()) {
-      console.log('Access expired - showing subscription modal');
-      setShowSubscriptionModal(true);
-      return;
-    }
-    
-    console.log('Access OK - starting download');
-    try {
-      await downloadFile(file);
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
-  };
-
-  const handleDownloadAllClick = async () => {
-    console.log('Download all clicked, checking access...');
-    if (isAccessExpired()) {
-      console.log('Access expired - showing subscription modal');
-      setShowSubscriptionModal(true);
-      return;
-    }
-    
-    console.log('Access OK - starting download all');
-    try {
-      await downloadAllFiles();
-    } catch (error) {
-      console.error('Download all failed:', error);
-    }
-  };
-
   const handleSubscriptionSuccess = () => {
     setShowSubscriptionModal(false);
     // Refresh the page to update subscription status
@@ -112,6 +45,12 @@ export const WeddingGallery: React.FC = () => {
       day: 'numeric'
     });
   };
+
+  // CRITICAL: Check access first thing
+  const hasExpiredAccess = isAccessExpired();
+  console.log('=== GALLERY RENDER CHECK ===');
+  console.log('Has expired access:', hasExpiredAccess);
+  console.log('Subscription:', subscription);
 
   if (loading) {
     return (
@@ -137,9 +76,9 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  // CRITICAL: Block all access if subscription is expired
-  if (accessExpired) {
-    console.log('BLOCKING ALL GALLERY ACCESS - subscription expired');
+  // SUBSCRIPTION REQUIRED SCREEN - This should be the ONLY thing that renders when access is expired
+  if (hasExpiredAccess) {
+    console.log('RENDERING SUBSCRIPTION REQUIRED SCREEN ONLY');
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -236,7 +175,8 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  console.log('ACCESS ALLOWED - Rendering full gallery');
+  // FULL GALLERY ACCESS - This only renders when subscription is active
+  console.log('RENDERING FULL GALLERY - ACCESS ALLOWED');
 
   return (
     <div className="space-y-6">
@@ -255,11 +195,11 @@ export const WeddingGallery: React.FC = () => {
               <div className="text-2xl font-bold text-rose-500">{files.length}</div>
               <div className="text-sm text-gray-600">Files</div>
             </div>
-            {files.length > 0 && !isAccessExpired() && (
+            {files.length > 0 && (
               <Button
                 variant="primary"
                 icon={Download}
-                onClick={handleDownloadAllClick}
+                onClick={downloadAllFiles}
                 loading={downloadingAll}
                 disabled={downloadingAll}
               >
@@ -343,15 +283,7 @@ export const WeddingGallery: React.FC = () => {
                   <Card 
                     key={folder.path} 
                     className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => {
-                      console.log('Folder clicked, access expired:', accessExpired);
-                      if (accessExpired) {
-                        console.log('Blocking folder access - showing subscription modal');
-                        setShowSubscriptionModal(true);
-                        return;
-                      }
-                      setCurrentFolder(folder.path);
-                    }}
+                    onClick={() => setCurrentFolder(folder.path)}
                   >
                     <div className="aspect-video relative">
                       <img
@@ -440,7 +372,7 @@ export const WeddingGallery: React.FC = () => {
                       <Card 
                         key={file.id} 
                         className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-                        onClick={() => handleFileClick(file)}
+                        onClick={() => setSelectedFile(file)}
                       >
                         <div className="aspect-square relative">
                           {fileType === 'image' ? (
@@ -470,13 +402,7 @@ export const WeddingGallery: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('Download clicked, access expired:', accessExpired);
-                                if (accessExpired) {
-                                  console.log('Blocking download - showing subscription modal');
-                                  setShowSubscriptionModal(true);
-                                  return;
-                                }
-                                handleDownloadClick(file);
+                                downloadFile(file);
                               }}
                               className="p-1.5 bg-black/70 text-white rounded-full hover:bg-black/80 transition-colors"
                             >
@@ -525,7 +451,7 @@ export const WeddingGallery: React.FC = () => {
                       <Card 
                         key={file.id} 
                         className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => handleFileClick(file)}
+                        onClick={() => setSelectedFile(file)}
                       >
                         <div className="flex items-center space-x-4">
                           <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 relative">
@@ -551,7 +477,6 @@ export const WeddingGallery: React.FC = () => {
                                 <FileText className="w-4 h-4 text-gray-400" />
                               </div>
                             )}
-                            
                           </div>
                           
                           <div className="flex-1 min-w-0">
@@ -576,13 +501,7 @@ export const WeddingGallery: React.FC = () => {
                             icon={Download}
                             onClick={(e) => {
                               e.stopPropagation();
-                              console.log('List download clicked, access expired:', accessExpired);
-                              if (accessExpired) {
-                                console.log('Blocking list download - showing subscription modal');
-                                setShowSubscriptionModal(true);
-                                return;
-                              }
-                              handleDownloadClick(file);
+                              downloadFile(file);
                             }}
                           >
                             Download
@@ -681,7 +600,7 @@ export const WeddingGallery: React.FC = () => {
                   variant="outline"
                   size="sm"
                   icon={Download}
-                  onClick={() => handleDownloadClick(selectedFile)}
+                  onClick={() => downloadFile(selectedFile)}
                   className="border-white text-white hover:bg-white hover:text-gray-900"
                 >
                   Download
