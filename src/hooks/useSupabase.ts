@@ -720,7 +720,6 @@ export const useLatestReviews = (limit: number = 3) => {
             overall_rating,
             feedback,
             created_at,
-            service_type,
             vendors!inner(
               name
             ),
