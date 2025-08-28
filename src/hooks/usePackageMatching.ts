@@ -86,7 +86,7 @@ export const usePackageMatching = ({
         const serviceTypeMapping: Record<string, string> = {
           'Photography': 'Photography',
           'Videography': 'Videography', 
-          'DJ Services': 'DJ Services',
+          'DJ Services': 'dj',
           'Live Musician': 'Live Musician',
           'Coordination': 'Coordination',
           'Planning': 'Planning'
@@ -94,28 +94,16 @@ export const usePackageMatching = ({
         
         const mappedServiceType = serviceTypeMapping[serviceType] || serviceType;
         
-        // Try exact match first, then partial match
+        // For DJ Services, use lookup_key column instead of service_type
         console.log(`Trying to match service type: "${serviceType}"`);
         console.log(`Mapped to: "${mappedServiceType}"`);
-        const exactMatches = allPackages?.filter(p => 
-          p.service_type === mappedServiceType || 
-          p.service_type?.toLowerCase() === mappedServiceType.toLowerCase()
-        ) || [];
-        console.log('Exact matches:', exactMatches.length);
         
-        const partialMatches = allPackages?.filter(p => 
-          p.service_type?.toLowerCase().includes(mappedServiceType.toLowerCase()) ||
-          mappedServiceType.toLowerCase().includes(p.service_type?.toLowerCase() || '')
-        ) || [];
-        console.log('Partial matches:', partialMatches.length);
-        
-        if (exactMatches.length > 0) {
-          query = query.eq('service_type', mappedServiceType);
-        } else if (partialMatches.length > 0) {
-          query = query.ilike('service_type', `%${mappedServiceType}%`);
+        if (serviceType === 'DJ Services') {
+          // Use lookup_key for DJ Services
+          query = query.eq('lookup_key', 'dj');
         } else {
-          // No service type filter - get all packages
-          console.log('No service type matches, getting all packages');
+          // Use service_type for other services
+          query = query.eq('service_type', mappedServiceType);
         }
 
         // Add other filters only if we have matches
