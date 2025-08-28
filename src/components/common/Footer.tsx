@@ -231,7 +231,12 @@ export const Footer: React.FC = () => {
               <li>
                 <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
                   <Mail className="w-4 h-4 mr-2" />
-                  Contact Us
+                  <button 
+                    onClick={() => navigate('/support')}
+                    className="text-gray-300 hover:text-white transition-colors"
+                  >
+                    Contact Us
+                  </button>
                 </a>
               </li>
             </ul>
