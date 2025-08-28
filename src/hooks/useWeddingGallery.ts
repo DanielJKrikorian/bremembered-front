@@ -360,8 +360,13 @@ export const useWeddingGallery = () => {
   const isAccessExpired = () => {
     console.log('=== ACCESS CHECK DEBUG ===');
     console.log('Subscription object:', subscription);
+    console.log('Subscription is null:', subscription === null);
+    console.log('Subscription is undefined:', subscription === undefined);
     
-    if (!subscription) return true;
+    if (!subscription) {
+      console.log('No subscription found - access should be EXPIRED');
+      return true;
+    }
     
     console.log('Free period expiry:', subscription.free_period_expiry);
     console.log('Payment status:', subscription.payment_status);
@@ -385,7 +390,7 @@ export const useWeddingGallery = () => {
     // If no free period expiry is set, check payment status
     const result = subscription.payment_status !== 'active';
     console.log('No free period, checking payment status result:', result);
-    return subscription.payment_status !== 'active';
+    return result;
   };
 
   const getDaysUntilExpiry = () => {

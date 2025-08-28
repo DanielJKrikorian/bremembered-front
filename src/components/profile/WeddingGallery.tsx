@@ -32,28 +32,45 @@ export const WeddingGallery: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
+  // Debug the access check
+  console.log('=== GALLERY COMPONENT DEBUG ===');
+  console.log('Loading:', loading);
+  console.log('Error:', error);
+  console.log('Subscription:', subscription);
+  console.log('Is access expired?', isAccessExpired());
+  console.log('Files length:', files.length);
+
   const handleFolderClick = (folder: any) => {
+    console.log('Folder clicked, checking access...');
     if (isAccessExpired()) {
+      console.log('Access expired - showing subscription modal');
       setShowSubscriptionModal(true);
       return;
     }
+    console.log('Access OK - opening folder');
     setCurrentFolder(folder.path);
   };
 
   const handleFileClick = (file: any) => {
+    console.log('File clicked, checking access...');
     if (isAccessExpired()) {
+      console.log('Access expired - showing subscription modal');
       setShowSubscriptionModal(true);
       return;
     }
+    console.log('Access OK - opening file');
     setSelectedFile(file);
   };
 
   const handleDownloadClick = async (file: any) => {
+    console.log('Download clicked, checking access...');
     if (isAccessExpired()) {
+      console.log('Access expired - showing subscription modal');
       setShowSubscriptionModal(true);
       return;
     }
     
+    console.log('Access OK - starting download');
     try {
       await downloadFile(file);
     } catch (error) {
@@ -62,11 +79,14 @@ export const WeddingGallery: React.FC = () => {
   };
 
   const handleDownloadAllClick = async () => {
+    console.log('Download all clicked, checking access...');
     if (isAccessExpired()) {
+      console.log('Access expired - showing subscription modal');
       setShowSubscriptionModal(true);
       return;
     }
     
+    console.log('Access OK - starting download all');
     try {
       await downloadAllFiles();
     } catch (error) {
@@ -112,8 +132,13 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  // Check subscription access BEFORE rendering any gallery content
-  if (isAccessExpired()) {
+  // CRITICAL: Check subscription access BEFORE rendering any gallery content
+  console.log('About to check if access is expired...');
+  const accessExpired = isAccessExpired();
+  console.log('Access expired result:', accessExpired);
+  
+  if (accessExpired) {
+    console.log('BLOCKING ACCESS - Rendering subscription required screen');
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -210,6 +235,7 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
+  console.log('ACCESS ALLOWED - Rendering full gallery');
   return (
     <div className="space-y-6">
       {/* Gallery Header */}
