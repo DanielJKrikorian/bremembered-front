@@ -114,20 +114,9 @@ export const useWeddingGallery = () => {
               profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
             }
           }
-        ];
-
-        const mockSubscription: CoupleSubscription = {
-          id: 'mock-sub-1',
-          couple_id: 'mock-couple-1',
-          file_path: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          public_url: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          free_period_expiry: '2024-02-15T00:00:00Z',
-          created_at: '2024-01-15T00:00:00Z',
-          updated_at: '2024-01-15T00:00:00Z'
-        };
 
         setFiles(mockFiles);
-        setSubscription(mockSubscription);
+        setSubscription(null);
         setExtensions([]);
         setLoading(false);
         return;
