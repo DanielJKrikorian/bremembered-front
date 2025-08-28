@@ -35,7 +35,6 @@ export const Profile: React.FC = () => {
     currentFolderVideoFiles,
     subscription, 
     hasSubscription,
-    hasSubscription,
     loading: galleryLoading, 
     downloadFile, 
     downloadAllFiles, 
