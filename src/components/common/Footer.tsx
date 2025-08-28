@@ -194,7 +194,12 @@ export const Footer: React.FC = () => {
               <li>
                 <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
                   <FileText className="w-4 h-4 mr-2" />
-                  Cancellation Policy
+                  <button 
+                    onClick={() => navigate('/cancellation')}
+                    className="text-gray-300 hover:text-white transition-colors"
+                  >
+                    Cancellation Policy
+                  </button>
                 </a>
               </li>
               <li>

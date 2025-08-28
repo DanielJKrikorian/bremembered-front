@@ -23,6 +23,7 @@ import { VendorApplication } from '../pages/VendorApplication';
 import { BookingDetails } from '../pages/BookingDetails';
 import { TermsOfService } from '../pages/TermsOfService';
 import { PrivacyPolicy } from '../pages/PrivacyPolicy';
+import { CancellationPolicy } from '../pages/CancellationPolicy';
 import { ChatBot } from './chat/ChatBot';
 import { CartSidebar } from './cart/CartSidebar';
 import { VendorSelectionModal } from './cart/VendorSelectionModal';
@@ -91,6 +92,7 @@ export const AppContent: React.FC = () => {
           {/* Legal Pages */}
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/cancellation" element={<CancellationPolicy />} />
         </Routes>
       </main>
       <Footer />
