@@ -205,7 +205,21 @@ export const Footer: React.FC = () => {
               <li>
                 <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
                   <HelpCircle className="w-4 h-4 mr-2" />
-                  FAQ
+                  <button 
+                    onClick={() => {
+                      navigate('/how-it-works');
+                      // Scroll to FAQ section after navigation
+                      setTimeout(() => {
+                        const element = document.querySelector('h2');
+                        if (element && element.textContent?.includes('Frequently Asked Questions')) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }, 100);
+                    }}
+                    className="text-gray-300 hover:text-white transition-colors"
+                  >
+                    FAQ
+                  </button>
                 </a>
               </li>
               <li>
