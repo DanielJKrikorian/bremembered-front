@@ -346,7 +346,7 @@ export const HowItWorks: React.FC = () => {
                     </div>
                     <div className="mb-3">
                       <h4 className="font-semibold text-gray-900">
-                        {review.vendor?.name || 'B. Remembered'} <span className="text-gray-500 font-normal">({review.service_type || 'Wedding Services'})</span>
+                        {review.vendor?.name || 'B. Remembered'} {review.service_type && <span className="text-gray-500 font-normal">({review.service_type})</span>}
                       </h4>
                     </div>
                     <blockquote className="text-gray-600 mb-6 italic">"{review.feedback}"</blockquote>

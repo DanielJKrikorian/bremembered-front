@@ -736,16 +736,29 @@ export const useLatestReviews = (limit: number = 3) => {
 
         if (error) throw error;
         
-        // Transform the data to match our expected format
-        const transformedReviews = data?.map(review => ({
-          id: review.id,
-          overall_rating: review.overall_rating,
-          feedback: review.feedback,
-          vendor: review.vendors,
-          couple: review.couples,
-          created_at: review.created_at,
-          service_type: review.service_type || 'Wedding Services'
-        })) || [];
+        // Get service types from bookings table
+        const transformedReviews = [];
+        
+        for (const review of data || []) {
+          // Get the service type from bookings table
+          const { data: bookingData, error: bookingError } = await supabase
+            .from('bookings')
+            .select('service_type')
+            .eq('vendor_id', review.vendor_id)
+            .eq('couple_id', review.couple_id)
+            .limit(1)
+            .single();
+          
+          transformedReviews.push({
+            id: review.id,
+            overall_rating: review.overall_rating,
+            feedback: review.feedback,
+            vendor: review.vendors,
+            couple: review.couples,
+            created_at: review.created_at,
+            service_type: bookingData?.service_type || null
+          });
+        }
         
         setReviews(transformedReviews);
         setLastFetch(now);
