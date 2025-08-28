@@ -167,8 +167,8 @@ export const PackageDetails: React.FC = () => {
 
   const ServiceIcon = getServiceIcon(packageData.service_type);
   const packageImages = packageData.primary_image 
-    ? [packageData.primary_image, ...getServicePhotos(packageData.service_type).slice(1)]
-    : getServicePhotos(packageData.service_type);
+    ? [packageData.primary_image]
+    : [getServicePhotos(packageData.service_type)[0]];
   const packageCoverage = getPackageCoverage(packageData.coverage || {});
 
   return (
@@ -234,22 +234,7 @@ export const PackageDetails: React.FC = () => {
                   </Button>
                 </div>
                 <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
-                  {selectedImage + 1} / {packageImages.length}
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex space-x-4 overflow-x-auto">
-                  {packageImages.map((image, index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`${packageData.name} ${index + 1}`}
-                      className={`w-20 h-20 object-cover rounded-lg cursor-pointer flex-shrink-0 transition-all ${
-                        selectedImage === index ? 'ring-2 ring-rose-500 scale-105' : 'hover:scale-105'
-                      }`}
-                      onClick={() => setSelectedImage(index)}
-                    />
-                  ))}
+                  1 / 1
                 </div>
               </div>
             </Card>
