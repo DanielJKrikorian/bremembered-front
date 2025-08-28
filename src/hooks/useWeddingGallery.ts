@@ -66,6 +66,7 @@ export const useWeddingGallery = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   useEffect(() => {
     const fetchGalleryData = async () => {
@@ -119,6 +120,7 @@ export const useWeddingGallery = () => {
         setFiles(mockFiles);
         setSubscription(null);
         setExtensions([]);
+        setHasSubscription(false);
         setLoading(false);
         return;
       }
@@ -166,12 +168,15 @@ export const useWeddingGallery = () => {
         }
         if (extensionsResult.error) throw extensionsResult.error;
 
-        // Debug subscription data
-        console.log('=== SUBSCRIPTION DEBUG ===');
+        // Simple check: if there's a row in couple_subscriptions, they have access
+        const hasValidSubscription = !!subscriptionResult.data;
+        setHasSubscription(hasValidSubscription);
+        
+        console.log('=== SUBSCRIPTION CHECK ===');
         console.log('Couple ID:', coupleData.id);
-        console.log('Subscription query result:', subscriptionResult);
+        console.log('Subscription row exists:', hasValidSubscription);
         console.log('Subscription data:', subscriptionResult.data);
-        console.log('Subscription error:', subscriptionResult.error);
+
         // Process files to add public URLs
         const processedFiles = (filesResult.data || []).map(file => {
           // Use file_path as the complete storage path in vendor_media bucket
@@ -241,10 +246,6 @@ export const useWeddingGallery = () => {
         setFolders(Array.from(folderMap.values()));
         setSubscription(subscriptionResult.data || null);
         setExtensions(extensionsResult.data || []);
-        
-        // Debug final subscription state
-        console.log('Final subscription state:', subscriptionResult.data || null);
-        console.log('Is access expired?', isAccessExpired());
       } catch (err) {
         console.error('Error fetching gallery data:', err);
         // Set mock data as fallback
@@ -277,6 +278,7 @@ export const useWeddingGallery = () => {
         ]);
         setSubscription(mockSubscription);
         setExtensions([]);
+        setHasSubscription(false);
       } finally {
         setLoading(false);
       }
@@ -357,41 +359,6 @@ export const useWeddingGallery = () => {
     }
   };
 
-  const isAccessExpired = () => {
-    console.log('=== ACCESS CHECK DEBUG ===');
-    console.log('Subscription object:', subscription);
-    console.log('Subscription is null:', subscription === null);
-    console.log('Subscription is undefined:', subscription === undefined);
-    
-    if (!subscription) {
-      console.log('No subscription found - access should be EXPIRED');
-      return true;
-    }
-    
-    console.log('Free period expiry:', subscription.free_period_expiry);
-    console.log('Payment status:', subscription.payment_status);
-    
-    // Check if free period has expired
-    if (subscription.free_period_expiry) {
-      const expiryDate = new Date(subscription.free_period_expiry);
-      const now = new Date();
-      const hasExpired = now > expiryDate;
-      const hasActivePayment = subscription.payment_status === 'active';
-       
-       console.log('Expiry date:', expiryDate);
-       console.log('Current date:', now);
-       console.log('Has expired:', hasExpired);
-       console.log('Has active payment:', hasActivePayment);
-       console.log('Final result:', hasExpired && !hasActivePayment);
-       
-      return hasExpired && !hasActivePayment;
-    }
-    
-    // If no free period expiry is set, check payment status
-    const result = subscription.payment_status !== 'active';
-    console.log('No free period, checking payment status result:', result);
-    return result;
-  };
 
   const getDaysUntilExpiry = () => {
     if (!subscription?.free_period_expiry) return 0;
@@ -456,7 +423,7 @@ export const useWeddingGallery = () => {
     downloadingAll,
     downloadFile,
     downloadAllFiles,
-    isAccessExpired,
+    hasSubscription,
     getDaysUntilExpiry,
     getFileType,
     formatFileSize

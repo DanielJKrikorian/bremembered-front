@@ -22,7 +22,7 @@ export const WeddingGallery: React.FC = () => {
     downloadingAll,
     downloadFile,
     downloadAllFiles,
-    isAccessExpired,
+    hasSubscription,
     getDaysUntilExpiry,
     getFileType,
     formatFileSize
@@ -31,12 +31,6 @@ export const WeddingGallery: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-
-  const handleSubscriptionSuccess = () => {
-    setShowSubscriptionModal(false);
-    // Refresh the page to update subscription status
-    window.location.reload();
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -76,9 +70,9 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  // SUBSCRIPTION REQUIRED SCREEN - This should be the ONLY thing that renders when access is expired
-  if (hasExpiredAccess) {
-    console.log('RENDERING SUBSCRIPTION REQUIRED SCREEN ONLY');
+  // CRITICAL: Block access when no subscription exists
+  if (!hasSubscription) {
+    console.log('NO SUBSCRIPTION - Blocking gallery access');
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -91,7 +85,7 @@ export const WeddingGallery: React.FC = () => {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-red-500">Expired</div>
+              <div className="text-2xl font-bold text-red-500">No Access</div>
               <div className="text-sm text-gray-600">Access</div>
             </div>
           </div>
@@ -101,9 +95,9 @@ export const WeddingGallery: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Lock className="w-6 h-6 text-red-600" />
                 <div>
-                  <h4 className="font-medium text-red-900">Gallery Access Expired</h4>
+                  <h4 className="font-medium text-red-900">Gallery Access Required</h4>
                   <p className="text-red-700 text-sm">
-                    Your free access period has ended. Subscribe to continue viewing and downloading your photos.
+                    Subscribe to access your wedding photos and videos.
                   </p>
                 </div>
               </div>
@@ -175,7 +169,7 @@ export const WeddingGallery: React.FC = () => {
     );
   }
 
-  // FULL GALLERY ACCESS - This only renders when subscription is active
+  console.log('SUBSCRIPTION FOUND - Rendering full gallery');
   console.log('RENDERING FULL GALLERY - ACCESS ALLOWED');
 
   return (
