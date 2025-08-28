@@ -232,7 +232,21 @@ export const Footer: React.FC = () => {
                 <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
                   <Mail className="w-4 h-4 mr-2" />
                   <button 
-                    onClick={() => navigate('/support')}
+                    onClick={() => {
+                      navigate('/support');
+                      // Scroll to "Get in Touch" section after navigation
+                      setTimeout(() => {
+                        const getInTouchElement = Array.from(document.querySelectorAll('h2')).find(el => 
+                          el.textContent?.includes('Get in Touch')
+                        );
+                        if (getInTouchElement) {
+                          getInTouchElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                          // Fallback: scroll to top of page where contact options are
+                          window.scrollTo({ top: 400, behavior: 'smooth' });
+                        }
+                      }, 300);
+                    }}
                     className="text-gray-300 hover:text-white transition-colors"
                   >
                     Contact Us
