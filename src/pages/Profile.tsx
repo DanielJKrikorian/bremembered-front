@@ -38,6 +38,7 @@ export const Profile: React.FC = () => {
     loading: galleryLoading, 
     downloadFile, 
     downloadAllFiles, 
+    downloadingAll,
     getDaysUntilExpiry,
     formatFileSize 
   } = useWeddingGallery();
