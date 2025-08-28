@@ -34,11 +34,11 @@ export const Profile: React.FC = () => {
     currentFolderPhotoFiles,
     currentFolderVideoFiles,
     subscription, 
+    hasSubscription,
     loading: galleryLoading, 
     downloadFile, 
     downloadAllFiles, 
     downloadingAll,
-    isAccessExpired, 
     getDaysUntilExpiry,
     formatFileSize 
   } = useWeddingGallery();
@@ -808,7 +808,7 @@ export const Profile: React.FC = () => {
                 </div>
 
                 {/* Access Status */}
-                {isAccessExpired() ? (
+                {!hasSubscription ? (
                   <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
@@ -825,7 +825,7 @@ export const Profile: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                ) : subscription?.payment_status !== 'active' && (
+                ) : subscription && getDaysUntilExpiry() <= 7 && (
                   <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
