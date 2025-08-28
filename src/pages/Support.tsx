@@ -22,6 +22,11 @@ export const Support: React.FC = () => {
     priority: 'normal'
   });
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const supportCategories = [
     { key: 'all', label: 'All Topics', icon: HelpCircle },
     { key: 'booking', label: 'Booking & Payments', icon: BookOpen },
