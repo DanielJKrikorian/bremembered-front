@@ -166,6 +166,12 @@ export const useWeddingGallery = () => {
         }
         if (extensionsResult.error) throw extensionsResult.error;
 
+        // Debug subscription data
+        console.log('=== SUBSCRIPTION DEBUG ===');
+        console.log('Couple ID:', coupleData.id);
+        console.log('Subscription query result:', subscriptionResult);
+        console.log('Subscription data:', subscriptionResult.data);
+        console.log('Subscription error:', subscriptionResult.error);
         // Process files to add public URLs
         const processedFiles = (filesResult.data || []).map(file => {
           // Use file_path as the complete storage path in vendor_media bucket
@@ -235,6 +241,10 @@ export const useWeddingGallery = () => {
         setFolders(Array.from(folderMap.values()));
         setSubscription(subscriptionResult.data || null);
         setExtensions(extensionsResult.data || []);
+        
+        // Debug final subscription state
+        console.log('Final subscription state:', subscriptionResult.data || null);
+        console.log('Is access expired?', isAccessExpired());
       } catch (err) {
         console.error('Error fetching gallery data:', err);
         // Set mock data as fallback
@@ -348,7 +358,13 @@ export const useWeddingGallery = () => {
   };
 
   const isAccessExpired = () => {
+    console.log('=== ACCESS CHECK DEBUG ===');
+    console.log('Subscription object:', subscription);
+    
     if (!subscription) return true;
+    
+    console.log('Free period expiry:', subscription.free_period_expiry);
+    console.log('Payment status:', subscription.payment_status);
     
     // Check if free period has expired
     if (subscription.free_period_expiry) {
@@ -356,10 +372,19 @@ export const useWeddingGallery = () => {
       const now = new Date();
       const hasExpired = now > expiryDate;
       const hasActivePayment = subscription.payment_status === 'active';
+       
+       console.log('Expiry date:', expiryDate);
+       console.log('Current date:', now);
+       console.log('Has expired:', hasExpired);
+       console.log('Has active payment:', hasActivePayment);
+       console.log('Final result:', hasExpired && !hasActivePayment);
+       
       return hasExpired && !hasActivePayment;
     }
     
     // If no free period expiry is set, check payment status
+    const result = subscription.payment_status !== 'active';
+    console.log('No free period, checking payment status result:', result);
     return subscription.payment_status !== 'active';
   };
 
