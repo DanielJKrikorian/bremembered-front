@@ -45,23 +45,37 @@ export const Checkout: React.FC = () => {
   }, []);
 
   const initializePaymentIntent = async (customerInfo: any, referralCode: string) => {
+    console.log('=== FRONTEND PAYMENT INIT DEBUG ===')
+    console.log('Cart items:', cartItems.length)
+    console.log('Total amount:', totalAmount)
+    console.log('Customer info:', customerInfo)
+    console.log('Applied discount:', appliedDiscount)
+    console.log('Referral discount:', referralDiscount)
+    
     setIsInitializingPayment(true);
     try {
+      const requestBody = {
+        cartItems,
+        totalAmount,
+        discountAmount: appliedDiscount,
+        referralDiscount,
+        customerInfo,
+      }
+      
+      console.log('Sending request body:', JSON.stringify(requestBody, null, 2))
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-down-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({
-          cartItems,
-          totalAmount,
-          discountAmount: appliedDiscount,
-          referralDiscount,
-          customerInfo,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Payment intent creation failed:', response.status, errorText);
@@ -69,11 +83,16 @@ export const Checkout: React.FC = () => {
       }
 
       const data = await response.json();
+      console.log('Payment intent response:', data)
       setClientSecret(data.clientSecret);
       setPaymentIntentId(data.paymentIntentId);
       console.log('Payment intent created:', data);
     } catch (err) {
       console.error('Error creating payment intent:', err);
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      })
       // Set a fallback client secret to prevent infinite loading
       setClientSecret('failed');
     } finally {
