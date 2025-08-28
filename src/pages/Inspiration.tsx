@@ -15,6 +15,11 @@ export const Inspiration: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Scroll to top when component mounts
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // Build filters object
   const filters: BlogFilters = {
     ...(selectedCategory && { category: selectedCategory }),
