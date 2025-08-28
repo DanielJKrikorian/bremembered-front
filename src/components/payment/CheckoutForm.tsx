@@ -105,7 +105,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
   // Initialize payment intent when we reach step 3
   useEffect(() => {
-    if (currentStep === 3 && !clientSecret && cartItems.length > 0 && !loading) {
+    if (!clientSecret && cartItems.length > 0 && !loading && !isInitializingPayment) {
       console.log('Initializing payment for', cartItems.length, 'items');
       console.log('Cart items:', cartItems.map(item => ({ 
         id: item.id, 
@@ -114,7 +114,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       })));
       onInitializePayment(formData, referralCode);
     }
-  }, [currentStep, clientSecret, cartItems.length, loading]);
+  }, [clientSecret, cartItems.length, loading, isInitializingPayment, formData.email]);
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
