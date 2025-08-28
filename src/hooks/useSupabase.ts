@@ -725,7 +725,8 @@ export const useLatestReviews = (limit: number = 3) => {
             ),
             couples!inner(
               name,
-              wedding_date
+              wedding_date,
+              profile_photo
             )
           `)
           .not('feedback', 'is', null)
