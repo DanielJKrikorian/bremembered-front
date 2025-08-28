@@ -612,8 +612,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   required
                 />
                 <span className="text-sm text-gray-600">
-                  I agree to the <a href="#" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and{' '}
-                  <a href="#" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this
+                  I agree to the <a href="/terms" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and{' '}
+                  <a href="/terms" className="text-rose-600 hover:text-rose-700">Privacy Policy</a>. I understand that this
                   booking is subject to the vendor's cancellation policy.
                 </span>
               </label>

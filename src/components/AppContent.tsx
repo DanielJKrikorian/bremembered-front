@@ -21,6 +21,7 @@ import { PackageDetails } from '../pages/PackageDetails';
 import { VendorOnboarding } from '../pages/VendorOnboarding';
 import { VendorApplication } from '../pages/VendorApplication';
 import { BookingDetails } from '../pages/BookingDetails';
+import { TermsOfService } from '../pages/TermsOfService';
 import { ChatBot } from './chat/ChatBot';
 import { CartSidebar } from './cart/CartSidebar';
 import { VendorSelectionModal } from './cart/VendorSelectionModal';
@@ -85,6 +86,9 @@ export const AppContent: React.FC = () => {
           {/* Vendor Onboarding */}
           <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
           <Route path="/vendor-application" element={<VendorApplication />} />
+          
+          {/* Legal Pages */}
+          <Route path="/terms" element={<TermsOfService />} />
         </Routes>
       </main>
       <Footer />

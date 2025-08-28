@@ -174,16 +174,22 @@ export const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Legal & Support</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => navigate('/terms')}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
                   <FileText className="w-4 h-4 mr-2" />
                   Terms of Service
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => navigate('/terms')}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
                   <Shield className="w-4 h-4 mr-2" />
                   Privacy Policy
-                </a>
+                </button>
               </li>
               <li>
                 <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">

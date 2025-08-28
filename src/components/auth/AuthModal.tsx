@@ -207,7 +207,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         <p className="text-xs text-gray-500 text-center mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          By continuing, you agree to our <a href="/terms" className="text-rose-600 hover:text-rose-700">Terms of Service</a> and Privacy Policy.
         </p>
       </Card>
     </div>
