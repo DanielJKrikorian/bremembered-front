@@ -82,24 +82,37 @@ export const usePackageMatching = ({
           query = query.eq('status', 'approved');
         }
 
+        // Map service types to what's actually in the database
+        const serviceTypeMapping: Record<string, string> = {
+          'Photography': 'Photography',
+          'Videography': 'Videography', 
+          'DJ Services': 'DJ Services',
+          'Live Musician': 'Live Musician',
+          'Coordination': 'Coordination',
+          'Planning': 'Planning'
+        };
+        
+        const mappedServiceType = serviceTypeMapping[serviceType] || serviceType;
+        
         // Try exact match first, then partial match
         console.log(`Trying to match service type: "${serviceType}"`);
+        console.log(`Mapped to: "${mappedServiceType}"`);
         const exactMatches = allPackages?.filter(p => 
-          p.service_type === serviceType || 
-          p.service_type?.toLowerCase() === serviceType.toLowerCase()
+          p.service_type === mappedServiceType || 
+          p.service_type?.toLowerCase() === mappedServiceType.toLowerCase()
         ) || [];
         console.log('Exact matches:', exactMatches.length);
         
         const partialMatches = allPackages?.filter(p => 
-          p.service_type?.toLowerCase().includes(serviceType.toLowerCase()) ||
-          serviceType.toLowerCase().includes(p.service_type?.toLowerCase() || '')
+          p.service_type?.toLowerCase().includes(mappedServiceType.toLowerCase()) ||
+          mappedServiceType.toLowerCase().includes(p.service_type?.toLowerCase() || '')
         ) || [];
         console.log('Partial matches:', partialMatches.length);
         
         if (exactMatches.length > 0) {
-          query = query.eq('service_type', serviceType);
+          query = query.eq('service_type', mappedServiceType);
         } else if (partialMatches.length > 0) {
-          query = query.ilike('service_type', `%${serviceType}%`);
+          query = query.ilike('service_type', `%${mappedServiceType}%`);
         } else {
           // No service type filter - get all packages
           console.log('No service type matches, getting all packages');
