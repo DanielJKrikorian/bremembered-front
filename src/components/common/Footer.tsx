@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
               <img 
                 src="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1//2025_IO.png" 
                 alt="B. Remembered" 
-                className="h-8 w-auto"
+                className="h-8 w-auto filter brightness-0 invert"
               />
             </div>
             <p className="text-gray-300 mb-6 leading-relaxed">
