@@ -556,19 +556,18 @@ export const MyBookings: React.FC = () => {
               <span className="text-2xl">💝</span>
             </div>
             <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-              Share Your Wedding Vision
+              Complete Wedding Timeline
             </h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Help your vendors create the perfect experience by sharing your wedding vision, style preferences, and must-have moments. This helps ensure your special day is exactly as you've dreamed.
+              Create and share your detailed wedding timeline with your vendors. This helps ensure everyone is coordinated and your special day runs smoothly from start to finish.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="primary" size="lg">
-                Complete Vision Form
-              </Button>
-              <Button variant="outline" size="lg">
-                View Examples
-              </Button>
-            </div>
+            <Button 
+              variant="primary" 
+              size="lg"
+              onClick={() => navigate('/profile?tab=timeline')}
+            >
+              Complete Wedding Timeline
+            </Button>
           </div>
         </Card>
 
