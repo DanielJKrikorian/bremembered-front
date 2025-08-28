@@ -762,7 +762,7 @@ export const useLatestReviews = (limit: number = 3) => {
             vendor: review.vendors,
             couple: review.couples,
             created_at: review.created_at,
-            service_type: bookingData?.service_type || null
+            service_type: booking?.service_type || null
           });
         }
         
