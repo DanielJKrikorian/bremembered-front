@@ -268,28 +268,7 @@ export const WeddingGallery: React.FC = () => {
         </div>
 
         {/* Access Status */}
-        {isAccessExpired() ? (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Lock className="w-6 h-6 text-red-600" />
-                <div>
-                  <h4 className="font-medium text-red-900">Gallery Access Expired</h4>
-                  <p className="text-red-700 text-sm">
-                    Your free access period has ended. Subscribe to continue viewing and downloading your photos.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                icon={Crown}
-                onClick={() => setShowSubscriptionModal(true)}
-              >
-                Subscribe Now
-              </Button>
-            </div>
-          </div>
-        ) : subscription?.free_period_expiry && getDaysUntilExpiry() <= 7 && (
+        {subscription?.free_period_expiry && getDaysUntilExpiry() <= 7 && (
           <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -334,51 +313,7 @@ export const WeddingGallery: React.FC = () => {
       )}
 
       {/* Gallery Content */}
-      {isAccessExpired() ? (
-        /* Subscription Required */
-        <Card className="p-12 text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-10 h-10 text-red-600" />
-          </div>
-          <h3 className="text-2xl font-semibold text-gray-900 mb-4">Subscription Required</h3>
-          <p className="text-gray-600 mb-6">
-            Subscribe to access your wedding photos and videos. Your memories are safely stored and waiting for you.
-          </p>
-          <div className="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200 rounded-lg p-6 mb-8 max-w-md mx-auto">
-            <h4 className="font-semibold text-rose-900 mb-3">What you'll get:</h4>
-            <ul className="text-sm text-rose-800 space-y-2 text-left">
-              <li className="flex items-center">
-                <Check className="w-4 h-4 mr-2 text-rose-600" />
-                Unlimited access to all your photos & videos
-              </li>
-              <li className="flex items-center">
-                <Check className="w-4 h-4 mr-2 text-rose-600" />
-                HD streaming and full-resolution downloads
-              </li>
-              <li className="flex items-center">
-                <Check className="w-4 h-4 mr-2 text-rose-600" />
-                Secure cloud storage forever
-              </li>
-              <li className="flex items-center">
-                <Check className="w-4 h-4 mr-2 text-rose-600" />
-                Share with family and friends
-              </li>
-            </ul>
-          </div>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={Crown}
-            onClick={() => setShowSubscriptionModal(true)}
-            className="px-8"
-          >
-            Subscribe for $4.99/month
-          </Button>
-          <p className="text-sm text-gray-500 mt-4">
-            Cancel anytime. Your photos are always safe with us.
-          </p>
-        </Card>
-      ) : files.length === 0 ? (
+      {files.length === 0 ? (
         <Card className="p-12 text-center">
           <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No photos or videos yet</h3>
@@ -414,14 +349,6 @@ export const WeddingGallery: React.FC = () => {
                         alt={folder.name}
                         className="w-full h-full object-cover"
                       />
-                      {isAccessExpired() && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <div className="text-center text-white">
-                            <Lock className="w-8 h-8 mx-auto mb-2" />
-                            <p className="text-sm font-medium">Subscription Required</p>
-                          </div>
-                        </div>
-                      )}
                       <div className="absolute top-3 left-3">
                         <div className="bg-black/70 text-white px-2 py-1 rounded text-sm">
                           {folder.fileCount} files
@@ -529,24 +456,11 @@ export const WeddingGallery: React.FC = () => {
                             </div>
                           )}
                           
-                          {isAccessExpired() && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                              <div className="text-center text-white">
-                                <Lock className="w-6 h-6 mx-auto mb-1" />
-                                <p className="text-xs font-medium">Subscribe to View</p>
-                              </div>
-                            </div>
-                          )}
-
                           <div className="absolute top-2 right-2">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (isAccessExpired()) {
-                                  setShowSubscriptionModal(true);
-                                } else {
-                                  handleDownloadClick(file);
-                                }
+                                handleDownloadClick(file);
                               }}
                               className="p-1.5 bg-black/70 text-white rounded-full hover:bg-black/80 transition-colors"
                             >
@@ -622,11 +536,6 @@ export const WeddingGallery: React.FC = () => {
                               </div>
                             )}
                             
-                            {isAccessExpired() && (
-                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                <Lock className="w-3 h-3 text-white" />
-                              </div>
-                            )}
                           </div>
                           
                           <div className="flex-1 min-w-0">
@@ -651,11 +560,7 @@ export const WeddingGallery: React.FC = () => {
                             icon={Download}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (isAccessExpired()) {
-                                setShowSubscriptionModal(true);
-                              } else {
-                                handleDownloadClick(file);
-                              }
+                              handleDownloadClick(file);
                             }}
                           >
                             Download
@@ -704,10 +609,10 @@ export const WeddingGallery: React.FC = () => {
                 <Clock className="w-6 h-6 text-amber-600" />
               </div>
               <div className="text-2xl font-bold text-amber-600 mb-1">
-                {isAccessExpired() ? 'Expired' : getDaysUntilExpiry()}
+                {getDaysUntilExpiry()}
               </div>
               <div className="text-sm text-gray-600">
-                {isAccessExpired() ? 'Access' : 'Days Left'}
+                Days Left
               </div>
             </Card>
           </div>
@@ -715,7 +620,7 @@ export const WeddingGallery: React.FC = () => {
       )}
 
       {/* File Viewer Modal */}
-      {selectedFile && !isAccessExpired() && (
+      {selectedFile && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="relative max-w-4xl max-h-full">
             <button
