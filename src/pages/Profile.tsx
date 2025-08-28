@@ -35,10 +35,10 @@ export const Profile: React.FC = () => {
     currentFolderVideoFiles,
     subscription, 
     hasSubscription,
+    hasSubscription,
     loading: galleryLoading, 
     downloadFile, 
     downloadAllFiles, 
-    downloadingAll,
     getDaysUntilExpiry,
     formatFileSize 
   } = useWeddingGallery();
@@ -883,7 +883,16 @@ export const Profile: React.FC = () => {
                     {folders.map((folder) => (
                       <div
                         key={folder.path}
-                        onClick={() => setCurrentFolder(folder.path)}
+                        onClick={() => {
+                          // Check subscription before allowing folder access
+                          if (!hasSubscription) {
+                            console.log('No subscription - showing payment modal');
+                            setShowPaymentModal(true);
+                            return;
+                          }
+                          console.log('Subscription found - opening folder');
+                          setCurrentFolder(folder.path);
+                        }}
                         className="cursor-pointer"
                       >
                         <Card className="overflow-hidden hover:shadow-lg transition-shadow">
