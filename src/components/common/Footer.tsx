@@ -144,7 +144,21 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => {
+                    navigate('/');
+                    // Scroll to "Love Stories from Real Couples" section after navigation
+                    setTimeout(() => {
+                      const element = document.querySelector('h2');
+                      if (element && element.textContent?.includes('Love Stories from Real Couples')) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }, 100);
+                  }}
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
                   Success Stories
+                </button>
                 </a>
               </li>
               <li>
