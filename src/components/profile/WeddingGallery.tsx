@@ -418,7 +418,11 @@ export const WeddingGallery: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDownloadClick(file);
+                                if (isAccessExpired()) {
+                                  setShowSubscriptionModal(true);
+                                } else {
+                                  handleDownloadClick(file);
+                                }
                               }}
                               className="p-1.5 bg-black/70 text-white rounded-full hover:bg-black/80 transition-colors"
                             >
@@ -523,7 +527,11 @@ export const WeddingGallery: React.FC = () => {
                             icon={Download}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDownloadClick(file);
+                              if (isAccessExpired()) {
+                                setShowSubscriptionModal(true);
+                              } else {
+                                handleDownloadClick(file);
+                              }
                             }}
                           >
                             Download
