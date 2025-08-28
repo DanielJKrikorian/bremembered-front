@@ -55,11 +55,16 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
   
   // Get recommended vendors when we have all required info
   const shouldFetchVendors = currentStep === 3 && selectedVenue && eventDate;
-  const { vendors, loading: vendorsLoading } = useRecommendedVendors({
+  const { vendors: rawVendors, loading: vendorsLoading } = useRecommendedVendors({
     servicePackageId: cartItem.package.id,
     eventDate: shouldFetchVendors ? eventDate : '',
     region: shouldFetchVendors ? selectedVenue?.region : undefined
   });
+
+  // Remove duplicate vendors
+  const vendors = rawVendors.filter((vendor, index, self) => 
+    index === self.findIndex(v => v.id === vendor.id)
+  );
 
   // Get reviews for the vendor being viewed
   const { reviews: vendorReviews, loading: reviewsLoading } = useVendorReviews(viewingVendorProfile?.id || '');
@@ -650,416 +655,429 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
           )}
 
           {/* Step 3: Vendor Selection */}
-          {currentStep === 3 && (
+          {currentStep === 3 && !viewingVendorProfile && (
             <>
-              {viewingVendorProfile ? (
-                /* Vendor Profile View */
-                <div className="space-y-6">
-                  <div className="flex items-center space-x-4 mb-6">
-                    <Button
-                      variant="ghost"
-                      icon={ArrowLeft}
-                      onClick={() => setViewingVendorProfile(null)}
-                      size="sm"
-                    >
-                      Back to Vendors
-                    </Button>
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-900">{viewingVendorProfile.name}</h2>
-                      <p className="text-gray-600">{cartItem.package.service_type} Specialist</p>
-                    </div>
+              {/* Vendor Selection List */}
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <User className="w-8 h-8 text-purple-600" />
                   </div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-3">Choose Your Vendor</h2>
+                  <p className="text-gray-600">
+                    Available {cartItem.package.service_type.toLowerCase()} vendors for {selectedVenue?.region}
+                  </p>
+                </div>
 
-                  {/* Vendor Profile Content */}
-                  <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-start space-x-6">
-                      <img
-                        src={viewingVendorProfile.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                        alt={viewingVendorProfile.name}
-                        className="w-24 h-24 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-3">{viewingVendorProfile.name}</h3>
-                        <div className="flex items-center space-x-4 text-gray-600 mb-4">
-                          {viewingVendorProfile.rating && (
-                            <div className="flex items-center">
-                              <div className="flex items-center mr-2">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
-                                    className={`w-5 h-5 ${
-                                      star <= viewingVendorProfile.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                              <span className="font-medium text-lg">({viewingVendorProfile.rating})</span>
+                {vendorsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p className="text-gray-600">Finding available vendors...</p>
+                  </div>
+                ) : vendors.length === 0 ? (
+                  <div className="text-center py-8">
+                    <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">No vendors available</h3>
+                    <p className="text-gray-600 mb-4">
+                      No {cartItem.package.service_type.toLowerCase()} vendors are available in {selectedVenue?.region} for {new Date(eventDate).toLocaleDateString()}.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep(2)}
+                    >
+                      Try Different Venue
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-w-2xl mx-auto">
+                    {vendors.map((vendor) => {
+                      const isSelected = selectedVendor?.id === vendor.id;
+                      
+                      return (
+                        <div
+                          key={vendor.id}
+                          className={`
+                            relative p-6 rounded-lg border-2 transition-all
+                            ${isSelected 
+                              ? 'border-purple-500 bg-purple-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }
+                            ${checkingAvailability ? 'opacity-50 pointer-events-none' : ''}
+                          `}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-4 right-4 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
                             </div>
                           )}
-                          <span>{viewingVendorProfile.years_experience} years experience</span>
-                        </div>
-                        <p className="text-gray-600 leading-relaxed">
-                          {viewingVendorProfile.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist with ${viewingVendorProfile.years_experience} years of experience creating beautiful memories for couples.`}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Specialties */}
-                    {viewingVendorProfile.specialties && viewingVendorProfile.specialties.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Specialties</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingVendorProfile.specialties.map((specialty, index) => (
-                            <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                              {specialty}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Service Areas */}
-                    {viewingVendorProfile.service_areas && viewingVendorProfile.service_areas.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Service Areas</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingVendorProfile.service_areas.map((area, index) => (
-                            <span key={index} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm">
-                              {area}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Portfolio Preview */}
-                    {((viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0) ||
-                      (viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0)) && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-3">Portfolio</h4>
-                        
-                        {/* Photos */}
-                        {viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0 && (
-                          <div className="mb-6">
-                            <h5 className="font-medium text-gray-700 mb-3">Recent Photos</h5>
-                            <div className="grid grid-cols-3 gap-4">
-                              {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
-                                <img
-                                  key={index}
-                                  src={photo}
-                                  alt={`Portfolio photo ${index + 1}`}
-                                  className="aspect-square object-cover rounded-lg hover:scale-105 transition-transform duration-200 cursor-pointer"
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Videos */}
-                        {viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0 && (
-                          <div className="mb-6">
-                            <h5 className="font-medium text-gray-700 mb-3">Recent Videos</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {viewingVendorProfile.portfolio_videos.slice(0, 4).map((video, index) => (
-                                <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden group">
-                                  <video
-                                    src={video}
-                                    className="w-full h-full object-cover cursor-pointer"
-                                    controls
-                                    preload="metadata"
-                                    poster={viewingVendorProfile.portfolio_photos?.[index] || undefined}
-                                    onError={(e) => {
-                                      console.error('Video failed to load:', video);
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
+                          
+                          <div className="flex items-start space-x-4">
+                            <img
+                              src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                              alt={vendor.name}
+                              className="w-16 h-16 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{vendor.name}</h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                                {vendor.rating && (
+                                  <div className="flex items-center">
+                                    <div className="flex items-center mr-2">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
+                                          className={`w-4 h-4 ${
+                                            star <= vendor.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                          }`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="text-sm">({vendor.rating})</span>
+                                  </div>
+                                )}
+                                <span>{vendor.years_experience} years experience</span>
+                                <div className="flex items-center">
+                                  <Shield className="w-4 h-4 text-green-600 mr-1" />
+                                  <span>Verified</span>
                                 </div>
-                              ))}
+                              </div>
+                              <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                                {vendor.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist`}
+                              </p>
+                              {vendor.specialties && vendor.specialties.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    {vendor.specialties.slice(0, 3).map((specialty, index) => (
+                                      <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                        {specialty}
+                                      </span>
+                                    ))}
+                                    {vendor.specialties.length > 3 && (
+                                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                                        +{vendor.specialties.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Action Buttons */}
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentStep(4); // Go to vendor profile step
+                                    setViewingVendorProfile(vendor);
+                                  }}
+                                >
+                                  View Profile
+                                </Button>
+                                <Button
+                                  variant={isSelected ? "primary" : "outline"}
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleVendorSelect(vendor);
+                                  }}
+                                  disabled={checkingAvailability}
+                                >
+                                  {isSelected ? 'Selected' : 'Select Vendor'}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        {/* Intro Video */}
-                        {viewingVendorProfile.intro_video && (
-                          <div>
-                            <h5 className="font-medium text-gray-700 mb-3">Introduction Video</h5>
-                            <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                <div className="flex justify-center space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleComplete}
+                    disabled={!canProceedStep() || checkingAvailability}
+                    loading={checkingAvailability}
+                  >
+                    Complete Booking Setup
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Step 4: Vendor Profile View */}
+          {currentStep === 4 && viewingVendorProfile && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4 mb-6">
+                <Button
+                  variant="ghost"
+                  icon={ArrowLeft}
+                  onClick={() => {
+                    setCurrentStep(3);
+                    setViewingVendorProfile(null);
+                  }}
+                  size="sm"
+                >
+                  Back to Vendors
+                </Button>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">{viewingVendorProfile.name}</h2>
+                  <p className="text-gray-600">{cartItem.package.service_type} Specialist</p>
+                </div>
+              </div>
+
+              {/* Vendor Profile Content */}
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-start space-x-6">
+                  <img
+                    src={viewingVendorProfile.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                    alt={viewingVendorProfile.name}
+                    className="w-24 h-24 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">{viewingVendorProfile.name}</h3>
+                    <div className="flex items-center space-x-4 text-gray-600 mb-4">
+                      {viewingVendorProfile.rating && (
+                        <div className="flex items-center">
+                          <div className="flex items-center mr-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-5 h-5 ${
+                                  star <= viewingVendorProfile.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="font-medium text-lg">({viewingVendorProfile.rating})</span>
+                        </div>
+                      )}
+                      <span>{viewingVendorProfile.years_experience} years experience</span>
+                    </div>
+                    <p className="text-gray-600 leading-relaxed">
+                      {viewingVendorProfile.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist with ${viewingVendorProfile.years_experience} years of experience creating beautiful memories for couples.`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Specialties */}
+                {viewingVendorProfile.specialties && viewingVendorProfile.specialties.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Specialties</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {viewingVendorProfile.specialties.map((specialty, index) => (
+                        <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Service Areas */}
+                {viewingVendorProfile.service_areas && viewingVendorProfile.service_areas.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Service Areas</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {viewingVendorProfile.service_areas.map((area, index) => (
+                        <span key={index} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm">
+                          {area}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Portfolio Preview */}
+                {((viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0) ||
+                  (viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0)) && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Portfolio</h4>
+                    
+                    {/* Photos */}
+                    {viewingVendorProfile.portfolio_photos && viewingVendorProfile.portfolio_photos.length > 0 && (
+                      <div className="mb-6">
+                        <h5 className="font-medium text-gray-700 mb-3">Recent Photos</h5>
+                        <div className="grid grid-cols-3 gap-4">
+                          {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
+                            <img
+                              key={index}
+                              src={photo}
+                              alt={`Portfolio photo ${index + 1}`}
+                              className="aspect-square object-cover rounded-lg hover:scale-105 transition-transform duration-200 cursor-pointer"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Videos */}
+                    {viewingVendorProfile.portfolio_videos && viewingVendorProfile.portfolio_videos.length > 0 && (
+                      <div className="mb-6">
+                        <h5 className="font-medium text-gray-700 mb-3">Recent Videos</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {viewingVendorProfile.portfolio_videos.slice(0, 4).map((video, index) => (
+                            <div key={index} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden group">
                               <video
-                                src={viewingVendorProfile.intro_video}
-                                className="w-full h-full object-cover"
+                                src={video}
+                                className="w-full h-full object-cover cursor-pointer"
                                 controls
                                 preload="metadata"
-                                poster={viewingVendorProfile.portfolio_photos?.[0] || undefined}
+                                poster={viewingVendorProfile.portfolio_photos?.[index] || undefined}
                                 onError={(e) => {
-                                  console.error('Intro video failed to load:', viewingVendorProfile.intro_video);
+                                  console.error('Video failed to load:', video);
                                   e.currentTarget.style.display = 'none';
                                 }}
                               />
                             </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     )}
 
-                    {/* Quick Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 mb-1">
-                          {viewingVendorProfile.rating || '4.9'}
-                        </div>
-                        <div className="text-sm text-gray-600">Average Rating</div>
-                      </div>
-                      <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 mb-1">
-                          {viewingVendorProfile.years_experience}
-                        </div>
-                        <div className="text-sm text-gray-600">Years Experience</div>
-                      </div>
-                      <div className="text-center p-4 bg-gray-50 rounded-lg">
-                        <div className="text-2xl font-bold text-gray-900 mb-1">
-                          {vendorStats[viewingVendorProfile.id]?.eventsCompleted || 0}+
-                        </div>
-                        <div className="text-sm text-gray-600">Events Completed</div>
-                      </div>
-                    </div>
-
-                    {/* Reviews Section */}
-                    {/* Reviews Section - Only show if vendor has reviews */}
-                    {!reviewsLoading && vendorReviews.length > 0 && (
+                    {/* Intro Video */}
+                    {viewingVendorProfile.intro_video && (
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-4">Recent Reviews</h4>
-                        <div className="space-y-4 max-h-64 overflow-y-auto">
-                          {vendorReviews.slice(0, 3).map((review) => (
-                            <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <h5 className="font-medium text-gray-900 text-sm">
-                                    {review.couples?.name || 'Anonymous Couple'}
-                                  </h5>
-                                  {review.couples?.wedding_date && (
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(review.couples.wedding_date).toLocaleDateString('en-US', { 
-                                        month: 'short', 
-                                        year: 'numeric' 
-                                      })}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                      key={star}
-                                      className={`w-3 h-3 ${
-                                        star <= (review.overall_rating || review.communication_rating) 
-                                          ? 'fill-yellow-400 text-yellow-400' 
-                                          : 'text-gray-300'
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-700 line-clamp-3">
-                                {review.feedback}
-                              </p>
-                              {review.vendor_response && (
-                                <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-                                  <p className="text-xs text-blue-800 font-medium mb-1">Vendor Response:</p>
-                                  <p className="text-xs text-blue-700 line-clamp-2">
-                                    {review.vendor_response}
-                                  </p>
-                                </div>
+                        <h5 className="font-medium text-gray-700 mb-3">Introduction Video</h5>
+                        <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                          <video
+                            src={viewingVendorProfile.intro_video}
+                            className="w-full h-full object-cover"
+                            controls
+                            preload="metadata"
+                            poster={viewingVendorProfile.portfolio_photos?.[0] || undefined}
+                            onError={(e) => {
+                              console.error('Intro video failed to load:', viewingVendorProfile.intro_video);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                      {viewingVendorProfile.rating || '4.9'}
+                    </div>
+                    <div className="text-sm text-gray-600">Average Rating</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                      {viewingVendorProfile.years_experience}
+                    </div>
+                    <div className="text-sm text-gray-600">Years Experience</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                      {vendorStats[viewingVendorProfile.id]?.eventsCompleted || 0}+
+                    </div>
+                    <div className="text-sm text-gray-600">Events Completed</div>
+                  </div>
+                </div>
+
+                {/* Reviews Section */}
+                {!reviewsLoading && vendorReviews.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-4">Recent Reviews</h4>
+                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                      {vendorReviews.slice(0, 3).map((review) => (
+                        <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <h5 className="font-medium text-gray-900 text-sm">
+                                {review.couples?.name || 'Anonymous Couple'}
+                              </h5>
+                              {review.couples?.wedding_date && (
+                                <span className="text-xs text-gray-500">
+                                  {new Date(review.couples.wedding_date).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                  })}
+                                </span>
                               )}
                             </div>
-                          ))}
-                          {vendorReviews.length > 3 && (
-                            <div className="text-center">
-                              <p className="text-sm text-gray-500">
-                                +{vendorReviews.length - 3} more reviews
+                            <div className="flex items-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 ${
+                                    star <= (review.overall_rating || review.communication_rating) 
+                                      ? 'fill-yellow-400 text-yellow-400' 
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-700 line-clamp-3">
+                            {review.feedback}
+                          </p>
+                          {review.vendor_response && (
+                            <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
+                              <p className="text-xs text-blue-800 font-medium mb-1">Vendor Response:</p>
+                              <p className="text-xs text-blue-700 line-clamp-2">
+                                {review.vendor_response}
                               </p>
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      ))}
+                      {vendorReviews.length > 3 && (
+                        <div className="text-center">
+                          <p className="text-sm text-gray-500">
+                            +{vendorReviews.length - 3} more reviews
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex justify-center space-x-3 pt-6 border-t border-gray-200">
-                    <Button
-                      variant="outline"
-                      onClick={() => setViewingVendorProfile(null)}
-                    >
-                      Back to Vendor List
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        handleVendorSelect(viewingVendorProfile);
-                        setViewingVendorProfile(null);
-                      }}
-                      disabled={checkingAvailability}
-                      loading={checkingAvailability}
-                    >
-                      Select This Vendor
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* Vendor Selection List */
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <User className="w-8 h-8 text-purple-600" />
-                    </div>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-3">Choose Your Vendor</h2>
-                    <p className="text-gray-600">
-                      Available {cartItem.package.service_type.toLowerCase()} vendors for {selectedVenue?.region}
-                    </p>
-                  </div>
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-3 pt-6 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentStep(3);
+                    setViewingVendorProfile(null);
+                  }}
+                >
+                  Back to Vendor List
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    handleVendorSelect(viewingVendorProfile);
+                    setViewingVendorProfile(null);
+                    setCurrentStep(3);
+                  }}
+                  disabled={checkingAvailability}
+                  loading={checkingAvailability}
+                >
+                  Select This Vendor
+                </Button>
+              </div>
+            </div>
+          )}
 
-                  {vendorsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-2"></div>
-                      <p className="text-gray-600">Finding available vendors...</p>
-                    </div>
-                  ) : vendors.length === 0 ? (
-                    <div className="text-center py-8">
-                      <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">No vendors available</h3>
-                      <p className="text-gray-600 mb-4">
-                        No {cartItem.package.service_type.toLowerCase()} vendors are available in {selectedVenue?.region} for {new Date(eventDate).toLocaleDateString()}.
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => setCurrentStep(2)}
-                      >
-                        Try Different Venue
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 max-w-2xl mx-auto">
-                      {vendors.map((vendor) => {
-                        const isSelected = selectedVendor?.id === vendor.id;
-                        
-                        return (
-                          <div
-                            key={vendor.id}
-                            className={`
-                              relative p-6 rounded-lg border-2 transition-all
-                              ${isSelected 
-                                ? 'border-purple-500 bg-purple-50' 
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }
-                              ${checkingAvailability ? 'opacity-50 pointer-events-none' : ''}
-                            `}
-                          >
-                            {isSelected && (
-                              <div className="absolute top-4 right-4 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                            
-                            <div className="flex items-start space-x-4">
-                              <img
-                                src={vendor.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                                alt={vendor.name}
-                                className="w-16 h-16 rounded-full object-cover"
-                              />
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">{vendor.name}</h3>
-                                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                                  {vendor.rating && (
-                                    <div className="flex items-center">
-                                      <div className="flex items-center mr-2">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <Star
-                                            key={star}
-                                            className={`w-4 h-4 ${
-                                              star <= vendor.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                            }`}
-                                          />
-                                        ))}
-                                      </div>
-                                      <span className="text-sm">({vendor.rating})</span>
-                                    </div>
-                                  )}
-                                  <span>{vendor.years_experience} years experience</span>
-                                  <div className="flex items-center">
-                                    <Shield className="w-4 h-4 text-green-600 mr-1" />
-                                    <span>Verified</span>
-                                  </div>
-                                </div>
-                                <p className="text-gray-600 text-sm line-clamp-2 mb-3">
-                                  {vendor.profile || `Professional ${cartItem.package.service_type.toLowerCase()} specialist`}
-                                </p>
-                                {vendor.specialties && vendor.specialties.length > 0 && (
-                                  <div className="mb-3">
-                                    <div className="flex flex-wrap gap-1">
-                                      {vendor.specialties.slice(0, 3).map((specialty, index) => (
-                                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                          {specialty}
-                                        </span>
-                                      ))}
-                                      {vendor.specialties.length > 3 && (
-                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                          +{vendor.specialties.length - 3} more
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Action Buttons */}
-                                <div className="flex space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingVendorProfile(vendor);
-                                    }}
-                                  >
-                                    View Profile
-                                  </Button>
-                                  <Button
-                                    variant={isSelected ? "primary" : "outline"}
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleVendorSelect(vendor);
-                                    }}
-                                    disabled={checkingAvailability}
-                                  >
-                                    {isSelected ? 'Selected' : 'Select Vendor'}
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="flex justify-center space-x-3">
-                    <Button
-                      variant="outline"
-                      onClick={handleBack}
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleComplete}
-                      disabled={!canProceedStep() || checkingAvailability}
-                      loading={checkingAvailability}
-                    >
-                      Complete Booking Setup
-                    </Button>
-                  </div>
-                </div>
-              )}
+          {/* Update step condition for step 3 */}
+          {currentStep === 3 && viewingVendorProfile && (
+            <>
             </>
           )}
         </div>
