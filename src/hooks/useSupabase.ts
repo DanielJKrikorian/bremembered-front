@@ -720,9 +720,9 @@ export const useLatestReviews = (limit: number = 3) => {
             overall_rating,
             feedback,
             created_at,
+            service_type,
             vendors!inner(
-              name,
-              service_types
+              name
             ),
             couples!inner(
               name,
@@ -745,7 +745,7 @@ export const useLatestReviews = (limit: number = 3) => {
           vendor: review.vendors,
           couple: review.couples,
           created_at: review.created_at,
-          service_type: review.vendors.service_types?.[0] || 'Wedding Services'
+          service_type: review.service_type || 'Wedding Services'
         })) || [];
         
         setReviews(transformedReviews);
