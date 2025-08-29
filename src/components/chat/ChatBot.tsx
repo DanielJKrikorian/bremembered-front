@@ -271,6 +271,73 @@ export const ChatBot: React.FC = () => {
         }, 1500);
         break;
 
+      case 'dj_info':
+        addUserMessage('Tell me about DJ services');
+        setTimeout(() => {
+          addBotMessage(
+            "Our DJ services include:\n\n• **Professional Sound Systems** - Crystal clear audio for your ceremony and reception\n• **Lighting Packages** - Create the perfect ambiance\n• **MC Services** - Professional announcements and coordination\n• **Custom Playlists** - Music tailored to your taste\n• **Backup Equipment** - We're always prepared\n\nReady to find your perfect DJ?",
+            [
+              { label: 'View DJ Packages', action: 'navigate_dj', icon: ArrowRight }
+            ]
+          );
+        }, 1500);
+        break;
+
+      case 'coordination_info':
+        addUserMessage('Tell me about coordination services');
+        setTimeout(() => {
+          addBotMessage(
+            "Wedding coordination services include:\n\n• **Timeline Planning** - Detailed schedule for your day\n• **Vendor Management** - Coordinate with all your vendors\n• **Day-of Coordination** - On-site management during your wedding\n• **Emergency Support** - Handle any unexpected issues\n• **Setup Oversight** - Ensure everything is perfect\n\nLet me show you our coordination packages!",
+            [
+              { label: 'View Coordination Packages', action: 'navigate_coordination', icon: ArrowRight }
+            ]
+          );
+        }, 1500);
+        break;
+
+      case 'budget_help':
+        addUserMessage('I need help with budgeting');
+        setTimeout(() => {
+          addBotMessage(
+            "Here's a typical wedding budget breakdown:\n\n• **Photography**: 10-15% of total budget\n• **Videography**: 8-12% of total budget\n• **DJ/Entertainment**: 8-10% of total budget\n• **Coordination**: 5-8% of total budget\n\nOur packages are designed to give you the best value for each service. Would you like to see packages in a specific price range?",
+            [
+              { label: 'Browse Budget-Friendly Options', action: 'browse_budget', icon: Search },
+              { label: 'View All Packages', action: 'navigate_all', icon: ArrowRight }
+            ]
+          );
+        }, 1500);
+        break;
+
+      case 'browse_budget':
+        setIsOpen(false);
+        navigate('/search', {
+          state: {
+            filters: {
+              minPrice: 0,
+              maxPrice: 200000 // Under $2000
+            }
+          }
+        });
+        break;
+
+      case 'vendor_tips':
+        addUserMessage('Give me vendor selection tips');
+        setTimeout(() => {
+          addBotMessage(
+            "Here are key tips for choosing wedding vendors:\n\n• **Read Reviews** - Look for recent, detailed reviews\n• **View Portfolios** - See their actual work, not just highlights\n• **Meet in Person** - Video calls work too!\n• **Check Availability** - Confirm they're free on your date\n• **Understand Contracts** - Know what's included\n• **Ask About Backup Plans** - Equipment, weather, illness\n\nReady to start browsing vendors?",
+            [
+              { label: 'Browse All Services', action: 'navigate_all', icon: ArrowRight },
+              { label: 'Get More Planning Help', action: 'planning_help', icon: Calendar }
+            ]
+          );
+        }, 1500);
+        break;
+
+      case 'contact_support':
+        setIsOpen(false);
+        navigate('/support');
+        break;
+
       default:
         // Handle unknown actions
         addBotMessage(
