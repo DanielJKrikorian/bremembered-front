@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
                 </div>
 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://bremembered.io/my-bookings" style="background: linear-gradient(135deg, #f43f5e, #f59e0b); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+                  <a href="https://feedback.bremembered.io" style="background: linear-gradient(135deg, #f43f5e, #f59e0b); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
                     Leave a Review
                   </a>
                 </div>
