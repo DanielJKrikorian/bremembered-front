@@ -32,7 +32,7 @@ export const ChatBot: React.FC = () => {
       setIsOpen(true);
       if (messages.length === 0) {
         addBotMessage(
-          "Hi! I'm here to help you plan your perfect wedding. What can I assist you with today?",
+          "Hi! I'm Ava Luna, your personal wedding planning assistant. I'm here to help you find the perfect vendors and plan your dream wedding. What can I help you with today?",
           [
             { label: 'Find Wedding Services', action: 'find_services', icon: Search },
             { label: 'Browse Photography', action: 'browse_photography', icon: Camera },
@@ -501,12 +501,16 @@ export const ChatBot: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-rose-500 to-amber-500 text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-            <Bot className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/30">
+            <img
+              src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100"
+              alt="Ava Luna"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
-            <h3 className="font-semibold">Wedding Assistant</h3>
-            <p className="text-xs text-white/80">Here to help plan your perfect day</p>
+            <h3 className="font-semibold">Ava Luna</h3>
+            <p className="text-xs text-white/80">Your Wedding Planning Assistant</p>
           </div>
         </div>
         <button
