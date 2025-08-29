@@ -140,13 +140,6 @@ export const HowItWorks: React.FC = () => {
             >
               Start Planning Now
             </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="border-white text-white hover:bg-white hover:text-rose-600"
-            >
-              Watch Demo
-            </Button>
           </div>
         </div>
       </section>
