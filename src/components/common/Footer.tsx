@@ -260,7 +260,7 @@ export const Footer: React.FC = () => {
               </div>
               <div>
                 <p className="font-medium">Serving</p>
-                <p className="text-gray-300">New England & Beyond</p>
+                <p className="text-gray-300">Nationwide</p>
               </div>
             </div>
           </div>
