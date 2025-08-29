@@ -114,7 +114,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('- Is initializing payment:', isInitializingPayment);
     console.log('- Form data email:', formData.email);
     
-    if (!clientSecret && cartItems.length > 0 && !loading && !isInitializingPayment) {
+    if (!clientSecret && cartItems.length > 0 && !loading && !isInitializingPayment && formData.email.trim()) {
       console.log('CONDITIONS MET - Calling onInitializePayment');
       console.log('Initializing payment for', cartItems.length, 'items');
       console.log('Cart items:', cartItems.map(item => ({ 
@@ -129,8 +129,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       console.log('- Has cart items:', cartItems.length > 0);
       console.log('- Not loading:', !loading);
       console.log('- Not initializing:', !isInitializingPayment);
+      console.log('- Has email:', !!formData.email.trim());
     }
-  }, [clientSecret, cartItems.length, loading, isInitializingPayment, formData.email]);
+  }, [clientSecret, cartItems.length, loading, isInitializingPayment, formData.email, onInitializePayment, referralCode]);
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
