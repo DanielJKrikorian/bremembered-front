@@ -203,6 +203,7 @@ export const Checkout: React.FC = () => {
                     onReferralApplied={handleReferralApplied}
                     onReferralRemoved={handleReferralRemoved}
                     onInitializePayment={initializePaymentIntent}
+                    isInitializingPayment={isInitializingPayment}
                   />
                 </Elements>
               )}

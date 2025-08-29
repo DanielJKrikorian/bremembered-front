@@ -45,6 +45,7 @@ interface CheckoutFormProps {
   onReferralApplied: (discount: number, referral: any) => void;
   onReferralRemoved: () => void;
   onInitializePayment: (customerInfo: any, referralCode: string) => void;
+  isInitializingPayment: boolean;
 }
 
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
@@ -58,6 +59,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   onReferralApplied,
   onReferralRemoved,
   onInitializePayment,
+  isInitializingPayment,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
