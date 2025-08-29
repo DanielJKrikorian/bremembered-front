@@ -150,14 +150,7 @@ Deno.serve(async (req) => {
         special_requests: customerInfo.specialRequests || '',
         cart_items: JSON.stringify(cartItems.map(item => ({
           package_id: item.package.id,
-          package_name: item.package.name,
-          service_type: item.package.service_type,
-          vendor_id: item.vendor?.id || '',
-          vendor_name: item.vendor?.name || '',
-          price: item.package.price,
-          event_date: item.eventDate || '',
-          event_time: item.eventTime || '',
-          venue_name: item.venue?.name || ''
+          vendor_id: item.vendor?.id || ''
         }))),
         referral_code: customerInfo.referralCode || '',
         discount_amount: discountAmount.toString(),

@@ -133,6 +133,18 @@ Deno.serve(async (req) => {
     const totalPlatformFee = cartItems.length > 0 ? 150 * 100 : 0 // $150 per booking in cents
 
     for (const item of cartItems) {
+      // Fetch full package details from database
+      const { data: packageData, error: packageError } = await supabase
+        .from('service_packages')
+        .select('*')
+        .eq('id', item.package_id)
+        .single()
+
+      if (packageError || !packageData) {
+        console.warn(`No package found for item ${item.package_id}`)
+        continue
+      }
+
       const vendor = item.vendor_id ? await getVendorById(supabase, item.vendor_id) : null
       
       if (!vendor) {
@@ -141,18 +153,18 @@ Deno.serve(async (req) => {
       }
 
       // Calculate amounts for this specific item
-      const itemDepositAmount = Math.round(item.price * 0.5) // 50% deposit
+      const itemDepositAmount = Math.round(packageData.price * 0.5) // 50% deposit
       const itemPlatformFee = 0 // No individual service fee per item
       const vendorTransferAmount = Math.round(itemDepositAmount * 0.5) // 50% of deposit to vendor
       
       // Create event
-      const eventStartTime = item.event_date && item.event_time 
-        ? `${item.event_date}T${item.event_time}:00`
+      const eventStartTime = customerInfo.eventDate && customerInfo.eventTime 
+        ? `${customerInfo.eventDate}T${customerInfo.eventTime}:00`
         : new Date().toISOString()
       
-      const eventEndTime = item.event_date && item.end_time
-        ? `${item.event_date}T${item.end_time}:00`
-        : new Date(new Date(eventStartTime).getTime() + (item.package?.hour_amount || 8) * 60 * 60 * 1000).toISOString()
+      const eventEndTime = customerInfo.eventDate && customerInfo.endTime
+        ? `${customerInfo.eventDate}T${customerInfo.endTime}:00`
+        : new Date(new Date(eventStartTime).getTime() + (packageData.hour_amount || 8) * 60 * 60 * 1000).toISOString()
 
       const { data: newEvent, error: eventError } = await supabase
         .from('events')
@@ -162,9 +174,9 @@ Deno.serve(async (req) => {
           start_time: eventStartTime,
           end_time: eventEndTime,
           type: 'wedding',
-          title: `${customerName} Wedding - ${item.service_type}`,
-          description: `${item.service_type} service for ${customerName}`,
-          location: eventLocation || item.venue_name || null
+          title: `${customerName} Wedding - ${packageData.service_type}`,
+          description: `${packageData.service_type} service for ${customerName}`,
+          location: eventLocation || null
         })
         .select('id')
         .single()
@@ -178,11 +190,11 @@ Deno.serve(async (req) => {
           couple_id: coupleId,
           vendor_id: vendor.id,
           status: 'confirmed',
-          amount: item.price,
-          service_type: item.service_type,
+          amount: packageData.price,
+          service_type: packageData.service_type,
           package_id: item.package_id,
           event_id: newEvent.id,
-          venue_id: item.venue_id || null,
+          venue_id: null,
           initial_payment: itemDepositAmount,
           platform_fee: itemPlatformFee,
           paid_amount: itemDepositAmount,
@@ -199,14 +211,14 @@ Deno.serve(async (req) => {
       const { data: contractTemplate, error: templateError } = await supabase
         .from('contract_templates')
         .select('content')
-        .eq('service_type', item.service_type)
+        .eq('service_type', packageData.service_type)
         .maybeSingle()
 
       if (templateError && templateError.code !== 'PGRST116') {
         throw templateError
       }
 
-      const contractContent = contractTemplate?.content || generateDefaultContract(item, customerName, eventDate, eventLocation)
+      const contractContent = contractTemplate?.content || generateDefaultContract(packageData, vendor, customerName, eventDate, eventLocation)
 
       await supabase
         .from('contracts')
@@ -240,7 +252,7 @@ Deno.serve(async (req) => {
               booking_id: newBooking.id,
               vendor_id: vendor.id,
               couple_id: coupleId,
-              service_type: item.service_type,
+              service_type: packageData.service_type,
               payment_type: 'vendor_deposit_share'
             }
           })
@@ -292,15 +304,15 @@ async function getVendorById(supabase: any, vendorId: string) {
   return data
 }
 
-function generateDefaultContract(item: any, customerName: string, eventDate: string, eventLocation: string) {
+function generateDefaultContract(packageData: any, vendor: any, customerName: string, eventDate: string, eventLocation: string) {
   const formattedPrice = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(item.price / 100)
+  }).format(packageData.price / 100)
 
-  const depositAmount = Math.round(item.price * 0.5)
+  const depositAmount = Math.round(packageData.price * 0.5)
   const formattedDeposit = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -308,7 +320,7 @@ function generateDefaultContract(item: any, customerName: string, eventDate: str
     maximumFractionDigits: 0,
   }).format(depositAmount / 100)
 
-  const remainingBalance = item.price - depositAmount
+  const remainingBalance = packageData.price - depositAmount
   const formattedBalance = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -316,17 +328,17 @@ function generateDefaultContract(item: any, customerName: string, eventDate: str
     maximumFractionDigits: 0,
   }).format(remainingBalance / 100)
 
-  return `${item.service_type.toUpperCase()} SERVICE AGREEMENT
+  return `${packageData.service_type.toUpperCase()} SERVICE AGREEMENT
 
-This agreement is between ${customerName} (Client) and ${item.vendor_name || 'the selected vendor'} (Service Provider) for ${item.service_type.toLowerCase()} services.
+This agreement is between ${customerName} (Client) and ${vendor.name || 'the selected vendor'} (Service Provider) for ${packageData.service_type.toLowerCase()} services.
 
 EVENT DETAILS:
 - Date: ${eventDate ? new Date(eventDate).toLocaleDateString() : '[Event Date]'}
 - Location: ${eventLocation || '[Event Location]'}
-- Service: ${item.package_name || item.service_type}
+- Service: ${packageData.name || packageData.service_type}
 
 SERVICES PROVIDED:
-${item.package?.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${item.service_type.toLowerCase()} services`}
+${packageData.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${packageData.service_type.toLowerCase()} services`}
 
 PAYMENT TERMS:
 - Total Amount: ${formattedPrice}
@@ -335,7 +347,7 @@ PAYMENT TERMS:
 - Service Fee: $150
 
 TERMS AND CONDITIONS:
-1. The Service Provider agrees to provide professional ${item.service_type.toLowerCase()} services for the specified event.
+1. The Service Provider agrees to provide professional ${packageData.service_type.toLowerCase()} services for the specified event.
 2. The Client agrees to pay the total amount as outlined in the payment schedule.
 3. Cancellation policy: 30 days notice required for partial refund of deposit.
 4. The Service Provider retains copyright to all work but grants usage rights to the Client.
