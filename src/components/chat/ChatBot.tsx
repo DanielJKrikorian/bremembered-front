@@ -308,7 +308,7 @@ export const ChatBot: React.FC = () => {
     }
 
     // Simple keyword-based responses
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsTyping(false);
       
       const lowerMessage = userMessage.toLowerCase();
