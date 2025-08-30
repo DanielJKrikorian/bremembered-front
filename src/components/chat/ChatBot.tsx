@@ -33,27 +33,31 @@ export const ChatBot: React.FC = () => {
   useEffect(() => {
     const handleOpenChatBot = () => {
       setIsOpen(true);
-      if (messages.length === 0) {
-        // Create personalized welcome message
-        const userName = user?.user_metadata?.name?.split(' ')[0] || '';
-        const greeting = userName ? `Hi ${userName}! 👋` : "Hi there! 👋";
-        
-        addBotMessage(
-          `${greeting} I'm Ava Luna, your personal wedding planning assistant! ✨\n\nI'm here to help you find the perfect vendors, plan your timeline, and make your dream wedding come true. I can recommend packages based on your style, budget, and preferences.\n\nWhat can I help you with today?`,
-          [
-            { label: 'Find Wedding Services', action: 'find_services', icon: Search },
-            { label: 'Browse Photography', action: 'browse_photography', icon: Camera },
-            { label: 'Browse DJ Services', action: 'browse_dj', icon: Music },
-            { label: 'Browse Coordination', action: 'browse_coordination', icon: Users },
-            { label: 'Get Planning Help', action: 'planning_help', icon: Calendar }
-          ]
-        );
-      }
     };
 
     window.addEventListener('openChatBot', handleOpenChatBot);
     return () => window.removeEventListener('openChatBot', handleOpenChatBot);
-  }, [messages.length, user]);
+  }, []);
+
+  // Add welcome message when chatbot opens and no messages exist
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      // Create personalized welcome message
+      const userName = user?.user_metadata?.name?.split(' ')[0] || '';
+      const greeting = userName ? `Hi ${userName}! 👋` : "Hi there! 👋";
+      
+      addBotMessage(
+        `${greeting} I'm Ava Luna, your personal wedding planning assistant! ✨\n\nI'm here to help you find the perfect vendors, plan your timeline, and make your dream wedding come true. I can recommend packages based on your style, budget, and preferences.\n\nWhat can I help you with today?`,
+        [
+          { label: 'Find Wedding Services', action: 'find_services', icon: Search },
+          { label: 'Browse Photography', action: 'browse_photography', icon: Camera },
+          { label: 'Browse DJ Services', action: 'browse_dj', icon: Music },
+          { label: 'Browse Coordination', action: 'browse_coordination', icon: Users },
+          { label: 'Get Planning Help', action: 'planning_help', icon: Calendar }
+        ]
+      );
+    }
+  }, [isOpen, messages.length, user]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
