@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChatMessage {
   id: string;
@@ -19,10 +20,12 @@ interface ChatMessage {
 
 export const ChatBot: React.FC = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -208,6 +211,26 @@ export const ChatBot: React.FC = () => {
         navigate('/search');
         break;
 
+      case 'navigate_gallery':
+        setIsOpen(false);
+        navigate('/profile?tab=gallery');
+        break;
+
+      case 'navigate_payments':
+        setIsOpen(false);
+        navigate('/profile?tab=payments');
+        break;
+
+      case 'navigate_messages':
+        setIsOpen(false);
+        navigate('/profile?tab=messages');
+        break;
+
+      case 'navigate_profile':
+        setIsOpen(false);
+        navigate('/profile');
+        break;
+
       case 'planning_help':
         addUserMessage('I need help with wedding planning');
         setTimeout(() => {
@@ -358,123 +381,90 @@ export const ChatBot: React.FC = () => {
     const userMessage = inputMessage.trim();
     addUserMessage(userMessage);
     setInputMessage('');
-    setIsTyping(true);
+    setIsAiThinking(true);
 
-    // Save message to database if configured
-    if (supabase && isSupabaseConfigured()) {
-      try {
-        await supabase.from('chat_messages').insert({
-          session_id: sessionId,
-          sender_type: 'user',
+    try {
+      // Call the AI chat function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           message: userMessage,
-          ip_address: 'web_app'
-        });
-      } catch (error) {
-        console.error('Error saving user message:', error);
+          sessionId: sessionId,
+          userId: isAuthenticated ? user?.id : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
       }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Add AI response with smart action buttons
+      const aiResponse = data.response;
+      const actionButtons = generateActionButtons(aiResponse, userContext);
+      
+      addBotMessage(aiResponse, actionButtons);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Fallback to simple response
+      addBotMessage(
+        "I'm having trouble connecting to my AI brain right now, but I can still help you! Here are some things I can assist with:",
+        [
+          { label: 'Browse Services', action: 'browse_all', icon: Search },
+          { label: 'Get Planning Help', action: 'planning_help', icon: Calendar },
+          { label: 'Contact Support', action: 'contact_support', icon: MessageCircle }
+        ]
+      );
+    } finally {
+      setIsAiThinking(false);
+    }
+  };
+
+  const generateActionButtons = (aiResponse: string, userContext: any) => {
+    const buttons = [];
+    const lowerResponse = aiResponse.toLowerCase();
+
+    // Smart button generation based on AI response content
+    if (lowerResponse.includes('photography') || lowerResponse.includes('photographer')) {
+      buttons.push({ label: 'Browse Photography', action: 'navigate_photography', icon: Camera });
+    }
+    if (lowerResponse.includes('videography') || lowerResponse.includes('video')) {
+      buttons.push({ label: 'Browse Videography', action: 'navigate_videography', icon: Camera });
+    }
+    if (lowerResponse.includes('dj') || lowerResponse.includes('music')) {
+      buttons.push({ label: 'Browse DJ Services', action: 'navigate_dj', icon: Music });
+    }
+    if (lowerResponse.includes('coordination') || lowerResponse.includes('planning')) {
+      buttons.push({ label: 'Browse Coordination', action: 'navigate_coordination', icon: Users });
+    }
+    if (lowerResponse.includes('timeline') || lowerResponse.includes('schedule')) {
+      buttons.push({ label: 'Create Timeline', action: 'navigate_timeline', icon: Calendar });
+    }
+    if (lowerResponse.includes('gallery') || lowerResponse.includes('photos')) {
+      buttons.push({ label: 'View Gallery', action: 'navigate_gallery', icon: Camera });
+    }
+    if (lowerResponse.includes('payment') || lowerResponse.includes('pay')) {
+      buttons.push({ label: 'Manage Payments', action: 'navigate_payments', icon: ArrowRight });
+    }
+    if (lowerResponse.includes('message') || lowerResponse.includes('contact')) {
+      buttons.push({ label: 'View Messages', action: 'navigate_messages', icon: MessageCircle });
     }
 
-    // Simple keyword-based responses
-    setTimeout(async () => {
-      setIsTyping(false);
-      
-      const lowerMessage = userMessage.toLowerCase();
-      
-      if (lowerMessage.includes('photography') || lowerMessage.includes('photographer') || lowerMessage.includes('photos')) {
-        addBotMessage(
-          "I can help you find amazing wedding photographers! Our photography packages include engagement shoots, full wedding day coverage, and beautiful digital galleries.",
-          [
-            { label: 'Browse Photography', action: 'navigate_photography', icon: Camera },
-            { label: 'Photography Tips', action: 'photography_tips', icon: Search }
-          ]
-        );
-      } else if (lowerMessage.includes('video') || lowerMessage.includes('film') || lowerMessage.includes('cinemat')) {
-        addBotMessage(
-          "Videography is a beautiful way to capture your wedding day! Our videographers create cinematic films with highlight reels, full ceremony coverage, and more.",
-          [
-            { label: 'Browse Videography', action: 'navigate_videography', icon: Camera },
-            { label: 'See Video Samples', action: 'videography_samples', icon: ArrowRight }
-          ]
-        );
-      } else if (lowerMessage.includes('dj') || lowerMessage.includes('music') || lowerMessage.includes('entertainment')) {
-        addBotMessage(
-          "Great choice! Our DJs provide professional sound systems, lighting, MC services, and keep your celebration going all night long.",
-          [
-            { label: 'Browse DJ Services', action: 'navigate_dj', icon: Music },
-            { label: 'Learn About DJ Services', action: 'dj_info', icon: ArrowRight }
-          ]
-        );
-      } else if (lowerMessage.includes('coordinat') || lowerMessage.includes('plann') || lowerMessage.includes('organiz')) {
-        addBotMessage(
-          "Wedding coordination is essential for a stress-free day! Our coordinators handle timeline management, vendor coordination, and day-of logistics.",
-          [
-            { label: 'Browse Coordination', action: 'navigate_coordination', icon: Users },
-            { label: 'Planning Resources', action: 'planning_help', icon: Calendar }
-          ]
-        );
-      } else if (lowerMessage.includes('service') || lowerMessage.includes('vendor') || lowerMessage.includes('find') || lowerMessage.includes('search')) {
-        addBotMessage(
-          "I can help you find the perfect wedding services! What type of vendors are you looking for?",
-          [
-            { label: 'Photography', action: 'browse_photography', icon: Camera },
-            { label: 'Videography', action: 'browse_videography', icon: Camera },
-            { label: 'DJ Services', action: 'browse_dj', icon: Music },
-            { label: 'Coordination', action: 'browse_coordination', icon: Users },
-            { label: 'All Services', action: 'browse_all', icon: Search }
-          ]
-        );
-      } else if (lowerMessage.includes('price') || lowerMessage.includes('cost') || lowerMessage.includes('budget')) {
-        addBotMessage(
-          "Wedding service pricing varies based on your needs. Here's what you can expect:\n\n• **Photography**: $1,500 - $5,000+\n• **Videography**: $1,000 - $4,000+\n• **DJ Services**: $800 - $2,500+\n• **Coordination**: $600 - $2,000+\n\nWould you like to see packages in a specific price range?",
-          [
-            { label: 'Browse All Packages', action: 'browse_all', icon: Search },
-            { label: 'Budget Planning Tips', action: 'budget_help', icon: Calendar }
-          ]
-        );
-      } else if (lowerMessage.includes('timeline') || lowerMessage.includes('schedule')) {
-        addBotMessage(
-          "A wedding timeline helps ensure your day runs smoothly! I can help you create a detailed schedule and share it with your vendors.",
-          [
-            { label: 'Create Timeline', action: 'navigate_timeline', icon: Calendar },
-            { label: 'Timeline Examples', action: 'timeline_examples', icon: ArrowRight }
-          ]
-        );
-      } else if (lowerMessage.includes('help') || lowerMessage.includes('support') || lowerMessage.includes('question')) {
-        addBotMessage(
-          "I'm here to help! Here are some things I can assist you with:",
-          [
-            { label: 'Find Wedding Services', action: 'find_services', icon: Search },
-            { label: 'Planning Resources', action: 'planning_help', icon: Calendar },
-            { label: 'Contact Support', action: 'contact_support', icon: ArrowRight }
-          ]
-        );
-      } else {
-        // Generic response with helpful options
-        addBotMessage(
-          "I'd be happy to help you with your wedding planning! Here are some popular things I can assist with:",
-          [
-            { label: 'Find Wedding Services', action: 'find_services', icon: Search },
-            { label: 'Browse Photography', action: 'browse_photography', icon: Camera },
-            { label: 'Browse DJ Services', action: 'browse_dj', icon: Music },
-            { label: 'Get Planning Help', action: 'planning_help', icon: Calendar }
-          ]
-        );
-      }
+    // Always include browse all services as a fallback
+    if (buttons.length === 0) {
+      buttons.push({ label: 'Browse All Services', action: 'browse_all', icon: Search });
+    }
 
-      // Save bot response to database if configured
-      if (supabase && isSupabaseConfigured()) {
-        try {
-          await supabase.from('chat_messages').insert({
-            session_id: sessionId,
-            sender_type: 'bot',
-            message: messages[messages.length - 1]?.message || 'Bot response',
-            ip_address: 'web_app'
-          });
-        } catch (error) {
-          console.error('Error saving bot message:', error);
-        }
-      }
-    }, 1000);
+    return buttons.slice(0, 4); // Limit to 4 buttons max
   };
 
   const formatTime = (date: Date) => {
@@ -560,7 +550,7 @@ export const ChatBot: React.FC = () => {
           </div>
         ))}
         
-        {isTyping && (
+        {(isTyping || isAiThinking) && (
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 rounded-2xl p-3 max-w-xs">
               <div className="flex space-x-1">
@@ -568,6 +558,9 @@ export const ChatBot: React.FC = () => {
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
+              {isAiThinking && (
+                <p className="text-xs text-gray-500 mt-1">Ava is thinking...</p>
+              )}
             </div>
           </div>
         )}
@@ -584,7 +577,7 @@ export const ChatBot: React.FC = () => {
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Ask me anything about wedding planning..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-            disabled={isTyping}
+            disabled={isTyping || isAiThinking}
           />
           <button
             type="submit"
