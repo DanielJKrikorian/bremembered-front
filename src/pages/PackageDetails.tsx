@@ -459,13 +459,6 @@ export const PackageDetails: React.FC = () => {
                               >
                                 View Profile
                               </Button>
-                              <Button 
-                                variant="outline" 
-                                icon={MessageCircle} 
-                                size="sm"
-                              >
-                                Message
-                              </Button>
                             </div>
                           </Card>
                         ))}

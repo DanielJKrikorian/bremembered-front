@@ -18,6 +18,7 @@ import { EventDetails } from '../pages/booking/EventDetails';
 import { PackageCongratulations } from '../pages/booking/PackageCongratulations';
 import { VendorRecommendation } from '../pages/booking/VendorRecommendation';
 import { PackageDetails } from '../pages/PackageDetails';
+import { VendorProfile } from '../pages/VendorProfile';
 import { VendorOnboarding } from '../pages/VendorOnboarding';
 import { VendorApplication } from '../pages/VendorApplication';
 import { BookingDetails } from '../pages/BookingDetails';
@@ -78,6 +79,9 @@ export const AppContent: React.FC = () => {
           
           {/* Package Details */}
           <Route path="/package/:id" element={<PackageDetails />} />
+          
+          {/* Vendor Profile */}
+          <Route path="/vendor/:id" element={<VendorProfile />} />
           
           {/* New Booking Flow Routes */}
           <Route path="/booking/services" element={<ServiceSelection />} />
