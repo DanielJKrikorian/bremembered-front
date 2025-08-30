@@ -410,7 +410,7 @@ export const ChatBot: React.FC = () => {
 
       // Add AI response with smart action buttons
       const aiResponse = data.response;
-      const actionButtons = generateActionButtons(aiResponse, userContext);
+      const actionButtons = generateActionButtons(aiResponse);
       
       addBotMessage(aiResponse, actionButtons);
     } catch (error) {
@@ -429,7 +429,7 @@ export const ChatBot: React.FC = () => {
     }
   };
 
-  const generateActionButtons = (aiResponse: string, userContext: any) => {
+  const generateActionButtons = (aiResponse: string) => {
     const buttons = [];
     const lowerResponse = aiResponse.toLowerCase();
 
