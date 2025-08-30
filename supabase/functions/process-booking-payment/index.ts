@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
           paid_amount: itemDepositAmount,
           discount: Math.round((discountAmount + referralDiscount) / cartItems.length) || 0,
           stripe_payment_intent_id: paymentIntentId,
-          // New payment split columns
+          // Payment split columns (works for both legacy and split models)
           vendor_deposit_share: vendorDepositShare,
           platform_deposit_share: platformDepositShare,
           vendor_final_share: vendorFinalShare,
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
           platform_total_earnings: platformTotalEarnings,
           tip_amount: 0, // No tips at booking time
           vendor_payout_amount: vendorPayoutAmount,
-          payment_model: 'split' // Using new split model
+          payment_model: paymentModel // Track which model this booking uses
         })
         .select('id')
         .single()
