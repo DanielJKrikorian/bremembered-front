@@ -27,6 +27,7 @@ export const ChatBot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,11 +63,18 @@ export const ChatBot: React.FC = () => {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current && shouldScrollToBottom) {
+    if (messagesEndRef.current && shouldScrollToBottom && !isInitialLoad) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
       setShouldScrollToBottom(false);
     }
-  }, [messages, shouldScrollToBottom]);
+  }, [messages, shouldScrollToBottom, isInitialLoad]);
+
+  // Reset initial load flag after first message interaction
+  useEffect(() => {
+    if (messages.length > 1) {
+      setIsInitialLoad(false);
+    }
+  }, [messages.length]);
 
   const addBotMessage = (message: string, options?: Array<{ label: string; action: string; icon?: any }>) => {
     const botMessage: ChatMessage = {
@@ -77,7 +85,9 @@ export const ChatBot: React.FC = () => {
       options
     };
     setMessages(prev => [...prev, botMessage]);
-    setShouldScrollToBottom(true);
+    if (!isInitialLoad) {
+      setShouldScrollToBottom(true);
+    }
   };
 
   const addUserMessage = (message: string) => {
@@ -89,6 +99,7 @@ export const ChatBot: React.FC = () => {
     };
     setMessages(prev => [...prev, userMessage]);
     setShouldScrollToBottom(true);
+    setIsInitialLoad(false);
   };
   const sendFallbackEmail = async (userQuestion: string) => {
     try {
