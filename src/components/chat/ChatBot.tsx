@@ -513,13 +513,12 @@ export const ChatBot: React.FC = () => {
     const userMessage = inputMessage.trim();
     addUserMessage(userMessage);
     setInputMessage('');
-    setIsAiThinking(true);
 
-    // Show thinking for 5 seconds, then typing
+    // Wait 5 seconds, then show typing
     setTimeout(() => {
-      setIsAiThinking(false);
       setIsTyping(true);
     }, 5000);
+
     try {
       // Call the AI chat function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`, {
@@ -567,7 +566,6 @@ export const ChatBot: React.FC = () => {
         ]
       );
     } finally {
-      setIsAiThinking(false);
       setIsTyping(false);
     }
   };
@@ -693,7 +691,7 @@ export const ChatBot: React.FC = () => {
           </div>
         ))}
         
-        {(isTyping || isAiThinking) && (
+        {isTyping && (
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 rounded-2xl p-3 max-w-xs">
               <div className="flex space-x-1">
@@ -701,9 +699,6 @@ export const ChatBot: React.FC = () => {
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              {isAiThinking && (
-                <p className="text-xs text-gray-500 mt-1">Ava is thinking...</p>
-              )}
             </div>
           </div>
         )}
@@ -720,7 +715,7 @@ export const ChatBot: React.FC = () => {
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Ask me anything about wedding planning..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-            disabled={isTyping || isAiThinking}
+            disabled={isTyping}
           />
           <button
             type="submit"
