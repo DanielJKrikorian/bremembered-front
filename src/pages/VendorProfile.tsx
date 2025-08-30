@@ -7,18 +7,21 @@ import { useVendorReviews } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Vendor } from '../types/booking';
 import { useCart } from '../context/CartContext';
+import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
 
 export const VendorProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, updateItem } = useCart();
   const [vendor, setVendor] = useState<Vendor | null>(location.state?.vendor || null);
   const [loading, setLoading] = useState(!vendor);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'portfolio' | 'reviews'>('overview');
   const [vendorStats, setVendorStats] = useState<{ eventsCompleted: number }>({ eventsCompleted: 0 });
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [tempCartItem, setTempCartItem] = useState<any>(null);
 
   const { reviews: vendorReviews, loading: reviewsLoading } = useVendorReviews(vendor?.id || '');
 
@@ -158,12 +161,37 @@ export const VendorProfile: React.FC = () => {
 
   const handleBookWithVendor = () => {
     if (selectedPackage) {
-      addItem({ 
+      // Create a temporary cart item to pass to the vendor selection modal
+      const tempItem = {
+        id: `temp-${Date.now()}`,
         package: selectedPackage,
-        vendor: vendor
+        addedAt: new Date().toISOString()
+      };
+      setTempCartItem(tempItem);
+      setShowVendorModal(true);
+    }
+  };
+
+  const handleVendorSelected = (selectedVendor: any, eventDetails: any) => {
+    if (tempCartItem && selectedPackage) {
+      // Add the item to cart with all the details including the pre-selected vendor
+      addItem({
+        package: selectedPackage,
+        vendor: selectedVendor,
+        eventDate: eventDetails.eventDate,
+        eventTime: eventDetails.eventTime,
+        endTime: eventDetails.endTime,
+        venue: eventDetails.venue
       });
+      setShowVendorModal(false);
+      setTempCartItem(null);
       openCart();
     }
+  };
+
+  const handleModalClose = () => {
+    setShowVendorModal(false);
+    setTempCartItem(null);
   };
 
   if (loading) {
@@ -640,6 +668,16 @@ export const VendorProfile: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Vendor Selection Modal for availability checking */}
+      {tempCartItem && (
+        <VendorSelectionModal
+          isOpen={showVendorModal}
+          onClose={handleModalClose}
+          cartItem={tempCartItem}
+          onVendorSelected={handleVendorSelected}
+        />
+      )}
     </div>
   );
 };
