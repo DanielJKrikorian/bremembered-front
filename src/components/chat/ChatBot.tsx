@@ -34,8 +34,12 @@ export const ChatBot: React.FC = () => {
     const handleOpenChatBot = () => {
       setIsOpen(true);
       if (messages.length === 0) {
+        // Create personalized welcome message
+        const userName = user?.user_metadata?.name?.split(' ')[0] || '';
+        const greeting = userName ? `Hi ${userName}! 👋` : "Hi there! 👋";
+        
         addBotMessage(
-          "Hi! I'm Ava Luna, your personal wedding planning assistant. I'm here to help you find the perfect vendors and plan your dream wedding. What can I help you with today?",
+          `${greeting} I'm Ava Luna, your personal wedding planning assistant! ✨\n\nI'm here to help you find the perfect vendors, plan your timeline, and make your dream wedding come true. I can recommend packages based on your style, budget, and preferences.\n\nWhat can I help you with today?`,
           [
             { label: 'Find Wedding Services', action: 'find_services', icon: Search },
             { label: 'Browse Photography', action: 'browse_photography', icon: Camera },
@@ -49,7 +53,7 @@ export const ChatBot: React.FC = () => {
 
     window.addEventListener('openChatBot', handleOpenChatBot);
     return () => window.removeEventListener('openChatBot', handleOpenChatBot);
-  }, [messages.length]);
+  }, [messages.length, user]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
