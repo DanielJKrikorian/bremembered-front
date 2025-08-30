@@ -26,6 +26,7 @@ export const ChatBot: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -61,10 +62,11 @@ export const ChatBot: React.FC = () => {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && shouldScrollToBottom) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setShouldScrollToBottom(false);
     }
-  }, [messages]);
+  }, [messages, shouldScrollToBottom]);
 
   const addBotMessage = (message: string, options?: Array<{ label: string; action: string; icon?: any }>) => {
     const botMessage: ChatMessage = {
@@ -75,6 +77,7 @@ export const ChatBot: React.FC = () => {
       options
     };
     setMessages(prev => [...prev, botMessage]);
+    setShouldScrollToBottom(true);
   };
 
   const addUserMessage = (message: string) => {
@@ -85,13 +88,45 @@ export const ChatBot: React.FC = () => {
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
+    setShouldScrollToBottom(true);
+  };
+  const sendFallbackEmail = async (userQuestion: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-fallback-support`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userQuestion,
+          sessionId,
+          userId: isAuthenticated ? user?.id : null,
+          userEmail: user?.email || 'anonymous',
+          userName: user?.user_metadata?.name || 'Anonymous User',
+          conversationHistory: messages.slice(-5) // Last 5 messages for context
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send fallback email');
+      }
+    } catch (error) {
+      console.error('Error sending fallback email:', error);
+    }
   };
 
   const handleOptionClick = (action: string) => {
     switch (action) {
       case 'find_services':
         addUserMessage('I want to find wedding services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Perfect! I can help you find the ideal wedding services. What type of services are you looking for?",
             [
@@ -102,12 +137,18 @@ export const ChatBot: React.FC = () => {
               { label: 'All Services', action: 'browse_all', icon: Search }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'browse_photography':
         addUserMessage('I want to browse photography services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Great choice! Photography is one of the most important investments for your wedding day. Let me take you to our photography packages where you can see portfolios, compare prices, and read reviews from real couples.",
             [
@@ -116,12 +157,18 @@ export const ChatBot: React.FC = () => {
               { label: 'See Photography Tips', action: 'photography_tips', icon: Search }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'browse_videography':
         addUserMessage('I want to browse videography services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Excellent! Videography captures the emotions and moments of your day in motion. Our videographers create beautiful cinematic films that tell your love story.",
             [
@@ -129,12 +176,18 @@ export const ChatBot: React.FC = () => {
               { label: 'See Sample Wedding Films', action: 'videography_samples', icon: Camera }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'browse_dj':
         addUserMessage('I want to browse DJ services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Perfect! A great DJ keeps your celebration alive and ensures your guests have an amazing time. Our DJs provide professional sound systems, lighting, and entertainment.",
             [
@@ -142,12 +195,18 @@ export const ChatBot: React.FC = () => {
               { label: 'Learn About DJ Services', action: 'dj_info', icon: Music }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'browse_coordination':
         addUserMessage('I want to browse coordination services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Smart choice! Wedding coordinators ensure your day runs smoothly so you can focus on celebrating. They handle all the logistics and timeline management.",
             [
@@ -155,19 +214,25 @@ export const ChatBot: React.FC = () => {
               { label: 'Learn About Coordination', action: 'coordination_info', icon: Users }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'browse_all':
         addUserMessage('I want to see all wedding services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Wonderful! I'll take you to our complete catalog where you can browse all wedding services, compare packages, and find your perfect vendors.",
             [
               { label: 'Browse All Services', action: 'navigate_all', icon: ArrowRight }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'navigate_photography':
@@ -241,7 +306,13 @@ export const ChatBot: React.FC = () => {
 
       case 'planning_help':
         addUserMessage('I need help with wedding planning');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "I'd love to help you plan your perfect day! Here are some resources and tools to get you started:",
             [
@@ -251,12 +322,18 @@ export const ChatBot: React.FC = () => {
               { label: 'Browse Inspiration', action: 'browse_inspiration', icon: Search }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'timeline_help':
         addUserMessage('I need help with my wedding timeline');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "A well-planned timeline is key to a stress-free wedding day! I can help you create a detailed timeline and share it with your vendors.",
             [
@@ -264,7 +341,7 @@ export const ChatBot: React.FC = () => {
               { label: 'See Timeline Examples', action: 'timeline_examples', icon: Calendar }
             ]
           );
-        }, 1000);
+        }, 7000);
         break;
 
       case 'navigate_timeline':
@@ -279,19 +356,31 @@ export const ChatBot: React.FC = () => {
 
       case 'photography_styles':
         addUserMessage('Tell me about photography styles');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "There are several beautiful photography styles to choose from:\n\n• **Classic/Traditional** - Timeless posed portraits\n• **Photojournalistic** - Candid, natural moments\n• **Fine Art** - Artistic, creative compositions\n• **Editorial** - Fashion-inspired dramatic shots\n\nEach photographer has their own unique style. Browse our photography packages to see different portfolios!",
             [
               { label: 'View Photography Packages', action: 'navigate_photography', icon: ArrowRight }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'photography_tips':
         addUserMessage('Give me photography tips');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Here are some key tips for choosing your wedding photographer:\n\n• **View full galleries**, not just highlight reels\n• **Meet them in person** or via video call\n• **Check their backup plans** for equipment and weather\n• **Understand what's included** in each package\n• **Read recent reviews** from other couples\n\nWould you like to see our photography packages?",
             [
@@ -299,36 +388,54 @@ export const ChatBot: React.FC = () => {
               { label: 'Read Photography Guide', action: 'browse_inspiration', icon: Search }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'dj_info':
         addUserMessage('Tell me about DJ services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Our DJ services include:\n\n• **Professional Sound Systems** - Crystal clear audio for your ceremony and reception\n• **Lighting Packages** - Create the perfect ambiance\n• **MC Services** - Professional announcements and coordination\n• **Custom Playlists** - Music tailored to your taste\n• **Backup Equipment** - We're always prepared\n\nReady to find your perfect DJ?",
             [
               { label: 'View DJ Packages', action: 'navigate_dj', icon: ArrowRight }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'coordination_info':
         addUserMessage('Tell me about coordination services');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Wedding coordination services include:\n\n• **Timeline Planning** - Detailed schedule for your day\n• **Vendor Management** - Coordinate with all your vendors\n• **Day-of Coordination** - On-site management during your wedding\n• **Emergency Support** - Handle any unexpected issues\n• **Setup Oversight** - Ensure everything is perfect\n\nLet me show you our coordination packages!",
             [
               { label: 'View Coordination Packages', action: 'navigate_coordination', icon: ArrowRight }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'budget_help':
         addUserMessage('I need help with budgeting');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Here's a typical wedding budget breakdown:\n\n• **Photography**: 10-15% of total budget\n• **Videography**: 8-12% of total budget\n• **DJ/Entertainment**: 8-10% of total budget\n• **Coordination**: 5-8% of total budget\n\nOur packages are designed to give you the best value for each service. Would you like to see packages in a specific price range?",
             [
@@ -336,7 +443,7 @@ export const ChatBot: React.FC = () => {
               { label: 'View All Packages', action: 'navigate_all', icon: ArrowRight }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'browse_budget':
@@ -353,7 +460,13 @@ export const ChatBot: React.FC = () => {
 
       case 'vendor_tips':
         addUserMessage('Give me vendor selection tips');
+        setIsAiThinking(true);
         setTimeout(() => {
+          setIsAiThinking(false);
+          setIsTyping(true);
+        }, 5000);
+        setTimeout(() => {
+          setIsTyping(false);
           addBotMessage(
             "Here are key tips for choosing wedding vendors:\n\n• **Read Reviews** - Look for recent, detailed reviews\n• **View Portfolios** - See their actual work, not just highlights\n• **Meet in Person** - Video calls work too!\n• **Check Availability** - Confirm they're free on your date\n• **Understand Contracts** - Know what's included\n• **Ask About Backup Plans** - Equipment, weather, illness\n\nReady to start browsing vendors?",
             [
@@ -361,7 +474,7 @@ export const ChatBot: React.FC = () => {
               { label: 'Get More Planning Help', action: 'planning_help', icon: Calendar }
             ]
           );
-        }, 1500);
+        }, 7000);
         break;
 
       case 'contact_support':
@@ -391,6 +504,11 @@ export const ChatBot: React.FC = () => {
     setInputMessage('');
     setIsAiThinking(true);
 
+    // Show thinking for 5 seconds, then typing
+    setTimeout(() => {
+      setIsAiThinking(false);
+      setIsTyping(true);
+    }, 5000);
     try {
       // Call the AI chat function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`, {
@@ -420,12 +538,17 @@ export const ChatBot: React.FC = () => {
       const aiResponse = data.response;
       const actionButtons = generateActionButtons(aiResponse);
       
+      setIsTyping(false);
       addBotMessage(aiResponse, actionButtons);
     } catch (error) {
       console.error('Error getting AI response:', error);
-      // Fallback to simple response
+      
+      // Send fallback email to Daniel
+      await sendFallbackEmail(userMessage);
+      
+      setIsTyping(false);
       addBotMessage(
-        "I'm having trouble connecting to my AI brain right now, but I can still help you! Here are some things I can assist with:",
+        "I'm not quite sure how to help with that specific question. Let me get someone from our team to assist you personally! I've sent your question to our support team and they'll reach out to you soon.\n\nIn the meantime, here are some things I can definitely help with:",
         [
           { label: 'Browse Services', action: 'browse_all', icon: Search },
           { label: 'Get Planning Help', action: 'planning_help', icon: Calendar },
@@ -434,6 +557,7 @@ export const ChatBot: React.FC = () => {
       );
     } finally {
       setIsAiThinking(false);
+      setIsTyping(false);
     }
   };
 
