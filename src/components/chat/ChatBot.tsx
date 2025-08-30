@@ -514,60 +514,62 @@ export const ChatBot: React.FC = () => {
     addUserMessage(userMessage);
     setInputMessage('');
 
-    // Wait 5 seconds, then show typing
+    // Wait 5 seconds, then show typing, then get response
+    setIsTyping(false); // Ensure typing is off initially
     setTimeout(() => {
       setIsTyping(true);
-    }, 5000);
-
-    try {
-      // Call the AI chat function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          sessionId: sessionId,
-          userId: isAuthenticated ? user?.id : null
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const data = await response.json();
       
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      // After typing for a bit, get the AI response
+      setTimeout(async () => {
+        try {
+          // Call the AI chat function
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: userMessage,
+              sessionId: sessionId,
+              userId: isAuthenticated ? user?.id : null
+            })
+          });
 
-      // Add AI response with smart action buttons
-      const aiResponse = data.response;
-      const actionButtons = generateActionButtons(aiResponse);
-      
-      setIsTyping(false);
-      addBotMessage(aiResponse, actionButtons);
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      
-      // Send fallback email to Daniel
-      await sendFallbackEmail(userMessage);
-      
-      setIsTyping(false);
-      addBotMessage(
-        "I'm not quite sure how to help with that specific question. Let me get someone from our team to assist you personally! I've sent your question to our support team and they'll reach out to you soon.\n\nIn the meantime, here are some things I can definitely help with:",
-        [
-          { label: 'Browse Services', action: 'browse_all', icon: Search },
-          { label: 'Get Planning Help', action: 'planning_help', icon: Calendar },
-          { label: 'Contact Support', action: 'contact_support', icon: MessageCircle }
-        ]
-      );
-    } finally {
-      setIsTyping(false);
-    }
+          if (!response.ok) {
+            throw new Error('Failed to get AI response');
+          }
+
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Stop typing and add AI response with smart action buttons
+          setIsTyping(false);
+          const aiResponse = data.response;
+          const actionButtons = generateActionButtons(aiResponse);
+          addBotMessage(aiResponse, actionButtons);
+        } catch (error) {
+          console.error('Error getting AI response:', error);
+          
+          // Send fallback email to Daniel
+          await sendFallbackEmail(userMessage);
+          
+          // Stop typing and show fallback message
+          setIsTyping(false);
+          addBotMessage(
+            "I'm not quite sure how to help with that specific question. Let me get someone from our team to assist you personally! I've sent your question to our support team and they'll reach out to you soon.\n\nIn the meantime, here are some things I can definitely help with:",
+            [
+              { label: 'Browse Services', action: 'browse_all', icon: Search },
+              { label: 'Get Planning Help', action: 'planning_help', icon: Calendar },
+              { label: 'Contact Support', action: 'contact_support', icon: MessageCircle }
+            ]
+          );
+        }
+      }, 2000); // Show typing for 2 seconds before response
+    }, 5000); // Wait 5 seconds before showing typing
   };
 
   const generateActionButtons = (aiResponse: string) => {
