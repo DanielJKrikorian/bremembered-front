@@ -301,13 +301,6 @@ export const VendorProfile: React.FC = () => {
                 </div>
               </div>
 
-              {/* Contact Info */}
-              {vendor.phone && (
-                <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                  <Phone className="w-5 h-5 text-gray-600" />
-                  <span className="text-gray-900 font-medium">{vendor.phone}</span>
-                </div>
-              )}
             </Card>
 
             {/* Tabs */}
@@ -616,11 +609,6 @@ export const VendorProfile: React.FC = () => {
                 <Button variant="outline" icon={MessageCircle} className="w-full">
                   Send Message
                 </Button>
-                {vendor.phone && (
-                  <Button variant="outline" icon={Phone} className="w-full">
-                    Call {vendor.phone}
-                  </Button>
-                )}
                 <div className="text-center text-sm text-gray-500">
                   Typically responds within 2 hours
                 </div>
