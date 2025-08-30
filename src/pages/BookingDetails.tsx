@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, User, Star, Clock, CreditCard, FileText, Download, Eye, MessageCircle, Edit, Check, X, AlertCircle, Shield, Award } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Star, Clock, CreditCard, FileText, Download, Eye, MessageCircle, Edit, Check, X, AlertCircle, Shield, Award, Save, TrendingUp } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
+import { PackageUpgradeModal } from '../components/booking/PackageUpgradeModal';
 
 interface BookingDetails {
   id: string;
@@ -124,6 +125,11 @@ export const BookingDetails: React.FC = () => {
   const [isSigningContract, setIsSigningContract] = useState(false);
   const [signature, setSignature] = useState('');
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [timeUpdateLoading, setTimeUpdateLoading] = useState(false);
 
   useEffect(() => {
     if (id && isAuthenticated) {
@@ -404,6 +410,86 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.error('Error signing contract:', err);
       setError('Failed to sign contract');
     }
+  };
+
+  const handleTimeEdit = () => {
+    if (booking?.events?.start_time) {
+      const startTime = new Date(booking.events.start_time).toTimeString().slice(0, 5);
+      setNewStartTime(startTime);
+      
+      if (booking.events.end_time) {
+        const endTime = new Date(booking.events.end_time).toTimeString().slice(0, 5);
+        setNewEndTime(endTime);
+      } else if (booking.service_packages?.hour_amount) {
+        // Calculate end time based on package duration
+        const start = new Date(`2000-01-01T${startTime}`);
+        start.setHours(start.getHours() + booking.service_packages.hour_amount);
+        setNewEndTime(start.toTimeString().slice(0, 5));
+      }
+    }
+    setIsEditingTime(true);
+  };
+
+  const handleTimeUpdate = async () => {
+    if (!booking?.events?.id || !newStartTime) return;
+
+    setTimeUpdateLoading(true);
+    setError(null);
+
+    try {
+      if (!supabase || !isSupabaseConfigured()) {
+        // Mock update for demo
+        setBooking(prev => prev ? {
+          ...prev,
+          events: {
+            ...prev.events!,
+            start_time: `${booking.events!.start_time.split('T')[0]}T${newStartTime}:00Z`,
+            end_time: newEndTime ? `${booking.events!.start_time.split('T')[0]}T${newEndTime}:00Z` : prev.events!.end_time
+          }
+        } : null);
+        setIsEditingTime(false);
+        setTimeUpdateLoading(false);
+        return;
+      }
+
+      const eventDate = booking.events.start_time.split('T')[0];
+      const updateData: any = {
+        start_time: `${eventDate}T${newStartTime}:00Z`,
+        updated_at: new Date().toISOString()
+      };
+
+      if (newEndTime) {
+        updateData.end_time = `${eventDate}T${newEndTime}:00Z`;
+      }
+
+      const { error: updateError } = await supabase
+        .from('events')
+        .update(updateData)
+        .eq('id', booking.events.id);
+
+      if (updateError) throw updateError;
+
+      // Refresh booking data
+      await fetchBookingDetails();
+      setIsEditingTime(false);
+    } catch (err) {
+      console.error('Error updating event time:', err);
+      setError('Failed to update event time');
+    } finally {
+      setTimeUpdateLoading(false);
+    }
+  };
+
+  const handleCancelTimeEdit = () => {
+    setIsEditingTime(false);
+    setNewStartTime('');
+    setNewEndTime('');
+    setError(null);
+  };
+
+  const handlePackageUpgradeSuccess = () => {
+    setShowUpgradeModal(false);
+    fetchBookingDetails(); // Refresh booking data
   };
 
   const handleDownloadContract = () => {
@@ -733,7 +819,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       </div>
                     </div>
                     
-                    {booking.events?.start_time && (
+                    {booking.events?.start_time && !isEditingTime && (
                       <div className="flex items-center space-x-3">
                         <Clock className="w-5 h-5 text-green-600" />
                         <div>
@@ -747,6 +833,76 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               </span>
                             )}
                           </div>
+                          <button
+                            onClick={handleTimeEdit}
+                            className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+                          >
+                            Change time
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Time Editing Form */}
+                    {isEditingTime && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 mb-3">Update Event Time</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Start Time
+                            </label>
+                            <input
+                              type="time"
+                              value={newStartTime}
+                              onChange={(e) => {
+                                setNewStartTime(e.target.value);
+                                // Auto-calculate end time if package has duration
+                                if (booking?.service_packages?.hour_amount) {
+                                  const start = new Date(`2000-01-01T${e.target.value}`);
+                                  start.setHours(start.getHours() + booking.service_packages.hour_amount);
+                                  setNewEndTime(start.toTimeString().slice(0, 5));
+                                }
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              value={newEndTime}
+                              onChange={(e) => setNewEndTime(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        {booking?.service_packages?.hour_amount && (
+                          <p className="text-sm text-blue-700 mb-4">
+                            Package includes {booking.service_packages.hour_amount} hours of service
+                          </p>
+                        )}
+                        <div className="flex space-x-3">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleTimeUpdate}
+                            disabled={!newStartTime || timeUpdateLoading}
+                            loading={timeUpdateLoading}
+                            icon={Save}
+                          >
+                            Save Changes
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelTimeEdit}
+                            icon={X}
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -847,6 +1003,33 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </div>
                 )}
               </Card>
+
+              {/* Package Upgrade Section */}
+              {booking.service_packages && booking.status === 'confirmed' && (
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900">Package Upgrade</h3>
+                    <Button
+                      variant="outline"
+                      icon={TrendingUp}
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                    >
+                      Upgrade Package
+                    </Button>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <h4 className="font-medium text-purple-900 mb-2">Current Package</h4>
+                    <div className="space-y-1 text-sm">
+                      <p><strong>Package:</strong> {booking.service_packages.name}</p>
+                      <p><strong>Price:</strong> {formatPrice(booking.service_packages.price)}</p>
+                      {booking.service_packages.hour_amount && (
+                        <p><strong>Duration:</strong> {booking.service_packages.hour_amount} hours</p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -911,7 +1094,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     onClick={() => navigate('/profile?tab=timeline')}
                     icon={Calendar}
                   >
-                    Update Timeline
+                    View Timeline
                   </Button>
                   <Button
                     variant="outline"
@@ -1250,6 +1433,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               setShowReviewModal(false);
               // Could refresh booking data here if needed
             }}
+          />
+        )}
+
+        {/* Package Upgrade Modal */}
+        {booking && (
+          <PackageUpgradeModal
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+            booking={booking}
+            onUpgradeSuccess={handlePackageUpgradeSuccess}
           />
         )}
       </div>
