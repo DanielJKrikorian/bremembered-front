@@ -153,9 +153,19 @@ Deno.serve(async (req) => {
       }
 
       // Calculate amounts for this specific item
+      // Calculate payment splits for new 50/50 model
       const itemDepositAmount = Math.round(packageData.price * 0.5) // 50% deposit
-      const itemPlatformFee = 0 // No individual service fee per item
-      const vendorTransferAmount = Math.round(itemDepositAmount * 0.5) // 50% of deposit to vendor
+      const itemFinalAmount = packageData.price - itemDepositAmount // Remaining 50%
+      
+      // New 50/50 split model
+      const vendorDepositShare = Math.round(itemDepositAmount * 0.5) // Vendor gets 50% of deposit
+      const platformDepositShare = itemDepositAmount - vendorDepositShare // Platform gets 50% of deposit
+      const vendorFinalShare = Math.round(itemFinalAmount * 0.5) // Vendor gets 50% of final
+      const platformFinalShare = itemFinalAmount - vendorFinalShare // Platform gets 50% of final
+      
+      const vendorTotalEarnings = vendorDepositShare + vendorFinalShare
+      const platformTotalEarnings = platformDepositShare + platformFinalShare
+      const vendorPayoutAmount = vendorTotalEarnings // Will include tips when added later
       
       // Create event
       const eventStartTime = customerInfo.eventDate && customerInfo.eventTime 
@@ -196,10 +206,20 @@ Deno.serve(async (req) => {
           event_id: newEvent.id,
           venue_id: null,
           initial_payment: itemDepositAmount,
-          platform_fee: itemPlatformFee,
+          platform_fee: 15000, // $150 service fee
           paid_amount: itemDepositAmount,
           discount: Math.round((discountAmount + referralDiscount) / cartItems.length) || 0,
-          stripe_payment_intent_id: paymentIntentId
+          stripe_payment_intent_id: paymentIntentId,
+          // New payment split columns
+          vendor_deposit_share: vendorDepositShare,
+          platform_deposit_share: platformDepositShare,
+          vendor_final_share: vendorFinalShare,
+          platform_final_share: platformFinalShare,
+          vendor_total_earnings: vendorTotalEarnings,
+          platform_total_earnings: platformTotalEarnings,
+          tip_amount: 0, // No tips at booking time
+          vendor_payout_amount: vendorPayoutAmount,
+          payment_model: 'split' // Using new split model
         })
         .select('id')
         .single()
@@ -242,10 +262,10 @@ Deno.serve(async (req) => {
         })
 
       // Transfer to vendor if they have a Stripe account
-      if (vendor.stripe_account_id && vendorTransferAmount > 0) {
+      if (vendor.stripe_account_id && vendorDepositShare > 0) {
         try {
           const transfer = await stripe.transfers.create({
-            amount: vendorTransferAmount,
+            amount: vendorDepositShare,
             currency: 'usd',
             destination: vendor.stripe_account_id,
             metadata: {
@@ -253,11 +273,12 @@ Deno.serve(async (req) => {
               vendor_id: vendor.id,
               couple_id: coupleId,
               service_type: packageData.service_type,
-              payment_type: 'vendor_deposit_share'
+              payment_type: 'vendor_deposit_share',
+              payment_model: 'split'
             }
           })
 
-          console.log(`Transfer created for vendor ${vendor.id}: ${vendorTransferAmount} cents`)
+          console.log(`Transfer created for vendor ${vendor.id}: ${vendorDepositShare} cents (deposit share)`)
         } catch (transferError) {
           console.error(`Failed to transfer to vendor ${vendor.id}:`, transferError)
           // Continue processing other items even if one transfer fails
