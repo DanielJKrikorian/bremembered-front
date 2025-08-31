@@ -1,846 +1,965 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Edit, Save, X, TrendingUp, Check, AlertCircle } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { useAuth } from '../context/AuthContext';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { jsPDF } from 'jspdf';
-import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
-import { PackageUpgradeModal } from '../components/booking/PackageUpgradeModal';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage, LeadInformation } from '../types/booking';
 
-export const BookingDetails: React.FC = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
-  const [booking, setBooking] = useState<any>(null);
+const transformToLookupKey = (serviceName: string): string => {
+  // Transform service names to simple lowercase lookup keys
+  const lookupMap: Record<string, string> = {
+    'Photography': 'photography',
+    'Videography': 'videography', 
+    'DJ Services': 'dj_services',
+    'Coordination': 'coordination',
+    'Planning': 'planning'
+  };
+  
+  return lookupMap[serviceName] || serviceName.toLowerCase().replace(/\s+/g, '');
+};
+
+export const useServicePackages = (serviceType?: string, eventType?: string, filters?: {
+  minHours?: number;
+  maxHours?: number;
+  coverage?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  selectedServices?: string[];
+}) => {
+  const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [editingTime, setEditingTime] = useState(false);
-  const [newStartTime, setNewStartTime] = useState('');
-  const [newEndTime, setNewEndTime] = useState('');
-  const [savingTime, setSavingTime] = useState(false);
-  const [timeError, setTimeError] = useState<string | null>(null);
-  const [editingTime, setEditingTime] = useState(false);
-  const [newStartTime, setNewStartTime] = useState('');
-  const [newEndTime, setNewEndTime] = useState('');
-  const [savingTime, setSavingTime] = useState(false);
-  const [timeError, setTimeError] = useState<string | null>(null);
-  const [editingTime, setEditingTime] = useState(false);
-  const [newStartTime, setNewStartTime] = useState('');
-  const [newEndTime, setNewEndTime] = useState('');
-  const [savingTime, setSavingTime] = useState(false);
-  const [timeError, setTimeError] = useState<string | null>(null);
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
 
   useEffect(() => {
-    if (id) {
-      fetchBookingDetails();
-    }
-  }, [id]);
+    const fetchPackages = async () => {
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured() || !supabase) {
+        console.warn('Supabase not configured, returning empty packages');
+        setPackages([]);
+        setLoading(false);
+        return;
+      }
 
-  const calculateEndTime = (startTime: string, hours: number) => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    start.setHours(start.getHours() + hours);
-    return start.toTimeString().slice(0, 5);
-  };
+      try {
+        // Service type to lookup_key mapping
+        const serviceLookupMap: Record<string, string> = {
+          'Photography': 'photography',
+          'DJ Services': 'dj',
+          'Day-of Coordination': 'coordination',
+          'Coordination': 'coordination',
+          'Videography': 'videography',
+          'Live Musician': 'live_musician',
+          'Planning': 'planning'
+        };
 
-  const handleStartTimeChange = (time: string) => {
-    setNewStartTime(time);
-    if (booking?.service_packages?.hour_amount) {
-  const calculateEndTime = (startTime: string, hours: number) => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    start.setHours(start.getHours() + hours);
-    return start.toTimeString().slice(0, 5);
-  };
+        let query = supabase
+          .from('service_packages')
+          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, primary_image')
+         .eq('status', 'approved')
+         .neq('service_type', 'Editing')
+         .neq('service_type', 'Photo Booth')
+         .not('service_type', 'like', '%,%');
 
-  const handleStartTimeChange = (time: string) => {
-    setNewStartTime(time);
-    if (booking?.service_packages?.hour_amount) {
-  const fetchBookingDetails = async () => {
-    if (!id) return;
-
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock booking for demo
-      const mockBooking = {
-        id: id,
-        couple_id: 'mock-couple-1',
-        vendor_id: 'mock-vendor-1',
-        status: 'confirmed',
-        amount: 250000,
-        service_type: 'Photography',
-        created_at: '2024-01-15T10:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        vendors: {
-          id: 'mock-vendor-1',
-          name: 'Elegant Moments Photography',
-          profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-          rating: 4.9,
-          years_experience: 10,
-          phone: '(555) 123-4567'
-        },
-        service_packages: {
-          id: 'mock-package-1',
-          name: 'Premium Wedding Photography',
-          description: 'Complete wedding day photography with 8 hours of coverage',
-          price: 250000,
-          service_type: 'Photography',
-          hour_amount: 8,
-          features: ['8 hours coverage', '500+ edited photos', 'Online gallery', 'Print release']
-        },
-        venues: {
-          id: 'mock-venue-1',
-          name: 'Sunset Gardens',
-          street_address: '123 Garden Lane',
-          city: 'Los Angeles',
-          state: 'CA'
-        },
-        events: {
-          id: 'mock-event-1',
-          start_time: '2024-08-15T16:00:00Z',
-          end_time: '2024-08-15T23:00:00Z',
-          title: 'Sarah & Michael Wedding',
-          location: 'Sunset Gardens'
-        },
-        couples: {
-          id: 'mock-couple-1',
-          name: 'Sarah & Michael',
-          email: 'sarah@example.com',
-          phone: '(555) 987-6543'
+        // Only filter by service type if specified
+        if (serviceType) {
+          const lookupKey = serviceLookupMap[serviceType];
+          if (lookupKey) {
+            query = query.eq('lookup_key', lookupKey);
+          }
+        } else if (filters?.selectedServices && filters.selectedServices.length > 0) {
+          // Handle multiple selected services
+          const lookupKeys = filters.selectedServices
+            .map(service => serviceLookupMap[service])
+            .filter(Boolean);
+          
+          if (lookupKeys.length > 0) {
+            query = query.in('lookup_key', lookupKeys);
+          }
         }
-      };
-      setBooking(mockBooking);
-      setLoading(false);
-      return;
-    }
 
-    try {
-      // Get couple ID first
-      const { data: coupleData, error: coupleError } = await supabase
-        .from('couples')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+        if (eventType) {
+          query = query.eq('event_type', eventType);
+        }
 
-      if (coupleError) throw coupleError;
+        if (filters?.minHours) {
+          query = query.gte('hour_amount', filters.minHours);
+        }
 
-      // Fetch booking details
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          vendors!inner(
-            id,
-            name,
-            profile_photo,
-            rating,
-            years_experience,
-            phone,
-            user_id
-          ),
-          service_packages(
-            id,
-            name,
-            description,
-            price,
-            service_type,
-            hour_amount,
-            features
-          ),
-          venues(
-            id,
-            name,
-            street_address,
-            city,
-            state
-          ),
-          events(
-            id,
-            start_time,
-            end_time,
-            title,
-            location
-          ),
-          couples(
-            id,
-            name,
-            email,
-            phone
-          )
-        `)
-        .eq('id', id)
-        .eq('couple_id', coupleData.id)
-        .single();
+        if (filters?.maxHours) {
+          query = query.lte('hour_amount', filters.maxHours);
+        }
 
-      if (error) throw error;
-      setBooking(data);
-      
-      // Set initial time values
-      if (data.events?.start_time) {
-        const startTime = new Date(data.events.start_time);
-        setNewStartTime(startTime.toTimeString().slice(0, 5));
+        if (filters?.minPrice !== undefined) {
+          query = query.gte('price', filters.minPrice);
+        }
+
+        if (filters?.maxPrice !== undefined) {
+          query = query.lte('price', filters.maxPrice);
+        }
+
+        if (filters?.coverage && filters.coverage.length > 0) {
+          // Filter packages that have any of the selected coverage options in the events array
+          const coverageFilters = filters.coverage.map(c => `coverage->events.cs.["${c}"]`).join(',');
+          query = query.or(coverageFilters);
+        }
+
+        const { data, error } = await query.order('price', { ascending: true });
+
+        if (error) throw error;
         
-        if (data.events.end_time) {
-          const endTime = new Date(data.events.end_time);
-          setNewEndTime(endTime.toTimeString().slice(0, 5));
+        setPackages(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, [serviceType, eventType, filters]);
+
+  return { packages, loading, error };
+};
+
+export const useRecommendedVendors = (filters: {
+  servicePackageId: string;
+  eventDate: string;
+  region?: string;
+  languages?: string[];
+  styles?: number[];
+  vibes?: number[];
+}) => {
+  const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRecommendedVendors = async () => {
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured() || !supabase || !filters.servicePackageId || filters.servicePackageId.trim() === '') {
+        if (loading) {
+          setRecommendedVendors([]);
+          setLoading(false);
+          setError(null);
+        }
+        return;
+      }
+
+      try {
+        // First, get vendors who have this package approved and are available
+        const { data, error } = await supabase
+          .from('vendor_service_packages')
+          .select(`
+            vendor_id,
+            service_package_id,
+            vendors!inner(
+              id,
+              name,
+              profile_photo,
+              rating,
+              years_experience,
+              phone,
+              portfolio_photos,
+              portfolio_videos,
+              intro_video,
+              specialties,
+              awards,
+              service_areas,
+              profile
+            )
+          `)
+          .eq('service_package_id', filters.servicePackageId)
+          .eq('status', 'approved');
+
+        if (error) {
+          console.warn('Supabase query error:', error);
+          if (loading) {
+            setRecommendedVendors([]);
+            setError(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        let vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+
+        // Check vendor availability for the event date
+        if (filters.eventDate && vendorData.length > 0) {
+          const eventDate = new Date(filters.eventDate);
+          const { data: availabilityData, error: availabilityError } = await supabase
+            .from('events')
+            .select('vendor_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .gte('start_time', filters.eventDate.split('T')[0])
+            .lt('start_time', new Date(new Date(filters.eventDate).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+
+          if (!availabilityError && availabilityData) {
+            // Filter out vendors who are already booked on this date
+            const bookedVendorIds = availabilityData.map(event => event.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              !bookedVendorIds.includes(vendor.id)
+            );
+          }
+        }
+
+        // Filter by region if specified
+        if (filters.region && vendorData.length > 0) {
+          // Get vendors who serve this region from vendor_service_areas table
+          const { data: vendorServiceAreas, error: serviceAreaError } = await supabase
+            .from('vendor_service_areas')
+            .select('vendor_id')
+            .ilike('region', `%${filters.region}%`);
+
+          if (!serviceAreaError && vendorServiceAreas && vendorServiceAreas.length > 0) {
+            const vendorIdsInRegion = vendorServiceAreas.map(vsa => vsa.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsInRegion.includes(vendor.id)
+            );
+          } else {
+            // Fallback to service_areas array if vendor_service_areas query fails
+            vendorData = vendorData.filter(vendor => 
+              vendor.service_areas?.some((area: string) => 
+                area.toLowerCase().includes(filters.region!.toLowerCase())
+              )
+            );
+          }
+        }
+
+        // If we have language preferences, filter vendors
+        if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
+          const { data: vendorLanguages, error: languageError } = await supabase
+            .from('vendor_languages')
+            .select('vendor_id, language_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('language_id', filters.languages);
+
+          if (!languageError && vendorLanguages && vendorLanguages.length > 0) {
+            const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithLanguages.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have style preferences, filter vendors
+        if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
+          const { data: vendorStyles, error: styleError } = await supabase
+            .from('vendor_style_tags')
+            .select('vendor_id, style_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('style_id', filters.styles);
+
+          if (!styleError && vendorStyles && vendorStyles.length > 0) {
+            const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithStyles.includes(vendor.id)
+            );
+          }
+        }
+
+        // If we have vibe preferences, filter vendors
+        if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
+          const { data: vendorVibes, error: vibeError } = await supabase
+            .from('vendor_vibe_tags')
+            .select('vendor_id, vibe_id')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .in('vibe_id', filters.vibes);
+
+          if (!vibeError && vendorVibes && vendorVibes.length > 0) {
+            const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
+            vendorData = vendorData.filter(vendor => 
+              vendorIdsWithVibes.includes(vendor.id)
+            );
+          }
+        }
+
+        // Sort by rating (highest first)
+        vendorData.sort((a, b) => {
+          const ratingDiff = (b.rating || 0) - (a.rating || 0);
+          if (ratingDiff !== 0) return ratingDiff;
+          return (b.years_experience || 0) - (a.years_experience || 0);
+        });
+
+        setRecommendedVendors(vendorData);
+        setError(null);
+      } catch (err) {
+        console.warn('Error fetching recommended vendors:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch vendors. Please check your connection.');
+        setRecommendedVendors([]);
+      } finally {
+        if (loading) {
+          setLoading(false);
         }
       }
-    } catch (err) {
-      console.error('Error fetching booking details:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch booking details');
-    } finally {
-      setLoading(false);
+    };
+
+    fetchRecommendedVendors();
+  }, [filters.servicePackageId, filters.eventDate, filters.region, JSON.stringify(filters.languages), JSON.stringify(filters.styles), JSON.stringify(filters.vibes)]);
+
+  return { vendors: recommendedVendors, loading, error };
+};
+
+export const useVendorsByPackage = (servicePackageId: string) => {
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVendorsByPackage = async () => {
+      if (!isSupabaseConfigured() || !supabase || !servicePackageId) {
+        setVendors([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('vendor_service_packages')
+          .select(`
+            vendor_id,
+            service_package_id,
+            vendors!inner(
+              id,
+              name,
+              profile_photo,
+              rating,
+              years_experience,
+              phone,
+              portfolio_photos,
+              portfolio_videos,
+              profile,
+              specialties,
+              service_areas
+            )
+          `)
+          .eq('service_package_id', servicePackageId)
+          .eq('status', 'approved');
+
+        if (error) throw error;
+        
+        // Extract vendors from the joined data
+        const vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+        setVendors(vendorData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (servicePackageId) {
+      fetchVendorsByPackage();
     }
-  };
+  }, [servicePackageId]);
 
-  const calculateEndTime = (startTime: string, hours: number) => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    start.setHours(start.getHours() + hours);
-    return start.toTimeString().slice(0, 5);
-  };
+  return { vendors, loading, error };
+};
+export const useVendors = (serviceType?: string, location?: string) => {
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleStartTimeChange = (time: string) => {
-    setNewStartTime(time);
-    if (booking?.service_packages?.hour_amount) {
-      const calculatedEndTime = calculateEndTime(time, booking.service_packages.hour_amount);
-      setNewEndTime(calculatedEndTime);
-    }
-  };
+  useEffect(() => {
+    const fetchVendors = async () => {
 
-  const handleSaveTime = async () => {
-    if (!booking || !newStartTime) return;
+      try {
+        let query = supabase
+          .from('vendors')
+          .select(`
+            *,
+            vendor_services!inner(service_type, is_active)
+          `);
 
-    setSavingTime(true);
-    setTimeError(null);
-
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock save for demo
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update local state
-      setBooking(prev => ({
-        ...prev,
-        events: {
-          ...prev.events,
-          start_time: `${prev.events.start_time.split('T')[0]}T${newStartTime}:00Z`,
-          end_time: `${prev.events.end_time.split('T')[0]}T${newEndTime}:00Z`
+        if (serviceType) {
+          query = query.eq('vendor_services.service_type', serviceType)
+                      .eq('vendor_services.is_active', true);
         }
-      }));
-      
-      setEditingTime(false);
-      setSavingTime(false);
-      return;
+
+        if (location) {
+          query = query.contains('service_areas', [location]);
+        }
+
+        const { data, error } = await query.order('rating', { ascending: false, nullsLast: true });
+
+        if (error) throw error;
+        setVendors(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVendors();
+  }, [serviceType, location]);
+
+  return { vendors, loading, error };
+};
+
+export const useVenues = (searchTerm?: string) => {
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVenues = async () => {
+
+      try {
+        let query = supabase.from('venues').select('*');
+
+        if (searchTerm) {
+          query = query.or(`name.ilike.%${searchTerm}%,street_address.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,state.ilike.%${searchTerm}%,region.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error } = await query.order('booking_count', { ascending: false }).limit(50);
+
+        if (error) throw error;
+        setVenues(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVenues();
+  }, [searchTerm]);
+
+  return { venues, loading, error };
+};
+
+export const useStyleTags = () => {
+  const [styleTags, setStyleTags] = useState<StyleTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStyleTags = async () => {
+
+      try {
+        const { data, error } = await supabase
+          .from('style_tags')
+          .select('*')
+          .order('label');
+
+        if (error) throw error;
+        setStyleTags(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStyleTags();
+  }, []);
+
+  return { styleTags, loading, error };
+};
+
+export const useVibeTags = () => {
+  const [vibeTags, setVibeTags] = useState<VibeTag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVibeTags = async () => {
+
+      try {
+        const { data, error } = await supabase
+          .from('vibe_tags')
+          .select('*')
+          .order('label');
+
+        if (error) throw error;
+        setVibeTags(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVibeTags();
+  }, []);
+
+  return { vibeTags, loading, error };
+};
+
+export const useServiceAreas = (state?: string) => {
+  const [serviceAreas, setServiceAreas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServiceAreas = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        // Mock service areas for demo
+        const mockServiceAreas = [
+          { id: '1', state: 'MA', region: 'Greater Boston' },
+          { id: '2', state: 'MA', region: 'Cape Cod' },
+          { id: '3', state: 'MA', region: 'Western Massachusetts' },
+          { id: '4', state: 'RI', region: 'Providence' },
+          { id: '5', state: 'RI', region: 'Newport' },
+          { id: '6', state: 'NH', region: 'Seacoast' },
+          { id: '7', state: 'NH', region: 'White Mountains' },
+          { id: '8', state: 'CT', region: 'Hartford' },
+          { id: '9', state: 'CT', region: 'New Haven' },
+          { id: '10', state: 'ME', region: 'Portland' },
+          { id: '11', state: 'VT', region: 'Burlington' }
+        ];
+        
+        const filteredAreas = state 
+          ? mockServiceAreas.filter(area => area.state === state)
+          : mockServiceAreas;
+        
+        setServiceAreas(filteredAreas);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        let query = supabase
+          .from('service_areas')
+          .select('*');
+
+        if (state) {
+          query = query.eq('state', state);
+        }
+
+        const { data, error } = await query.order('region');
+
+        if (error) throw error;
+        setServiceAreas(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServiceAreas();
+  }, [state]);
+
+  return { serviceAreas, loading, error };
+};
+
+export const useLanguages = () => {
+  const [languages, setLanguages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLanguages = async () => {
+
+      try {
+        const { data, error } = await supabase
+          .from('languages')
+          .select('id, language')
+          .order('language');
+
+        if (error) throw error;
+        setLanguages(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLanguages();
+  }, []);
+
+  return { languages, loading, error };
+};
+
+export const useVendorReviews = (vendorId: string) => {
+  const [reviews, setReviews] = useState<VendorReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      // Check if this is a mock vendor ID
+      if (vendorId && vendorId.startsWith('mock-vendor-')) {
+        // Return mock review data for mock vendors
+        const mockReviews: VendorReview[] = [
+          {
+            id: 'mock-review-1',
+            vendor_id: vendorId,
+            couple_id: 'mock-couple-1',
+            communication_rating: 5,
+            experience_rating: 5,
+            quality_rating: 5,
+            overall_rating: 5,
+            feedback: 'Absolutely amazing photographer! They captured every special moment perfectly and were so professional throughout the entire process.',
+            vendor_response: 'Thank you so much for the kind words! It was an honor to be part of your special day.',
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:00:00Z',
+            couples: {
+              name: 'Sarah & Michael',
+              wedding_date: '2024-01-10'
+            }
+          },
+          {
+            id: 'mock-review-2',
+            vendor_id: vendorId,
+            couple_id: 'mock-couple-2',
+            communication_rating: 5,
+            experience_rating: 4,
+            quality_rating: 5,
+            overall_rating: 5,
+            feedback: 'Incredible work and attention to detail. The photos exceeded our expectations and we couldn\'t be happier!',
+            vendor_response: null,
+            created_at: '2023-12-20T14:30:00Z',
+            updated_at: '2023-12-20T14:30:00Z',
+            couples: {
+              name: 'Jessica & David',
+              wedding_date: '2023-12-15'
+            }
+          }
+        ];
+        setReviews(mockReviews);
+        setLoading(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured() || !supabase) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('vendor_reviews')
+          .select(`
+            id,
+            communication_rating,
+            experience_rating,
+            quality_rating,
+            overall_rating,
+            feedback,
+            vendor_response,
+            created_at,
+            couple_id,
+            couples!inner(
+              name,
+              wedding_date
+            )
+          `)
+          .eq('vendor_id', vendorId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setReviews(data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (vendorId) {
+      fetchReviews();
     }
+  }, [vendorId]);
 
-    try {
-      // Update the event time
-      const eventDate = booking.events.start_time.split('T')[0];
-      const newStartDateTime = `${eventDate}T${newStartTime}:00Z`;
-      const newEndDateTime = `${eventDate}T${newEndTime}:00Z`;
+  return { reviews, loading, error };
+};
 
-      const { error } = await supabase
-        .from('events')
-        .update({
-          start_time: newStartDateTime,
-          end_time: newEndDateTime,
+export const useLatestReviews = (limit: number = 3) => {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetch, setLastFetch] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchLatestReviews = async () => {
+      // Check if we need to refresh (weekly = 7 days = 604800000 ms)
+      const now = Date.now();
+      const weekInMs = 7 * 24 * 60 * 60 * 1000;
+      
+      if (lastFetch && (now - lastFetch) < weekInMs && reviews.length > 0) {
+        return; // Don't fetch if less than a week has passed and we have data
+      }
+
+      if (!isSupabaseConfigured() || !supabase) {
+        // Return mock data if Supabase not configured
+        const mockReviews = [
+          {
+            id: 'mock-1',
+            overall_rating: 5,
+            feedback: 'B. Remembered made our wedding planning so much easier. We found our perfect photographer and DJ in one place, and the booking process was seamless.',
+            vendor: { name: 'Elegant Moments Photography' },
+            couple: { name: 'Sarah & Michael', wedding_date: '2024-01-15' }
+          },
+          {
+            id: 'mock-2',
+            overall_rating: 5,
+            feedback: 'The quality of vendors on this platform is incredible. Our videographer captured our day perfectly, and the coordination service was flawless.',
+            vendor: { name: 'Timeless Studios' },
+            couple: { name: 'Emily & James', wedding_date: '2024-01-10' }
+          },
+          {
+            id: 'mock-3',
+            overall_rating: 5,
+            feedback: 'From booking to our wedding day, everything was perfect. The vendors were professional, and the platform made everything so organized.',
+            vendor: { name: 'Perfect Harmony Events' },
+            couple: { name: 'Jessica & David', wedding_date: '2024-01-05' }
+          }
+        ];
+        setReviews(mockReviews);
+        setLoading(false);
+        setLastFetch(now);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('vendor_reviews')
+          .select(`
+            id,
+            overall_rating,
+            feedback,
+            created_at,
+            vendors!inner(
+              name
+            ),
+            couples!inner(
+              name,
+              wedding_date,
+              profile_photo
+            )
+          `)
+          .not('feedback', 'is', null)
+          .not('overall_rating', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (error) throw error;
+        
+        // Get service types from bookings table
+        const transformedReviews = [];
+        
+        for (const review of data || []) {
+          let serviceType = null;
+          
+          // Only query bookings if we have valid vendor_id and couple_id  
+          if (review.vendor_id && review.couple_id) {
+            const { data: booking } = await supabase
+              .from('bookings')
+              .select('service_type')
+              .eq('vendor_id', review.vendor_id)
+              .eq('couple_id', review.couple_id)
+              .limit(1)
+              .single();
+            
+            serviceType = booking?.service_type;
+          }
+          
+          transformedReviews.push({
+            id: review.id,
+            overall_rating: review.overall_rating,
+            feedback: review.feedback,
+            vendor: review.vendors,
+            couple: review.couples,
+            created_at: review.created_at,
+            service_type: serviceType
+          });
+        }
+        
+        setReviews(transformedReviews);
+        setLastFetch(now);
+      } catch (err) {
+        console.error('Error fetching latest reviews:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        // Fallback to empty array
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestReviews();
+  }, [limit, lastFetch]);
+
+  return { reviews, loading, error };
+};
+
+// Generate a unique session ID for anonymous users
+const generateSessionId = () => {
+  return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+};
+
+// Get or create session ID
+const getSessionId = () => {
+  let sessionId = localStorage.getItem('booking_session_id');
+  if (!sessionId) {
+    sessionId = generateSessionId();
+    localStorage.setItem('booking_session_id', sessionId);
+  }
+  return sessionId;
+};
+
+export const useLeadInformation = () => {
+  const [leadInfo, setLeadInfo] = useState<LeadInformation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchOrCreateLeadInfo = async () => {
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured() || !supabase) {
+        const defaultLeadInfo: LeadInformation = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          user_id: null,
+          selected_services: [],
+          event_type: null,
+          event_date: null,
+          event_time: null,
+          venue_id: null,
+          venue_name: null,
+          region: null,
+          languages: [],
+          style_preferences: [],
+          vibe_preferences: [],
+          budget_range: null,
+          coverage_preferences: [],
+          hour_preferences: null,
+          selected_packages: {},
+          selected_vendors: {},
+          total_estimated_cost: 0,
+          current_step: 'service_selection',
+          completed_steps: [],
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
-        .eq('id', booking.events.id);
+        };
+        setLeadInfo(defaultLeadInfo);
+        setLoading(false);
+        return;
+      }
 
-      if (error) throw error;
+      try {
+        const sessionId = getSessionId();
+        
+        // Try to get existing lead information
+        const { data: createdLead, error: createError } = await supabase
+          .from('leads_information')
+          .select('*')
+          .eq('session_id', sessionId)
+          .maybeSingle();
 
-      // Update local state
-      setBooking(prev => ({
-        ...prev,
-        events: {
-          ...prev.events,
-          start_time: newStartDateTime,
-          end_time: newEndDateTime
+        if (createError) throw createError;
+        
+        if (createdLead) {
+          setLeadInfo(createdLead);
+        } else {
+          // Create new lead information record in database
+          const newLeadInfo = {
+            session_id: sessionId,
+            user_id: null,
+            selected_services: [],
+            event_type: null,
+            event_date: null,
+            event_time: null,
+            venue_id: null,
+            venue_name: null,
+            region: null,
+            languages: [],
+            style_preferences: [],
+            vibe_preferences: [],
+            budget_range: null,
+            coverage_preferences: [],
+            hour_preferences: null,
+            selected_packages: {},
+            selected_vendors: {},
+            total_estimated_cost: 0,
+            current_step: 'service_selection',
+            service_type: serviceType
+          };
+          
+          const { data: createdLead, error: createError } = await supabase!
+            .from('leads_information')
+            .insert(newLeadInfo)
+            .select()
+            .single();
+            
+          if (createError) throw createError;
+          setLeadInfo(createdLead);
         }
-      }));
+      } catch (err) {
+        console.error('Error with leads_information:', err);
+        // Fallback to local state if database operations fail
+        const defaultLeadInfo: LeadInformation = {
+          id: getSessionId(),
+          session_id: getSessionId(),
+          user_id: null,
+          selected_services: [],
+          event_type: null,
+          event_date: null,
+          event_time: null,
+          venue_id: null,
+          venue_name: null,
+          region: null,
+          languages: [],
+          style_preferences: [],
+          vibe_preferences: [],
+          budget_range: null,
+          coverage_preferences: [],
+          hour_preferences: null,
+          selected_packages: {},
+          selected_vendors: {},
+          total_estimated_cost: 0,
+          current_step: 'service_selection',
+          completed_steps: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setLeadInfo(defaultLeadInfo);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setEditingTime(false);
-    } catch (err) {
-      console.error('Error updating time:', err);
-      setTimeError(err instanceof Error ? err.message : 'Failed to update time');
-    } finally {
-      setSavingTime(false);
+    fetchOrCreateLeadInfo();
+  }, []);
+
+  const updateLeadInfo = async (updates: Partial<LeadInformation>) => {
+    if (!leadInfo) {
+      console.error('No lead info to update');
+      return null;
     }
-  };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
-  };
+    // Always update local state first
+    const updatedLeadInfo = { ...leadInfo, ...updates, updated_at: new Date().toISOString() };
+    setLeadInfo(updatedLeadInfo);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    if (!isSupabaseConfigured()) {
+      return updatedLeadInfo;
     }
-  };
 
-  const handleDownloadContract = () => {
     try {
-      const doc = new jsPDF();
+      const { data, error } = await supabase
+        .from('leads_information')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', leadInfo.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Database update failed, using local state:', error);
+        return updatedLeadInfo;
+      }
       
-      // Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.text('SERVICE CONTRACT', 105, 30, { align: 'center' });
-      
-      // Contract content
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(12);
-      let yPos = 50;
-      
-      const contractText = `
-Contract for ${booking.service_packages?.name || booking.service_type}
-
-Client: ${booking.couples?.name}
-Vendor: ${booking.vendors?.name}
-Service: ${booking.service_packages?.name}
-Amount: ${formatPrice(booking.amount)}
-Date: ${booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
-Time: ${booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
-Location: ${booking.venues?.name || booking.events?.location || 'TBD'}
-
-This contract confirms the booking of ${booking.service_type.toLowerCase()} services
-for the above event details.
-      `.trim();
-
-      const lines = contractText.split('\n');
-      lines.forEach(line => {
-        if (yPos > 250) {
-          doc.addPage();
-          yPos = 20;
-        }
-        doc.text(line, 20, yPos);
-        yPos += 7;
-      });
-
-      doc.save(`Contract_${booking.vendors?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
-    } catch (error) {
-      console.error('Error generating contract:', error);
+      // Update local state with database response
+      setLeadInfo(data);
+      return data;
+    } catch (err) {
+      console.error('Error updating lead info:', err);
+      // Local state is already updated, just return it
+      return updatedLeadInfo;
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Sign In Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to view booking details.</p>
-          <Button variant="primary" onClick={() => navigate('/login')}>
-            Sign In
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading booking details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !booking) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h2>
-          <p className="text-gray-600 mb-6">{error || "The booking you're looking for doesn't exist."}</p>
-          <Button variant="primary" onClick={() => navigate('/my-bookings')}>
-            Back to My Bookings
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="ghost" 
-              icon={ArrowLeft} 
-              onClick={() => navigate('/my-bookings')}
-            >
-              Back to My Bookings
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
-              <p className="text-gray-600 mt-1">
-                {booking.service_packages?.name || booking.service_type}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Booking Overview */}
-            <Card className="p-6">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-                    {booking.service_packages?.name || booking.service_type}
-                  </h2>
-                  <div className="flex items-center space-x-4 text-gray-600 mb-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(booking.status)}`}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                    </span>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1" />
-                      <span>
-                        {booking.events?.start_time 
-                          ? formatDate(booking.events.start_time)
-                          : 'Date TBD'
-                        }
-                      </span>
-                    </div>
-                    {booking.venues && (
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 mr-1" />
-                        <span>{booking.venues.name}</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-gray-600 leading-relaxed">
-                    {booking.service_packages?.description || `Professional ${booking.service_type.toLowerCase()} services for your special day.`}
-                  </p>
-                </div>
-                <div className="text-right ml-6">
-                  <div className="text-3xl font-bold text-gray-900 mb-2">
-                    {formatPrice(booking.amount)}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Booked {new Date(booking.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Package Features */}
-              {booking.service_packages?.features && booking.service_packages.features.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">What's Included</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {booking.service_packages.features.map((feature: string, index: number) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <Check className="w-4 h-4 text-green-600" />
-                        <span className="text-gray-700">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Time Modification Section */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Event Time</h3>
-                  {!editingTime && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={Edit}
-                      onClick={() => setEditingTime(true)}
-                    >
-                      Change Time
-                    </Button>
-                  )}
-                </div>
-
-                {timeError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-600">{timeError}</p>
-                  </div>
-                )}
-
-                {editingTime ? (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <Input
-                        label="Start Time"
-                        type="time"
-                        value={newStartTime}
-                        onChange={(e) => handleStartTimeChange(e.target.value)}
-                        icon={Clock}
-                      />
-                      <Input
-                        label="End Time"
-                        type="time"
-                        value={newEndTime}
-                        onChange={(e) => setNewEndTime(e.target.value)}
-                        icon={Clock}
-                        helperText={`Auto-calculated based on ${booking.service_packages?.hour_amount || 8} hour service`}
-                        disabled
-                      />
-                    </div>
-                    <div className="flex space-x-3">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        icon={Save}
-                        onClick={handleSaveTime}
-                        loading={savingTime}
-                        disabled={!newStartTime}
-                      >
-                        Save Changes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={X}
-                        onClick={() => {
-                          setEditingTime(false);
-                          setTimeError(null);
-                          // Reset to original values
-                          if (booking.events?.start_time) {
-                            const startTime = new Date(booking.events.start_time);
-                            setNewStartTime(startTime.toTimeString().slice(0, 5));
-                            
-                            if (booking.events.end_time) {
-                              const endTime = new Date(booking.events.end_time);
-                              setNewEndTime(endTime.toTimeString().slice(0, 5));
-                            }
-                          }
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-sm text-gray-600">Start Time:</span>
-                        <div className="font-medium text-gray-900">
-                          {booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">End Time:</span>
-                        <div className="font-medium text-gray-900">
-                          {booking.events?.end_time ? formatTime(booking.events.end_time) : 'TBD'}
-                        </div>
-                      </div>
-                    </div>
-                    {booking.service_packages?.hour_amount && (
-                      <div className="mt-2 text-sm text-gray-600">
-                        Duration: {booking.service_packages.hour_amount} hours
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Package Upgrade Section */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Package Options</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={TrendingUp}
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                  >
-                    Upgrade Package
-                  </Button>
-                </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                    <span className="font-medium text-purple-900">Current Package</span>
-                  </div>
-                  <p className="text-purple-800 text-sm mb-3">
-                    {booking.service_packages?.name} - {formatPrice(booking.service_packages?.price || booking.amount)}
-                  </p>
-                  <p className="text-purple-700 text-sm">
-                    Want more coverage or additional features? Upgrade your package anytime before your event.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            {/* Vendor Information */}
-            <Card className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Your Vendor</h3>
-              <div className="flex items-start space-x-6">
-                <img
-                  src={booking.vendors?.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                  alt={booking.vendors?.name}
-                  className="w-20 h-20 rounded-full object-cover"
-                />
-                <div className="flex-1">
-                  <h4 className="text-xl font-semibold text-gray-900 mb-2">{booking.vendors?.name}</h4>
-                  <div className="flex items-center space-x-4 text-gray-600 mb-4">
-                    {booking.vendors?.rating && (
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                        <span>{booking.vendors.rating} rating</span>
-                      </div>
-                    )}
-                    <span>{booking.vendors?.years_experience} years experience</span>
-                    {booking.vendors?.phone && (
-                      <span>{booking.vendors.phone}</span>
-                    )}
-                  </div>
-                  <div className="flex space-x-3">
-                    <Button
-                      variant="primary"
-                      icon={MessageCircle}
-                      onClick={() => navigate('/profile?tab=messages')}
-                    >
-                      Message Vendor
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/vendor/${booking.vendors?.id}`)}
-                    >
-                      View Profile
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Event Details */}
-            <Card className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Event Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Date & Time</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date:</span>
-                      <span className="font-medium">
-                        {booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Start Time:</span>
-                      <span className="font-medium">
-                        {booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">End Time:</span>
-                      <span className="font-medium">
-                        {booking.events?.end_time ? formatTime(booking.events.end_time) : 'TBD'}
-                      </span>
-                    </div>
-                    {booking.service_packages?.hour_amount && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Duration:</span>
-                        <span className="font-medium">{booking.service_packages.hour_amount} hours</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {booking.venues && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Venue</h4>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">{booking.venues.name}</span>
-                      </div>
-                      {booking.venues.street_address && (
-                        <div className="text-gray-600">
-                          {booking.venues.street_address}<br />
-                          {booking.venues.city}, {booking.venues.state}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Button
-                  variant="primary"
-                  icon={MessageCircle}
-                  className="w-full"
-                  onClick={() => navigate('/profile?tab=messages')}
-                >
-                  Message Vendor
-                </Button>
-                <Button
-                  variant="outline"
-                  icon={Download}
-                  className="w-full"
-                  onClick={handleDownloadContract}
-                >
-                  Download Contract
-                </Button>
-                <Button
-                  variant="outline"
-                  icon={Eye}
-                  className="w-full"
-                  onClick={() => navigate('/profile?tab=gallery')}
-                >
-                  View Gallery
-                </Button>
-                {booking.status === 'completed' && (
-                  <Button
-                    variant="outline"
-                    icon={Star}
-                    className="w-full text-amber-600 border-amber-200 hover:bg-amber-50"
-                    onClick={() => setShowReviewModal(true)}
-                  >
-                    Leave Review
-                  </Button>
-                )}
-              </div>
-            </Card>
-
-            {/* Payment Summary */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Package Price:</span>
-                  <span className="font-medium">{formatPrice(booking.amount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Service Fee:</span>
-                  <span className="font-medium">$150</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Deposit Paid:</span>
-                  <span className="font-medium text-green-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold border-t pt-3">
-                  <span>Remaining Balance:</span>
-                  <span className="text-red-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
-                </div>
-              </div>
-              <div className="mt-4">
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => navigate('/profile?tab=payments')}
-                >
-                  Make Payment
-                </Button>
-              </div>
-            </Card>
-
-            {/* Booking Info */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Information</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Booking ID:</span>
-                  <span className="font-medium font-mono">#{booking.id.substring(0, 8).toUpperCase()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Service Type:</span>
-                  <span className="font-medium">{booking.service_type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Created:</span>
-                  <span className="font-medium">{new Date(booking.created_at).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Last Updated:</span>
-                  <span className="font-medium">{new Date(booking.updated_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* Review Modal */}
-      {booking.vendors && (
-        <VendorReviewModal
-          isOpen={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          vendor={{
-            id: booking.vendors.id,
-            name: booking.vendors.name,
-            profile_photo: booking.vendors.profile_photo,
-            service_type: booking.service_type
-          }}
-          booking={{
-            id: booking.id,
-            service_packages: booking.service_packages
-          }}
-          onReviewSubmitted={() => {
-            setShowReviewModal(false);
-            // Could refresh booking data here if needed
-          }}
-        />
-      )}
-
-      {/* Package Upgrade Modal */}
-      <PackageUpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        booking={booking}
-        onUpgradeSuccess={() => {
-          setShowUpgradeModal(false);
-          fetchBookingDetails(); // Refresh booking data
-        }}
-      />
-    </div>
-  );
+  return { leadInfo, updateLeadInfo, loading, error };
 };
