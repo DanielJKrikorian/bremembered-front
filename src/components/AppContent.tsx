@@ -24,6 +24,11 @@ export const BookingDetails: React.FC = () => {
   const [newEndTime, setNewEndTime] = useState('');
   const [savingTime, setSavingTime] = useState(false);
   const [timeError, setTimeError] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -45,11 +50,6 @@ export const BookingDetails: React.FC = () => {
   const handleStartTimeChange = (time: string) => {
     setNewStartTime(time);
     if (booking?.service_packages?.hour_amount) {
-      const calculatedEndTime = calculateEndTime(time, booking.service_packages.hour_amount);
-      setNewEndTime(calculatedEndTime);
-    }
-  };
-
   const fetchBookingDetails = async () => {
     if (!id) return;
 
@@ -183,6 +183,20 @@ export const BookingDetails: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to fetch booking details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const calculateEndTime = (startTime: string, hours: number) => {
+    const start = new Date(`2000-01-01T${startTime}`);
+    start.setHours(start.getHours() + hours);
+    return start.toTimeString().slice(0, 5);
+  };
+
+  const handleStartTimeChange = (time: string) => {
+    setNewStartTime(time);
+    if (booking?.service_packages?.hour_amount) {
+      const calculatedEndTime = calculateEndTime(time, booking.service_packages.hour_amount);
+      setNewEndTime(calculatedEndTime);
     }
   };
 
