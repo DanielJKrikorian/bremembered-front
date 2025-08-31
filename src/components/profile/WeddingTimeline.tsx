@@ -1,587 +1,846 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Plus, Edit2, Trash2, Save, X, MapPin, Users, Music, Camera, Video, AlertCircle, Check } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { Input } from '../ui/Input';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import { useAuth } from '../../context/AuthContext';
-import { useCouple } from '../../hooks/useCouple';
+import { ArrowLeft, Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Edit, Save, X, TrendingUp, Check, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
+import { useAuth } from '../context/AuthContext';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { jsPDF } from 'jspdf';
+import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
+import { PackageUpgradeModal } from '../components/booking/PackageUpgradeModal';
 
-interface TimelineEvent {
-  id: string;
-  couple_id: string;
-  title: string;
-  description?: string;
-  event_date: string;
-  event_time: string;
-  location?: string;
-  type: string;
-  duration_minutes?: number;
-  is_standard: boolean;
-  music_notes?: string;
-  playlist_requests?: string;
-  photo_shotlist?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export const WeddingTimeline: React.FC = () => {
-  const { user } = useAuth();
-  const { couple } = useCouple();
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+export const BookingDetails: React.FC = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingEvent, setEditingEvent] = useState<string | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    event_time: '',
-    location: '',
-    type: 'custom',
-    duration_minutes: 60,
-    music_notes: '',
-    playlist_requests: '',
-    photo_shotlist: ''
-  });
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [editingTime, setEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
-    if (couple?.id) {
-      fetchTimelineEvents();
+    if (id) {
+      fetchBookingDetails();
     }
-  }, [couple]);
+  }, [id]);
 
-  const fetchTimelineEvents = async () => {
-    if (!couple?.id) {
-      setLoading(false);
-      return;
-    }
+  const calculateEndTime = (startTime: string, hours: number) => {
+    const start = new Date(`2000-01-01T${startTime}`);
+    start.setHours(start.getHours() + hours);
+    return start.toTimeString().slice(0, 5);
+  };
+
+  const handleStartTimeChange = (time: string) => {
+    setNewStartTime(time);
+    if (booking?.service_packages?.hour_amount) {
+  const calculateEndTime = (startTime: string, hours: number) => {
+    const start = new Date(`2000-01-01T${startTime}`);
+    start.setHours(start.getHours() + hours);
+    return start.toTimeString().slice(0, 5);
+  };
+
+  const handleStartTimeChange = (time: string) => {
+    setNewStartTime(time);
+    if (booking?.service_packages?.hour_amount) {
+  const fetchBookingDetails = async () => {
+    if (!id) return;
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock timeline events for demo
-      const mockEvents: TimelineEvent[] = [
-        {
+      // Mock booking for demo
+      const mockBooking = {
+        id: id,
+        couple_id: 'mock-couple-1',
+        vendor_id: 'mock-vendor-1',
+        status: 'confirmed',
+        amount: 250000,
+        service_type: 'Photography',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        vendors: {
+          id: 'mock-vendor-1',
+          name: 'Elegant Moments Photography',
+          profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+          rating: 4.9,
+          years_experience: 10,
+          phone: '(555) 123-4567'
+        },
+        service_packages: {
+          id: 'mock-package-1',
+          name: 'Premium Wedding Photography',
+          description: 'Complete wedding day photography with 8 hours of coverage',
+          price: 250000,
+          service_type: 'Photography',
+          hour_amount: 8,
+          features: ['8 hours coverage', '500+ edited photos', 'Online gallery', 'Print release']
+        },
+        venues: {
+          id: 'mock-venue-1',
+          name: 'Sunset Gardens',
+          street_address: '123 Garden Lane',
+          city: 'Los Angeles',
+          state: 'CA'
+        },
+        events: {
           id: 'mock-event-1',
-          couple_id: couple.id,
-          title: 'Getting Ready',
-          description: 'Bride and groom preparation',
-          event_date: couple.wedding_date || '2024-08-15',
-          event_time: '14:00',
-          location: 'Bridal Suite',
-          type: 'preparation',
-          duration_minutes: 120,
-          is_standard: true,
-          photo_shotlist: 'Detail shots, getting ready candids, dress hanging',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
+          start_time: '2024-08-15T16:00:00Z',
+          end_time: '2024-08-15T23:00:00Z',
+          title: 'Sarah & Michael Wedding',
+          location: 'Sunset Gardens'
         },
-        {
-          id: 'mock-event-2',
-          couple_id: couple.id,
-          title: 'Ceremony',
-          description: 'Wedding ceremony',
-          event_date: couple.wedding_date || '2024-08-15',
-          event_time: '16:00',
-          location: 'Garden Altar',
-          type: 'ceremony',
-          duration_minutes: 30,
-          is_standard: true,
-          music_notes: 'Processional: Canon in D, Recessional: Wedding March',
-          photo_shotlist: 'Processional, vows, ring exchange, first kiss, recessional',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: 'mock-event-3',
-          couple_id: couple.id,
-          title: 'Cocktail Hour',
-          description: 'Guests mingle while couple takes photos',
-          event_date: couple.wedding_date || '2024-08-15',
-          event_time: '16:30',
-          location: 'Garden Terrace',
-          type: 'reception',
-          duration_minutes: 60,
-          is_standard: true,
-          music_notes: 'Jazz playlist, acoustic background music',
-          photo_shotlist: 'Couple portraits, family photos, guest candids',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
-        },
-        {
-          id: 'mock-event-4',
-          couple_id: couple.id,
-          title: 'Reception',
-          description: 'Dinner, dancing, and celebration',
-          event_date: couple.wedding_date || '2024-08-15',
-          event_time: '17:30',
-          location: 'Main Ballroom',
-          type: 'reception',
-          duration_minutes: 300,
-          is_standard: true,
-          music_notes: 'First dance: Perfect by Ed Sheeran, Party playlist attached',
-          playlist_requests: 'Upbeat dance music, no explicit lyrics, mix of decades',
-          photo_shotlist: 'First dance, toasts, cake cutting, dancing, candids',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
+        couples: {
+          id: 'mock-couple-1',
+          name: 'Sarah & Michael',
+          email: 'sarah@example.com',
+          phone: '(555) 987-6543'
         }
-      ];
-      setTimelineEvents(mockEvents);
+      };
+      setBooking(mockBooking);
       setLoading(false);
       return;
     }
 
     try {
+      // Get couple ID first
+      const { data: coupleData, error: coupleError } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (coupleError) throw coupleError;
+
+      // Fetch booking details
       const { data, error } = await supabase
-        .from('timeline_events')
-        .select('*')
-        .eq('couple_id', couple.id)
-        .order('event_time', { ascending: true });
+        .from('bookings')
+        .select(`
+          *,
+          vendors!inner(
+            id,
+            name,
+            profile_photo,
+            rating,
+            years_experience,
+            phone,
+            user_id
+          ),
+          service_packages(
+            id,
+            name,
+            description,
+            price,
+            service_type,
+            hour_amount,
+            features
+          ),
+          venues(
+            id,
+            name,
+            street_address,
+            city,
+            state
+          ),
+          events(
+            id,
+            start_time,
+            end_time,
+            title,
+            location
+          ),
+          couples(
+            id,
+            name,
+            email,
+            phone
+          )
+        `)
+        .eq('id', id)
+        .eq('couple_id', coupleData.id)
+        .single();
 
       if (error) throw error;
-      setTimelineEvents(data || []);
+      setBooking(data);
+      
+      // Set initial time values
+      if (data.events?.start_time) {
+        const startTime = new Date(data.events.start_time);
+        setNewStartTime(startTime.toTimeString().slice(0, 5));
+        
+        if (data.events.end_time) {
+          const endTime = new Date(data.events.end_time);
+          setNewEndTime(endTime.toTimeString().slice(0, 5));
+        }
+      }
     } catch (err) {
-      console.error('Error fetching timeline events:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch timeline events');
+      console.error('Error fetching booking details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch booking details');
     } finally {
       setLoading(false);
     }
   };
 
-  const addTimelineEvent = async () => {
-    if (!couple?.id || !newEvent.title || !newEvent.event_time) return;
+  const calculateEndTime = (startTime: string, hours: number) => {
+    const start = new Date(`2000-01-01T${startTime}`);
+    start.setHours(start.getHours() + hours);
+    return start.toTimeString().slice(0, 5);
+  };
+
+  const handleStartTimeChange = (time: string) => {
+    setNewStartTime(time);
+    if (booking?.service_packages?.hour_amount) {
+      const calculatedEndTime = calculateEndTime(time, booking.service_packages.hour_amount);
+      setNewEndTime(calculatedEndTime);
+    }
+  };
+
+  const handleSaveTime = async () => {
+    if (!booking || !newStartTime) return;
+
+    setSavingTime(true);
+    setTimeError(null);
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock add for demo
-      const mockEvent: TimelineEvent = {
-        id: `mock-event-${Date.now()}`,
-        couple_id: couple.id,
-        title: newEvent.title,
-        description: newEvent.description,
-        event_date: couple.wedding_date || '2024-08-15',
-        event_time: newEvent.event_time,
-        location: newEvent.location,
-        type: newEvent.type,
-        duration_minutes: newEvent.duration_minutes,
-        is_standard: false,
-        music_notes: newEvent.music_notes,
-        playlist_requests: newEvent.playlist_requests,
-        photo_shotlist: newEvent.photo_shotlist,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setTimelineEvents(prev => [...prev, mockEvent].sort((a, b) => a.event_time.localeCompare(b.event_time)));
-      resetNewEvent();
+      // Mock save for demo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update local state
+      setBooking(prev => ({
+        ...prev,
+        events: {
+          ...prev.events,
+          start_time: `${prev.events.start_time.split('T')[0]}T${newStartTime}:00Z`,
+          end_time: `${prev.events.end_time.split('T')[0]}T${newEndTime}:00Z`
+        }
+      }));
+      
+      setEditingTime(false);
+      setSavingTime(false);
       return;
     }
 
     try {
+      // Update the event time
+      const eventDate = booking.events.start_time.split('T')[0];
+      const newStartDateTime = `${eventDate}T${newStartTime}:00Z`;
+      const newEndDateTime = `${eventDate}T${newEndTime}:00Z`;
+
       const { error } = await supabase
-        .from('timeline_events')
-        .insert({
-          couple_id: couple.id,
-          title: newEvent.title,
-          description: newEvent.description,
-          event_date: couple.wedding_date || new Date().toISOString().split('T')[0],
-          event_time: newEvent.event_time,
-          location: newEvent.location,
-          type: newEvent.type,
-          duration_minutes: newEvent.duration_minutes,
-          is_standard: false,
-          music_notes: newEvent.music_notes,
-          playlist_requests: newEvent.playlist_requests,
-          photo_shotlist: newEvent.photo_shotlist
-        });
+        .from('events')
+        .update({
+          start_time: newStartDateTime,
+          end_time: newEndDateTime,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.events.id);
 
       if (error) throw error;
-      await fetchTimelineEvents();
-      resetNewEvent();
+
+      // Update local state
+      setBooking(prev => ({
+        ...prev,
+        events: {
+          ...prev.events,
+          start_time: newStartDateTime,
+          end_time: newEndDateTime
+        }
+      }));
+
+      setEditingTime(false);
     } catch (err) {
-      console.error('Error adding timeline event:', err);
-      setError(err instanceof Error ? err.message : 'Failed to add timeline event');
+      console.error('Error updating time:', err);
+      setTimeError(err instanceof Error ? err.message : 'Failed to update time');
+    } finally {
+      setSavingTime(false);
     }
   };
 
-  const deleteTimelineEvent = async (eventId: string) => {
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock delete for demo
-      setTimelineEvents(prev => prev.filter(event => event.id !== eventId));
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('timeline_events')
-        .delete()
-        .eq('id', eventId)
-        .eq('couple_id', couple?.id);
-
-      if (error) throw error;
-      setTimelineEvents(prev => prev.filter(event => event.id !== eventId));
-    } catch (err) {
-      console.error('Error deleting timeline event:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete timeline event');
-    }
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
   };
 
-  const resetNewEvent = () => {
-    setNewEvent({
-      title: '',
-      description: '',
-      event_time: '',
-      location: '',
-      type: 'custom',
-      duration_minutes: 60,
-      music_notes: '',
-      playlist_requests: '',
-      photo_shotlist: ''
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
-    setShowAddForm(false);
   };
 
-  const formatTime = (timeString: string) => {
-    try {
-      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return timeString;
-    }
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'ceremony': return Calendar;
-      case 'reception': return Users;
-      case 'preparation': return Clock;
-      case 'photography': return Camera;
-      case 'videography': return Video;
-      case 'music': return Music;
-      default: return Clock;
-    }
-  };
-
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'ceremony': return 'bg-rose-100 text-rose-800 border-rose-200';
-      case 'reception': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'preparation': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'photography': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'videography': return 'bg-green-100 text-green-800 border-green-200';
-      case 'music': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
+  const handleDownloadContract = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('SERVICE CONTRACT', 105, 30, { align: 'center' });
+      
+      // Contract content
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      let yPos = 50;
+      
+      const contractText = `
+Contract for ${booking.service_packages?.name || booking.service_type}
+
+Client: ${booking.couples?.name}
+Vendor: ${booking.vendors?.name}
+Service: ${booking.service_packages?.name}
+Amount: ${formatPrice(booking.amount)}
+Date: ${booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
+Time: ${booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
+Location: ${booking.venues?.name || booking.events?.location || 'TBD'}
+
+This contract confirms the booking of ${booking.service_type.toLowerCase()} services
+for the above event details.
+      `.trim();
+
+      const lines = contractText.split('\n');
+      lines.forEach(line => {
+        if (yPos > 250) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(line, 20, yPos);
+        yPos += 7;
+      });
+
+      doc.save(`Contract_${booking.vendors?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating contract:', error);
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Sign In Required</h2>
+          <p className="text-gray-600 mb-6">Please sign in to view booking details.</p>
+          <Button variant="primary" onClick={() => navigate('/login')}>
+            Sign In
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your wedding timeline...</p>
+          <p className="text-gray-600">Loading booking details...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Timeline</h3>
-            <p className="text-gray-600">
-              Plan your perfect day and share it with your vendors
-            </p>
-            {couple?.wedding_date && (
-              <p className="text-sm text-gray-500 mt-1">
-                Wedding Date: {new Date(couple.wedding_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="text-right">
-              <div className="text-2xl font-bold text-rose-500">{timelineEvents.length}</div>
-              <div className="text-sm text-gray-600">Timeline Events</div>
-            </div>
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={() => setShowAddForm(true)}
-            >
-              Add Event
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {error && (
-        <Card className="p-4 bg-red-50 border border-red-200">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-            <p className="text-red-700">{error}</p>
-          </div>
-        </Card>
-      )}
-
-      {/* Add Event Form */}
-      {showAddForm && (
-        <Card className="p-6 bg-blue-50 border border-blue-200">
-          <h4 className="font-semibold text-blue-900 mb-4">Add Timeline Event</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Event Title"
-              value={newEvent.title}
-              onChange={(e) => setNewEvent(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="e.g., First Look"
-              required
-            />
-            <Input
-              label="Event Time"
-              type="time"
-              value={newEvent.event_time}
-              onChange={(e) => setNewEvent(prev => ({ ...prev, event_time: e.target.value }))}
-              icon={Clock}
-              required
-            />
-            <div className="md:col-span-2">
-              <Input
-                label="Description"
-                value={newEvent.description}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of this event"
-              />
-            </div>
-            <Input
-              label="Location"
-              value={newEvent.location}
-              onChange={(e) => setNewEvent(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="e.g., Garden Altar, Bridal Suite"
-              icon={MapPin}
-            />
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
-              <select
-                value={newEvent.type}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                <option value="custom">Custom</option>
-                <option value="ceremony">Ceremony</option>
-                <option value="reception">Reception</option>
-                <option value="preparation">Preparation</option>
-                <option value="photography">Photography</option>
-                <option value="videography">Videography</option>
-                <option value="music">Music</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
-              <input
-                type="number"
-                min="5"
-                max="480"
-                value={newEvent.duration_minutes}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) || 60 }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                label="Music Notes (for DJ/Musicians)"
-                value={newEvent.music_notes}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, music_notes: e.target.value }))}
-                placeholder="Special songs, volume preferences, etc."
-                icon={Music}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Input
-                label="Photo Shot List (for Photographers)"
-                value={newEvent.photo_shotlist}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, photo_shotlist: e.target.value }))}
-                placeholder="Specific shots you want captured during this time"
-                icon={Camera}
-              />
-            </div>
-          </div>
-          <div className="flex space-x-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAddForm(false);
-                resetNewEvent();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={addTimelineEvent}
-              disabled={!newEvent.title || !newEvent.event_time}
-              icon={Save}
-            >
-              Add Event
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Timeline Events */}
-      {timelineEvents.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No timeline events yet</h3>
-          <p className="text-gray-600 mb-6">
-            Start building your wedding day timeline by adding events and sharing details with your vendors
-          </p>
-          <Button
-            variant="primary"
-            onClick={() => setShowAddForm(true)}
-            icon={Plus}
-          >
-            Add Your First Event
+  if (error || !booking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="p-8 text-center max-w-md">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h2>
+          <p className="text-gray-600 mb-6">{error || "The booking you're looking for doesn't exist."}</p>
+          <Button variant="primary" onClick={() => navigate('/my-bookings')}>
+            Back to My Bookings
           </Button>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {timelineEvents.map((event) => {
-            const EventIcon = getEventIcon(event.type);
-            const eventColorClass = getEventColor(event.type);
-            
-            return (
-              <Card key={event.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${eventColorClass}`}>
-                      <EventIcon className="w-6 h-6" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-4 mb-6">
+            <Button 
+              variant="ghost" 
+              icon={ArrowLeft} 
+              onClick={() => navigate('/my-bookings')}
+            >
+              Back to My Bookings
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
+              <p className="text-gray-600 mt-1">
+                {booking.service_packages?.name || booking.service_type}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Booking Overview */}
+            <Card className="p-6">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+                    {booking.service_packages?.name || booking.service_type}
+                  </h2>
+                  <div className="flex items-center space-x-4 text-gray-600 mb-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(booking.status)}`}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    </span>
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      <span>
+                        {booking.events?.start_time 
+                          ? formatDate(booking.events.start_time)
+                          : 'Date TBD'
+                        }
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-lg font-semibold text-gray-900">{event.title}</h4>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${eventColorClass}`}>
-                          {event.type}
-                        </span>
-                        {event.is_standard && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <Check className="w-3 h-3 mr-1" />
-                            Standard
-                          </span>
-                        )}
+                    {booking.venues && (
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        <span>{booking.venues.name}</span>
                       </div>
-                      
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>{formatTime(event.event_time)}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span>{event.duration_minutes} minutes</span>
-                        </div>
-                        {event.location && (
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span>{event.location}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {event.description && (
-                        <p className="text-gray-600 mb-3">{event.description}</p>
-                      )}
-                      
-                      {/* Vendor Notes */}
-                      <div className="space-y-2">
-                        {event.music_notes && (
-                          <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Music className="w-4 h-4 text-indigo-600" />
-                              <span className="font-medium text-indigo-900 text-sm">Music Notes</span>
-                            </div>
-                            <p className="text-indigo-800 text-sm">{event.music_notes}</p>
-                          </div>
-                        )}
-                        
-                        {event.playlist_requests && (
-                          <div className="bg-purple-50 border border-purple-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Music className="w-4 h-4 text-purple-600" />
-                              <span className="font-medium text-purple-900 text-sm">Playlist Requests</span>
-                            </div>
-                            <p className="text-purple-800 text-sm">{event.playlist_requests}</p>
-                          </div>
-                        )}
-                        
-                        {event.photo_shotlist && (
-                          <div className="bg-rose-50 border border-rose-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Camera className="w-4 h-4 text-rose-600" />
-                              <span className="font-medium text-rose-900 text-sm">Photo Shot List</span>
-                            </div>
-                            <p className="text-rose-800 text-sm">{event.photo_shotlist}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  
-                  {!event.is_standard && (
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={Edit2}
-                        onClick={() => setEditingEvent(event.id)}
-                        className="text-gray-400 hover:text-gray-600"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={Trash2}
-                        onClick={() => deleteTimelineEvent(event.id)}
-                        className="text-red-400 hover:text-red-600"
-                      />
-                    </div>
+                  <p className="text-gray-600 leading-relaxed">
+                    {booking.service_packages?.description || `Professional ${booking.service_type.toLowerCase()} services for your special day.`}
+                  </p>
+                </div>
+                <div className="text-right ml-6">
+                  <div className="text-3xl font-bold text-gray-900 mb-2">
+                    {formatPrice(booking.amount)}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Booked {new Date(booking.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Package Features */}
+              {booking.service_packages?.features && booking.service_packages.features.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">What's Included</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {booking.service_packages.features.map((feature: string, index: number) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Check className="w-4 h-4 text-green-600" />
+                        <span className="text-gray-700">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Time Modification Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">Event Time</h3>
+                  {!editingTime && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={Edit}
+                      onClick={() => setEditingTime(true)}
+                    >
+                      Change Time
+                    </Button>
                   )}
                 </div>
-              </Card>
-            );
-          })}
+
+                {timeError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{timeError}</p>
+                  </div>
+                )}
+
+                {editingTime ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <Input
+                        label="Start Time"
+                        type="time"
+                        value={newStartTime}
+                        onChange={(e) => handleStartTimeChange(e.target.value)}
+                        icon={Clock}
+                      />
+                      <Input
+                        label="End Time"
+                        type="time"
+                        value={newEndTime}
+                        onChange={(e) => setNewEndTime(e.target.value)}
+                        icon={Clock}
+                        helperText={`Auto-calculated based on ${booking.service_packages?.hour_amount || 8} hour service`}
+                        disabled
+                      />
+                    </div>
+                    <div className="flex space-x-3">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={Save}
+                        onClick={handleSaveTime}
+                        loading={savingTime}
+                        disabled={!newStartTime}
+                      >
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={X}
+                        onClick={() => {
+                          setEditingTime(false);
+                          setTimeError(null);
+                          // Reset to original values
+                          if (booking.events?.start_time) {
+                            const startTime = new Date(booking.events.start_time);
+                            setNewStartTime(startTime.toTimeString().slice(0, 5));
+                            
+                            if (booking.events.end_time) {
+                              const endTime = new Date(booking.events.end_time);
+                              setNewEndTime(endTime.toTimeString().slice(0, 5));
+                            }
+                          }
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-sm text-gray-600">Start Time:</span>
+                        <div className="font-medium text-gray-900">
+                          {booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">End Time:</span>
+                        <div className="font-medium text-gray-900">
+                          {booking.events?.end_time ? formatTime(booking.events.end_time) : 'TBD'}
+                        </div>
+                      </div>
+                    </div>
+                    {booking.service_packages?.hour_amount && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Duration: {booking.service_packages.hour_amount} hours
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Package Upgrade Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">Package Options</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={TrendingUp}
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                  >
+                    Upgrade Package
+                  </Button>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                    <span className="font-medium text-purple-900">Current Package</span>
+                  </div>
+                  <p className="text-purple-800 text-sm mb-3">
+                    {booking.service_packages?.name} - {formatPrice(booking.service_packages?.price || booking.amount)}
+                  </p>
+                  <p className="text-purple-700 text-sm">
+                    Want more coverage or additional features? Upgrade your package anytime before your event.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Vendor Information */}
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Your Vendor</h3>
+              <div className="flex items-start space-x-6">
+                <img
+                  src={booking.vendors?.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                  alt={booking.vendors?.name}
+                  className="w-20 h-20 rounded-full object-cover"
+                />
+                <div className="flex-1">
+                  <h4 className="text-xl font-semibold text-gray-900 mb-2">{booking.vendors?.name}</h4>
+                  <div className="flex items-center space-x-4 text-gray-600 mb-4">
+                    {booking.vendors?.rating && (
+                      <div className="flex items-center">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                        <span>{booking.vendors.rating} rating</span>
+                      </div>
+                    )}
+                    <span>{booking.vendors?.years_experience} years experience</span>
+                    {booking.vendors?.phone && (
+                      <span>{booking.vendors.phone}</span>
+                    )}
+                  </div>
+                  <div className="flex space-x-3">
+                    <Button
+                      variant="primary"
+                      icon={MessageCircle}
+                      onClick={() => navigate('/profile?tab=messages')}
+                    >
+                      Message Vendor
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate(`/vendor/${booking.vendors?.id}`)}
+                    >
+                      View Profile
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Event Details */}
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Event Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Date & Time</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="font-medium">
+                        {booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Start Time:</span>
+                      <span className="font-medium">
+                        {booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">End Time:</span>
+                      <span className="font-medium">
+                        {booking.events?.end_time ? formatTime(booking.events.end_time) : 'TBD'}
+                      </span>
+                    </div>
+                    {booking.service_packages?.hour_amount && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Duration:</span>
+                        <span className="font-medium">{booking.service_packages.hour_amount} hours</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {booking.venues && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Venue</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium">{booking.venues.name}</span>
+                      </div>
+                      {booking.venues.street_address && (
+                        <div className="text-gray-600">
+                          {booking.venues.street_address}<br />
+                          {booking.venues.city}, {booking.venues.state}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <Button
+                  variant="primary"
+                  icon={MessageCircle}
+                  className="w-full"
+                  onClick={() => navigate('/profile?tab=messages')}
+                >
+                  Message Vendor
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={Download}
+                  className="w-full"
+                  onClick={handleDownloadContract}
+                >
+                  Download Contract
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={Eye}
+                  className="w-full"
+                  onClick={() => navigate('/profile?tab=gallery')}
+                >
+                  View Gallery
+                </Button>
+                {booking.status === 'completed' && (
+                  <Button
+                    variant="outline"
+                    icon={Star}
+                    className="w-full text-amber-600 border-amber-200 hover:bg-amber-50"
+                    onClick={() => setShowReviewModal(true)}
+                  >
+                    Leave Review
+                  </Button>
+                )}
+              </div>
+            </Card>
+
+            {/* Payment Summary */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Package Price:</span>
+                  <span className="font-medium">{formatPrice(booking.amount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service Fee:</span>
+                  <span className="font-medium">$150</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Deposit Paid:</span>
+                  <span className="font-medium text-green-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
+                </div>
+                <div className="flex justify-between text-lg font-semibold border-t pt-3">
+                  <span>Remaining Balance:</span>
+                  <span className="text-red-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => navigate('/profile?tab=payments')}
+                >
+                  Make Payment
+                </Button>
+              </div>
+            </Card>
+
+            {/* Booking Info */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Information</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Booking ID:</span>
+                  <span className="font-medium font-mono">#{booking.id.substring(0, 8).toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service Type:</span>
+                  <span className="font-medium">{booking.service_type}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Created:</span>
+                  <span className="font-medium">{new Date(booking.created_at).toLocaleDateString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Last Updated:</span>
+                  <span className="font-medium">{new Date(booking.updated_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
+      </div>
+
+      {/* Review Modal */}
+      {booking.vendors && (
+        <VendorReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          vendor={{
+            id: booking.vendors.id,
+            name: booking.vendors.name,
+            profile_photo: booking.vendors.profile_photo,
+            service_type: booking.service_type
+          }}
+          booking={{
+            id: booking.id,
+            service_packages: booking.service_packages
+          }}
+          onReviewSubmitted={() => {
+            setShowReviewModal(false);
+            // Could refresh booking data here if needed
+          }}
+        />
       )}
 
-      {/* Share Timeline */}
-      {timelineEvents.length > 0 && (
-        <Card className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Share Your Timeline
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Share your detailed timeline with your vendors so everyone is coordinated for your special day
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => {
-                // This would trigger sharing the timeline with vendors
-                alert('Timeline sharing feature coming soon!');
-              }}
-            >
-              Share with Vendors
-            </Button>
-          </div>
-        </Card>
-      )}
+      {/* Package Upgrade Modal */}
+      <PackageUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        booking={booking}
+        onUpgradeSuccess={() => {
+          setShowUpgradeModal(false);
+          fetchBookingDetails(); // Refresh booking data
+        }}
+      />
     </div>
   );
 };

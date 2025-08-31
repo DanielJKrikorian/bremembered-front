@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filter, Search, Edit, Save, X, TrendingUp, Check, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Edit, Save, X, TrendingUp, Check, AlertCircle } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -24,6 +24,11 @@ export const BookingDetails: React.FC = () => {
   const [newEndTime, setNewEndTime] = useState('');
   const [savingTime, setSavingTime] = useState(false);
   const [timeError, setTimeError] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState('');
+  const [newEndTime, setNewEndTime] = useState('');
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -36,6 +41,15 @@ export const BookingDetails: React.FC = () => {
     }
   }, [id]);
 
+  const calculateEndTime = (startTime: string, hours: number) => {
+    const start = new Date(`2000-01-01T${startTime}`);
+    start.setHours(start.getHours() + hours);
+    return start.toTimeString().slice(0, 5);
+  };
+
+  const handleStartTimeChange = (time: string) => {
+    setNewStartTime(time);
+    if (booking?.service_packages?.hour_amount) {
   const fetchBookingDetails = async () => {
     if (!id) return;
 
