@@ -54,6 +54,4 @@ const [showReviewModal, setShowReviewModal] = useState(false);
       // Update the event time
       const eventDate = booking.events.start_time.split('T')[0];
       const newStartDateTime = `${eventDate}T${newStartTime}:00Z`;
-    }
-  }
   // Scroll to top when component mounts
