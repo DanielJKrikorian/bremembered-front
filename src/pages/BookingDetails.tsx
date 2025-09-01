@@ -25,6 +25,77 @@ export const BookingDetails: React.FC = () => {
   const [savingTime, setSavingTime] = useState(false);
   const [timeError, setTimeError] = useState<string | null>(null);
 
+  // Utility to format time for input fields (display in EDT)
+  const formatTimeForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) {
+      console.debug('formatTimeForInput: Missing dateString, returning 12:00', { dateString });
+      return '12:00';
+    }
+    try {
+      // Parse as UTC
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.debug('formatTimeForInput: Invalid date, returning 12:00', { dateString });
+        return '12:00';
+      }
+      // Convert UTC to EDT
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'America/New_York'
+      }).replace(' ', ':');
+    } catch (err) {
+      console.debug('formatTimeForInput: Error parsing date, returning 12:00', { dateString, error: err });
+      return '12:00';
+    }
+  };
+
+  // Utility to format time for non-editing display (display in EDT)
+  const formatTime = (dateString: string) => {
+    try {
+      // Parse as UTC
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.debug('formatTime: Invalid date, returning TBD', { dateString });
+        return 'TBD';
+      }
+      // Convert UTC to EDT
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/New_York'
+      });
+    } catch (err) {
+      console.debug('formatTime: Error parsing date, returning TBD', { dateString, error: err });
+      return 'TBD';
+    }
+  };
+
+  // Utility to format date for display
+  const formatDate = (dateString: string) => {
+    try {
+      // Parse as UTC
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.debug('formatDate: Invalid date, returning TBD', { dateString });
+        return 'TBD';
+      }
+      // Convert UTC to EDT
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/New_York'
+      });
+    } catch (err) {
+      console.debug('formatDate: Error parsing date, returning TBD', { dateString, error: err });
+      return 'TBD';
+    }
+  };
+
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -38,60 +109,6 @@ export const BookingDetails: React.FC = () => {
 
   const fetchBookingDetails = async () => {
     if (!id) return;
-
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock booking for demo
-      const mockBooking = {
-        id: id,
-        couple_id: 'mock-couple-1',
-        vendor_id: 'mock-vendor-1',
-        status: 'confirmed',
-        amount: 250000,
-        service_type: 'Photography',
-        created_at: '2024-01-15T10:00:00Z',
-        updated_at: '2024-01-15T10:00:00Z',
-        vendors: {
-          id: 'mock-vendor-1',
-          name: 'Elegant Moments Photography',
-          profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
-          rating: 4.9,
-          years_experience: 10,
-          phone: '(555) 123-4567'
-        },
-        service_packages: {
-          id: 'mock-package-1',
-          name: 'Premium Wedding Photography',
-          description: 'Complete wedding day photography with 8 hours of coverage',
-          price: 250000,
-          service_type: 'Photography',
-          hour_amount: 8,
-          features: ['8 hours coverage', '500+ edited photos', 'Online gallery', 'Print release']
-        },
-        venues: {
-          id: 'mock-venue-1',
-          name: 'Sunset Gardens',
-          street_address: '123 Garden Lane',
-          city: 'Los Angeles',
-          state: 'CA'
-        },
-        events: {
-          id: 'mock-event-1',
-          start_time: '2024-08-15T16:00:00Z',
-          end_time: '2024-08-15T23:00:00Z',
-          title: 'Sarah & Michael Wedding',
-          location: 'Sunset Gardens'
-        },
-        couples: {
-          id: 'mock-couple-1',
-          name: 'Sarah & Michael',
-          email: 'sarah@example.com',
-          phone: '(555) 987-6543'
-        }
-      };
-      setBooking(mockBooking);
-      setLoading(false);
-      return;
-    }
 
     try {
       // Get couple ID first
@@ -153,17 +170,18 @@ export const BookingDetails: React.FC = () => {
 
       if (error) throw error;
       setBooking(data);
-      
+
       // Set initial time values
-      if (data.events?.start_time) {
-        const startTime = new Date(data.events.start_time);
-        setNewStartTime(startTime.toTimeString().slice(0, 5));
-        
-        if (data.events.end_time) {
-          const endTime = new Date(data.events.end_time);
-          setNewEndTime(endTime.toTimeString().slice(0, 5));
-        }
-      }
+      const startTime = formatTimeForInput(data.events?.start_time);
+      const endTime = formatTimeForInput(data.events?.end_time);
+      setNewStartTime(startTime);
+      setNewEndTime(endTime);
+      console.debug('fetchBookingDetails: Set times', {
+        start_time: data.events?.start_time,
+        end_time: data.events?.end_time,
+        newStartTime: startTime,
+        newEndTime: endTime
+      });
     } catch (err) {
       console.error('Error fetching booking details:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch booking details');
@@ -173,50 +191,96 @@ export const BookingDetails: React.FC = () => {
   };
 
   const calculateEndTime = (startTime: string, hours: number) => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    start.setHours(start.getHours() + hours);
-    return start.toTimeString().slice(0, 5);
+    if (!startTime.match(/^\d{2}:\d{2}$/)) {
+      console.debug('calculateEndTime: Invalid startTime format, returning 12:00', { startTime });
+      return '12:00';
+    }
+    const [hoursStr, minutesStr] = startTime.split(':');
+    const startHours = parseInt(hoursStr, 10);
+    const startMinutes = parseInt(minutesStr, 10);
+    if (isNaN(startHours) || isNaN(startMinutes)) {
+      console.debug('calculateEndTime: Invalid time values, returning 12:00', { startTime });
+      return '12:00';
+    }
+    // Add package hours directly in EDT
+    const totalMinutes = startHours * 60 + startMinutes + hours * 60;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    const result = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    console.debug('calculateEndTime: Calculated end time', { startTime, hours, result });
+    return result;
   };
 
   const handleStartTimeChange = (time: string) => {
     setNewStartTime(time);
-    if (booking?.service_packages?.hour_amount) {
+    if (booking?.service_packages?.hour_amount && time.match(/^\d{2}:\d{2}$/)) {
       const calculatedEndTime = calculateEndTime(time, booking.service_packages.hour_amount);
       setNewEndTime(calculatedEndTime);
+      console.debug('handleStartTimeChange: Calculated end time', { startTime: time, endTime: calculatedEndTime });
+    } else {
+      setNewEndTime('12:00');
+      console.debug('handleStartTimeChange: Invalid start time, reset end time', { startTime: time });
     }
   };
 
   const handleSaveTime = async () => {
-    if (!booking || !newStartTime) return;
-
+    if (!booking || !newStartTime || !newEndTime) {
+      setTimeError('Please provide both start and end times.');
+      setSavingTime(false);
+      console.debug('handleSaveTime: Missing inputs', { newStartTime, newEndTime });
+      return;
+    }
+    if (!newStartTime.match(/^\d{2}:\d{2}$/) || !newEndTime.match(/^\d{2}:\d{2}$/)) {
+      setTimeError('Invalid time format. Please use HH:mm.');
+      setSavingTime(false);
+      console.debug('handleSaveTime: Invalid time format', { newStartTime, newEndTime });
+      return;
+    }
     setSavingTime(true);
     setTimeError(null);
 
-    if (!supabase || !isSupabaseConfigured()) {
-      // Mock save for demo
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update local state
-      setBooking(prev => ({
-        ...prev,
-        events: {
-          ...prev.events,
-          start_time: `${prev.events.start_time.split('T')[0]}T${newStartTime}:00Z`,
-          end_time: `${prev.events.end_time.split('T')[0]}T${newEndTime}:00Z`
-        }
-      }));
-      
-      setEditingTime(false);
-      setSavingTime(false);
-      return;
-    }
-
     try {
-      // Update the event time
-      const eventDate = booking.events.start_time.split('T')[0];
-      const newStartDateTime = `${eventDate}T${newStartTime}:00Z`;
-      const newEndDateTime = `${eventDate}T${newEndTime}:00Z`;
+      // Get the event date (parse UTC time)
+      let eventDate = '2025-08-09'; // Fallback
+      const eventDateRaw = booking.events?.start_time;
+      if (eventDateRaw) {
+        try {
+          const date = new Date(eventDateRaw);
+          if (!isNaN(date.getTime())) {
+            eventDate = date.toISOString().split('T')[0];
+          }
+        } catch (err) {
+          console.debug('handleSaveTime: Error parsing event date, using fallback', { eventDateRaw, error: err });
+        }
+      }
+      console.debug('handleSaveTime: Parsed event date', { eventDateRaw, eventDate });
 
+      // Parse input times as EDT (UTC-4)
+      const localStartDateTime = new Date(`${eventDate}T${newStartTime}:00-04:00`);
+      const localEndDateTime = new Date(`${eventDate}T${newEndTime}:00-04:00`);
+
+      // Validate dates
+      if (isNaN(localStartDateTime.getTime()) || isNaN(localEndDateTime.getTime())) {
+        setTimeError('Invalid time values provided.');
+        setSavingTime(false);
+        console.debug('handleSaveTime: Invalid date objects', { newStartTime, newEndTime, eventDate });
+        return;
+      }
+
+      // Validate that end time is after start time
+      if (localEndDateTime <= localStartDateTime) {
+        setTimeError('End time must be after start time.');
+        setSavingTime(false);
+        console.debug('handleSaveTime: End time not after start time', { newStartTime, newEndTime });
+        return;
+      }
+
+      // Format UTC times for storage (YYYY-MM-DD HH:mm:ss+00)
+      const newStartDateTime = localStartDateTime.toISOString().replace('T', ' ').slice(0, 19) + '+00';
+      const newEndDateTime = localEndDateTime.toISOString().replace('T', ' ').slice(0, 19) + '+00';
+      console.debug('handleSaveTime: Saving times', { newStartDateTime, newEndDateTime });
+
+      // Update the event time in Supabase
       const { error } = await supabase
         .from('events')
         .update({
@@ -228,7 +292,7 @@ export const BookingDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Update local state
+      // Update local state with UTC times
       setBooking(prev => ({
         ...prev,
         events: {
@@ -238,6 +302,9 @@ export const BookingDetails: React.FC = () => {
         }
       }));
 
+      // Update input fields to reflect saved times in EDT
+      setNewStartTime(formatTimeForInput(newStartDateTime));
+      setNewEndTime(formatTimeForInput(newEndDateTime));
       setEditingTime(false);
     } catch (err) {
       console.error('Error updating time:', err);
@@ -256,29 +323,12 @@ export const BookingDetails: React.FC = () => {
     }).format(price / 100);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      case 'cancelled': return 'bg-red-100 text-red-200 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -286,20 +336,19 @@ export const BookingDetails: React.FC = () => {
   const handleDownloadContract = () => {
     try {
       const doc = new jsPDF();
-      
+
       // Header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
       doc.text('SERVICE CONTRACT', 105, 30, { align: 'center' });
-      
+
       // Contract content
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
       let yPos = 50;
-      
-      const contractText = `
-Contract for ${booking.service_packages?.name || booking.service_type}
 
+      const contractText = `
+Wedding Contract for ${booking.service_packages?.name || booking.service_type}
 Client: ${booking.couples?.name}
 Vendor: ${booking.vendors?.name}
 Service: ${booking.service_packages?.name}
@@ -307,9 +356,8 @@ Amount: ${formatPrice(booking.amount)}
 Date: ${booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
 Time: ${booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
 Location: ${booking.venues?.name || booking.events?.location || 'TBD'}
-
 This contract confirms the booking of ${booking.service_type.toLowerCase()} services
-for the above event details.
+for the above wedding details.
       `.trim();
 
       const lines = contractText.split('\n');
@@ -373,15 +421,15 @@ for the above event details.
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="ghost" 
-              icon={ArrowLeft} 
+            <Button
+              variant="ghost"
+              icon={ArrowLeft}
               onClick={() => navigate('/my-bookings')}
             >
               Back to My Bookings
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Wedding Details</h1>
               <p className="text-gray-600 mt-1">
                 {booking.service_packages?.name || booking.service_type}
               </p>
@@ -406,7 +454,7 @@ for the above event details.
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       <span>
-                        {booking.events?.start_time 
+                        {booking.events?.start_time
                           ? formatDate(booking.events.start_time)
                           : 'Date TBD'
                         }
@@ -451,7 +499,7 @@ for the above event details.
               {/* Time Modification Section */}
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">Event Time</h3>
+                  <h3 className="font-semibold text-gray-900">Wedding Time</h3>
                   {!editingTime && (
                     <Button
                       variant="outline"
@@ -486,7 +534,7 @@ for the above event details.
                         value={newEndTime}
                         onChange={(e) => setNewEndTime(e.target.value)}
                         icon={Clock}
-                        helperText={`Auto-calculated based on ${booking.service_packages?.hour_amount || 8} hour service`}
+                        helperText={`Auto-calculated based on ${booking.service_packages?.hour_amount || 4} hour service`}
                         disabled
                       />
                     </div>
@@ -497,7 +545,7 @@ for the above event details.
                         icon={Save}
                         onClick={handleSaveTime}
                         loading={savingTime}
-                        disabled={!newStartTime}
+                        disabled={!newStartTime || !newEndTime}
                       >
                         Save Changes
                       </Button>
@@ -509,15 +557,11 @@ for the above event details.
                           setEditingTime(false);
                           setTimeError(null);
                           // Reset to original values
-                          if (booking.events?.start_time) {
-                            const startTime = new Date(booking.events.start_time);
-                            setNewStartTime(startTime.toTimeString().slice(0, 5));
-                            
-                            if (booking.events.end_time) {
-                              const endTime = new Date(booking.events.end_time);
-                              setNewEndTime(endTime.toTimeString().slice(0, 5));
-                            }
-                          }
+                          const startTime = formatTimeForInput(booking.events?.start_time);
+                          const endTime = formatTimeForInput(booking.events?.end_time);
+                          setNewStartTime(startTime);
+                          setNewEndTime(endTime);
+                          console.debug('Cancel: Reset times', { startTime, endTime });
                         }}
                       >
                         Cancel
@@ -563,7 +607,7 @@ for the above event details.
                     Upgrade Package
                   </Button>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="bg-purple-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center space-x-3 mb-2">
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                     <span className="font-medium text-purple-900">Current Package</span>
@@ -572,7 +616,7 @@ for the above event details.
                     {booking.service_packages?.name} - {formatPrice(booking.service_packages?.price || booking.amount)}
                   </p>
                   <p className="text-purple-700 text-sm">
-                    Want more coverage or additional features? Upgrade your package anytime before your event.
+                    Want more coverage or additional features? Upgrade your package anytime before your wedding.
                   </p>
                 </div>
               </div>
@@ -620,9 +664,9 @@ for the above event details.
               </div>
             </Card>
 
-            {/* Event Details */}
+            {/* Wedding Details */}
             <Card className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Event Details</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">Wedding Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-medium text-gray-900 mb-3">Date & Time</h4>
@@ -635,15 +679,15 @@ for the above event details.
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Start Time:</span>
-                      <span className="font-medium">
+                      <div className="font-medium">
                         {booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
-                      </span>
+                      </div>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">End Time:</span>
-                      <span className="font-medium">
+                      <div className="font-medium">
                         {booking.events?.end_time ? formatTime(booking.events.end_time) : 'TBD'}
-                      </span>
+                      </div>
                     </div>
                     {booking.service_packages?.hour_amount && (
                       <div className="flex justify-between">
@@ -653,7 +697,6 @@ for the above event details.
                     )}
                   </div>
                 </div>
-                
                 {booking.venues && (
                   <div>
                     <h4 className="font-medium text-gray-900 mb-3">Venue</h4>
