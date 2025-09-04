@@ -32,6 +32,7 @@ export const Header: React.FC = () => {
     await signOut();
     navigate('/');
   };
+
   return (
     <>
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -284,7 +285,10 @@ export const Header: React.FC = () => {
       {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        onClose={() => {
+          setShowAuthModal(false);
+          setAuthMode('login');
+        }}
         initialMode={authMode}
       />
     </>

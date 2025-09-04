@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filter, Search } from 'lucide-react';
+import { Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filter, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -20,11 +20,30 @@ export const MyBookings: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
+  const [expandedPayments, setExpandedPayments] = useState<{ [key: string]: boolean }>({});
 
   // Scroll to top when component mounts
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // Utility to format price
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
+
+  // Toggle payment summary for a booking
+  const togglePaymentSummary = (bookingId: string) => {
+    setExpandedPayments((prev) => ({
+      ...prev,
+      [bookingId]: !prev[bookingId]
+    }));
+  };
 
   // Redirect to auth if not authenticated
   if (!isAuthenticated) {
@@ -140,15 +159,6 @@ export const MyBookings: React.FC = () => {
     return eventDate < new Date();
   }).length;
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
-  };
-
   const handleMessageVendor = async (booking: any) => {
     console.log('handleMessageVendor called with booking:', booking);
     console.log('Vendor user_id:', booking.vendors?.user_id);
@@ -180,7 +190,6 @@ export const MyBookings: React.FC = () => {
     } catch (error) {
       console.error('Error creating conversation:', error);
       alert('Error creating conversation: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      // Fallback: just go to messages tab
       navigate('/profile?tab=messages');
     }
   };
@@ -309,243 +318,305 @@ export const MyBookings: React.FC = () => {
               )}
             </Card>
           ) : (
-            filteredBookings.map((booking) => (
-              <Card key={booking.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Booking Details */}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                            {booking.service_packages?.name || booking.service_type}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              <span className="font-medium">
-                                {booking.events?.start_time 
-                                  ? new Date(booking.events.start_time).toLocaleDateString('en-US', {
-                                      weekday: 'long',
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })
-                                  : 'Date TBD'
-                                }
-                              </span>
-                            </div>
-                            {booking.events?.location && (
-                              <div className="flex items-center">
-                                <MapPin className="w-4 h-4 mr-1" />
-                                <span>{booking.events.location}</span>
-                              </div>
-                            )}
-                            {booking.service_packages?.hour_amount && (
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                <span>{booking.service_packages.hour_amount}h service</span>
-                              </div>
-                            )}
-                            <div className="flex items-center">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                                <span className="mr-1">{getStatusIcon(booking.status)}</span>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="text-2xl font-bold text-gray-900">
-                            {formatPrice(booking.amount)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Booked {new Date(booking.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Vendor Info */}
-                      {booking.vendors && (
-                        <div className="flex items-center space-x-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                          <img
-                            src={booking.vendors.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                            alt={booking.vendors.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
+            filteredBookings.map((booking) => {
+              const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+              const successfulPayments = booking.payments?.filter((p: any) => p.status === 'succeeded') || [];
+              const paidAmount = successfulPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+              const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
+              return (
+                <Card key={booking.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="p-6">
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Booking Details */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{booking.vendors.name}</h4>
-                            <div className="flex items-center text-sm text-gray-600">
-                              {booking.vendors.rating && (
-                                <>
-                                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                  <span>{booking.vendors.rating} rating</span>
-                                  <span className="mx-2">•</span>
-                                </>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              {booking.service_packages?.name || booking.service_type}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                <span className="font-medium">
+                                  {booking.events?.start_time 
+                                    ? new Date(booking.events.start_time).toLocaleDateString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      })
+                                    : 'Date TBD'
+                                  }
+                                </span>
+                              </div>
+                              {booking.events?.location && (
+                                <div className="flex items-center">
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  <span>{booking.events.location}</span>
+                                </div>
                               )}
-                              <span>{booking.vendors.years_experience} years experience</span>
+                              {booking.service_packages?.hour_amount && (
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-1" />
+                                  <span>{booking.service_packages.hour_amount}h service</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                                  <span className="mr-1">{getStatusIcon(booking.status)}</span>
+                                  {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right ml-4">
+                            <div className="text-2xl font-bold text-gray-900">
+                              {formatPrice(totalAmount)}
+                            </div>
+                            {remainingBalance > 0 && (
+                              <div className="text-sm text-red-600">
+                                Owed: {formatPrice(remainingBalance)}
+                              </div>
+                            )}
+                            <div className="text-sm text-gray-500">
+                              Booked {new Date(booking.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Payment Summary */}
+                        <div className="mb-4">
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log('Vendor Message button clicked!', booking);
+                            onClick={() => togglePaymentSummary(booking.id)}
+                            className="flex items-center w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                            aria-expanded={!!expandedPayments[booking.id]}
+                            aria-controls={`payment-summary-${booking.id}`}
+                          >
+                            <span className="font-medium text-gray-900 mr-2">Payment Summary</span>
+                            {expandedPayments[booking.id] ? (
+                              <ChevronUp className="w-4 h-4 text-gray-500" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-gray-500" />
+                            )}
+                          </button>
+                          {expandedPayments[booking.id] && (
+                            <div id={`payment-summary-${booking.id}`} className="mt-2 p-3 bg-gray-50 rounded-lg">
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Package Price:</span>
+                                  <span className="font-medium">{formatPrice((booking.initial_payment || 0) + (booking.final_payment || 0))}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Service Fee:</span>
+                                  <span className="font-medium">{formatPrice(booking.platform_fee || 0)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Total Amount:</span>
+                                  <span className="font-medium">{formatPrice(totalAmount)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Paid:</span>
+                                  <span className="font-medium text-green-600">{formatPrice(paidAmount)}</span>
+                                </div>
+                                <div className="flex justify-between font-semibold">
+                                  <span className="text-gray-600">Remaining Balance:</span>
+                                  <span className="text-red-600">{formatPrice(remainingBalance)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Vendor Info */}
+                        {booking.vendors && (
+                          <div className="flex items-center space-x-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                            <img
+                              src={booking.vendors.profile_photo || 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'}
+                              alt={booking.vendors.name}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">{booking.vendors.name}</h4>
+                              <div className="flex items-center text-sm text-gray-600">
+                                {booking.vendors.rating && (
+                                  <>
+                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                    <span>{booking.vendors.rating} rating</span>
+                                    <span className="mx-2">•</span>
+                                  </>
+                                )}
+                                <span>{booking.vendors.years_experience} years experience</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('Vendor Message button clicked!', booking);
+                                handleMessageVendor(booking);
+                              }}
+                              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
+                            >
+                              <MessageCircle className="w-4 h-4 mr-2" />
+                              Message
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Package Info */}
+                        {booking.service_packages && (
+                          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                            <h5 className="font-medium text-blue-900 mb-1">Package Details</h5>
+                            <p className="text-sm text-blue-800">
+                              <strong>Package:</strong> {booking.service_packages.name}
+                            </p>
+                            {booking.service_packages.hour_amount && (
+                              <p className="text-sm text-blue-800">
+                                <strong>Duration:</strong> {booking.service_packages.hour_amount} hours
+                              </p>
+                            )}
+                            {booking.service_packages.description && (
+                              <p className="text-sm text-blue-800">
+                                <strong>Description:</strong> {booking.service_packages.description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Features */}
+                        {booking.service_packages?.features && booking.service_packages.features.length > 0 && (
+                          <div className="mb-4">
+                            <h5 className="font-medium text-gray-900 mb-2">Features Included:</h5>
+                            <div className="flex flex-wrap gap-2">
+                              {booking.service_packages.features.slice(0, 3).map((feature: string, index: number) => (
+                                <span key={index} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-rose-100 text-rose-800">
+                                  {feature}
+                                </span>
+                              ))}
+                              {booking.service_packages.features.length > 3 && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                                  +{booking.service_packages.features.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Venue Info */}
+                        {booking.venues && (
+                          <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                            <h5 className="font-medium text-green-900 mb-1">Venue Details</h5>
+                            <p className="text-sm text-green-800">
+                              <strong>Venue:</strong> {booking.venues.name}
+                            </p>
+                            {booking.venues.street_address && (
+                              <p className="text-sm text-green-800">
+                                <strong>Address:</strong> {booking.venues.street_address}, {booking.venues.city}, {booking.venues.state}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Service Type Badge */}
+                        <div className="mb-4">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                              {booking.service_type}
+                            </span>
+                            {booking.vibe && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                                {booking.vibe} vibe
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-3">
+                          <Button 
+                            variant="primary" 
+                            icon={Eye} 
+                            size="sm"
+                            onClick={() => navigate(`/booking/${booking.id}`)}
+                          >
+                            View Details
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            icon={Eye} 
+                            size="sm"
+                            onClick={() => navigate('/profile?tab=gallery')}
+                          >
+                            View Gallery
+                          </Button>
+                          <button
+                            onClick={() => {
+                              console.log('Message button clicked!', booking);
                               handleMessageVendor(booking);
                             }}
                             className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
                           >
                             <MessageCircle className="w-4 h-4 mr-2" />
-                            Message
+                            Message Vendor
                           </button>
-                        </div>
-                      )}
-
-                      {/* Package Info */}
-                      {booking.service_packages && (
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                          <h5 className="font-medium text-blue-900 mb-1">Package Details</h5>
-                          <p className="text-sm text-blue-800">
-                            <strong>Package:</strong> {booking.service_packages.name}
-                          </p>
-                          {booking.service_packages.hour_amount && (
-                            <p className="text-sm text-blue-800">
-                              <strong>Duration:</strong> {booking.service_packages.hour_amount} hours
-                            </p>
+                          {booking.status === 'confirmed' && (
+                            booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
+                          ) && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/booking/${booking.id}`)}
+                            >
+                              Modify Booking
+                            </Button>
                           )}
-                          {booking.service_packages.description && (
-                            <p className="text-sm text-blue-800">
-                              <strong>Description:</strong> {booking.service_packages.description}
-                            </p>
+                          {booking.status === 'pending' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              Cancel Booking
+                            </Button>
                           )}
-                        </div>
-                      )}
-
-                      {/* Features */}
-                      {booking.service_packages?.features && booking.service_packages.features.length > 0 && (
-                        <div className="mb-4">
-                          <h5 className="font-medium text-gray-900 mb-2">Features Included:</h5>
-                          <div className="flex flex-wrap gap-2">
-                            {booking.service_packages.features.slice(0, 3).map((feature, index) => (
-                              <span key={index} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-rose-100 text-rose-800">
-                                {feature}
-                              </span>
-                            ))}
-                            {booking.service_packages.features.length > 3 && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                +{booking.service_packages.features.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Venue Info */}
-                      {booking.venues && (
-                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                          <h5 className="font-medium text-green-900 mb-1">Venue Details</h5>
-                          <p className="text-sm text-green-800">
-                            <strong>Venue:</strong> {booking.venues.name}
-                          </p>
-                          {booking.venues.street_address && (
-                            <p className="text-sm text-green-800">
-                              <strong>Address:</strong> {booking.venues.street_address}, {booking.venues.city}, {booking.venues.state}
-                            </p>
+                          {booking.status === 'completed' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                              onClick={() => handleLeaveReview(booking)}
+                            >
+                              Leave Review
+                            </Button>
+                          )}
+                          {activeTab === 'past' && booking.status !== 'cancelled' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                              onClick={() => handleLeaveReview(booking)}
+                              icon={Star}
+                            >
+                              Leave Review
+                            </Button>
+                          )}
+                          {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-green-600 border-green-200 hover:bg-green-50"
+                              onClick={() => navigate('/profile?tab=payments')}
+                            >
+                              Make Payment
+                            </Button>
                           )}
                         </div>
-                      )}
-
-                      {/* Service Type Badge */}
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
-                            {booking.service_type}
-                          </span>
-                          {booking.vibe && (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
-                              {booking.vibe} vibe
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap gap-3">
-                        <Button 
-                          variant="primary" 
-                          icon={Eye} 
-                          size="sm"
-                          onClick={() => navigate(`/booking/${booking.id}`)}
-                        >
-                          View Details
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          icon={Eye} 
-                          size="sm"
-                          onClick={() => navigate('/profile?tab=gallery')}
-                        >
-                          View Gallery
-                        </Button>
-                        <button
-                          onClick={() => {
-                            console.log('Message button clicked!', booking);
-                            handleMessageVendor(booking);
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
-                        >
-                          <MessageCircle className="w-4 h-4 mr-2" />
-                          Message Vendor
-                        </button>
-                        {booking.status === 'confirmed' && (
-                          booking.events?.start_time ? new Date(booking.events.start_time) > new Date() : true
-                        ) && (
-                          <Button variant="outline" size="sm">
-                            Modify Booking
-                          </Button>
-                        )}
-                        {booking.status === 'pending' && (
-                          <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
-                            Cancel Booking
-                          </Button>
-                        )}
-                        {booking.status === 'completed' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                            onClick={() => handleLeaveReview(booking)}
-                          >
-                            Leave Review
-                          </Button>
-                        )}
-                        {activeTab === 'past' && booking.status !== 'cancelled' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                            onClick={() => handleLeaveReview(booking)}
-                            icon={Star}
-                          >
-                            Leave Review
-                          </Button>
-                        )}
-                        {(booking.status === 'confirmed' || booking.status === 'pending') && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => navigate('/profile?tab=payments')}
-                          >
-                            Make Payment
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           )}
         </div>
 
@@ -583,7 +654,7 @@ export const MyBookings: React.FC = () => {
           </Card>
           <Card className="p-6 text-center">
             <div className="text-3xl font-bold text-emerald-500 mb-2">
-              {formatPrice(bookings.reduce((sum, b) => sum + b.amount, 0))}
+              {formatPrice(bookings.reduce((sum, b) => sum + (b.initial_payment || 0) + (b.final_payment || 0) + (b.platform_fee || 0), 0))}
             </div>
             <div className="text-gray-600">Total Invested</div>
           </Card>
@@ -620,7 +691,6 @@ export const MyBookings: React.FC = () => {
           onReviewSubmitted={() => {
             setShowReviewModal(false);
             setSelectedBookingForReview(null);
-            // Could refresh bookings here if needed
           }}
         />
       )}

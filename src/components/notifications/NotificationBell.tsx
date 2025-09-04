@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, X, Check, CheckCheck, Clock, MessageCircle, Camera, CreditCard, Star, AlertCircle } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, Clock, MessageCircle, Camera, CreditCard, Star, AlertCircle, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';

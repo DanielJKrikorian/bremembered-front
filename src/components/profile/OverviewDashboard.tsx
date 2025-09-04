@@ -33,6 +33,7 @@ interface BookingBalance {
   remaining_balance: number;
   event_date?: string;
   status: string;
+  final_payment_status: 'pending' | 'paid';
 }
 
 interface OverviewDashboardProps {
@@ -75,13 +76,54 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     if (user?.id) {
       fetchTodos();
     }
-  }, [user]);
-
-  useEffect(() => {
     if (couple?.id) {
       fetchPaymentBalances();
+
+      // Set up real-time subscriptions for payments and bookings
+      const paymentSubscription = supabase
+        .channel('payments-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'payments',
+            filter: `couple_id=eq.${couple.id}`,
+          },
+          (payload) => {
+            console.log('New payment detected:', payload);
+            if (payload.new.status === 'succeeded') {
+              fetchPaymentBalances();
+            }
+          }
+        )
+        .subscribe();
+
+      const bookingSubscription = supabase
+        .channel('bookings-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `couple_id=eq.${couple.id}`,
+          },
+          (payload) => {
+            console.log('Booking updated:', payload);
+            if (payload.new.final_payment_status === 'paid') {
+              fetchPaymentBalances();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(paymentSubscription);
+        supabase.removeChannel(bookingSubscription);
+      };
     }
-  }, [couple]);
+  }, [user, couple]);
 
   const fetchTodos = async () => {
     if (!user?.id) {
@@ -166,7 +208,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           paid_amount: 125000,
           remaining_balance: 125000,
           event_date: '2024-08-15',
-          status: 'confirmed'
+          status: 'confirmed',
+          final_payment_status: 'pending'
         },
         {
           id: 'mock-booking-2',
@@ -179,7 +222,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           paid_amount: 40000,
           remaining_balance: 40000,
           event_date: '2024-08-15',
-          status: 'confirmed'
+          status: 'confirmed',
+          final_payment_status: 'pending'
         },
         {
           id: 'mock-booking-3',
@@ -192,7 +236,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           paid_amount: 90000,
           remaining_balance: 90000,
           event_date: '2024-08-15',
-          status: 'confirmed'
+          status: 'confirmed',
+          final_payment_status: 'pending'
         }
       ];
       setPaymentBalances(mockBalances);
@@ -205,7 +250,12 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
         .from('bookings')
         .select(`
           id,
-          amount,
+          initial_payment,
+          final_payment,
+          platform_fee,
+          vendor_final_share,
+          platform_final_share,
+          final_payment_status,
           service_type,
           status,
           vendors!inner(
@@ -220,7 +270,11 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
             start_time
           ),
           payments!payments_booking_id_fkey(
+            id,
             amount,
+            payment_type,
+            created_at,
+            tip,
             status
           )
         `)
@@ -230,9 +284,17 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       if (error) throw error;
 
       const processedBalances: BookingBalance[] = (data || []).map(booking => {
+        // Calculate total_amount as the sum of initial_payment, final_payment, and platform_fee
+        const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+        
+        // Filter payments for this booking where status is 'succeeded'
         const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
+        
+        // Sum the amounts of successful payments
         const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const remainingBalance = Math.max(0, booking.amount - paidAmount);
+        
+        // Calculate remaining balance based on final_payment_status
+        const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
 
         return {
           id: booking.id,
@@ -241,17 +303,19 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           vendor_photo: booking.vendors.profile_photo,
           service_type: booking.service_type,
           package_name: booking.service_packages?.name || booking.service_type,
-          total_amount: booking.amount,
+          total_amount: totalAmount,
           paid_amount: paidAmount,
           remaining_balance: remainingBalance,
           event_date: booking.events?.start_time,
-          status: booking.status
+          status: booking.status,
+          final_payment_status: booking.final_payment_status || 'pending'
         };
       });
 
       setPaymentBalances(processedBalances);
     } catch (err) {
       console.error('Error fetching payment balances:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch payment balances');
     } finally {
       setPaymentLoading(false);
     }
@@ -432,8 +496,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   ).slice(0, 6);
 
   // Calculate payment totals
-  const totalOutstanding = paymentBalances.reduce((sum, booking) => sum + booking.remaining_balance, 0);
-  const outstandingCount = paymentBalances.filter(b => b.remaining_balance > 0).length;
+  const totalOutstanding = paymentBalances.reduce((sum, booking) => 
+    booking.final_payment_status === 'pending' ? sum + booking.remaining_balance : sum, 0);
+  const outstandingCount = paymentBalances.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending').length;
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -580,7 +645,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           <div className="mt-6 space-y-3">
             <h4 className="font-medium text-gray-900">Pending Payments:</h4>
             {paymentBalances
-              .filter(booking => booking.remaining_balance > 0)
+              .filter(booking => booking.remaining_balance > 0 && booking.final_payment_status === 'pending')
               .slice(0, 3)
               .map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
@@ -609,9 +674,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
                   </div>
                 </div>
               ))}
-            {paymentBalances.filter(b => b.remaining_balance > 0).length > 3 && (
+            {paymentBalances.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending').length > 3 && (
               <p className="text-sm text-gray-600 text-center">
-                +{paymentBalances.filter(b => b.remaining_balance > 0).length - 3} more pending payments
+                +{paymentBalances.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending').length - 3} more pending payments
               </p>
             )}
           </div>

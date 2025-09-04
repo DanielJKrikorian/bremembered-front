@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, DollarSign, Clock, Check, AlertCircle, Calendar, User, Star, Plus, Receipt, Download, Eye } from 'lucide-react';
+import { CreditCard, DollarSign, Check, AlertCircle, Calendar, User, Plus, Receipt, Download } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { jsPDF } from 'jspdf';
@@ -9,6 +9,9 @@ import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
+
+// Initialize Stripe at the top level
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface BookingBalance {
   id: string;
@@ -23,6 +26,7 @@ interface BookingBalance {
   event_date?: string;
   venue_name?: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  final_payment_status: 'pending' | 'paid';
   payments: PaymentRecord[];
   booking_intent_id?: string;
 }
@@ -39,18 +43,44 @@ interface PaymentRecord {
 interface VendorPaymentInput {
   vendor_id: string;
   booking_id: string;
-  booking_id: string;
   amount: number;
   tip: number;
   vendor_name: string;
 }
+
+const ConfirmationModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  message: string;
+}> = ({ isOpen, onClose, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-gray-900">Payment Successful</h3>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-gray-600">{message}</p>
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
 
 const SinglePaymentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   booking: BookingBalance;
   onSuccess: () => void;
-}> = ({ isOpen, onClose, booking, onSuccess }) => {
+  coupleId: string;
+}> = ({ isOpen, onClose, booking, onSuccess, coupleId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { user } = useAuth();
@@ -60,6 +90,7 @@ const SinglePaymentModal: React.FC<{
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
     if (stripe && elements) {
@@ -113,6 +144,22 @@ const SinglePaymentModal: React.FC<{
     setError(null);
 
     try {
+      console.log('Submitting payment for booking:', booking.id, 'Total:', totalPayment);
+      const requestBody = {
+        amount: Math.round(totalPayment * 100), // Convert to cents
+        currency: 'usd',
+        vendor_payments: [{
+          vendor_id: booking.vendor_id,
+          booking_id: booking.id,
+          amount: booking.remaining_balance,
+          tip: Math.round(tip * 100), // Convert to cents
+          vendor_name: booking.vendor_name
+        }],
+        payment_type: 'final',
+        couple_id: coupleId
+      };
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
         {
@@ -121,29 +168,26 @@ const SinglePaymentModal: React.FC<{
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            amount: Math.round(totalPayment * 100), // Convert to cents
-            currency: 'usd',
-            vendor_payments: [{
-              vendor_id: booking.vendor_id,
-              booking_id: booking.id,
-              amount: booking.remaining_balance,
-              tip: Math.round(tip * 100), // Convert to cents
-              vendor_name: booking.vendor_name
-            }]
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Fetch error response:', JSON.stringify(errorData, null, 2));
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
 
       const data = await response.json();
-      const { client_secret } = data;
+      console.log('Fetch response:', JSON.stringify(data, null, 2));
+      const { clientSecret } = data;
 
-      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(client_secret, {
+      if (!clientSecret) {
+        console.error('No clientSecret in response:', data);
+        throw new Error('No client secret returned');
+      }
+
+      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
           billing_details: {
@@ -153,13 +197,16 @@ const SinglePaymentModal: React.FC<{
       });
 
       if (stripeError) {
+        console.error('Stripe error:', JSON.stringify(stripeError, null, 2));
         throw new Error(stripeError.message || 'Payment failed');
       }
 
       if (paymentIntent?.status === 'succeeded') {
+        console.log('Payment succeeded:', paymentIntent.id);
+        setShowConfirmation(true);
         onSuccess();
-        onClose();
       } else {
+        console.error('Payment not completed:', paymentIntent?.status);
         throw new Error('Payment was not completed successfully');
       }
     } catch (err) {
@@ -173,180 +220,189 @@ const SinglePaymentModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-900">Pay {booking.vendor_name}</h3>
-          <p className="text-gray-600 mt-1">{booking.package_name}</p>
-        </div>
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-md">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-900">Pay {booking.vendor_name}</h3>
+            <p className="text-gray-600 mt-1">{booking.package_name}</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Vendor Info */}
-          <div className="flex items-center space-x-3">
-            {booking.vendor_photo ? (
-              <img
-                src={booking.vendor_photo}
-                alt={booking.vendor_name}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                <User className="w-6 h-6 text-gray-400" />
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
-            <div>
-              <h4 className="font-medium text-gray-900">{booking.vendor_name}</h4>
-              <p className="text-sm text-gray-600">{booking.service_type}</p>
-            </div>
-          </div>
 
-          {/* Payment Amount */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Remaining Balance:</span>
-              <span className="text-lg font-semibold text-gray-900">
-                ${(booking.remaining_balance / 100).toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          {/* Tip Section */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Add Tip (Optional)
-            </label>
-            <div className="space-y-3">
-              <div className="flex space-x-2">
-                {[10, 15, 20].map(percentage => (
-                  <button
-                    key={percentage}
-                    type="button"
-                    onClick={() => handlePercentageSelect(percentage)}
-                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
-                  >
-                    {percentage}%
-                  </button>
-                ))}
+            {/* Vendor Info */}
+            <div className="flex items-center space-x-3">
+              {booking.vendor_photo ? (
+                <img
+                  src={booking.vendor_photo}
+                  alt={booking.vendor_name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User className="w-6 h-6 text-gray-400" />
+                </div>
+              )}
+              <div>
+                <h4 className="font-medium text-gray-900">{booking.vendor_name}</h4>
+                <p className="text-sm text-gray-600">{booking.service_type}</p>
               </div>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={tip.toFixed(2)}
-                onChange={(e) => setTip(parseFloat(e.target.value) || 0)}
-                placeholder="Custom tip amount"
-                icon={DollarSign}
-              />
             </div>
-          </div>
 
-          {/* Total */}
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="font-medium text-blue-900">Total Payment:</span>
-              <span className="text-xl font-bold text-blue-900">
-                ${totalPayment.toFixed(2)}
-              </span>
+            {/* Payment Amount */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600">Remaining Balance:</span>
+                <span className="text-lg font-semibold text-gray-900">
+                  ${(booking.remaining_balance / 100).toFixed(2)}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Card Element */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Information
-            </label>
-            <div className="p-4 border border-gray-300 rounded-lg bg-white">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#1f2937',
-                      '::placeholder': {
-                        color: '#6b7280',
+            {/* Tip Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Add Tip (Optional)
+              </label>
+              <div className="space-y-3">
+                <div className="flex space-x-2">
+                  {[10, 15, 20].map(percentage => (
+                    <button
+                      key={percentage}
+                      type="button"
+                      onClick={() => handlePercentageSelect(percentage)}
+                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                    >
+                      {percentage}%
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={tip.toFixed(2)}
+                  onChange={(e) => setTip(parseFloat(e.target.value) || 0)}
+                  placeholder="Custom tip amount"
+                  icon={DollarSign}
+                />
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-blue-900">Total Payment:</span>
+                <span className="text-xl font-bold text-blue-900">
+                  ${totalPayment.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Card Element */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Information
+              </label>
+              <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#1f2937',
+                        '::placeholder': {
+                          color: '#6b7280',
+                        },
+                      },
+                      invalid: {
+                        color: '#dc2626',
                       },
                     },
-                    invalid: {
-                      color: '#dc2626',
-                    },
-                  },
-                }}
-              />
+                  }}
+                />
+              </div>
+              {cardError && (
+                <p className="text-sm text-red-600 mt-1">{cardError}</p>
+              )}
             </div>
-            {cardError && (
-              <p className="text-sm text-red-600 mt-1">{cardError}</p>
-            )}
-          </div>
 
-          {/* Terms */}
-          <div>
-            <label className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 text-rose-500 focus:ring-rose-500"
-                required
-              />
-              <span className="text-xs text-gray-600">
-                I agree to process this payment securely through Stripe.
-              </span>
-            </label>
-          </div>
+            {/* Terms */}
+            <div>
+              <label className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-1 text-rose-500 focus:ring-rose-500"
+                  required
+                />
+                <span className="text-xs text-gray-600">
+                  I agree to process this payment securely through Stripe.
+                </span>
+              </label>
+            </div>
 
-          {/* Actions */}
-          <div className="flex space-x-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading || !stripe || !elements || !agreedToTerms || !cardReady}
-              loading={loading}
-              className="flex-1"
-            >
-              {loading ? 'Processing...' : `Pay $${totalPayment.toFixed(2)}`}
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </div>
+            {/* Actions */}
+            <div className="flex space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loading || !stripe || !elements || !agreedToTerms || !cardReady}
+                loading={loading}
+                className="flex-1"
+              >
+                {loading ? 'Processing...' : `Pay $${totalPayment.toFixed(2)}`}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        message={`Payment of $${totalPayment.toFixed(2)} to ${booking.vendor_name} was successful!`}
+      />
+    </>
   );
 };
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const PaymentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   bookings: BookingBalance[];
   onSuccess: () => void;
-}> = ({ isOpen, onClose, bookings, onSuccess }) => {
+  coupleId: string;
+}> = ({ isOpen, onClose, bookings, onSuccess, coupleId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vendorPayments, setVendorPayments] = useState<VendorPaymentInput[]>([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
     if (isOpen && bookings.length > 0) {
       const initialPayments = bookings
-        .filter(booking => booking.remaining_balance > 0)
+        .filter(booking => booking.remaining_balance > 0 && booking.final_payment_status === 'pending')
         .map(booking => ({
           vendor_id: booking.vendor_id,
-          booking_id: booking.id,
           booking_id: booking.id,
           amount: booking.remaining_balance / 100, // Convert from cents
           tip: 0,
@@ -408,7 +464,20 @@ const PaymentModal: React.FC<{
     }
 
     try {
-      // Create payment intent for the total amount
+      console.log('Submitting payment for multiple bookings:', vendorPayments);
+      const requestBody = {
+        amount: Math.round(totalPayment * 100), // Convert to cents
+        currency: 'usd',
+        vendor_payments: vendorPayments.map(vp => ({
+          ...vp,
+          amount: Math.round(vp.amount * 100), // Convert to cents
+          tip: Math.round(vp.tip * 100) // Convert to cents
+        })),
+        payment_type: 'final',
+        couple_id: coupleId
+      };
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
         {
@@ -417,32 +486,26 @@ const PaymentModal: React.FC<{
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            amount: Math.round(totalPayment * 100), // Convert to cents
-            currency: 'usd',
-            vendor_payments: vendorPayments.map(vp => ({
-              ...vp,
-              amount: Math.round(vp.amount * 100), // Convert to cents
-              tip: Math.round(vp.tip * 100) // Convert to cents
-            }))
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Fetch error response:', JSON.stringify(errorData, null, 2));
         throw new Error(errorData.error || `HTTP error: ${response.status}`);
       }
 
       const data = await response.json();
-      const { client_secret } = data;
+      console.log('Fetch response:', JSON.stringify(data, null, 2));
+      const { clientSecret } = data;
 
-      if (!client_secret) {
+      if (!clientSecret) {
+        console.error('No clientSecret in response:', data);
         throw new Error('No client secret returned');
       }
 
-      // Confirm payment
-      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(client_secret, {
+      const { paymentIntent, error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: cardElement,
           billing_details: {
@@ -452,13 +515,16 @@ const PaymentModal: React.FC<{
       });
 
       if (stripeError) {
+        console.error('Stripe error:', JSON.stringify(stripeError, null, 2));
         throw new Error(stripeError.message || 'Payment failed');
       }
 
       if (paymentIntent?.status === 'succeeded') {
+        console.log('Payment succeeded:', paymentIntent.id);
+        setShowConfirmation(true);
         onSuccess();
-        onClose();
       } else {
+        console.error('Payment not completed:', paymentIntent?.status);
         throw new Error('Payment was not completed successfully');
       }
     } catch (err) {
@@ -472,172 +538,182 @@ const PaymentModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-xl font-semibold text-gray-900">Complete Payment</h3>
-          <p className="text-gray-600 mt-1">Pay remaining balances and add tips for your vendors</p>
-        </div>
+    <>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-900">Complete Payment</h3>
+            <p className="text-gray-600 mt-1">Pay remaining balances and add tips for your vendors</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
-          )}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
 
-          {/* Vendor Payments */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900">Payment Breakdown</h4>
-            {vendorPayments.map((vp) => {
-              const booking = bookings.find(b => b.vendor_id === vp.vendor_id && b.id === vp.booking_id);
-              return (
-                <div key={`${vp.vendor_id}-${vp.booking_id}`} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-3 mb-4">
-                    {booking?.vendor_photo ? (
-                      <img
-                        src={booking.vendor_photo}
-                        alt={vp.vendor_name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-6 h-6 text-gray-400" />
-                      </div>
-                    )}
-                    <div>
-                      <h5 className="font-medium text-gray-900">{vp.vendor_name}</h5>
-                      <p className="text-sm text-gray-600">{booking?.package_name}</p>
-                      <p className="text-sm text-gray-600">{booking?.service_type}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Remaining Balance
-                      </label>
-                      <div className="text-lg font-semibold text-gray-900">
-                        ${vp.amount.toFixed(2)}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Add Tip (Optional)
-                      </label>
-                      <div className="space-y-2">
-                        <div className="flex space-x-2">
-                          {[10, 15, 20].map(percentage => (
-                            <button
-                              key={percentage}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handlePercentageSelect(vp.vendor_id, vp.booking_id, percentage);
-                              }}
-                              className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
-                            >
-                              {percentage}%
-                            </button>
-                          ))}
-                        </div>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={vp.tip.toFixed(2)}
-                          onChange={(e) => handleTipChange(vp.vendor_id, vp.booking_id, e.target.value)}
-                          placeholder="Custom tip amount"
-                          icon={DollarSign}
+            {/* Vendor Payments */}
+            <div className="space-y-4">
+              <h4 className="font-semibold text-gray-900">Payment Breakdown</h4>
+              {vendorPayments.map((vp) => {
+                const booking = bookings.find(b => b.vendor_id === vp.vendor_id && b.id === vp.booking_id);
+                return (
+                  <div key={`${vp.vendor_id}-${vp.booking_id}`} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-4">
+                      {booking?.vendor_photo ? (
+                        <img
+                          src={booking.vendor_photo}
+                          alt={vp.vendor_name}
+                          className="w-12 h-12 rounded-full object-cover"
                         />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                          <User className="w-6 h-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <h5 className="font-medium text-gray-900">{vp.vendor_name}</h5>
+                        <p className="text-sm text-gray-600">{booking?.package_name}</p>
+                        <p className="text-sm text-gray-600">{booking?.service_type}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Remaining Balance
+                        </label>
+                        <div className="text-lg font-semibold text-gray-900">
+                          ${vp.amount.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Add Tip (Optional)
+                        </label>
+                        <div className="space-y-2">
+                          <div className="flex space-x-2">
+                            {[10, 15, 20].map(percentage => (
+                              <button
+                                key={percentage}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handlePercentageSelect(vp.vendor_id, vp.booking_id, percentage);
+                                }}
+                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                              >
+                                {percentage}%
+                              </button>
+                            ))}
+                          </div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={vp.tip.toFixed(2)}
+                            onChange={(e) => handleTipChange(vp.vendor_id, vp.booking_id, e.target.value)}
+                            placeholder="Custom tip amount"
+                            icon={DollarSign}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-900">Total for this service:</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          ${(vp.amount + vp.tip).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">Total for this service:</span>
-                      <span className="text-lg font-bold text-gray-900">
-                        ${(vp.amount + vp.tip).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
+            {/* Payment Summary */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Payment Summary</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Remaining Balance:</span>
+                  <span className="font-medium">${totalBasePayment.toFixed(2)}</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Payment Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">Payment Summary</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Remaining Balance:</span>
-                <span className="font-medium">${totalBasePayment.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Tips:</span>
-                <span className="font-medium">${totalTip.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                <span>Total Payment:</span>
-                <span>${totalPayment.toFixed(2)}</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Tips:</span>
+                  <span className="font-medium">${totalTip.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-semibold border-t pt-2">
+                  <span>Total Payment:</span>
+                  <span>${totalPayment.toFixed(2)}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Card Element */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Information
-            </label>
-            <div className="p-4 border border-gray-300 rounded-lg bg-white">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#1f2937',
-                      '::placeholder': {
-                        color: '#6b7280',
+            {/* Card Element */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Information
+              </label>
+              <div className="p-4 border border-gray-300 rounded-lg bg-white">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: '16px',
+                        color: '#1f2937',
+                        '::placeholder': {
+                          color: '#6b7280',
+                        },
+                      },
+                      invalid: {
+                        color: '#dc2626',
                       },
                     },
-                    invalid: {
-                      color: '#dc2626',
-                    },
-                  },
-                }}
-              />
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Actions */}
-          <div className="flex space-x-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isProcessing || !stripe || !elements || totalPayment <= 0}
-              loading={isProcessing}
-              className="flex-1"
-            >
-              {isProcessing ? 'Processing...' : `Pay $${totalPayment.toFixed(2)}`}
-            </Button>
-          </div>
+            {/* Actions */}
+            <div className="flex space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isProcessing || !stripe || !elements || totalPayment <= 0}
+                loading={isProcessing}
+                className="flex-1"
+              >
+                {isProcessing ? 'Processing...' : `Pay $${totalPayment.toFixed(2)}`}
+              </Button>
+            </div>
 
-          <div className="text-xs text-gray-500 text-center">
-            Payments are processed securely through Stripe. Your card information is never stored.
-          </div>
-        </form>
-      </Card>
-    </div>
+            <div className="text-xs text-gray-500 text-center">
+              Payments are processed securely through Stripe. Your card information is never stored.
+            </div>
+          </form>
+        </Card>
+      </div>
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => {
+          setShowConfirmation(false);
+          onClose();
+        }}
+        message={`Payment of $${totalPayment.toFixed(2)} for ${vendorPayments.length} booking${vendorPayments.length > 1 ? 's' : ''} was successful!`}
+      />
+    </>
   );
 };
 
@@ -655,6 +731,50 @@ export const PaymentsSection: React.FC = () => {
   useEffect(() => {
     if (couple?.id) {
       fetchBookingBalances();
+
+      // Set up real-time subscriptions for payments and bookings
+      const paymentSubscription = supabase
+        .channel('payments-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'payments',
+            filter: `couple_id=eq.${couple.id}`,
+          },
+          (payload) => {
+            console.log('New payment detected:', payload);
+            if (payload.new.status === 'succeeded') {
+              fetchBookingBalances();
+            }
+          }
+        )
+        .subscribe();
+
+      const bookingSubscription = supabase
+        .channel('bookings-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `couple_id=eq.${couple.id}`,
+          },
+          (payload) => {
+            console.log('Booking updated:', payload);
+            if (payload.new.final_payment_status === 'paid') {
+              fetchBookingBalances();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(paymentSubscription);
+        supabase.removeChannel(bookingSubscription);
+      };
     }
   }, [couple]);
 
@@ -674,12 +794,13 @@ export const PaymentsSection: React.FC = () => {
           vendor_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
           service_type: 'Photography',
           package_name: 'Premium Wedding Photography',
-          total_amount: 250000, // $2,500 in cents
-          paid_amount: 125000, // $1,250 in cents (50% deposit)
-          remaining_balance: 125000, // $1,250 remaining
+          total_amount: 250000,
+          paid_amount: 125000,
+          remaining_balance: 125000,
           event_date: '2024-08-15',
           venue_name: 'Sunset Gardens',
           status: 'confirmed',
+          final_payment_status: 'pending',
           payments: [
             {
               id: 'payment-1',
@@ -697,19 +818,20 @@ export const PaymentsSection: React.FC = () => {
           vendor_photo: 'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=400',
           service_type: 'Coordination',
           package_name: 'Day-of Coordination',
-          total_amount: 80000, // $800 in cents
-          paid_amount: 80000, // Fully paid
+          total_amount: 80000,
+          paid_amount: 80000,
           remaining_balance: 0,
           event_date: '2024-08-15',
           venue_name: 'Sunset Gardens',
-          status: 'confirmed',
+          status: 'completed',
+          final_payment_status: 'paid',
           payments: [
             {
               id: 'payment-2',
               amount: 80000,
               payment_type: 'Full Payment',
               created_at: '2024-01-20T14:00:00Z',
-              tip: 8000, // $80 tip
+              tip: 8000,
               status: 'succeeded'
             }
           ]
@@ -721,12 +843,17 @@ export const PaymentsSection: React.FC = () => {
     }
 
     try {
-      // Fetch bookings with payment information
+      // Fetch bookings with payment information, including vendor_final_share, platform_final_share, and final_payment_status
       const { data, error } = await supabase
         .from('bookings')
         .select(`
           id,
-          amount,
+          initial_payment,
+          final_payment,
+          platform_fee,
+          vendor_final_share,
+          platform_final_share,
+          final_payment_status,
           service_type,
           status,
           booking_intent_id,
@@ -760,9 +887,17 @@ export const PaymentsSection: React.FC = () => {
 
       // Process bookings to calculate balances
       const processedBookings: BookingBalance[] = (data || []).map(booking => {
+        // Calculate total_amount as the sum of initial_payment, final_payment, and platform_fee
+        const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+        
+        // Filter payments for this booking where status is 'succeeded'
         const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
+        
+        // Sum the amounts of successful payments
         const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const remainingBalance = Math.max(0, booking.amount - paidAmount);
+        
+        // Calculate remaining balance based on final_payment_status
+        const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
 
         return {
           id: booking.id,
@@ -771,12 +906,13 @@ export const PaymentsSection: React.FC = () => {
           vendor_photo: booking.vendors.profile_photo,
           service_type: booking.service_type,
           package_name: booking.service_packages?.name || booking.service_type,
-          total_amount: booking.amount,
+          total_amount: totalAmount,
           paid_amount: paidAmount,
           remaining_balance: remainingBalance,
           event_date: booking.events?.start_time,
           venue_name: booking.venues?.name,
           status: booking.status,
+          final_payment_status: booking.final_payment_status || 'pending',
           payments: successfulPayments,
           booking_intent_id: booking.booking_intent_id
         };
@@ -813,7 +949,7 @@ export const PaymentsSection: React.FC = () => {
       doc.setFontSize(12);
       doc.text('B. Remembered', 105, 45, { align: 'center' });
       doc.text('The Smarter Way to Book Your Big Day!', 105, 52, { align: 'center' });
-      doc.text('info@bremembered.io', 105, 59, { align: 'center' });
+      doc.text('hello@bremembered.io', 105, 59, { align: 'center' });
 
       // Receipt details
       let yPos = 80;
@@ -910,15 +1046,14 @@ export const PaymentsSection: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text('Thank you for choosing B. Remembered for your special day!', 105, yPos, { align: 'center' });
-      doc.text('For questions about this receipt, contact info@bremembered.io', 105, yPos + 7, { align: 'center' });
+      doc.text('For questions about this receipt, contact hello@bremembered.io', 105, yPos + 7, { align: 'center' });
 
       // Save the PDF
       const fileName = `Receipt_${booking.vendor_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
-
     } catch (error) {
       console.error('Error generating receipt:', error);
-      // You could add a toast notification here for error handling
+      setError('Failed to generate receipt. Please try again.');
     }
   };
 
@@ -958,17 +1093,18 @@ export const PaymentsSection: React.FC = () => {
   const filteredBookings = bookings.filter(booking => {
     switch (selectedTab) {
       case 'outstanding':
-        return booking.remaining_balance > 0;
+        return booking.remaining_balance > 0 && booking.final_payment_status === 'pending';
       case 'paid':
-        return booking.remaining_balance === 0;
+        return booking.final_payment_status === 'paid';
       default:
         return true;
     }
   });
 
-  const totalOutstanding = bookings.reduce((sum, booking) => sum + booking.remaining_balance, 0);
+  const totalOutstanding = bookings.reduce((sum, booking) => 
+    booking.final_payment_status === 'pending' ? sum + booking.remaining_balance : sum, 0);
   const totalPaid = bookings.reduce((sum, booking) => sum + booking.paid_amount, 0);
-  const outstandingCount = bookings.filter(b => b.remaining_balance > 0).length;
+  const outstandingCount = bookings.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending').length;
 
   if (loading) {
     return (
@@ -1152,9 +1288,7 @@ export const PaymentsSection: React.FC = () => {
                   <div className="text-sm text-green-700">Paid</div>
                 </div>
                 <div className={`p-4 rounded-lg border ${
-                  booking.remaining_balance > 0 
-                    ? 'bg-red-50 border-red-200' 
-                    : 'bg-gray-50 border-gray-200'
+                  booking.remaining_balance > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
                 }`}>
                   <div className={`text-lg font-semibold ${
                     booking.remaining_balance > 0 ? 'text-red-600' : 'text-gray-600'
@@ -1211,16 +1345,14 @@ export const PaymentsSection: React.FC = () => {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3">
-                {booking.remaining_balance > 0 && (
-                  <>
-                    <Button
-                      variant="primary"
-                      icon={CreditCard}
-                      onClick={() => handleSinglePayment(booking)}
-                    >
-                      Pay {formatPrice(booking.remaining_balance)}
-                    </Button>
-                  </>
+                {booking.remaining_balance > 0 && booking.final_payment_status === 'pending' && (
+                  <Button
+                    variant="primary"
+                    icon={CreditCard}
+                    onClick={() => handleSinglePayment(booking)}
+                  >
+                    Pay {formatPrice(booking.remaining_balance)}
+                  </Button>
                 )}
                 <Button
                   variant="outline"
@@ -1249,8 +1381,9 @@ export const PaymentsSection: React.FC = () => {
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
-          bookings={bookings.filter(b => b.remaining_balance > 0)}
+          bookings={bookings.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending')}
           onSuccess={handlePaymentSuccess}
+          coupleId={couple?.id || ''}
         />
         {selectedBookingForPayment && (
           <SinglePaymentModal
@@ -1261,6 +1394,7 @@ export const PaymentsSection: React.FC = () => {
             }}
             booking={selectedBookingForPayment}
             onSuccess={handlePaymentSuccess}
+            coupleId={couple?.id || ''}
           />
         )}
       </Elements>

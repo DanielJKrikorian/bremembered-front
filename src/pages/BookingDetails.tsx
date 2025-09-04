@@ -32,13 +32,11 @@ export const BookingDetails: React.FC = () => {
       return '12:00';
     }
     try {
-      // Parse as UTC
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.debug('formatTimeForInput: Invalid date, returning 12:00', { dateString });
         return '12:00';
       }
-      // Convert UTC to EDT
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
@@ -54,13 +52,11 @@ export const BookingDetails: React.FC = () => {
   // Utility to format time for non-editing display (display in EDT)
   const formatTime = (dateString: string) => {
     try {
-      // Parse as UTC
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.debug('formatTime: Invalid date, returning TBD', { dateString });
         return 'TBD';
       }
-      // Convert UTC to EDT
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
@@ -76,13 +72,11 @@ export const BookingDetails: React.FC = () => {
   // Utility to format date for display
   const formatDate = (dateString: string) => {
     try {
-      // Parse as UTC
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.debug('formatDate: Invalid date, returning TBD', { dateString });
         return 'TBD';
       }
-      // Convert UTC to EDT
       return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -96,31 +90,88 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
+  // Utility to format price
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price / 100);
+  };
+
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    if (id) {
+    if (id && user) {
       fetchBookingDetails();
+
+      // Set up real-time subscriptions
+      const coupleSubscription = supabase
+        .channel('couple-channel')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'couples', filter: `user_id=eq.${user.id}` },
+          () => {
+            console.log('Couple data changed, refetching booking details');
+            fetchBookingDetails();
+          }
+        )
+        .subscribe();
+
+      const bookingSubscription = supabase
+        .channel('bookings-channel')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${id}` },
+          (payload) => {
+            console.log('Booking updated:', payload);
+            if (payload.new.final_payment_status === 'paid') {
+              fetchBookingDetails();
+            }
+          }
+        )
+        .subscribe();
+
+      const paymentSubscription = supabase
+        .channel('payments-channel')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'payments', filter: `booking_id=eq.${id}` },
+          (payload) => {
+            console.log('New payment detected:', payload);
+            if (payload.new.status === 'succeeded') {
+              fetchBookingDetails();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(coupleSubscription);
+        supabase.removeChannel(bookingSubscription);
+        supabase.removeChannel(paymentSubscription);
+      };
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchBookingDetails = async () => {
-    if (!id) return;
+    if (!id || !user) return;
 
     try {
       // Get couple ID first
       const { data: coupleData, error: coupleError } = await supabase
         .from('couples')
         .select('id')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
 
       if (coupleError) throw coupleError;
 
-      // Fetch booking details
+      // Fetch booking details with contract and payments
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -162,6 +213,21 @@ export const BookingDetails: React.FC = () => {
             name,
             email,
             phone
+          ),
+          contracts!contracts_booking_id_fkey(
+            id,
+            content,
+            signature,
+            signed_at,
+            created_at
+          ),
+          payments!payments_booking_id_fkey(
+            id,
+            amount,
+            payment_type,
+            created_at,
+            tip,
+            status
           )
         `)
         .eq('id', id)
@@ -202,7 +268,6 @@ export const BookingDetails: React.FC = () => {
       console.debug('calculateEndTime: Invalid time values, returning 12:00', { startTime });
       return '12:00';
     }
-    // Add package hours directly in EDT
     const totalMinutes = startHours * 60 + startMinutes + hours * 60;
     const endHours = Math.floor(totalMinutes / 60) % 24;
     const endMinutes = totalMinutes % 60;
@@ -240,8 +305,7 @@ export const BookingDetails: React.FC = () => {
     setTimeError(null);
 
     try {
-      // Get the event date (parse UTC time)
-      let eventDate = '2025-08-09'; // Fallback
+      let eventDate = '2025-08-09';
       const eventDateRaw = booking.events?.start_time;
       if (eventDateRaw) {
         try {
@@ -255,11 +319,9 @@ export const BookingDetails: React.FC = () => {
       }
       console.debug('handleSaveTime: Parsed event date', { eventDateRaw, eventDate });
 
-      // Parse input times as EDT (UTC-4)
       const localStartDateTime = new Date(`${eventDate}T${newStartTime}:00-04:00`);
       const localEndDateTime = new Date(`${eventDate}T${newEndTime}:00-04:00`);
 
-      // Validate dates
       if (isNaN(localStartDateTime.getTime()) || isNaN(localEndDateTime.getTime())) {
         setTimeError('Invalid time values provided.');
         setSavingTime(false);
@@ -267,7 +329,6 @@ export const BookingDetails: React.FC = () => {
         return;
       }
 
-      // Validate that end time is after start time
       if (localEndDateTime <= localStartDateTime) {
         setTimeError('End time must be after start time.');
         setSavingTime(false);
@@ -275,12 +336,10 @@ export const BookingDetails: React.FC = () => {
         return;
       }
 
-      // Format UTC times for storage (YYYY-MM-DD HH:mm:ss+00)
       const newStartDateTime = localStartDateTime.toISOString().replace('T', ' ').slice(0, 19) + '+00';
       const newEndDateTime = localEndDateTime.toISOString().replace('T', ' ').slice(0, 19) + '+00';
       console.debug('handleSaveTime: Saving times', { newStartDateTime, newEndDateTime });
 
-      // Update the event time in Supabase
       const { error } = await supabase
         .from('events')
         .update({
@@ -292,7 +351,6 @@ export const BookingDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Update local state with UTC times
       setBooking(prev => ({
         ...prev,
         events: {
@@ -302,7 +360,6 @@ export const BookingDetails: React.FC = () => {
         }
       }));
 
-      // Update input fields to reflect saved times in EDT
       setNewStartTime(formatTimeForInput(newStartDateTime));
       setNewEndTime(formatTimeForInput(newEndDateTime));
       setEditingTime(false);
@@ -312,15 +369,6 @@ export const BookingDetails: React.FC = () => {
     } finally {
       setSavingTime(false);
     }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
   };
 
   const getStatusColor = (status: string) => {
@@ -333,46 +381,126 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
-  const handleDownloadContract = () => {
+  const handleDownloadContract = async () => {
+    if (!booking || !booking.contracts || booking.contracts.length === 0) {
+      console.error('No contract found for booking:', booking?.id);
+      return;
+    }
+
+    const contract = booking.contracts[0]; // Assume one contract per booking
+
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // Add logo with 1:1 aspect ratio
+      const logoUrl = 'https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png';
+      const logoSize = 30; // Width and height in mm for 1:1 ratio
+      doc.addImage(logoUrl, 'PNG', 90, 10, logoSize, logoSize, undefined, 'FAST');
 
       // Header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
-      doc.text('SERVICE CONTRACT', 105, 30, { align: 'center' });
+      doc.text('SERVICE CONTRACT', 105, 50, { align: 'center' });
 
-      // Contract content
+      // Contract info
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
-      let yPos = 50;
+      doc.text('B. Remembered', 105, 60, { align: 'center' });
+      doc.text('The Smarter Way to Book Your Big Day!', 105, 67, { align: 'center' });
 
-      const contractText = `
-Wedding Contract for ${booking.service_packages?.name || booking.service_type}
-Client: ${booking.couples?.name}
-Vendor: ${booking.vendors?.name}
-Service: ${booking.service_packages?.name}
-Amount: ${formatPrice(booking.amount)}
-Date: ${booking.events?.start_time ? formatDate(booking.events.start_time) : 'TBD'}
-Time: ${booking.events?.start_time ? formatTime(booking.events.start_time) : 'TBD'}
-Location: ${booking.venues?.name || booking.events?.location || 'TBD'}
-This contract confirms the booking of ${booking.service_type.toLowerCase()} services
-for the above wedding details.
-      `.trim();
+      // Contract details
+      let yPos = 80;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('CONTRACT DETAILS', 20, yPos);
+      yPos += 10;
 
-      const lines = contractText.split('\n');
-      lines.forEach(line => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      
+      doc.text(`Contract ID: ${contract.id.substring(0, 8).toUpperCase()}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Service: ${booking.service_packages?.name || booking.service_type}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Vendor: ${booking.vendors?.name}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Created: ${new Date(contract.created_at).toLocaleDateString()}`, 20, yPos);
+      yPos += 7;
+      if (contract.signed_at) {
+        doc.text(`Signed: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        yPos += 7;
+      }
+
+      yPos += 10;
+
+      // Contract content
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('CONTRACT TERMS', 20, yPos);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      
+      const lines = contract.content.split('\n');
+      lines.forEach((line: string) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        if (line.trim() === '') {
+          yPos += 4;
+          return;
+        }
+        
+        if (line.includes(':') && line.length < 50) {
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        const wrappedLines = doc.splitTextToSize(line, 170);
+        doc.text(wrappedLines, 20, yPos);
+        yPos += 5 * wrappedLines.length;
+      });
+
+      // Signature section
+      if (contract.signature) {
+        yPos += 20;
         if (yPos > 250) {
           doc.addPage();
           yPos = 20;
         }
-        doc.text(line, 20, yPos);
-        yPos += 7;
-      });
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('DIGITAL SIGNATURE', 20, yPos);
+        yPos += 10;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.text(`Signed by: ${contract.signature}`, 20, yPos);
+        yPos += 6;
+        doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+      }
 
-      doc.save(`Contract_${booking.vendors?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      // Footer
+      yPos = Math.max(yPos + 20, 260);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Thank you for choosing B. Remembered for your special day!', 105, yPos, { align: 'center' });
+      doc.text('For questions about this contract, contact hello@bremembered.io', 105, yPos + 7, { align: 'center' });
+
+      // Save the PDF
+      const fileName = `Contract_${booking.vendors?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
     } catch (error) {
-      console.error('Error generating contract:', error);
+      console.error('Error generating contract PDF:', error);
     }
   };
 
@@ -414,6 +542,12 @@ for the above wedding details.
       </div>
     );
   }
+
+  // Calculate payment summary
+  const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+  const successfulPayments = booking.payments?.filter((p: any) => p.status === 'succeeded') || [];
+  const paidAmount = successfulPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+  const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -473,7 +607,7 @@ for the above wedding details.
                 </div>
                 <div className="text-right ml-6">
                   <div className="text-3xl font-bold text-gray-900 mb-2">
-                    {formatPrice(booking.amount)}
+                    {formatPrice(totalAmount)}
                   </div>
                   <div className="text-sm text-gray-500">
                     Booked {new Date(booking.created_at).toLocaleDateString()}
@@ -556,7 +690,6 @@ for the above wedding details.
                         onClick={() => {
                           setEditingTime(false);
                           setTimeError(null);
-                          // Reset to original values
                           const startTime = formatTimeForInput(booking.events?.start_time);
                           const endTime = formatTimeForInput(booking.events?.end_time);
                           setNewStartTime(startTime);
@@ -766,30 +899,36 @@ for the above wedding details.
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Package Price:</span>
-                  <span className="font-medium">{formatPrice(booking.amount)}</span>
+                  <span className="font-medium">{formatPrice((booking.initial_payment || 0) + (booking.final_payment || 0))}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Fee:</span>
-                  <span className="font-medium">$150</span>
+                  <span className="font-medium">{formatPrice(booking.platform_fee || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="font-medium">{formatPrice(totalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Deposit Paid:</span>
-                  <span className="font-medium text-green-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
+                  <span className="font-medium text-green-600">{formatPrice(paidAmount)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-semibold border-t pt-3">
                   <span>Remaining Balance:</span>
-                  <span className="text-red-600">{formatPrice(Math.round(booking.amount * 0.5))}</span>
+                  <span className="text-red-600">{formatPrice(remainingBalance)}</span>
                 </div>
               </div>
-              <div className="mt-4">
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => navigate('/profile?tab=payments')}
-                >
-                  Make Payment
-                </Button>
-              </div>
+              {remainingBalance > 0 && (
+                <div className="mt-4">
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => navigate('/profile?tab=payments')}
+                  >
+                    Make Payment
+                  </Button>
+                </div>
+              )}
             </Card>
 
             {/* Booking Info */}
@@ -841,7 +980,6 @@ for the above wedding details.
           }}
           onReviewSubmitted={() => {
             setShowReviewModal(false);
-            // Could refresh booking data here if needed
           }}
         />
       )}
@@ -853,7 +991,7 @@ for the above wedding details.
         booking={booking}
         onUpgradeSuccess={() => {
           setShowUpgradeModal(false);
-          fetchBookingDetails(); // Refresh booking data
+          fetchBookingDetails();
         }}
       />
     </div>
