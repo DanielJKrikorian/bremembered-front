@@ -29,6 +29,7 @@ import { ChatBot } from './chat/ChatBot';
 import { CartSidebar } from './cart/CartSidebar';
 import { VendorSelectionModal } from './cart/VendorSelectionModal';
 import { BlogPost } from '../pages/BlogPost';
+import { ResetPassword } from '../pages/ResetPassword';
 import { Cart } from '../pages/Cart';
 import { useCart } from '../context/CartContext';
 
@@ -71,6 +72,7 @@ export const AppContent: React.FC = () => {
           <Route path="/booking/:id" element={<BookingDetails />} />
           <Route path="/inspiration" element={<Inspiration />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/support" element={<Support />} />
           <Route path="/profile" element={<Profile />} />
           
