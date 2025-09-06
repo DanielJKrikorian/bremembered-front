@@ -518,16 +518,16 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Wedding Countdown */}
       <Card className="overflow-hidden">
-        <div className="px-6 py-8 text-center bg-gradient-to-r from-rose-500 to-amber-500">
-          <h2 className="text-3xl font-bold text-white mb-2">
+        <div className="px-8 py-12 text-center bg-gradient-to-r from-rose-500 to-amber-500">
+          <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
             {daysUntilWedding !== null ? (
               daysUntilWedding > 0 ? (
                 <>
                   {daysUntilWedding} {daysUntilWedding === 1 ? 'Day' : 'Days'}
-                  <span className="block text-lg font-normal mt-1">
+                  <span className="block text-xl font-normal mt-2">
                     until your wedding
                   </span>
                 </>
@@ -539,12 +539,12 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
             )}
           </h2>
           {couple?.wedding_date && (
-            <p className="text-rose-100 mt-2">
+            <p className="text-rose-100 text-lg mt-3">
               {format(parseISO(couple.wedding_date), 'MMMM d, yyyy')}
             </p>
           )}
           {couple?.venue_name && (
-            <p className="text-rose-100 mt-1">
+            <p className="text-rose-100 text-base mt-2">
               at {couple.venue_name}
             </p>
           )}
@@ -552,57 +552,57 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       </Card>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-rose-600" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <Card className="p-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-rose-600" />
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Wedding Date</h3>
-              <p className="text-gray-500">
+            <div>
+              <h3 className="text-xl font-medium text-gray-900 mb-1">Wedding Date</h3>
+              <p className="text-gray-500 text-base">
                 {couple?.wedding_date ? formatDate(couple.wedding_date) : 'Not set'}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-              <Heart className="w-6 h-6 text-amber-600" />
+        <Card className="p-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center">
+              <Heart className="w-8 h-8 text-amber-600" />
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Venue</h3>
-              <p className="text-gray-500">
+            <div>
+              <h3 className="text-xl font-medium text-gray-900 mb-1">Venue</h3>
+              <p className="text-gray-500 text-base">
                 {couple?.venue_name || 'Not selected'}
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <CheckSquare className="w-6 h-6 text-emerald-600" />
+        <Card className="p-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center">
+              <CheckSquare className="w-8 h-8 text-emerald-600" />
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Tasks</h3>
-              <p className="text-gray-500">
+            <div>
+              <h3 className="text-xl font-medium text-gray-900 mb-1">Tasks</h3>
+              <p className="text-gray-500 text-base">
                 {todos.filter(todo => todo.completed).length} of {todos.length} completed
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-              <Camera className="w-6 h-6 text-purple-600" />
+        <Card className="p-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
+              <Camera className="w-8 h-8 text-purple-600" />
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Gallery</h3>
-              <p className="text-gray-500">
+            <div>
+              <h3 className="text-xl font-medium text-gray-900 mb-1">Gallery</h3>
+              <p className="text-gray-500 text-base">
                 {files.length} file{files.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -612,17 +612,17 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
 
       {/* Payment Overview */}
       {!paymentLoading && paymentBalances.length > 0 && totalOutstanding > 0 && (
-        <Card className="p-6 bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
+        <Card className="p-8 bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-1">
                   Outstanding Payments
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-base">
                   You have {outstandingCount} payment{outstandingCount !== 1 ? 's' : ''} pending
                 </p>
               </div>
@@ -683,9 +683,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Messages */}
-        <Card className="p-6">
+        <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
             <button
@@ -741,7 +741,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
         </Card>
 
         {/* Wedding Todo List */}
-        <Card className="p-6">
+        <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Wedding Todo List</h3>
             <button
@@ -898,7 +898,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
 
       {/* Recent Gallery Photos */}
       {recentPhotos.length > 0 && (
-        <Card className="p-6">
+        <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Photos</h3>
             <button
@@ -923,7 +923,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       )}
 
       {/* Quick Actions */}
-      <Card className="p-6">
+      <Card className="p-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
