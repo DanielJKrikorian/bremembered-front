@@ -79,7 +79,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     if (couple?.id) {
       fetchPaymentBalances();
 
-      // Set up real-time subscriptions for payments and bookings
       const paymentSubscription = supabase
         .channel('payments-channel')
         .on(
@@ -132,7 +131,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     }
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock todos for demo
       const mockTodos: TodoItem[] = [
         {
           id: 'mock-todo-1',
@@ -195,7 +193,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     }
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock data for demo
       const mockBalances: BookingBalance[] = [
         {
           id: 'mock-booking-1',
@@ -284,16 +281,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       if (error) throw error;
 
       const processedBalances: BookingBalance[] = (data || []).map(booking => {
-        // Calculate total_amount as the sum of initial_payment, final_payment, and platform_fee
         const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
-        
-        // Filter payments for this booking where status is 'succeeded'
         const successfulPayments = booking.payments?.filter(p => p.status === 'succeeded') || [];
-        
-        // Sum the amounts of successful payments
         const paidAmount = successfulPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        
-        // Calculate remaining balance based on final_payment_status
         const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
 
         return {
@@ -325,7 +315,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     if (!user?.id || !newTodo.trim()) return;
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Add to local state for demo
       const newTodoItem: TodoItem = {
         id: `mock-todo-${Date.now()}`,
         user_id: user.id,
@@ -369,7 +358,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   const toggleTodo = async (id: string, completed: boolean) => {
     if (!user?.id) return;
 
-    // Update local state immediately
     setTodos(prev => prev.map(todo => 
       todo.id === id ? { ...todo, completed } : todo
     ));
@@ -387,7 +375,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
 
       if (error) throw error;
     } catch (err) {
-      // Revert local state on error
       setTodos(prev => prev.map(todo => 
         todo.id === id ? { ...todo, completed: !completed } : todo
       ));
@@ -405,7 +392,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       updated_at: new Date().toISOString()
     };
 
-    // Update local state immediately
     setTodos(prev => prev.map(todo => 
       todo.id === id ? { ...todo, ...updatedTodo } : todo
     ));
@@ -429,7 +415,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       if (error) throw error;
     } catch (err) {
       console.error('Error updating todo:', err);
-      await fetchTodos(); // Refresh from server on error
+      await fetchTodos();
     }
   };
 
@@ -443,7 +429,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   const deleteTodo = async (id: string) => {
     if (!user?.id) return;
 
-    // Remove from local state immediately
     setTodos(prev => prev.filter(todo => todo.id !== id));
 
     if (!supabase || !isSupabaseConfigured()) {
@@ -460,7 +445,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       if (error) throw error;
     } catch (err) {
       console.error('Error deleting todo:', err);
-      await fetchTodos(); // Refresh from server on error
+      await fetchTodos();
     }
   };
 
@@ -487,15 +472,10 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
     });
   };
 
-  // Get recent conversations (last 3)
   const recentConversations = conversations.slice(0, 3);
-
-  // Get recent photos (last 6)
   const recentPhotos = files.filter(file => 
     file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
   ).slice(0, 6);
-
-  // Calculate payment totals
   const totalOutstanding = paymentBalances.reduce((sum, booking) => 
     booking.final_payment_status === 'pending' ? sum + booking.remaining_balance : sum, 0);
   const outstandingCount = paymentBalances.filter(b => b.remaining_balance > 0 && b.final_payment_status === 'pending').length;
@@ -520,95 +500,67 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   return (
     <div className="space-y-8">
       {/* Wedding Countdown */}
-      <Card className="overflow-hidden">
-        <div className="px-8 py-12 text-center bg-gradient-to-r from-rose-500 to-amber-500">
-          <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
-            {daysUntilWedding !== null ? (
-              daysUntilWedding > 0 ? (
-                <>
-                  {daysUntilWedding} {daysUntilWedding === 1 ? 'Day' : 'Days'}
-                  <span className="block text-xl font-normal mt-2">
-                    until your wedding
-                  </span>
-                </>
-              ) : (
-                'Congratulations on your wedding!'
-              )
-            ) : (
-              'Set your wedding date'
+      <Card className="overflow-hidden shadow-lg">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-10 py-14 bg-gradient-to-r from-rose-50 to-amber-50">
+          {/* To Do List Counter */}
+          <div className="text-center p-4">
+            <div className="w-16 h-16 bg-rose-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckSquare className="w-10 h-10 text-rose-600" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-2">To Do List</h3>
+            <p className="text-gray-700 text-lg">
+              {todos.filter(todo => todo.completed).length} of {todos.length} completed
+            </p>
+          </div>
+
+          {/* Wedding Countdown */}
+          <div className="text-center border-x border-gray-200 px-4">
+            <div className="bg-gradient-to-r from-rose-500 to-amber-500 text-white rounded-lg py-4 px-6 mb-4 shadow-md">
+              <h2 className="text-5xl font-bold leading-tight">
+                {daysUntilWedding !== null ? (
+                  daysUntilWedding > 0 ? (
+                    <>
+                      {daysUntilWedding}
+                      <span className="block text-2xl font-normal mt-2">
+                        Days Until the Big Day!
+                      </span>
+                    </>
+                  ) : (
+                    'Your Wedding Day!'
+                  )
+                ) : (
+                  'Set Date'
+                )}
+              </h2>
+            </div>
+            {couple?.wedding_date && (
+              <p className="text-gray-700 text-xl mt-3">
+                {format(parseISO(couple.wedding_date), 'MMMM d, yyyy')}
+              </p>
             )}
-          </h2>
-          {couple?.wedding_date && (
-            <p className="text-rose-100 text-lg mt-3">
-              {format(parseISO(couple.wedding_date), 'MMMM d, yyyy')}
+            {couple?.venue_name && (
+              <p className="text-gray-600 text-lg mt-2">
+                at {couple.venue_name}
+              </p>
+            )}
+          </div>
+
+          {/* Wedding Memories */}
+          <div className="text-center p-4">
+            <div className="w-16 h-16 bg-rose-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Camera className="w-10 h-10 text-rose-600" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-2">Wedding Memories</h3>
+            <p className="text-gray-700 text-lg">
+              {recentPhotos.length > 0 ? (
+                `${recentPhotos.length} file${recentPhotos.length !== 1 ? 's' : ''}`
+              ) : (
+                'Coming soon'
+              )}
             </p>
-          )}
-          {couple?.venue_name && (
-            <p className="text-rose-100 text-base mt-2">
-              at {couple.venue_name}
-            </p>
-          )}
+          </div>
         </div>
       </Card>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <Card className="p-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-rose-100 rounded-full flex items-center justify-center">
-              <Calendar className="w-8 h-8 text-rose-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-medium text-gray-900 mb-1">Wedding Date</h3>
-              <p className="text-gray-500 text-base">
-                {couple?.wedding_date ? formatDate(couple.wedding_date) : 'Not set'}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center">
-              <Heart className="w-8 h-8 text-amber-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-medium text-gray-900 mb-1">Venue</h3>
-              <p className="text-gray-500 text-base">
-                {couple?.venue_name || 'Not selected'}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center">
-              <CheckSquare className="w-8 h-8 text-emerald-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-medium text-gray-900 mb-1">Tasks</h3>
-              <p className="text-gray-500 text-base">
-                {todos.filter(todo => todo.completed).length} of {todos.length} completed
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
-              <Camera className="w-8 h-8 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="text-xl font-medium text-gray-900 mb-1">Gallery</h3>
-              <p className="text-gray-500 text-base">
-                {files.length} file{files.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
 
       {/* Payment Overview */}
       {!paymentLoading && paymentBalances.length > 0 && totalOutstanding > 0 && (
@@ -641,7 +593,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
             </div>
           </div>
           
-          {/* Outstanding Payments List */}
           <div className="mt-6 space-y-3">
             <h4 className="font-medium text-gray-900">Pending Payments:</h4>
             {paymentBalances
@@ -684,7 +635,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Messages */}
         <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
@@ -740,10 +690,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           )}
         </Card>
 
-        {/* Wedding Todo List */}
         <Card className="p-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Wedding Todo List</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Wedding To Do List</h3>
             <button
               onClick={() => setIsAddingTodo(true)}
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-rose-500 border border-transparent rounded-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
@@ -896,33 +845,6 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
         </Card>
       </div>
 
-      {/* Recent Gallery Photos */}
-      {recentPhotos.length > 0 && (
-        <Card className="p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Photos</h3>
-            <button
-              onClick={() => onTabChange?.('gallery')}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
-            >
-              View Gallery
-            </button>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {recentPhotos.map((file) => (
-              <div key={file.id} className="aspect-square">
-                <img
-                  src={file.public_url}
-                  alt={file.file_name}
-                  className="w-full h-full object-cover rounded-lg hover:scale-105 transition-transform duration-200"
-                />
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Quick Actions */}
       <Card className="p-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -945,7 +867,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Camera className="w-6 h-6 mb-2" />
-            <span>View Gallery</span>
+            <span>View Memories</span>
           </button>
           <button
             onClick={() => onTabChange?.('payments')}
