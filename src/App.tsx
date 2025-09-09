@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { BookingProvider } from './context/BookingContext';
 import { AppContent } from './components/AppContent';
+import { AnalyticsTracker } from './AnalyticsTracker'; // ✅ new import
 
 function App() {
   return (
@@ -11,6 +12,8 @@ function App() {
       <CartProvider>
         <BookingProvider>
           <Router>
+            {/* ✅ This logs a pageview whenever the route changes */}
+            <AnalyticsTracker />
             <AppContent />
           </Router>
         </BookingProvider>
