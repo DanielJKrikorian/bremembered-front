@@ -1,6 +1,5 @@
-import React from 'react';
-import { useState } from 'react';
-import { Heart, Menu, User, Calendar, Search, Bell, ShoppingCart } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Menu, User, Calendar, Search, Bell, ShoppingCart, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
@@ -15,6 +14,7 @@ export const Header: React.FC = () => {
   const { state: cartState, toggleCart } = useCart();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [showBanner, setShowBanner] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -35,6 +35,20 @@ export const Header: React.FC = () => {
 
   return (
     <>
+      {showBanner && (
+        <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-center py-3 px-4 flex justify-between items-center">
+          <div className="flex-1 text-sm md:text-base font-bold">
+            🎉 Welcome to the New B. Remembered Booking Platform! 🎊 Use Promo Code <span className="underline">WELCOME10</span> at Checkout for 10% OFF! 🥳
+          </div>
+          <button
+            onClick={() => setShowBanner(false)}
+            className="ml-4 text-white hover:text-gray-200"
+            aria-label="Close banner"
+          >
+            <X size={20} />
+          </button>
+        </div>
+      )}
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
