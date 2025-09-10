@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, Plus, Edit2, Trash2, Save, X, MapPin, Users, Music, Camera, Video, AlertCircle, Check, ArrowLeft, ArrowRight, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
+import { Calendar, Clock, Plus, Edit2, Trash2, Save, X, MapPin, Users, Music, Camera, AlertCircle, Check, ArrowLeft, ArrowRight, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
 import { format, parseISO, addMinutes } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz'; // Added for EDT formatting
 import { jsPDF } from 'jspdf';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -232,7 +233,16 @@ const EventModal: React.FC<EventModalProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'duration_minutes') {
+      const parsedValue = parseInt(value, 10);
+      if (!isNaN(parsedValue) && parsedValue >= 5) {
+        setFormData(prev => ({ ...prev, [name]: parsedValue }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: 5 }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     
     if (formErrors[name]) {
       setFormErrors(prev => {
@@ -268,6 +278,9 @@ const EventModal: React.FC<EventModalProps> = ({
       if (!formData.event_time) {
         errors.event_time = "Time is required";
       }
+      if (isNaN(formData.duration_minutes) || formData.duration_minutes < 5) {
+        errors.duration_minutes = "Duration must be at least 5 minutes";
+      }
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -276,7 +289,7 @@ const EventModal: React.FC<EventModalProps> = ({
   const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1:
-        return formData.title.trim() && formData.event_time;
+        return formData.title.trim() && formData.event_time && !isNaN(formData.duration_minutes) && formData.duration_minutes >= 5;
       case 2:
       case 3:
         return true;
@@ -433,10 +446,11 @@ const EventModal: React.FC<EventModalProps> = ({
                     label="Duration (minutes)"
                     name="duration_minutes"
                     type="number"
-                    value={formData.duration_minutes.toString()}
+                    value={formData.duration_minutes}
                     onChange={handleInputChange}
                     min="5"
                     step="5"
+                    error={formErrors.duration_minutes}
                     icon={Clock}
                   />
                 </div>
@@ -543,6 +557,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 variant="primary"
                 onClick={handleSubmit}
                 icon={Save}
+                disabled={!canProceedToNextStep()}
               >
                 {isEditing ? 'Update Event' : 'Add Event'}
               </Button>
@@ -604,7 +619,7 @@ export const WeddingTimeline: React.FC = () => {
           couple_id: couple.id,
           title: 'Getting Ready',
           description: 'Bride and groom preparation',
-          event_date: couple.wedding_date || '2024-08-15',
+          event_date: couple.wedding_date || '2026-05-24',
           event_time: '14:00',
           location: 'Bridal Suite',
           type: 'getting_ready',
@@ -619,7 +634,7 @@ export const WeddingTimeline: React.FC = () => {
           couple_id: couple.id,
           title: 'Ceremony',
           description: 'Wedding ceremony',
-          event_date: couple.wedding_date || '2024-08-15',
+          event_date: couple.wedding_date || '2026-05-24',
           event_time: '16:00',
           location: 'Garden Altar',
           type: 'ceremony',
@@ -635,7 +650,7 @@ export const WeddingTimeline: React.FC = () => {
           couple_id: couple.id,
           title: 'Cocktail Hour',
           description: 'Guests mingle while couple takes photos',
-          event_date: couple.wedding_date || '2024-08-15',
+          event_date: couple.wedding_date || '2026-05-24',
           event_time: '16:30',
           location: 'Garden Terrace',
           type: 'cocktail_hour',
@@ -651,7 +666,7 @@ export const WeddingTimeline: React.FC = () => {
           couple_id: couple.id,
           title: 'Reception',
           description: 'Dinner, dancing, and celebration',
-          event_date: couple.wedding_date || '2024-08-15',
+          event_date: couple.wedding_date || '2026-05-24',
           event_time: '17:30',
           location: 'Main Ballroom',
           type: 'reception_entrance',
@@ -710,6 +725,8 @@ export const WeddingTimeline: React.FC = () => {
   const handleSaveEvent = async (eventData: EventFormData) => {
     if (!couple?.id) return;
 
+    console.log('Saving event with data:', eventData, { editingEvent });
+
     if (!supabase || !isSupabaseConfigured()) {
       // Mock save
       const mockEvent: TimelineEvent = {
@@ -717,7 +734,7 @@ export const WeddingTimeline: React.FC = () => {
         couple_id: couple.id,
         title: eventData.title,
         description: eventData.description,
-        event_date: couple.wedding_date || '2024-08-15',
+        event_date: editingEvent ? editingEvent.event_date : (couple.wedding_date || '2026-05-24'),
         event_time: eventData.event_time,
         location: eventData.location,
         type: eventData.type,
@@ -736,12 +753,20 @@ export const WeddingTimeline: React.FC = () => {
         ).sort((a, b) => {
           const dateA = new Date(`${a.event_date}T${a.event_time}`);
           const dateB = new Date(`${b.event_date}T${b.event_time}`);
+          if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+            console.error('Invalid date in sorting:', { dateA: a.event_date, timeA: a.event_time, dateB: b.event_date, timeB: b.event_time });
+            return 0;
+          }
           return dateA.getTime() - dateB.getTime();
         }));
       } else {
         setTimelineEvents(prev => [...prev, mockEvent].sort((a, b) => {
           const dateA = new Date(`${a.event_date}T${a.event_time}`);
           const dateB = new Date(`${b.event_date}T${b.event_time}`);
+          if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+            console.error('Invalid date in sorting:', { dateA: a.event_date, timeA: a.event_time, dateB: b.event_date, timeB: b.event_time });
+            return 0;
+          }
           return dateA.getTime() - dateB.getTime();
         }));
       }
@@ -756,9 +781,11 @@ export const WeddingTimeline: React.FC = () => {
       const dataToSave = {
         ...eventData,
         couple_id: couple.id,
-        event_date: couple.wedding_date || new Date().toISOString().split('T')[0],
+        event_date: editingEvent ? editingEvent.event_date : (couple.wedding_date || new Date().toISOString().split('T')[0]),
         is_standard: eventData.type !== 'custom' && eventData.type !== 'other'
       };
+
+      console.log('Data to save:', dataToSave);
 
       if (editingEvent) {
         const { error } = await supabase
@@ -842,6 +869,10 @@ export const WeddingTimeline: React.FC = () => {
       setTimelineEvents(prev => [...prev, ...mockStandard].sort((a, b) => {
         const dateA = new Date(`${a.event_date}T${a.event_time}`);
         const dateB = new Date(`${b.event_date}T${b.event_time}`);
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+          console.error('Invalid date in sorting:', { dateA: a.event_date, timeA: a.event_time, dateB: b.event_date, timeB: b.event_time });
+          return 0;
+        }
         return dateA.getTime() - dateB.getTime();
       }));
       setSuccessMessage("Standard events added successfully");
@@ -933,6 +964,10 @@ export const WeddingTimeline: React.FC = () => {
       setTimelineEvents(prev => [...prev, mockEvent].sort((a, b) => {
         const dateA = new Date(`${a.event_date}T${a.event_time}`);
         const dateB = new Date(`${b.event_date}T${b.event_time}`);
+        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+          console.error('Invalid date in sorting:', { dateA: a.event_date, timeA: a.event_time, dateB: b.event_date, timeB: b.event_time });
+          return 0;
+        }
         return dateA.getTime() - dateB.getTime();
       }));
       setSuccessMessage(`Added ${stdEvent.title} to your timeline`);
@@ -959,6 +994,10 @@ export const WeddingTimeline: React.FC = () => {
           const sortedEvents = [...timelineEvents].sort((a, b) => {
             const dateA = new Date(`${a.event_date}T${a.event_time}`);
             const dateB = new Date(`${b.event_date}T${b.event_time}`);
+            if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+              console.error('Invalid date in sorting:', { dateA: a.event_date, timeA: a.event_time, dateB: b.event_date, timeB: b.event_time });
+              return 0;
+            }
             return dateA.getTime() - dateB.getTime();
           });
           if (sortedEvents.length > 0) {
@@ -1051,7 +1090,7 @@ export const WeddingTimeline: React.FC = () => {
       let yPos = 40;
       if (couple?.wedding_date) {
         doc.text(
-          `Date: ${format(parseISO(couple.wedding_date), "MMMM d, yyyy")}`,
+          `Date: ${formatInTimeZone(parseISO(couple.wedding_date), 'America/New_York', 'MMMM d, yyyy')}`,
           105,
           yPos,
           { align: "center" }
@@ -1172,39 +1211,80 @@ export const WeddingTimeline: React.FC = () => {
     currentEvent: TimelineEvent,
     nextEvent: TimelineEvent
   ) => {
-    const currentDateTime = new Date(
-      `${currentEvent.event_date}T${currentEvent.event_time}`
-    );
-    const nextDateTime = new Date(
-      `${nextEvent.event_date}T${nextEvent.event_time}`
-    );
-    if (currentEvent.duration_minutes) {
-      currentDateTime.setMinutes(
-        currentDateTime.getMinutes() + currentEvent.duration_minutes
+    try {
+      // Validate event dates and times
+      if (!currentEvent.event_date || !currentEvent.event_time || !nextEvent.event_date || !nextEvent.event_time) {
+        console.error('Missing date/time:', { currentEvent, nextEvent });
+        return <span className="text-gray-500">Missing date/time</span>;
+      }
+
+      // Parse event dates and times
+      const currentDateTime = new Date(`${currentEvent.event_date}T${currentEvent.event_time}`);
+      const nextDateTime = new Date(`${nextEvent.event_date}T${nextEvent.event_time}`);
+
+      // Validate dates
+      if (isNaN(currentDateTime.getTime()) || isNaN(nextDateTime.getTime())) {
+        console.error('Invalid date/time:', {
+          currentEvent: { date: currentEvent.event_date, time: currentEvent.event_time },
+          nextEvent: { date: nextEvent.event_date, time: nextEvent.event_time }
+        });
+        return <span className="text-gray-500">Invalid date/time</span>;
+      }
+
+      // Get duration in minutes, default to 0 if undefined or invalid
+      const durationMinutes = Number(currentEvent.duration_minutes) || 0;
+      if (isNaN(durationMinutes)) {
+        console.error('Invalid duration_minutes:', currentEvent.duration_minutes);
+        return <span className="text-gray-500">Invalid duration</span>;
+      }
+
+      // Calculate end time of current event
+      const currentEndTime = new Date(currentDateTime.getTime() + durationMinutes * 60 * 1000);
+
+      // Calculate difference in minutes
+      const diffMinutes = Math.round(
+        (nextDateTime.getTime() - currentEndTime.getTime()) / (1000 * 60)
       );
-    }
-    const diffMinutes = Math.round(
-      (nextDateTime.getTime() - currentDateTime.getTime()) / (1000 * 60)
-    );
-    if (diffMinutes < 0) {
-      return (
-        <span className="text-red-500">
-          Warning: Events overlap by {Math.abs(diffMinutes)} minutes
-        </span>
-      );
-    } else if (diffMinutes === 0) {
-      return <span>Next event starts immediately</span>;
-    } else if (diffMinutes < 60) {
-      return <span>{diffMinutes} minute break</span>;
-    } else {
-      const hours = Math.floor(diffMinutes / 60);
-      const minutes = diffMinutes % 60;
-      return (
-        <span>
-          {hours} hour{hours !== 1 ? "s" : ""}
-          {minutes > 0 ? ` ${minutes} minute${minutes !== 1 ? "s" : ""}` : ""} break
-        </span>
-      );
+
+      // Log for debugging
+      console.log('Time Difference Calculation:', {
+        currentEvent: currentEvent.title,
+        currentDate: currentEvent.event_date,
+        currentTime: currentEvent.event_time,
+        durationMinutes,
+        currentEndTime: currentEndTime.toISOString(),
+        nextEvent: nextEvent.title,
+        nextDate: nextEvent.event_date,
+        nextTime: nextEvent.event_time,
+        diffMinutes
+      });
+
+      if (diffMinutes < 0) {
+        return (
+          <span className="text-red-500">
+            Warning: Events overlap by {Math.abs(diffMinutes)} minutes
+          </span>
+        );
+      } else if (diffMinutes === 0) {
+        return <span>Next event starts immediately</span>;
+      } else if (diffMinutes < 60) {
+        return <span>{diffMinutes} minute{diffMinutes !== 1 ? 's' : ''} break</span>;
+      } else {
+        const hours = Math.floor(diffMinutes / 60);
+        const minutes = diffMinutes % 60;
+        return (
+          <span>
+            {hours} hour{hours !== 1 ? 's' : ''}
+            {minutes > 0 ? ` ${minutes} minute${minutes !== 1 ? 's' : ''}` : ''} break
+          </span>
+        );
+      }
+    } catch (error) {
+      console.error('Error in calculateTimeDifference:', error, {
+        currentEvent,
+        nextEvent
+      });
+      return <span className="text-gray-500">Unable to calculate time difference</span>;
     }
   };
 
@@ -1301,12 +1381,7 @@ export const WeddingTimeline: React.FC = () => {
             </p>
             {couple?.wedding_date && (
               <p className="text-sm text-gray-500 mt-1">
-                Wedding Date: {new Date(couple.wedding_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                Wedding Date: {formatInTimeZone(parseISO(couple.wedding_date), 'America/New_York', 'eeee, MMMM d, yyyy')}
               </p>
             )}
           </div>
@@ -1526,7 +1601,6 @@ export const WeddingTimeline: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      
                       <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
@@ -1543,12 +1617,14 @@ export const WeddingTimeline: React.FC = () => {
                             <span>{event.location}</span>
                           </div>
                         )}
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          <span>{formatInTimeZone(parseISO(event.event_date), 'America/New_York', 'MMMM d, yyyy')}</span>
+                        </div>
                       </div>
-                      
                       {event.description && (
                         <p className="text-gray-600 mb-3">{event.description}</p>
                       )}
-                      
                       <div className="space-y-2">
                         {event.music_notes && (
                           <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
@@ -1559,7 +1635,6 @@ export const WeddingTimeline: React.FC = () => {
                             <p className="text-indigo-800 text-sm">{event.music_notes}</p>
                           </div>
                         )}
-                        
                         {event.playlist_requests && (
                           <div className="bg-purple-50 border border-purple-200 rounded p-3">
                             <div className="flex items-center space-x-2 mb-1">
@@ -1569,7 +1644,6 @@ export const WeddingTimeline: React.FC = () => {
                             <p className="text-purple-800 text-sm">{event.playlist_requests}</p>
                           </div>
                         )}
-                        
                         {event.photo_shotlist && (
                           <div className="bg-rose-50 border border-rose-200 rounded p-3">
                             <div className="flex items-center space-x-2 mb-1">
