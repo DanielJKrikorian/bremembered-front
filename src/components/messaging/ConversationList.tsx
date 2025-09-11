@@ -18,11 +18,10 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   onConversationSelect
 }) => {
   const { user } = useAuth();
-  const { vendors: bookedVendors } = useBookedVendors();
+  const { vendors: bookedVendors, loading: vendorsLoading } = useBookedVendors();
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
 
   const handleConversationCreated = (conversation: any) => {
-    // If there's an initial message, we'll handle sending it in the chat window
     onConversationSelect(conversation);
   };
 
@@ -37,7 +36,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         minute: '2-digit',
         hour12: true 
       });
-    } else if (diffInHours < 168) { // Less than a week
+    } else if (diffInHours < 168) {
       return date.toLocaleDateString('en-US', { weekday: 'short' });
     } else {
       return date.toLocaleDateString('en-US', { 
@@ -75,7 +74,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h4 className="text-lg font-semibold text-gray-900">Messages</h4>
-          {bookedVendors.length > 0 && (
+          {bookedVendors.length > 0 && !vendorsLoading && (
             <Button
               variant="primary"
               icon={Plus}
@@ -96,7 +95,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
               : 'Once you book services, you\'ll be able to message your vendors directly here.'
             }
           </p>
-          {bookedVendors.length > 0 ? (
+          {bookedVendors.length > 0 && !vendorsLoading ? (
             <Button 
               variant="primary"
               icon={Plus}
@@ -108,11 +107,20 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             <Button 
               variant="primary"
               onClick={() => window.location.href = '/search'}
+              disabled={vendorsLoading}
             >
-              Browse Services
+              {vendorsLoading ? 'Loading...' : 'Browse Services'}
             </Button>
           )}
         </Card>
+
+        <NewMessageModal
+          key={`modal-${showNewMessageModal ? 'open' : 'closed'}`}
+          isOpen={showNewMessageModal}
+          onClose={() => setShowNewMessageModal(false)}
+          onConversationCreated={handleConversationCreated}
+          portalId="modal-portal"
+        />
       </div>
     );
   }
@@ -121,7 +129,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-semibold text-gray-900">Messages</h4>
-        {bookedVendors.length > 0 && (
+        {bookedVendors.length > 0 && !vendorsLoading && (
           <Button
             variant="primary"
             icon={Plus}
@@ -140,14 +148,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Clicking conversation:', conversation.id);
               onConversationSelect(conversation);
             }}
             className="cursor-pointer"
           >
             <Card className="p-4 hover:shadow-md transition-shadow hover:bg-gray-50">
               <div className="flex items-center space-x-4">
-                {/* Avatar */}
                 <div className="relative">
                   {conversation.other_participant?.profile_photo ? (
                     <img
@@ -161,8 +167,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     </div>
                   )}
                 </div>
-
-                {/* Conversation Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="font-semibold text-gray-900 truncate">
@@ -179,7 +183,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                       </span>
                     </div>
                   </div>
-                  
                   {conversation.last_message && (
                     <p className="text-sm truncate text-gray-600">
                       {conversation.last_message.sender_id === user?.id ? 'You: ' : ''}
@@ -187,8 +190,6 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                     </p>
                   )}
                 </div>
-
-                {/* Arrow */}
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
             </Card>
@@ -196,11 +197,12 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         ))}
       </div>
 
-      {/* New Message Modal */}
       <NewMessageModal
+        key={`modal-${showNewMessageModal ? 'open' : 'closed'}`}
         isOpen={showNewMessageModal}
         onClose={() => setShowNewMessageModal(false)}
         onConversationCreated={handleConversationCreated}
+        portalId="modal-portal"
       />
     </div>
   );

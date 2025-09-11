@@ -1,25 +1,52 @@
-import React, { useState } from 'react';
-import { X, MessageCircle, User, Send, Clock, Calendar, Camera, Music, Users } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { X, MessageCircle, User, Send, Camera, Music, Users, Calendar } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { useBookedVendors, useCreateConversation } from '../../hooks/useMessaging';
+import { useBookedVendors } from '../../hooks/useMessaging';
+import { supabase } from '../../lib/supabase'; // Vendor's supabase import
+import { useAuth } from '../../context/AuthContext'; // Or useAuthStore if that's your auth
+import { debounce } from 'lodash'; // If not installed, npm i lodash
 
 interface NewMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConversationCreated: (conversation: any) => void;
+  portalId?: string;
 }
 
 export const NewMessageModal: React.FC<NewMessageModalProps> = ({
   isOpen,
   onClose,
-  onConversationCreated
+  onConversationCreated,
+  portalId = 'modal-portal'
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = useState(false);
+  const { user } = useAuth(); // Or useAuthStore() if that's your store
+
   const { vendors: bookedVendors, loading: vendorsLoading } = useBookedVendors();
-  const { createConversation, loading: creatingConversation } = useCreateConversation();
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => modalRef.current?.focus(), 100);
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const messageTemplates = [
     {
@@ -56,9 +83,9 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
-      case 'Photography': return Camera;
+      case 'Photography': 
       case 'Videography': return Camera;
-      case 'DJ Services': return Music;
+      case 'DJ Services': 
       case 'Live Musician': return Music;
       case 'Coordination': return Users;
       case 'Planning': return Calendar;
@@ -69,38 +96,85 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template.id);
     setCustomMessage(template.message);
+    setError(null);
+    setSuccessMessage(null);
   };
 
-  const handleSendMessage = async () => {
-    if (!selectedVendor || !customMessage.trim()) return;
+  // Debounced handler mirroring vendor's debouncedStartNewConversation
+  const debouncedStartNewConversation = useCallback(
+    debounce(async () => {
+      if (!user || !selectedVendor || !customMessage.trim()) return;
+      setError(null);
+      setSuccessMessage(null);
+      setIsSending(true);
 
-    try {
-      const conversation = await createConversation(selectedVendor.user_id);
-      if (conversation) {
-        // Send the initial message
-        if (customMessage.trim()) {
-          // We'll send the message after the conversation is created
-          // For now, just create the conversation and let the parent handle it
-          onConversationCreated({
-            ...conversation,
-            initialMessage: customMessage,
-            vendor: selectedVendor
+      try {
+        // Prepare participant IDs: current user + vendor user_id (single, non-group)
+        const participantIds = [user.id, selectedVendor.user_id].sort();
+        const { data: convData, error: convError } = await supabase
+          .rpc("create_conversation_with_participants", {
+            p_is_group: false,  // Single vendor = non-group
+            p_name: null,  // No group name for single
+            p_participant_ids: participantIds,
           });
-        } else {
-          onConversationCreated(conversation);
-        }
-        onClose();
-        resetModal();
+
+        if (convError) throw convError;
+
+        const conversationId = convData?.[0]?.conversation_id;
+        if (!conversationId) throw new Error("No conversation ID returned from RPC");
+
+        // Insert initial message (mirroring vendor's insert)
+        const { data: messageData, error: messageError } = await supabase
+          .from("messages")
+          .insert({
+            sender_id: user.id,
+            conversation_id: conversationId,
+            message_text: customMessage.trim(),
+          })
+          .select(`
+            id,
+            sender_id,
+            conversation_id,
+            message_text,
+            timestamp
+          `)
+          .single();
+
+        if (messageError) throw messageError;
+
+        setSuccessMessage("Conversation started successfully!");
+        
+        // Fetch updated conversations (mirroring vendor's fetchConversations)
+        // Note: You'll need to import/use your fetchConversations logic or call a refresh prop
+        // For now, just trigger onConversationCreated with the new ID
+        onConversationCreated({ id: conversationId, other_participant: selectedVendor });
+
+        // Auto-close after success
+        setTimeout(() => {
+          onClose();
+          resetModal();
+        }, 1500);
+
+      } catch (error) {
+        console.error("Error starting conversation:", error);
+        setError(error instanceof Error ? error.message : "Failed to start conversation");
+      } finally {
+        setIsSending(false);
       }
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-    }
+    }, 1000),  // Debounce like vendor code
+    [user, selectedVendor, customMessage, onConversationCreated, onClose]
+  );
+
+  const handleStartNewConversation = () => {
+    debouncedStartNewConversation();
   };
 
   const resetModal = () => {
     setSelectedVendor(null);
     setCustomMessage('');
     setSelectedTemplate('');
+    setError(null);
+    setSuccessMessage(null);
   };
 
   const handleClose = () => {
@@ -108,13 +182,45 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
     resetModal();
   };
 
-  if (!isOpen) return null;
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  useEffect(() => {
+    if (isOpen) {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          handleClose();
+        }
+      };
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !isClient) {
+    return null;
+  }
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-visible"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div
+        ref={modalRef}
+        className="w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white rounded-lg shadow-xl"
+        style={{ zIndex: 51 }}
+        tabIndex={-1}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200" id="modal-title">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-rose-600" />
@@ -127,13 +233,26 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
           <button
             onClick={handleClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Step 1: Select Vendor */}
+          {/* Error/Success Messages (Vendor-style) */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+          {successMessage && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-600">{successMessage}</p>
+            </div>
+          )}
+
+          {/* Step 1: Select Vendor (Adapted from Vendor's Couple Selection) */}
           <div>
             <h4 className="font-semibold text-gray-900 mb-4">Select Vendor</h4>
             {vendorsLoading ? (
@@ -147,24 +266,27 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 <p className="text-gray-600">No booked vendors found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-2 max-h-48 overflow-y-auto">
                 {bookedVendors.map((vendor) => {
-                  const ServiceIcon = getServiceIcon(vendor.service_type);
+                  const ServiceIcon = getServiceIcon(vendor.service_type || 'Unknown');
                   const isSelected = selectedVendor?.id === vendor.id;
                   
                   return (
-                    <div
+                    <label
                       key={vendor.id}
-                      onClick={() => setSelectedVendor(vendor)}
-                      className={`
-                        p-4 rounded-lg border-2 cursor-pointer transition-all
-                        ${isSelected 
+                      className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        isSelected 
                           ? 'border-rose-500 bg-rose-50' 
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }
-                      `}
+                      }`}
                     >
-                      <div className="flex items-center space-x-4">
+                      <input
+                        type="radio"
+                        checked={isSelected}
+                        onChange={() => setSelectedVendor(vendor)}
+                        className="h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
+                      />
+                      <div className="flex items-center space-x-4 ml-3">
                         {vendor.profile_photo ? (
                           <img
                             src={vendor.profile_photo}
@@ -177,26 +299,21 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
                           </div>
                         )}
                         <div className="flex-1">
-                          <h5 className="font-semibold text-gray-900">{vendor.name}</h5>
+                          <h5 className="font-semibold text-gray-900">{vendor.name || 'Unknown Vendor'}</h5>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <ServiceIcon className="w-4 h-4" />
-                            <span>{vendor.service_type}</span>
+                            <span>{vendor.service_type || 'Unknown Service'}</span>
                           </div>
                         </div>
-                        {isSelected && (
-                          <div className="w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center">
-                            <MessageCircle className="w-4 h-4 text-white" />
-                          </div>
-                        )}
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>
             )}
           </div>
 
-          {/* Step 2: Choose Message Template or Write Custom */}
+          {/* Step 2: Message Templates & Custom Message */}
           {selectedVendor && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Choose a Message Template</h4>
@@ -204,6 +321,7 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 {messageTemplates.map((template) => (
                   <button
                     key={template.id}
+                    type="button"
                     onClick={() => handleTemplateSelect(template)}
                     className={`
                       p-3 rounded-lg border-2 text-left transition-all
@@ -219,11 +337,8 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 ))}
               </div>
 
-              {/* Custom Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Message
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Your Message</label>
                 <textarea
                   value={customMessage}
                   onChange={(e) => setCustomMessage(e.target.value)}
@@ -232,11 +347,10 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
                 />
                 <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-gray-500">
-                    {customMessage.length}/500 characters
-                  </p>
+                  <p className="text-xs text-gray-500">{customMessage.length}/500 characters</p>
                   {selectedTemplate && (
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedTemplate('');
                         setCustomMessage('');
@@ -251,22 +365,26 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
             </div>
           )}
 
-          {/* Actions */}
+          {/* Actions (Vendor-style with loading) */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-            >
+            <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button
               variant="primary"
-              onClick={handleSendMessage}
-              disabled={!selectedVendor || !customMessage.trim() || creatingConversation}
-              loading={creatingConversation}
+              onClick={handleStartNewConversation}
+              disabled={!selectedVendor || !customMessage.trim() || isSending}
+              loading={isSending}
               icon={Send}
             >
-              Start Conversation
+              {isSending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Sending...
+                </>
+              ) : (
+                'Start Conversation'
+              )}
             </Button>
           </div>
 
@@ -284,7 +402,9 @@ export const NewMessageModal: React.FC<NewMessageModalProps> = ({
             </div>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
+
+  return createPortal(modalContent, document.getElementById(portalId) || document.body);
 };

@@ -18,7 +18,6 @@ export interface Conversation {
   participant_ids: string[];
   created_at: string;
   updated_at: string;
-  // Joined data
   last_message?: Message;
   unread_count?: number;
   other_participant?: {
@@ -116,7 +115,6 @@ export const useConversations = () => {
       }
 
       try {
-        // Get conversations where user is a participant
         const { data, error } = await supabase
           .from('conversations')
           .select('*')
@@ -125,42 +123,33 @@ export const useConversations = () => {
 
         if (error) throw error;
 
-        // Process conversations to get last message and unread count
         const processedConversations = await Promise.all(
           (data || []).map(async (conv) => {
-            // Get last message
             const { data: lastMessageData } = await supabase
               .from('messages')
               .select('*')
               .eq('conversation_id', conv.id)
               .order('timestamp', { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
 
-            // Get unread count
-            // Disabled unread count for now
-            const unreadCount = 0;
-
-            // Get other participant info
             const otherParticipantId = conv.participant_ids.find((id: string) => id !== user.id);
             let otherParticipant = null;
 
             if (otherParticipantId) {
-              // Try to get vendor info first
               const { data: vendorData } = await supabase
                 .from('vendors')
                 .select('id, name, profile_photo, phone')
                 .eq('user_id', otherParticipantId)
-                .single();
+                .maybeSingle();
 
               if (vendorData) {
-                // Get vendor's service type from bookings
                 const { data: bookingData } = await supabase
                   .from('bookings')
                   .select('service_type')
                   .eq('vendor_id', vendorData.id)
                   .limit(1)
-                  .single();
+                  .maybeSingle();
 
                 otherParticipant = {
                   id: vendorData.id,
@@ -168,16 +157,15 @@ export const useConversations = () => {
                   profile_photo: vendorData.profile_photo,
                   role: 'vendor' as const,
                   phone: vendorData.phone,
-                  email: undefined, // Email not available from client-side
+                  email: undefined,
                   service_type: bookingData?.service_type
                 };
               } else {
-                // Try to get couple info
                 const { data: coupleData } = await supabase
                   .from('couples')
                   .select('id, name, profile_photo')
                   .eq('user_id', otherParticipantId)
-                  .single();
+                  .maybeSingle();
 
                 if (coupleData) {
                   otherParticipant = {
@@ -209,6 +197,32 @@ export const useConversations = () => {
     };
 
     fetchConversations();
+
+    // Subscribe to conversation changes (mirroring vendor)
+    if (supabase && isSupabaseConfigured()) {
+      const conversationSubscription = supabase
+        .channel('public:conversations')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'conversations' },
+          () => fetchConversations()
+        )
+        .subscribe();
+
+      const participantSubscription = supabase
+        .channel('public:conversation_participants')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'conversation_participants' },
+          () => fetchConversations()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(conversationSubscription);
+        supabase.removeChannel(participantSubscription);
+      };
+    }
   }, [user, isAuthenticated]);
 
   return { conversations, loading, error };
@@ -252,7 +266,6 @@ export const useBookedVendors = () => {
       }
 
       try {
-        // Get couple ID first
         const { data: coupleData, error: coupleError } = await supabase
           .from('couples')
           .select('id')
@@ -261,7 +274,6 @@ export const useBookedVendors = () => {
 
         if (coupleError) throw coupleError;
 
-        // Get vendors from bookings
         const { data, error } = await supabase
           .from('bookings')
           .select(`
@@ -278,7 +290,6 @@ export const useBookedVendors = () => {
 
         if (error) throw error;
 
-        // Extract unique vendors
         const uniqueVendors = Array.from(
           new Map(
             (data || []).map(booking => [
@@ -312,13 +323,25 @@ export const useCreateConversation = () => {
   const [error, setError] = useState<string | null>(null);
 
   const createConversation = async (vendorUserId: string): Promise<Conversation | null> => {
-    if (!user || !vendorUserId) return null;
+    if (!user || !vendorUserId) {
+      console.error('Invalid input:', { user: !!user, vendorUserId });
+      setError('Missing user or vendor ID');
+      return null;
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(user.id) || !uuidRegex.test(vendorUserId)) {
+      console.error('Invalid UUID:', { userId: user.id, vendorUserId });
+      setError('Invalid user or vendor ID format');
+      return null;
+    }
 
     setLoading(true);
     setError(null);
 
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock conversation creation
+      // Mock conversation
       const mockConversation: Conversation = {
         id: `mock-conv-${Date.now()}`,
         is_group: false,
@@ -333,37 +356,64 @@ export const useCreateConversation = () => {
     }
 
     try {
-      // Check if conversation already exists
-      const { data: existingConv, error: searchError } = await supabase
+      console.log('Creating conversation with participants:', { userId: user.id, vendorUserId });
+
+      // Use vendor-style RPC for atomic creation
+      const participantIds = [user.id, vendorUserId].sort();
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('create_conversation_with_participants', {
+          p_is_group: false,
+          p_name: null,
+          p_participant_ids: participantIds,
+        });
+
+      let conversationId: string;
+      if (rpcError) {
+        console.warn('RPC failed, falling back to direct insert:', rpcError);
+        // Fallback: Create conversation and participants manually
+        const { data: convData, error: convError } = await supabase
+          .from('conversations')
+          .insert([{
+            is_group: false,
+            participant_ids: participantIds,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (convError) throw convError;
+        if (!convData?.id) throw new Error('No conversation ID returned');
+        conversationId = convData.id;
+
+        // Insert into conversation_participants to satisfy RLS Policy 2
+        const { error: participantError } = await supabase
+          .from('conversation_participants')
+          .insert([
+            { conversation_id: conversationId, user_id: user.id, joined_at: new Date().toISOString() },
+            { conversation_id: conversationId, user_id: vendorUserId, joined_at: new Date().toISOString() }
+          ]);
+
+        if (participantError) {
+          console.warn('Participant insert warning (non-fatal if Policy 1 works):', participantError);
+        }
+      } else {
+        conversationId = rpcData?.[0]?.conversation_id;
+        if (!conversationId) throw new Error('No conversation ID from RPC');
+      }
+
+      // Fetch full conversation data
+      const { data: fullConv, error: fetchError } = await supabase
         .from('conversations')
         .select('*')
-        .contains('participant_ids', [user.id])
-        .contains('participant_ids', [vendorUserId])
+        .eq('id', conversationId)
         .single();
 
-      if (searchError && searchError.code !== 'PGRST116') {
-        throw searchError;
-      }
+      if (fetchError) throw fetchError;
 
-      if (existingConv) {
-        setLoading(false);
-        return existingConv;
-      }
-
-      // Create new conversation
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert([{
-          is_group: false,
-          participant_ids: [user.id, vendorUserId]
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      console.log('Conversation created:', conversationId);
       setLoading(false);
-      return data;
+      return fullConv;
     } catch (err) {
       console.error('Error creating conversation:', err);
       setError(err instanceof Error ? err.message : 'Failed to create conversation');
@@ -389,8 +439,16 @@ export const useMessages = (conversationId: string) => {
         return;
       }
 
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(conversationId)) {
+        console.error('Invalid conversationId:', conversationId);
+        setError('Invalid conversation ID');
+        setLoading(false);
+        return;
+      }
+
       if (!supabase || !isSupabaseConfigured()) {
-        // Mock messages for demo
+        // Mock messages
         const mockMessages: Message[] = [
           {
             id: 'mock-msg-1',
@@ -415,6 +473,7 @@ export const useMessages = (conversationId: string) => {
       }
 
       try {
+        console.log('Fetching messages for:', conversationId);
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -432,13 +491,49 @@ export const useMessages = (conversationId: string) => {
     };
 
     fetchMessages();
+
+    // Real-time subscriptions (aligned with vendor)
+    if (supabase && isSupabaseConfigured()) {
+      const messageSubscription = supabase
+        .channel(`messages:${conversationId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+          (payload) => {
+            setMessages((prev) => [...prev, payload.new as Message]);
+          }
+        )
+        .subscribe();
+
+      const participantSubscription = supabase
+        .channel(`participants:${conversationId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'conversation_participants', filter: `conversation_id=eq.${conversationId}` },
+          () => fetchMessages()  // Refresh if participants change
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(messageSubscription);
+        supabase.removeChannel(participantSubscription);
+      };
+    }
   }, [conversationId, user, isAuthenticated]);
 
   const sendMessage = async (messageText: string) => {
     if (!user || !conversationId || !messageText.trim()) return;
 
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(conversationId)) {
+      const err = new Error('Invalid conversation ID');
+      console.error(err.message);
+      setError(err.message);
+      throw err;
+    }
+
     if (!supabase || !isSupabaseConfigured()) {
-      // Mock sending message
+      // Mock
       const newMessage: Message = {
         id: `mock-msg-${Date.now()}`,
         sender_id: user.id,
@@ -447,11 +542,12 @@ export const useMessages = (conversationId: string) => {
         conversation_id: conversationId,
         read_by: [user.id]
       };
-      setMessages(prev => [...prev, newMessage]);
+      setMessages((prev) => [...prev, newMessage]);
       return;
     }
 
     try {
+      console.log('Sending message:', { conversation_id: conversationId, sender_id: user.id });
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -460,20 +556,31 @@ export const useMessages = (conversationId: string) => {
           conversation_id: conversationId,
           read_by: [user.id]
         })
-        .select()
+        .select(`
+          id,
+          sender_id,
+          conversation_id,
+          message_text,
+          timestamp
+        `)
         .single();
 
-      if (error) throw error;
-      setMessages(prev => [...prev, data]);
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw error;
+      }
+
+      console.log('Message sent:', data.id);
+      return data;
     } catch (err) {
       console.error('Error sending message:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send message');
       throw err;
     }
   };
 
   const markAsRead = async () => {
-    // Disabled for now - will implement email notifications instead
-    return;
+    // Placeholder for future
   };
 
   return { messages, loading, error, sendMessage, markAsRead };
