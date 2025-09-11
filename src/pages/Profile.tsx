@@ -21,6 +21,7 @@ import { PaymentsSection } from '../components/profile/PaymentsSection';
 import { WeddingBoard } from '../components/profile/WeddingBoard';
 import { ReviewsSection } from '../components/profile/ReviewsSection';
 import { jsPDF } from 'jspdf';
+import { parse, format } from 'date-fns'; // Added date-fns import
 
 interface ContractModalProps {
   isOpen: boolean;
@@ -55,7 +56,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose, contract
           </div>
           <div>
             <span className="text-gray-600">Created:</span>
-            <div className="font-medium">{new Date(contract.created_at).toLocaleDateString()}</div>
+            <div className="font-medium">{format(parse(contract.created_at, 'yyyy-MM-dd', new Date()), 'PPPP')}</div>
           </div>
           {contract.signed_at && (
             <>
@@ -65,7 +66,7 @@ const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose, contract
               </div>
               <div>
                 <span className="text-gray-600">Signed On:</span>
-                <div className="font-medium">{new Date(contract.signed_at).toLocaleDateString()}</div>
+                <div className="font-medium">{format(parse(contract.signed_at, 'yyyy-MM-dd', new Date()), 'PPPP')}</div>
               </div>
             </>
           )}
@@ -134,7 +135,6 @@ export const Profile: React.FC = () => {
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   const navigate = useNavigate();
   const location = useLocation();
-
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews'>('overview');
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
@@ -201,7 +201,6 @@ export const Profile: React.FC = () => {
           setSelectedConversation(conversation);
         }
       };
-
       if (!conversationsLoading && conversations.length > 0) {
         findAndSelectConversation();
       }
@@ -266,7 +265,6 @@ export const Profile: React.FC = () => {
   // Evaluate password strength and match
   useEffect(() => {
     const { newPassword, confirmPassword } = passwordForm;
-
     // Password strength evaluation
     if (newPassword.length === 0) {
       setPasswordStrength(null);
@@ -277,12 +275,10 @@ export const Profile: React.FC = () => {
       if (/[A-Z]/.test(newPassword)) score += 1;
       if (/[0-9]/.test(newPassword)) score += 1;
       if (/[^A-Za-z0-9]/.test(newPassword)) score += 1;
-
       if (score <= 2) setPasswordStrength('Weak');
       else if (score <= 3) setPasswordStrength('Moderate');
       else setPasswordStrength('Strong');
     }
-
     // Password match evaluation
     if (newPassword.length > 0 && confirmPassword.length > 0) {
       setPasswordsMatch(newPassword === confirmPassword);
@@ -328,17 +324,16 @@ export const Profile: React.FC = () => {
       yPos += 10;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
-
       doc.text(`Contract ID: ${contract.id.substring(0, 8).toUpperCase()}`, 20, yPos);
       yPos += 7;
       doc.text(`Service: ${contract.bookings.service_packages?.name || contract.bookings.service_type}`, 20, yPos);
       yPos += 7;
       doc.text(`Vendor: ${contract.bookings.vendors.name}`, 20, yPos);
       yPos += 7;
-      doc.text(`Created: ${new Date(contract.created_at).toLocaleDateString()}`, 20, yPos);
+      doc.text(`Created: ${format(parse(contract.created_at, 'yyyy-MM-dd', new Date()), 'PPPP')}`, 20, yPos);
       yPos += 7;
       if (contract.signed_at) {
-        doc.text(`Signed: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        doc.text(`Signed: ${format(parse(contract.signed_at, 'yyyy-MM-dd', new Date()), 'PPPP')}`, 20, yPos);
         yPos += 7;
       }
       yPos += 10;
@@ -349,25 +344,21 @@ export const Profile: React.FC = () => {
       yPos += 10;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-
       const lines = contract.content.split('\n');
       lines.forEach((line: string) => {
         if (yPos > 270) {
           doc.addPage();
           yPos = 20;
         }
-
         if (line.trim() === '') {
           yPos += 4;
           return;
         }
-
         if (line.includes(':') && line.length < 50) {
           doc.setFont('helvetica', 'bold');
         } else {
           doc.setFont('helvetica', 'normal');
         }
-
         const wrappedLines = doc.splitTextToSize(line, 170);
         doc.text(wrappedLines, 20, yPos);
         yPos += 5 * wrappedLines.length;
@@ -379,17 +370,15 @@ export const Profile: React.FC = () => {
           doc.addPage();
           yPos = 20;
         }
-
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text('DIGITAL SIGNATURE', 20, yPos);
         yPos += 10;
-
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(11);
         doc.text(`Signed by: ${contract.signature}`, 20, yPos);
         yPos += 6;
-        doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        doc.text(`Date: ${format(parse(contract.signed_at, 'yyyy-MM-dd', new Date()), 'PPPP')}`, 20, yPos);
       }
       // Footer
       yPos = Math.max(yPos + 20, 260);
@@ -405,19 +394,17 @@ export const Profile: React.FC = () => {
     }
   };
 
+  // Updated formatDate: Parse as local date to avoid UTC shift
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return format(parse(dateString, 'yyyy-MM-dd', new Date()), 'PPPP'); // e.g., "Saturday, May 24, 2026"
   };
 
+  // formatTime: Unchanged, handles HH:MM as local
   const formatTime = (timeString: string | null) => {
     if (!timeString) return 'Not set';
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+    const date = new Date(`2000-01-01T${timeString}`);
+    return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
@@ -474,17 +461,13 @@ export const Profile: React.FC = () => {
 
   const handleStyleToggle = async (styleLabel: string) => {
     if (!couple) return;
-
     const styleTag = styleTags.find(tag => tag.label === styleLabel);
     if (!styleTag) return;
-
     const currentStyleIds = couple.style_preferences?.map(pref => pref.id) || [];
     const isSelected = currentStyleIds.includes(styleTag.id);
-
     const newStyleIds = isSelected
       ? currentStyleIds.filter(id => id !== styleTag.id)
       : [...currentStyleIds, styleTag.id];
-
     try {
       await updateStylePreferences(newStyleIds);
       refetchCouple();
@@ -495,17 +478,13 @@ export const Profile: React.FC = () => {
 
   const handleVibeToggle = async (vibeLabel: string) => {
     if (!couple) return;
-
     const vibeTag = vibeTags.find(tag => tag.label === vibeLabel);
     if (!vibeTag) return;
-
     const currentVibeIds = couple.vibe_preferences?.map(pref => pref.id) || [];
     const isSelected = currentVibeIds.includes(vibeTag.id);
-
     const newVibeIds = isSelected
       ? currentVibeIds.filter(id => id !== vibeTag.id)
       : [...currentVibeIds, vibeTag.id];
-
     try {
       await updateVibePreferences(newVibeIds);
       refetchCouple();
@@ -516,17 +495,13 @@ export const Profile: React.FC = () => {
 
   const handleLanguageToggle = async (languageName: string) => {
     if (!couple) return;
-
     const language = languages.find(lang => lang.language === languageName);
     if (!language) return;
-
     const currentLanguageIds = couple.language_preferences?.map(pref => pref.id) || [];
     const isSelected = currentLanguageIds.includes(language.id);
-
     const newLanguageIds = isSelected
       ? currentLanguageIds.filter(id => id !== language.id)
       : [...currentLanguageIds, language.id];
-
     try {
       await updateLanguagePreferences(newLanguageIds);
       refetchCouple();
@@ -551,9 +526,7 @@ export const Profile: React.FC = () => {
     setPasswordError(null);
     setPasswordSuccess(null);
     setPasswordLoading(true);
-
     const { newPassword, confirmPassword } = passwordForm;
-
     // Validation
     if (newPassword.length < 6) {
       setPasswordError('Password must be at least 6 characters long');
@@ -570,18 +543,14 @@ export const Profile: React.FC = () => {
       setPasswordLoading(false);
       return;
     }
-
     try {
       if (!supabase || !isSupabaseConfigured()) {
         throw new Error('Supabase is not configured');
       }
-
       const { error } = await supabase.auth.updateUser({ password: newPassword });
-
       if (error) {
         throw error;
       }
-
       setPasswordSuccess('Password updated successfully');
       setPasswordForm({ newPassword: '', confirmPassword: '' });
       setPasswordStrength(null);
@@ -681,7 +650,6 @@ export const Profile: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">My Profile</h1>
                 <p className="text-sm text-gray-600">Manage your wedding planning</p>
               </div>
-
               <nav className="space-y-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
@@ -773,6 +741,20 @@ export const Profile: React.FC = () => {
                           icon={User}
                         />
                       </div>
+                      <Input
+                        label="Ceremony Time"
+                        type="time"
+                        value={editForm.ceremony_time}
+                        onChange={(e) => handleInputChange('ceremony_time', e.target.value)}
+                        icon={Calendar}
+                      />
+                      <Input
+                        label="Reception Time"
+                        type="time"
+                        value={editForm.reception_time}
+                        onChange={(e) => handleInputChange('reception_time', e.target.value)}
+                        icon={Calendar}
+                      />
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Notes
@@ -834,6 +816,18 @@ export const Profile: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
                         <p className="text-gray-900">{couple?.venue_name || 'Not set'}</p>
                       </div>
+                      {couple?.ceremony_time && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Ceremony Time</label>
+                          <p className="text-gray-900">{formatTime(couple.ceremony_time)}</p>
+                        </div>
+                      )}
+                      {couple?.reception_time && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Reception Time</label>
+                          <p className="text-gray-900">{formatTime(couple.reception_time)}</p>
+                        </div>
+                      )}
                       {couple?.notes && (
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -1005,7 +999,7 @@ export const Profile: React.FC = () => {
                               <h4 className="font-medium text-gray-900 truncate mb-2">{folder.name}</h4>
                               <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                                 <span>{formatFileSize(folder.totalSize)}</span>
-                                <span>{new Date(folder.lastModified).toLocaleDateString()}</span>
+                                <span>{format(parse(folder.lastModified, 'yyyy-MM-dd', new Date()), 'PPPP')}</span>
                               </div>
                               {folder.vendor && (
                                 <div className="flex items-center space-x-2">
@@ -1067,7 +1061,7 @@ export const Profile: React.FC = () => {
                           <h4 className="font-medium text-gray-900 truncate">{file.file_name}</h4>
                           <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
                             <span>{formatFileSize(file.file_size)}</span>
-                            <span>{new Date(file.upload_date).toLocaleDateString()}</span>
+                            <span>{format(parse(file.upload_date, 'yyyy-MM-dd', new Date()), 'PPPP')}</span>
                           </div>
                           {file.vendors && (
                             <p className="text-xs text-gray-500 mt-1">
@@ -1198,7 +1192,6 @@ export const Profile: React.FC = () => {
                             <p className="text-gray-600 mb-3">
                               Contract with {contract.bookings?.vendors?.name}
                             </p>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               <div>
                                 <span className="text-gray-600">Service Type:</span>
@@ -1206,7 +1199,7 @@ export const Profile: React.FC = () => {
                               </div>
                               <div>
                                 <span className="text-gray-600">Created:</span>
-                                <div className="font-medium">{new Date(contract.created_at).toLocaleDateString()}</div>
+                                <div className="font-medium">{format(parse(contract.created_at, 'yyyy-MM-dd', new Date()), 'PPPP')}</div>
                               </div>
                               {contract.signed_at && (
                                 <>
@@ -1216,7 +1209,7 @@ export const Profile: React.FC = () => {
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Signed On:</span>
-                                    <div className="font-medium">{new Date(contract.signed_at).toLocaleDateString()}</div>
+                                    <div className="font-medium">{format(parse(contract.signed_at, 'yyyy-MM-dd', new Date()), 'PPPP')}</div>
                                   </div>
                                 </>
                               )}
