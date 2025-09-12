@@ -7,6 +7,7 @@ import { useVendorReviews } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Vendor } from '../types/booking';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
 
 export const VendorProfile: React.FC = () => {
@@ -14,6 +15,7 @@ export const VendorProfile: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem, openCart, updateItem } = useCart();
+  const { user } = useAuth();
   const [vendor, setVendor] = useState<Vendor | null>(location.state?.vendor || null);
   const [loading, setLoading] = useState(!vendor);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export const VendorProfile: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [tempCartItem, setTempCartItem] = useState<any>(null);
+  const [isVendorBooked, setIsVendorBooked] = useState(false);
 
   const { reviews: vendorReviews, loading: reviewsLoading } = useVendorReviews(vendor?.id || '');
 
@@ -35,17 +38,63 @@ export const VendorProfile: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Fetch vendor data if not provided in location state
   useEffect(() => {
     if (!vendor && id) {
       fetchVendor();
     }
   }, [id, vendor]);
 
+  // Fetch vendor stats
   useEffect(() => {
     if (vendor?.id) {
       fetchVendorStats();
     }
   }, [vendor]);
+
+  // Check if the vendor is booked by the current couple
+  useEffect(() => {
+    if (!vendor?.id || !user?.id || !supabase || !isSupabaseConfigured()) {
+      setIsVendorBooked(false);
+      return;
+    }
+
+    const checkBookingStatus = async () => {
+      try {
+        // Step 1: Get the couple_id from the couples table using user.id
+        const { data: coupleData, error: coupleError } = await supabase
+          .from('couples')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (coupleError || !coupleData) {
+          console.error('Error fetching couple data:', coupleError);
+          setIsVendorBooked(false);
+          return;
+        }
+
+        const coupleId = coupleData.id;
+
+        // Step 2: Check bookings for the couple_id and vendor_id
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('vendor_id', vendor.id)
+          .eq('couple_id', coupleId)
+          .in('status', ['confirmed', 'completed'])
+          .limit(1);
+
+        if (error) throw error;
+        setIsVendorBooked(!!data?.length);
+      } catch (err) {
+        console.error('Error checking booking status:', err);
+        setIsVendorBooked(false);
+      }
+    };
+
+    checkBookingStatus();
+  }, [vendor?.id, user?.id]);
 
   const fetchVendor = async () => {
     if (!id) return;
@@ -194,6 +243,12 @@ export const VendorProfile: React.FC = () => {
     setTempCartItem(null);
   };
 
+  const handleMessageClick = () => {
+    navigate('/profile?tab=messages', {
+      state: { selectedConversationId: vendor.id }
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -328,7 +383,6 @@ export const VendorProfile: React.FC = () => {
                   </div>
                 </div>
               </div>
-
             </Card>
 
             {/* Tabs */}
@@ -389,7 +443,7 @@ export const VendorProfile: React.FC = () => {
                     {/* Languages */}
                     {vendor.languages && vendor.languages.length > 0 && (
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-4">Languages</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Languages</h3>
                         <div className="flex flex-wrap gap-2">
                           {vendor.languages.map((language, index) => (
                             <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
@@ -631,17 +685,24 @@ export const VendorProfile: React.FC = () => {
             )}
 
             {/* Contact */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact {vendor.name}</h3>
-              <div className="space-y-3">
-                <Button variant="outline" icon={MessageCircle} className="w-full">
-                  Send Message
-                </Button>
-                <div className="text-center text-sm text-gray-500">
-                  Typically responds within 2 hours
+            {isVendorBooked && (
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact {vendor.name}</h3>
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    icon={MessageCircle}
+                    className="w-full"
+                    onClick={handleMessageClick}
+                  >
+                    Send Message
+                  </Button>
+                  <div className="text-center text-sm text-gray-500">
+                    Typically responds within 2 hours
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
             {/* Trust & Safety */}
             <Card className="p-6">
