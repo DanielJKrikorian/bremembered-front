@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, User, Heart, Lock, Eye, EyeOff, Calendar } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -13,7 +13,6 @@ interface AuthModalProps {
 }
 
 // Initialize Supabase client (client-side, public key)
-// Set VITE_SUPABASE_ANON_KEY in .env.local (e.g., VITE_SUPABASE_ANON_KEY=your-anon-key)
 const supabase = createClient(
   'https://eecbrvehrhrvdzuutliq.supabase.co',
   import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key',
@@ -42,6 +41,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     wedding_date: ''
   });
   const [error, setError] = useState<string | null>(null);
+
+  // Sync mode with initialMode prop when it changes
+  useEffect(() => {
+    setMode(initialMode);
+    setError(null);
+    setSuccess(null);
+    setFormData({ email: '', password: '', name: '', partner1_name: '', partner2_name: '', wedding_date: '' });
+    setShowPassword(false);
+  }, [initialMode]);
 
   if (!isOpen) return null;
 
@@ -161,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }, 2000);
       }
     } catch (err: any) {
-      console.error('Signup error:', err);
+      console.error('Auth error:', err);
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -202,7 +210,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setError(null);
     setFormData({ email: '', password: '', name: '', partner1_name: '', partner2_name: '', wedding_date: '' });
     setShowPassword(false);
-    setMode('login');
     onClose();
   };
 

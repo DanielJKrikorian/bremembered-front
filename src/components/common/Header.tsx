@@ -15,6 +15,7 @@ export const Header: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [showBanner, setShowBanner] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -33,71 +34,80 @@ export const Header: React.FC = () => {
     navigate('/');
   };
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   return (
     <>
       {showBanner && (
-        <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-center py-3 px-4 flex justify-between items-center">
-          <div className="flex-1 text-sm md:text-base font-bold">
-            🎉 Welcome to the New B. Remembered Booking Platform! 🎊 Use Promo Code <span className="underline">WELCOME10</span> at Checkout for 10% OFF! 🥳
+        <div className="bg-gradient-to-r from-rose-500 to-pink-500 text-white text-center py-2 px-3 sm:px-4 flex justify-between items-center">
+          <div className="flex-1 text-xs sm:text-sm md:text-base font-bold overflow-hidden text-ellipsis">
+            🎉 Use Promo Code <span className="underline">WELCOME10</span> for 10% OFF! 🥳
           </div>
           <button
             onClick={() => setShowBanner(false)}
-            className="ml-4 text-white hover:text-gray-200"
+            className="ml-2 text-white hover:text-gray-200"
             aria-label="Close banner"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
       )}
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-              <img 
-                src="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1//2025_IO.png" 
-                alt="B. Remembered" 
-                className="h-8 w-auto"
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            {/* Logo with original size on desktop, shrinking on mobile */}
+            <div
+              className="flex items-center cursor-pointer min-w-0"
+              onClick={() => navigate('/')}
+            >
+              <img
+                src="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1//2025_IO.png"
+                alt="B. Remembered"
+                className="h-7 md:h-8 w-auto max-h-8 max-w-[120px] md:max-w-none md:max-h-none object-contain"
+                width={160}
+                height={42}
               />
             </div>
 
-            {/* Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              <button 
+            {/* Desktop Navigation with original font size */}
+            <nav className="hidden md:flex space-x-6">
+              <button
                 onClick={() => navigate('/search')}
-                className={`transition-colors ${
-                  isActive('/search') 
-                    ? 'text-rose-600 font-medium' 
+                className={`transition-colors text-sm md:text-base ${
+                  isActive('/search')
+                    ? 'text-rose-600 font-medium'
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
               >
                 Browse Services
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/inspiration')}
-                className={`transition-colors ${
-                  isActive('/inspiration') 
-                    ? 'text-rose-600 font-medium' 
+                className={`transition-colors text-sm md:text-base ${
+                  isActive('/inspiration')
+                    ? 'text-rose-600 font-medium'
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
               >
                 Inspiration
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/how-it-works')}
-                className={`transition-colors ${
-                  isActive('/how-it-works') 
-                    ? 'text-rose-600 font-medium' 
+                className={`transition-colors text-sm md:text-base ${
+                  isActive('/how-it-works')
+                    ? 'text-rose-600 font-medium'
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
               >
                 How it Works
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/support')}
-                className={`transition-colors ${
-                  isActive('/support') 
-                    ? 'text-rose-600 font-medium' 
+                className={`transition-colors text-sm md:text-base ${
+                  isActive('/support')
+                    ? 'text-rose-600 font-medium'
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
               >
@@ -105,95 +115,110 @@ export const Header: React.FC = () => {
               </button>
             </nav>
 
-            {/* Right side actions */}
-            <div className="flex items-center space-x-2">
+            {/* Right side actions with reduced spacing */}
+            <div className="flex items-center space-x-0 sm:space-x-0.5">
               <NotificationBell />
-              <Button 
-                variant="ghost" 
-                icon={Search} 
-                size="sm" 
-                className="md:hidden"
+              <Button
+                variant="ghost"
+                icon={Search}
+                size="sm"
+                className="md:hidden p-2"
                 onClick={() => navigate('/search')}
+                aria-label="Search"
               />
-
               {isAuthenticated ? (
                 <>
                   <div className="relative">
-                    <Button 
-                      variant="ghost" 
-                      icon={ShoppingCart} 
+                    <Button
+                      variant="ghost"
+                      icon={ShoppingCart}
                       size="sm"
                       onClick={toggleCart}
-                      className="relative"
+                      className="p-2 relative"
+                      aria-label="Cart"
                     >
                       {cartState.items.length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
                           {cartState.items.length}
                         </span>
                       )}
                     </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    icon={Calendar} 
+                  <Button
+                    variant="ghost"
+                    icon={Calendar}
                     size="sm"
                     onClick={() => navigate('/my-bookings')}
-                    className={isActive('/my-bookings') ? 'text-rose-600' : ''}
+                    className={`p-2 ${isActive('/my-bookings') ? 'text-rose-600' : ''}`}
+                    aria-label="My Bookings"
                   >
-                    My Bookings
+                    <span className="hidden sm:inline">My Bookings</span>
                   </Button>
-                  <div className="relative group">
-                    <Button variant="ghost" icon={User} size="sm">
-                      {user?.user_metadata?.name?.split(' ')[0] || 'Profile'}
+                  <div className="relative group hidden md:block">
+                    <Button
+                      variant="ghost"
+                      icon={User}
+                      size="sm"
+                      className="p-2"
+                      aria-label="Profile"
+                    >
+                      <span className="hidden sm:inline">
+                        {user?.user_metadata?.name?.split(' ')[0] || 'Profile'}
+                      </span>
                     </Button>
-                    {/* Dropdown Menu */}
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    {/* Desktop Dropdown */}
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                       <div className="py-2">
-                        <button 
+                        <button
                           onClick={() => navigate('/profile')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           My Profile
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/cart')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           My Cart ({cartState.items.length})
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/my-bookings')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           My Bookings
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/profile?tab=messages')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Messages
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/profile?tab=gallery')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Wedding Gallery
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/profile?tab=payments')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Payments
                         </button>
-                        <button 
+                        <button
                           onClick={() => navigate('/profile?tab=wedding-board')}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Wedding Board
                         </button>
-                        <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Help Center</a>
+                        <a
+                          href="#"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Help Center
+                        </a>
                         <hr className="my-1" />
-                        <button 
+                        <button
                           onClick={handleSignOut}
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
@@ -206,94 +231,203 @@ export const Header: React.FC = () => {
               ) : (
                 <>
                   <div className="relative">
-                    <Button 
-                      variant="ghost" 
-                      icon={ShoppingCart} 
+                    <Button
+                      variant="ghost"
+                      icon={ShoppingCart}
                       size="sm"
                       onClick={toggleCart}
-                      className="relative"
+                      className="p-2 relative"
+                      aria-label="Cart"
                     >
                       {cartState.items.length > 0 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
                           {cartState.items.length}
                         </span>
                       )}
                     </Button>
                   </div>
-                  <Button variant="ghost" onClick={handleLogin} size="sm">
+                  <Button
+                    variant="ghost"
+                    onClick={handleLogin}
+                    size="sm"
+                    className="p-2 text-xs sm:text-sm"
+                  >
                     Log In
                   </Button>
-                  <Button variant="primary" onClick={handleSignup} size="sm">
+                  <Button
+                    variant="primary"
+                    onClick={handleSignup}
+                    size="sm"
+                    className="p-2 text-xs sm:text-sm"
+                  >
                     Sign Up
                   </Button>
                 </>
               )}
-              
-              {/* Mobile Menu */}
-              <div className="relative group md:hidden">
-                <Button variant="ghost" icon={Menu} size="sm" />
-                {/* Mobile Dropdown */}
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="py-2">
-                    <button 
-                      onClick={() => navigate('/search')}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Browse Services
-                    </button>
-                    <button 
-                      onClick={() => navigate('/inspiration')}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Inspiration
-                    </button>
-                    <button 
-                      onClick={() => navigate('/how-it-works')}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      How it Works
-                    </button>
-                    <button 
-                      onClick={() => navigate('/support')}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Support
-                    </button>
-                    {isAuthenticated && (
-                      <>
-                        <hr className="my-1" />
-                        <button 
-                          onClick={() => navigate('/cart')}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          My Cart ({cartState.items.length})
-                        </button>
-                        <button 
-                          onClick={() => navigate('/my-bookings')}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          My Bookings
-                        </button>
-                        <button 
-                          onClick={() => navigate('/profile?tab=gallery')}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Wedding Gallery
-                        </button>
-                        <button 
-                          onClick={handleSignOut}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                          Sign Out
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+
+              {/* Mobile Menu Toggle */}
+              <div className="md:hidden">
+                <Button
+                  variant="ghost"
+                  icon={Menu}
+                  size="sm"
+                  onClick={toggleMobileMenu}
+                  className="p-2"
+                  aria-label="Toggle menu"
+                  aria-expanded={isMobileMenuOpen}
+                  aria-controls="mobile-menu"
+                />
               </div>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div
+            id="mobile-menu"
+            className="fixed inset-0 bg-white z-50 flex flex-col md:hidden"
+          >
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <img
+                src="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1//2025_IO.png"
+                alt="B. Remembered"
+                className="h-7 w-auto max-h-8 max-w-[120px] object-contain"
+                width={160}
+                height={42}
+              />
+              <Button
+                variant="ghost"
+                icon={X}
+                size="sm"
+                onClick={toggleMobileMenu}
+                aria-label="Close menu"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <button
+                onClick={() => {
+                  navigate('/search');
+                  toggleMobileMenu();
+                }}
+                className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+              >
+                Browse Services
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/inspiration');
+                  toggleMobileMenu();
+                }}
+                className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+              >
+                Inspiration
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/how-it-works');
+                  toggleMobileMenu();
+                }}
+                className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+              >
+                How it Works
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/support');
+                  toggleMobileMenu();
+                }}
+                className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+              >
+                Support
+              </button>
+              {isAuthenticated && (
+                <>
+                  <hr className="my-2" />
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    My Profile
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/cart');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    My Cart ({cartState.items.length})
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/my-bookings');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    My Bookings
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/profile?tab=messages');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Messages
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/profile?tab=gallery');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Wedding Gallery
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/profile?tab=payments');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Payments
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/profile?tab=wedding-board');
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Wedding Board
+                  </button>
+                  <a
+                    href="#"
+                    className="block px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Help Center
+                  </a>
+                  <hr className="my-2" />
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      toggleMobileMenu();
+                    }}
+                    className="block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-50"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Auth Modal */}
@@ -301,7 +435,6 @@ export const Header: React.FC = () => {
         isOpen={showAuthModal}
         onClose={() => {
           setShowAuthModal(false);
-          setAuthMode('login');
         }}
         initialMode={authMode}
       />
