@@ -7,7 +7,6 @@ import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
-
 interface CheckoutFormData {
   partner1Name: string;
   partner2Name: string;
@@ -22,8 +21,8 @@ interface CheckoutFormData {
   savePaymentMethod: boolean;
   agreedToTerms: boolean;
   password: string;
+  acceptStripe: boolean;
 }
-
 interface ContractTemplate {
   id: string;
   service_type: string;
@@ -31,7 +30,6 @@ interface ContractTemplate {
   created_at: string;
   updated_at: string;
 }
-
 interface CheckoutFormProps {
   cartItems: any[];
   totalAmount: number;
@@ -46,7 +44,6 @@ interface CheckoutFormProps {
   pollTimeout: number;
   pollInterval: number;
 }
-
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   cartItems,
   totalAmount,
@@ -84,7 +81,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [coupleId, setCoupleId] = useState<string | null>(null);
   const [processedPaymentIntents, setProcessedPaymentIntents] = useState<string[]>([]);
   const [paymentDetailsComplete, setPaymentDetailsComplete] = useState(false);
-
   // Initialize formData with values from user and couple
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: user?.user_metadata?.name || couple?.partner1_name || '',
@@ -100,8 +96,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     savePaymentMethod: false,
     agreedToTerms: true,
     password: '',
+    acceptStripe: false,
   });
-
   // Memoize formData to reduce re-renders
   const memoizedFormData = useMemo(
     () => ({
@@ -117,6 +113,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       specialRequests: formData.specialRequests,
       savePaymentMethod: formData.savePaymentMethod,
       agreedToTerms: formData.agreedToTerms,
+      acceptStripe: formData.acceptStripe,
     }),
     [
       formData.email,
@@ -131,9 +128,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       formData.specialRequests,
       formData.savePaymentMethod,
       formData.agreedToTerms,
+      formData.acceptStripe,
     ]
   );
-
   // Debug initialization
   useEffect(() => {
     console.log('=== CHECKOUT FORM INITIALIZATION ===', new Date().toISOString());
@@ -151,7 +148,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Form data:', memoizedFormData);
     console.log('Payment details complete:', paymentDetailsComplete);
   }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete]);
-
   // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
     const fetchSessionAndCouple = async () => {
@@ -165,7 +161,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         setError('Please sign up or log in to continue with checkout.');
         return;
       }
-
       console.log('User authenticated, user_id:', user.id, 'email:', user.email);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
@@ -179,14 +174,12 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       }
       console.log('Session fetched, access_token:', !!session.access_token);
       setAuthToken(session.access_token);
-
       console.log('Fetching couple data for user_id:', user.id);
       let { data: coupleData, error: coupleError } = await supabase
         .from('couples')
         .select('id, email, partner1_name, partner2_name, phone, guest_count')
         .eq('user_id', user.id)
         .single();
-
       if (coupleError || !coupleData) {
         console.warn('No couple record found, creating one for user_id:', user.id);
         const { data: newCouple, error: insertError } = await supabase
@@ -200,7 +193,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           })
           .select('id, email, partner1_name, partner2_name, phone, guest_count')
           .single();
-
         if (insertError || !newCouple) {
           console.error('Couple creation error:', insertError?.message);
           setError('Failed to create couple profile. Please check your account settings or contact support.');
@@ -212,7 +204,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         console.log('New couple created:', { id: newCouple.id, email: newCouple.email });
         coupleData = newCouple;
       }
-
       console.log('Couple fetched:', { id: coupleData.id, email: coupleData.email, partner1_name: coupleData.partner1_name });
       setCoupleId(coupleData.id);
       setFormData((prev) => ({
@@ -226,7 +217,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
     fetchSessionAndCouple();
   }, [isAuthenticated, user]);
-
   // Fetch contract templates
   useEffect(() => {
     const fetchContractTemplates = async () => {
@@ -236,17 +226,14 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         service_type: item.package?.service_type,
         package_name: item.package?.name,
       })));
-
       if (!cartItems.length) {
         console.log('No cart items, skipping contract fetch');
         setContractTemplates([]);
         setContractsLoading(false);
         return;
       }
-
       const serviceTypes = [...new Set(cartItems.map((item) => item.package?.service_type).filter(Boolean))];
       console.log('Service types:', serviceTypes);
-
       if (!serviceTypes.length) {
         console.warn('No valid service types found in cart items');
         setError('No valid services found in cart. Please add services to proceed.');
@@ -254,7 +241,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         setContractsLoading(false);
         return;
       }
-
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Supabase not configured, generating mock contract templates');
         const platformFee = Number(cartItems.length > 0 ? cartItems.length * 150 * 100 : 0);
@@ -262,27 +248,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           id: `template-${item.package.service_type || 'unknown'}`,
           service_type: item.package.service_type || 'unknown',
           content: `${(item.package.service_type || 'Service').toUpperCase()} SERVICE AGREEMENT
-
 This agreement is between ${memoizedFormData.partner1Name || 'Client'}${
             memoizedFormData.partner2Name ? ` & ${memoizedFormData.partner2Name}` : ''
           } (Client) and the selected vendor (Service Provider) for ${(item.package.service_type || 'service').toLowerCase()} services.
-
 EVENT DETAILS:
 - Date: ${item.eventDate || 'N/A'}
 - Time: ${item.eventTime || 'N/A'} to ${item.endTime || 'N/A'}
 - Location: ${item.venue?.name || 'N/A'}
 - Service: ${item.package.name || 'N/A'}
 - Event Type: ${item.package.event_type || 'Wedding'}
-
 SERVICES PROVIDED:
 ${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${(item.package.service_type || 'service').toLowerCase()} services`}
-
 PAYMENT TERMS:
 - Total Amount: $${(item.package.price / 100).toFixed(0) || '0'}
 - Deposit (50%): $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
 - Platform Fee: $${(platformFee / 100).toFixed(0)}
 - Balance Due: $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
-
 TERMS AND CONDITIONS:
 1. The Service Provider agrees to provide professional ${(item.package.service_type || 'service').toLowerCase()} services for the specified event.
 2. The Client agrees to pay the total amount as outlined in the payment schedule.
@@ -290,7 +271,6 @@ TERMS AND CONDITIONS:
 4. The Service Provider retains copyright to all work but grants usage rights to the Client.
 5. Weather contingency plans will be discussed prior to the event.
 6. Any changes to services must be agreed upon in writing by both parties.
-
 By signing below, both parties agree to the terms outlined in this contract.`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -300,7 +280,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         setContractsLoading(false);
         return;
       }
-
       setContractsLoading(true);
       try {
         console.log('Fetching contract templates for service types:', serviceTypes);
@@ -321,10 +300,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         setContractsLoading(false);
       }
     };
-
     fetchContractTemplates();
   }, [cartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name]);
-
   // Attach CardElement change listener
   useEffect(() => {
     if (elements) {
@@ -387,9 +364,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.warn('Elements instance not initialized');
     }
   }, [elements, stripe, paymentDetailsComplete]);
-
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
-
   // Calculate totals
   const subtotal = totalAmount;
   const totalDiscount = discountAmount + referralDiscount;
@@ -397,7 +372,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
   const platformFee = Number(cartItems.length > 0 ? cartItems.length * 150 * 100 : 0);
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + platformFee;
-
   const validateReferralCode = async (code: string) => {
     if (!code.trim()) {
       setReferralError(null);
@@ -405,10 +379,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       onReferralRemoved();
       return;
     }
-
     setReferralLoading(true);
     setReferralError(null);
-
     if (!supabase || !isSupabaseConfigured()) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       if (code.toLowerCase().startsWith('ref') || code.toLowerCase().includes('dani')) {
@@ -425,7 +397,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setReferralLoading(false);
       return;
     }
-
     try {
       const { data, error } = await supabase
         .from('vendor_referral_codes')
@@ -439,11 +410,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         .eq('code', code.toUpperCase())
         .eq('is_active', true)
         .maybeSingle();
-
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
-
       if (!data) {
         setReferralError('Invalid referral code');
         setAppliedReferral(null);
@@ -467,23 +436,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setReferralLoading(false);
     }
   };
-
   const handleReferralSubmit = useCallback(() => {
     validateReferralCode(referralCode);
   }, [referralCode]);
-
   const removeReferral = useCallback(() => {
     setReferralCode('');
     setAppliedReferral(null);
     setReferralError(null);
     onReferralRemoved();
   }, [onReferralRemoved]);
-
   const handleInputChange = useCallback((field: keyof CheckoutFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (error) setError(null);
   }, [error]);
-
   const validateForm = useCallback(() => {
     console.log('=== VALIDATE FORM ===', new Date().toISOString());
     console.log('Current step:', currentStep);
@@ -491,9 +456,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     console.log('Cart items:', cartItems);
     console.log('Couple ID:', coupleId);
     console.log('Total amount:', totalAmount);
-
     const requiredFields = ['partner1Name', 'email', 'phone', 'billingAddress', 'city', 'state', 'zipCode'];
-
     for (const field of requiredFields) {
       if (!memoizedFormData[field as keyof typeof memoizedFormData]) {
         const fieldName = field === 'partner1Name' ? 'partner 1 name' : field.replace(/([A-Z])/g, ' $1').toLowerCase();
@@ -502,25 +465,26 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         return false;
       }
     }
-
     if (!memoizedFormData.agreedToTerms) {
       console.log('Validation failed: agreedToTerms is false');
       setError('Please agree to the terms and conditions');
       return false;
     }
-
+    if (!memoizedFormData.acceptStripe && currentStep === 3) {
+      console.log('Validation failed: acceptStripe is false');
+      setError('Please accept the use of Stripe for payment processing');
+      return false;
+    }
     if (cartItems.length === 0) {
       console.log('Validation failed: Cart is empty');
       setError('Cart is empty. Please add items to proceed.');
       return false;
     }
-
     if (!cartItems[0]?.eventDate || !cartItems[0]?.eventTime || !cartItems[0]?.endTime || !cartItems[0]?.venue?.name) {
       console.log('Validation failed: Missing event details');
       setError('Cart items are missing required event details (date, start time, end time, or location).');
       return false;
     }
-
     const validEventTypes = ['wedding', 'engagement', 'proposal'];
     const eventType = cartItems[0]?.package.event_type?.toLowerCase();
     if (!eventType || !validEventTypes.includes(eventType)) {
@@ -528,7 +492,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Invalid event type. Must be one of: wedding, engagement, proposal.');
       return false;
     }
-
     if (!coupleId) {
       console.log('Validation failed: No coupleId');
       setError('Couple profile not found. Please sign up or log in again.');
@@ -536,23 +499,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setAuthMode('login');
       return false;
     }
-
     if (totalAmount <= 0) {
       console.log('Validation failed: Total amount <= 0');
       setError('Total amount must be greater than zero.');
       return false;
     }
-
     console.log('Validation passed');
     return true;
   }, [currentStep, memoizedFormData, cartItems, coupleId, totalAmount]);
-
   const handleLogin = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password) {
       setError('Please provide both email and password.');
       return;
     }
-
     try {
       console.log('Attempting login with email:', memoizedFormData.email);
       const { data: { user: authUser }, error } = await supabase.auth.signInWithPassword({
@@ -564,14 +523,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       if (!session) throw new Error('No session returned after login');
       console.log('Login successful, access_token:', !!session.access_token);
       setAuthToken(session.access_token);
-
       console.log('Fetching couple data for user_id:', authUser.id);
       let { data: couple, error: coupleError } = await supabase
         .from('couples')
         .select('id, email, partner1_name, partner2_name, phone, guest_count')
         .eq('user_id', authUser.id)
         .single();
-
       if (coupleError || !couple) {
         console.warn('No couple record found, creating one for user_id:', authUser.id);
         const { data: newCouple, error: insertError } = await supabase.from('couples').insert({
@@ -588,7 +545,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         console.log('New couple created:', { id: newCouple.id, email: newCouple.email });
         couple = newCouple;
       }
-
       console.log('Couple fetched:', { id: couple.id, email: couple.email });
       setCoupleId(couple.id);
       setFormData((prev) => ({
@@ -606,13 +562,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? `Login failed: ${err.message}` : 'Login failed. Please check your credentials and try again.');
     }
   }, [memoizedFormData]);
-
   const handleSignUp = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password || !memoizedFormData.partner1Name) {
       setError('Please provide email, password, and partner 1 name.');
       return;
     }
-
     try {
       console.log('Attempting signup with email:', memoizedFormData.email);
       const { data, error } = await supabase.auth.signUp({
@@ -627,7 +581,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       if (error) throw error;
       if (!data.user) throw new Error('No user returned after signup');
       console.log('Signup successful, user_id:', data.user.id);
-
       const { data: couple, error: coupleError } = await supabase.from('couples').insert({
         user_id: data.user.id,
         partner1_name: memoizedFormData.partner1Name || data.user.user_metadata?.name || 'Unknown',
@@ -640,7 +593,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       }).select('id, email, partner1_name, partner2_name, phone, guest_count').single();
       if (coupleError) throw new Error(`Failed to create couple record: ${coupleError.message}`);
       console.log('New couple created:', { id: couple.id, email: couple.email });
-
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         console.log('Session fetched after signup, access_token:', !!session.access_token);
@@ -662,7 +614,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? `Sign-up failed: ${err.message}` : 'Sign-up failed. Please try again.');
     }
   }, [memoizedFormData]);
-
   const handleNextStep = useCallback(async () => {
     console.log('=== HANDLE NEXT STEP ===', new Date().toISOString());
     console.log('Current step:', currentStep);
@@ -670,7 +621,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.log('Form validation failed, staying on current step');
       return;
     }
-
     if (currentStep === 1) {
       if (!isAuthenticated || !authToken || !coupleId) {
         console.log('Authentication check failed:', { isAuthenticated, authToken: !!authToken, coupleId });
@@ -699,7 +649,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(null);
     }
   }, [currentStep, validateForm, isAuthenticated, authToken, coupleId, contractTemplates, signatures]);
-
   const handlePrevStep = useCallback(() => {
     if (currentStep > 1) {
       console.log('=== HANDLE PREV STEP ===', new Date().toISOString());
@@ -710,11 +659,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setPaymentDetailsComplete(false);
     }
   }, [currentStep]);
-
   const handleSignatureChange = useCallback((serviceType: string, signature: string) => {
     setTempSignatures((prev) => ({ ...prev, [serviceType]: signature }));
   }, []);
-
   const confirmSignature = useCallback((serviceType: string) => {
     console.log('=== CONFIRM SIGNATURE ===', new Date().toISOString());
     console.log('Service type:', serviceType);
@@ -742,13 +689,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Please provide a valid signature');
     }
   }, [currentStep, contractTemplates, signatures, tempSignatures]);
-
   const handleStripePayment = useCallback(async () => {
     if (!stripe || !elements) {
       setError('Payment system not ready. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
-
     try {
       if (paymentMethod === 'card') {
         const cardElement = elements.getElement(CardElement);
@@ -756,7 +701,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           setError('Card information not found. Please try again.');
           return { paymentIntentId: null, pendingBookingId: null };
         }
-
         // Create Payment Method
         console.log('Creating Payment Method for card payment');
         const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
@@ -775,13 +719,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             },
           },
         });
-
         if (paymentMethodError) {
           throw new Error(paymentMethodError.message || 'Failed to create payment method');
         }
-
         console.log('Payment Method created:', paymentMethod.id);
-
         // Send Payment Method to server for Payment Intent creation and booking storage
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
           method: 'POST',
@@ -841,7 +782,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             paymentType: 'deposit',
           }),
         });
-
         if (!response.ok) {
           const errorData = await response.json();
           console.error('Server error response:', errorData);
@@ -856,7 +796,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           }
           throw new Error(errorData.error || 'Failed to process payment');
         }
-
         const { paymentIntentId, pendingBookingId } = await response.json();
         console.log('Payment Intent processed:', { paymentIntentId, pendingBookingId });
         return { paymentIntentId, pendingBookingId };
@@ -867,7 +806,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           setError('Payment information not found. Please try again.');
           return { paymentIntentId: null, pendingBookingId: null };
         }
-
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
@@ -889,13 +827,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           },
           redirect: 'if_required',
         });
-
         if (error) {
           throw new Error(error.message || 'Payment confirmation failed');
         }
-
         console.log('Affirm payment confirmed:', { paymentIntentId: paymentIntent.id, status: paymentIntent.status });
-
         // Store booking for Affirm payment
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
           method: 'POST',
@@ -939,7 +874,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 name: item.vendor?.name,
                 stripe_account_id: item.vendor?.stripe_account_id,
               },
-              eventDate: item.eventDate,
+              eventDate: approxDate,
               eventTime: item.eventTime,
               endTime: item.endTime,
               venue: item.venue ? {
@@ -955,13 +890,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             paymentType: 'deposit',
           }),
         });
-
         if (!response.ok) {
           const errorData = await response.json();
           console.error('Server error response:', errorData);
           throw new Error(errorData.error || 'Failed to store booking for Affirm payment');
         }
-
         const { paymentIntentId, pendingBookingId } = await response.json();
         console.log('Affirm booking processed:', { paymentIntentId, pendingBookingId });
         return { paymentIntentId, pendingBookingId };
@@ -972,13 +905,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       return { paymentIntentId: null, pendingBookingId: null };
     }
   }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, totalAmount, platformFee, discountAmount, referralDiscount]);
-
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
       console.log('Payment intent already processed:', paymentIntentId);
       return [];
     }
-
     const maxAttempts = Math.ceil(pollTimeout / pollInterval);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       console.log(`Polling attempt ${attempt}/${maxAttempts} for bookings with paymentIntentId: ${paymentIntentId}`, new Date().toISOString());
@@ -986,63 +917,50 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         .from('bookings')
         .select('id')
         .eq('stripe_payment_intent_id', paymentIntentId);
-
       if (error) {
         console.error('Polling error:', error);
         continue;
       }
-
       if (bookings && bookings.length > 0) {
         console.log('Bookings found:', bookings);
         setProcessedPaymentIntents((prev) => [...prev, paymentIntentId]);
         return bookings.map(b => b.id);
       }
-
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
-
     throw new Error('Booking confirmation timed out');
   }, [processedPaymentIntents, pollTimeout, pollInterval]);
-
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('=== HANDLE SUBMIT ===', new Date().toISOString());
     console.log('Current step:', currentStep);
-
     if (!validateForm()) {
       console.log('Form validation failed');
       return;
     }
-
     if (currentStep !== 3) {
       console.log('Calling handleNextStep from step:', currentStep);
       await handleNextStep();
       return;
     }
-
     if (!isAuthenticated || !authToken || !coupleId) {
       setShowAuthModal(true);
       setAuthMode(isAuthenticated ? 'login' : 'signup');
       return;
     }
-
     if (loading || submitting) {
       console.log('Submit blocked: Already processing payment');
       return;
     }
-
     setLoading(true);
     setSubmitting(true);
     setError(null);
-
     try {
-      if (paymentMethod === 'card' && !paymentDetailsComplete) {
-        setError('Please complete card information before proceeding.');
+      if (paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe)) {
+        setError('Please complete card information and accept Stripe payment processing before proceeding.');
         return;
       }
-
       const { paymentIntentId, pendingBookingId } = await handleStripePayment();
-
       if (paymentIntentId && pendingBookingId) {
         const bookingIds = await pollForBookings(paymentIntentId);
         if (bookingIds.length > 0) {
@@ -1063,7 +981,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setSubmitting(false);
     }
   }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete]);
-
   return (
     <>
       {error && (
@@ -1074,7 +991,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           </div>
         </div>
       )}
-
       {showAuthModal && (
         <Card className="p-6 mb-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
@@ -1130,7 +1046,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           </div>
         </Card>
       )}
-
       {!showAuthModal && (
         <div className="space-y-8">
           <div className="flex items-center justify-center space-x-4 mb-8">
@@ -1163,7 +1078,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
               </div>
             ))}
           </div>
-
           <form onSubmit={handleSubmit}>
             {/* Step 1: Personal and Billing Information */}
             {currentStep === 1 && (
@@ -1174,7 +1088,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900">Personal and Billing Information</h3>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label="Partner 1 Name"
@@ -1247,7 +1160,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     required
                   />
                 </div>
-
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <label className="flex items-start space-x-3">
                     <input
@@ -1266,7 +1178,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </Card>
             )}
-
             {/* Step 2: Contract Signing */}
             {currentStep === 2 && (
               <div className="space-y-6">
@@ -1277,11 +1188,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900">Service Contracts</h3>
                   </div>
-
                   <p className="text-gray-600 mb-6">
                     Please review and sign the contracts for each service before proceeding to payment.
                   </p>
-
                   {contractsLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -1304,7 +1213,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     <div className="space-y-6">
                       {contractTemplates.map((template) => {
                         const isSigned = signatures[template.service_type] && signatures[template.service_type].trim() !== '';
-                        
+                       
                         return (
                           <div key={template.id} className="border border-gray-200 rounded-lg overflow-hidden">
                             <div
@@ -1333,14 +1242,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                                 </div>
                               </div>
                             </div>
-
                             <div className="p-4">
                               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
                                 <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
                                   {template.content}
                                 </div>
                               </div>
-
                               {!isSigned ? (
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">Digital Signature</label>
@@ -1387,7 +1294,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </Card>
               </div>
             )}
-
             {/* Step 3: Payment Method */}
             {currentStep === 3 && (
               <div className="space-y-6">
@@ -1398,7 +1304,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900">Payment Method</h3>
                   </div>
-
                   <div className="flex space-x-4 mb-6">
                     <button
                       type="button"
@@ -1415,7 +1320,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       </div>
                       <p className="text-sm text-gray-600 mt-1">Visa, Mastercard, Amex</p>
                     </button>
-                    
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('affirm')}
@@ -1432,7 +1336,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                       <p className="text-sm text-gray-600 mt-1">Pay over time</p>
                     </button>
                   </div>
-
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1497,7 +1400,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                         )}
                       </div>
                     </div>
-
+                    <div className="flex items-start space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={memoizedFormData.acceptStripe}
+                        onChange={(e) => handleInputChange('acceptStripe', e.target.checked)}
+                        className="mt-1 text-rose-500 focus:ring-rose-500"
+                      />
+                      <span className="text-sm text-gray-600">
+                        I accept that Stripe is being used to securely process my payment.
+                      </span>
+                    </div>
                     <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
                       <Lock className="w-4 h-4 text-green-600" />
                       <span className="text-sm text-green-800">
@@ -1506,13 +1419,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     </div>
                   </div>
                 </Card>
-
                 <Card className="p-6">
                   <h4 className="font-semibold text-gray-900 mb-4">Referral Code (Optional)</h4>
                   <p className="text-gray-600 text-sm mb-4">
                     Have a referral code from one of our vendors? Enter it here for a special discount.
                   </p>
-
                   {appliedReferral ? (
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-center justify-between">
@@ -1553,7 +1464,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   )}
                   {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
                 </Card>
-
                 <Card className="p-6">
                   <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
                     <Lock className="w-5 h-5 text-green-600" />
@@ -1567,7 +1477,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </Card>
               </div>
             )}
-
             {/* Navigation Buttons */}
             {currentStep !== 0 && (
               <div className="flex justify-between mt-8 px-6">
@@ -1580,7 +1489,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={loading || submitting || (currentStep === 3 && paymentMethod === 'card' && !paymentDetailsComplete)}
+                    disabled={loading || submitting || (currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe))}
+                    className={currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe) ? 'opacity-50 cursor-not-allowed' : ''}
                     loading={loading}
                     icon={currentStep === 3 ? CreditCard : ArrowRight}
                   >
