@@ -31,6 +31,8 @@ import { VendorSelectionModal } from './cart/VendorSelectionModal';
 import { BlogPost } from '../pages/BlogPost';
 import { ResetPassword } from '../pages/ResetPassword';
 import { Cart } from '../pages/Cart';
+import { AdvertiseSuccess } from '../pages/AdvertiseSuccess';
+import { AdvertiseWithUs } from '../pages/AdvertiseWithUs';
 import { useCart } from '../context/CartContext';
 
 export const AppContent: React.FC = () => {
@@ -75,6 +77,7 @@ export const AppContent: React.FC = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/support" element={<Support />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/advertise-success" element={<AdvertiseSuccess />} />
           
           {/* Inspiration Routes */}
           <Route path="/inspiration/:slug" element={<BlogPost />} />
@@ -94,6 +97,7 @@ export const AppContent: React.FC = () => {
           {/* Vendor Onboarding */}
           <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
           <Route path="/vendor-application" element={<VendorApplication />} />
+          <Route path="/advertise-with-us" element={<AdvertiseWithUs />} />
           
           {/* Legal Pages */}
           <Route path="/terms" element={<TermsOfService />} />

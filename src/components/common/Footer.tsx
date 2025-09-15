@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Mail, Phone, MapPin, ExternalLink, Users, FileText, Shield, HelpCircle } from 'lucide-react';
+import { Heart, Mail, Phone, MapPin, ExternalLink, Users, FileText, Shield, HelpCircle, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 
@@ -124,11 +124,9 @@ export const Footer: React.FC = () => {
                 </Button>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
                 <button 
                   onClick={() => {
                     navigate('/vendor-onboarding');
-                    // Scroll to "What is B. Remembered?" section after navigation
                     setTimeout(() => {
                       const element = document.querySelector('h2');
                       if (element && element.textContent?.includes('What is B. Remembered')) {
@@ -140,7 +138,18 @@ export const Footer: React.FC = () => {
                 >
                   Vendor Resources
                 </button>
-                </a>
+              </li>
+              <li>
+                <button 
+                  onClick={() => {
+                    navigate('/advertise-with-us');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  Advertise
+                </button>
               </li>
             </ul>
           </div>
@@ -168,66 +177,55 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
-                <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => navigate('/cancellation')}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
                   <FileText className="w-4 h-4 mr-2" />
-                  <button 
-                    onClick={() => navigate('/cancellation')}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    Cancellation Policy
-                  </button>
-                </a>
+                  Cancellation Policy
+                </button>
               </li>
               <li>
-                <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => {
+                    navigate('/support');
+                    setTimeout(() => {
+                      const faqElement = Array.from(document.querySelectorAll('h2')).find(el => 
+                        el.textContent?.includes('Frequently Asked Questions')
+                      );
+                      if (faqElement) {
+                        faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      } else {
+                        window.scrollTo({ top: document.body.scrollHeight * 0.7, behavior: 'smooth' });
+                      }
+                    }, 300);
+                  }}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
                   <HelpCircle className="w-4 h-4 mr-2" />
-                  <button 
-                    onClick={() => {
-                      navigate('/support');
-                      // Scroll to FAQ section after navigation
-                      setTimeout(() => {
-                        // Find the FAQ section on the support page
-                        const faqElement = Array.from(document.querySelectorAll('h2')).find(el => 
-                                           el.textContent?.includes('Frequently Asked Questions')
-                                         );
-                        if (faqElement) {
-                          faqElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        } else {
-                          // Fallback: scroll to a position that should be around the FAQ section
-                          window.scrollTo({ top: document.body.scrollHeight * 0.7, behavior: 'smooth' });
-                        }
-                      }, 300);
-                    }}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    FAQ
-                  </button>
-                </a>
+                  FAQ
+                </button>
               </li>
               <li>
-                <a href="#" className="flex items-center text-gray-300 hover:text-white transition-colors">
+                <button 
+                  onClick={() => {
+                    navigate('/support');
+                    setTimeout(() => {
+                      const getInTouchElement = Array.from(document.querySelectorAll('h2')).find(el => 
+                        el.textContent?.includes('Get in Touch')
+                      );
+                      if (getInTouchElement) {
+                        getInTouchElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      } else {
+                        window.scrollTo({ top: 400, behavior: 'smooth' });
+                      }
+                    }, 300);
+                  }}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
                   <Mail className="w-4 h-4 mr-2" />
-                  <button 
-                    onClick={() => {
-                      navigate('/support');
-                      // Scroll to "Get in Touch" section after navigation
-                      setTimeout(() => {
-                        const getInTouchElement = Array.from(document.querySelectorAll('h2')).find(el => 
-                          el.textContent?.includes('Get in Touch')
-                        );
-                        if (getInTouchElement) {
-                          getInTouchElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        } else {
-                          // Fallback: scroll to top of page where contact options are
-                          window.scrollTo({ top: 400, behavior: 'smooth' });
-                        }
-                      }, 300);
-                    }}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    Contact Us
-                  </button>
-                </a>
+                  Contact Us
+                </button>
               </li>
             </ul>
           </div>
