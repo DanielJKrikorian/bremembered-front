@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { MessageCircle, Phone, Mail, Clock, Search, HelpCircle, BookOpen, Users, Shield, Star, Send, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -14,6 +15,7 @@ export const Support: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showChatBot, setShowChatBot] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -21,6 +23,10 @@ export const Support: React.FC = () => {
     message: '',
     priority: 'normal'
   });
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Load hCaptcha site key from environment variable
+  const hCaptchaSiteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'your-site-key-here';
 
   // Scroll to top when component mounts
   React.useEffect(() => {
@@ -112,10 +118,16 @@ export const Support: React.FC = () => {
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+   
+    // Validate hCaptcha
+    if (!captchaToken) {
+      setSubmitError('Please complete the CAPTCHA verification.');
+      return;
+    }
+   
     setSubmitting(true);
     setSubmitError(null);
-    
+   
     try {
       if (!supabase || !isSupabaseConfigured()) {
         // Mock submission for demo
@@ -128,25 +140,34 @@ export const Support: React.FC = () => {
           message: '',
           priority: 'normal'
         });
+        setCaptchaToken(null);
         setTimeout(() => setSubmitSuccess(false), 5000);
         return;
       }
-
       const inquiryData = {
         name: contactForm.name,
         email: contactForm.email,
         subject: contactForm.subject,
         message: contactForm.message,
         priority: contactForm.priority,
-        user_id: isAuthenticated ? user?.id : null
+        user_id: isAuthenticated ? user?.id : null,
+        captcha_token: captchaToken // Include token for server-side validation
       };
-
+      // TODO: Server-side hCaptcha validation
+      // Send captchaToken to your server and verify it with hCaptcha's API
+      // Example: POST to https://hcaptcha.com/siteverify with your secret key
+      // const response = await fetch('https://hcaptcha.com/siteverify', {
+      // method: 'POST',
+      // body: JSON.stringify({
+      // response: captchaToken,
+      // secret: 'your-hcaptcha-secret-key'
+      // })
+      // });
+      // if (!response.success) throw new Error('CAPTCHA validation failed');
       const { error } = await supabase
         .from('support_inquiries')
         .insert([inquiryData]);
-
       if (error) throw error;
-
       setSubmitSuccess(true);
       setContactForm({
         name: '',
@@ -155,7 +176,8 @@ export const Support: React.FC = () => {
         message: '',
         priority: 'normal'
       });
-      
+      setCaptchaToken(null);
+     
       // Clear success message after 5 seconds
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err) {
@@ -176,6 +198,16 @@ export const Support: React.FC = () => {
     window.dispatchEvent(chatBotEvent);
   };
 
+  const handleEmailClick = () => {
+    console.log('Attempting to open mailto link for hello@bremembered.io');
+    // Show UI error if email client doesn't open
+    setTimeout(() => {
+      if (!document.hidden) {
+        setEmailError('Could not open your email client. Please email us at ');
+      }
+    }, 1000);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -187,7 +219,7 @@ export const Support: React.FC = () => {
           <p className="text-xl text-white/90 max-w-3xl mx-auto mb-8">
             Get the support you need to plan your perfect wedding. Our team is here to help every step of the way.
           </p>
-          
+         
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto">
             <div className="relative">
@@ -203,7 +235,6 @@ export const Support: React.FC = () => {
           </div>
         </div>
       </section>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Contact Options */}
         <section className="mb-16">
@@ -215,28 +246,27 @@ export const Support: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Live Chat</h3>
               <p className="text-gray-600 mb-6">Get instant help from our support team</p>
-              <div className="text-sm text-gray-500 mb-4">
+              <div className="text-sm text-gray-600 mb-4">
                 <div className="flex items-center justify-center space-x-2">
                   <Clock className="w-4 h-4" />
                   <span>Available 24/7</span>
                 </div>
               </div>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 className="w-full"
                 onClick={handleStartChat}
               >
                 Start Chat
               </Button>
             </Card>
-
             <Card className="p-8 text-center hover:shadow-lg transition-shadow">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Phone className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Phone Support</h3>
               <p className="text-gray-600 mb-6">Speak directly with our wedding experts</p>
-              <div className="text-sm text-gray-500 mb-4">
+              <div className="text-sm text-gray-600 mb-4">
                 <div className="flex items-center justify-center space-x-2">
                   <Clock className="w-4 h-4" />
                   <span>Mon-Fri 8AM-8PM PST</span>
@@ -246,26 +276,43 @@ export const Support: React.FC = () => {
                 Call (978) 945-3WED
               </Button>
             </Card>
-
             <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail className="w-8 h-8 text-purple-600" />
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="w-8 h-8 text-red-500" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Email Support</h3>
               <p className="text-gray-600 mb-6">Send us a detailed message</p>
-              <div className="text-sm text-gray-500 mb-4">
+              <div className="text-sm text-gray-600 mb-4">
                 <div className="flex items-center justify-center space-x-2">
                   <Clock className="w-4 h-4" />
                   <span>Response within 2 hours</span>
                 </div>
               </div>
-              <Button variant="primary" className="w-full">
+              {emailError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">
+                    {emailError}
+                    <a
+                      href="mailto:hello@bremembered.io"
+                      className="underline text-red-700 hover:text-red-800"
+                    >
+                      hello@bremembered.io
+                    </a>
+                  </p>
+                </div>
+              )}
+              <Button
+                variant="primary"
+                className="w-full"
+                onClick={handleEmailClick}
+                as="a"
+                href="mailto:hello@bremembered.io?subject=Support%20Inquiry"
+              >
                 Send Email
               </Button>
             </Card>
           </div>
         </section>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* FAQ Section */}
           <div className="lg:col-span-2">
@@ -275,7 +322,6 @@ export const Support: React.FC = () => {
                 {filteredFaqs.length} result{filteredFaqs.length !== 1 ? 's' : ''}
               </div>
             </div>
-
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 mb-8">
               {supportCategories.map((category) => {
@@ -296,7 +342,6 @@ export const Support: React.FC = () => {
                 );
               })}
             </div>
-
             {/* FAQ List */}
             <div className="space-y-4">
               {filteredFaqs.length === 0 ? (
@@ -321,12 +366,11 @@ export const Support: React.FC = () => {
               )}
             </div>
           </div>
-
           {/* Contact Form */}
           <div>
             <Card className="p-6 sticky top-4">
               <h3 className="text-xl font-semibold text-gray-900 mb-6">Still Need Help?</h3>
-              
+             
               {submitSuccess && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center space-x-2 text-green-800">
@@ -338,13 +382,13 @@ export const Support: React.FC = () => {
                   </p>
                 </div>
               )}
-              
+             
               {submitError && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-600">{submitError}</p>
                 </div>
               )}
-              
+             
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <Input
                   label="Name"
@@ -353,7 +397,7 @@ export const Support: React.FC = () => {
                   disabled={submitting}
                   required
                 />
-                
+               
                 <Input
                   label="Email"
                   type="email"
@@ -362,7 +406,7 @@ export const Support: React.FC = () => {
                   disabled={submitting}
                   required
                 />
-                
+               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Priority
@@ -379,7 +423,7 @@ export const Support: React.FC = () => {
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
-                
+               
                 <Input
                   label="Subject"
                   value={contactForm.subject}
@@ -387,7 +431,7 @@ export const Support: React.FC = () => {
                   disabled={submitting}
                   required
                 />
-                
+               
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Message
@@ -402,19 +446,30 @@ export const Support: React.FC = () => {
                     required
                   />
                 </div>
-                
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  icon={Send} 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Verify You're Not a Bot
+                  </label>
+                  <HCaptcha
+                    sitekey={hCaptchaSiteKey}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken(null)}
+                    onError={() => setSubmitError('CAPTCHA verification failed. Please try again.')}
+                  />
+                </div>
+               
+                <Button
+                  type="submit"
+                  variant="primary"
+                  icon={Send}
                   className="w-full"
                   loading={submitting}
-                  disabled={submitting}
+                  disabled={submitting || !captchaToken}
                 >
                   Submit Inquiry
                 </Button>
               </form>
-              
+             
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center space-x-2 text-green-800">
                   <CheckCircle className="w-5 h-5" />
@@ -425,7 +480,6 @@ export const Support: React.FC = () => {
                 </p>
               </div>
             </Card>
-
             {/* Help Resources */}
             <Card className="p-6 mt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Helpful Resources</h3>
@@ -450,7 +504,6 @@ export const Support: React.FC = () => {
             </Card>
           </div>
         </div>
-
         {/* Status Page */}
         <section className="mt-16">
           <Card className="p-8">
@@ -461,7 +514,7 @@ export const Support: React.FC = () => {
                 <span className="text-green-600 font-medium">All Systems Operational</span>
               </div>
             </div>
-            
+           
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600 mb-2">99.9%</div>
