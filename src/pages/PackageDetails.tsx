@@ -490,7 +490,7 @@ export const PackageDetails: React.FC = () => {
                 )}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Service Fee</span>
-                  <span className="font-medium">$150</span>
+                  <span className="font-medium">$50</span>
                 </div>
                 <div className="flex justify-between items-center text-lg font-semibold border-t pt-3">
                   <span>Total</span>

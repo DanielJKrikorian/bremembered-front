@@ -7,6 +7,7 @@ import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
+
 interface CheckoutFormData {
   partner1Name: string;
   partner2Name: string;
@@ -23,6 +24,7 @@ interface CheckoutFormData {
   password: string;
   acceptStripe: boolean;
 }
+
 interface ContractTemplate {
   id: string;
   service_type: string;
@@ -30,6 +32,7 @@ interface ContractTemplate {
   created_at: string;
   updated_at: string;
 }
+
 interface CheckoutFormProps {
   cartItems: any[];
   totalAmount: number;
@@ -44,6 +47,7 @@ interface CheckoutFormProps {
   pollTimeout: number;
   pollInterval: number;
 }
+
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   cartItems,
   totalAmount,
@@ -81,6 +85,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [coupleId, setCoupleId] = useState<string | null>(null);
   const [processedPaymentIntents, setProcessedPaymentIntents] = useState<string[]>([]);
   const [paymentDetailsComplete, setPaymentDetailsComplete] = useState(false);
+
   // Initialize formData with values from user and couple
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: user?.user_metadata?.name || couple?.partner1_name || '',
@@ -98,6 +103,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     password: '',
     acceptStripe: false,
   });
+
   // Memoize formData to reduce re-renders
   const memoizedFormData = useMemo(
     () => ({
@@ -131,6 +137,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       formData.acceptStripe,
     ]
   );
+
   // Debug initialization
   useEffect(() => {
     console.log('=== CHECKOUT FORM INITIALIZATION ===', new Date().toISOString());
@@ -148,6 +155,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Form data:', memoizedFormData);
     console.log('Payment details complete:', paymentDetailsComplete);
   }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete]);
+
   // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
     const fetchSessionAndCouple = async () => {
@@ -217,6 +225,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
     fetchSessionAndCouple();
   }, [isAuthenticated, user]);
+
   // Fetch contract templates
   useEffect(() => {
     const fetchContractTemplates = async () => {
@@ -243,7 +252,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       }
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Supabase not configured, generating mock contract templates');
-        const platformFee = Number(cartItems.length > 0 ? cartItems.length * 150 * 100 : 0);
+        const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
         const mockTemplates: ContractTemplate[] = cartItems.map((item) => ({
           id: `template-${item.package.service_type || 'unknown'}`,
           service_type: item.package.service_type || 'unknown',
@@ -262,7 +271,7 @@ ${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || 
 PAYMENT TERMS:
 - Total Amount: $${(item.package.price / 100).toFixed(0) || '0'}
 - Deposit (50%): $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
-- Platform Fee: $${(platformFee / 100).toFixed(0)}
+- Platform Fee (Per Order): $${(platformFee / 100).toFixed(0)}
 - Balance Due: $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
 TERMS AND CONDITIONS:
 1. The Service Provider agrees to provide professional ${(item.package.service_type || 'service').toLowerCase()} services for the specified event.
@@ -302,6 +311,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     };
     fetchContractTemplates();
   }, [cartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name]);
+
   // Attach CardElement change listener
   useEffect(() => {
     if (elements) {
@@ -364,14 +374,17 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.warn('Elements instance not initialized');
     }
   }, [elements, stripe, paymentDetailsComplete]);
+
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
+
   // Calculate totals
   const subtotal = totalAmount;
   const totalDiscount = discountAmount + referralDiscount;
   const discountedTotal = Math.max(0, subtotal - totalDiscount);
-  const platformFee = Number(cartItems.length > 0 ? cartItems.length * 150 * 100 : 0);
+  const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + platformFee;
+
   const validateReferralCode = async (code: string) => {
     if (!code.trim()) {
       setReferralError(null);
@@ -436,19 +449,23 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setReferralLoading(false);
     }
   };
+
   const handleReferralSubmit = useCallback(() => {
     validateReferralCode(referralCode);
   }, [referralCode]);
+
   const removeReferral = useCallback(() => {
     setReferralCode('');
     setAppliedReferral(null);
     setReferralError(null);
     onReferralRemoved();
   }, [onReferralRemoved]);
+
   const handleInputChange = useCallback((field: keyof CheckoutFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (error) setError(null);
   }, [error]);
+
   const validateForm = useCallback(() => {
     console.log('=== VALIDATE FORM ===', new Date().toISOString());
     console.log('Current step:', currentStep);
@@ -470,7 +487,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Please agree to the terms and conditions');
       return false;
     }
-    if (!memoizedFormData.acceptStripe && currentStep === 3) {
+    if (!memoizedFormData.acceptStripe && currentStep === 3 && paymentMethod === 'card') {
       console.log('Validation failed: acceptStripe is false');
       setError('Please accept the use of Stripe for payment processing');
       return false;
@@ -506,7 +523,8 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
     console.log('Validation passed');
     return true;
-  }, [currentStep, memoizedFormData, cartItems, coupleId, totalAmount]);
+  }, [currentStep, memoizedFormData, cartItems, coupleId, totalAmount, paymentMethod]);
+
   const handleLogin = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password) {
       setError('Please provide both email and password.');
@@ -562,6 +580,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? `Login failed: ${err.message}` : 'Login failed. Please check your credentials and try again.');
     }
   }, [memoizedFormData]);
+
   const handleSignUp = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password || !memoizedFormData.partner1Name) {
       setError('Please provide email, password, and partner 1 name.');
@@ -614,6 +633,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? `Sign-up failed: ${err.message}` : 'Sign-up failed. Please try again.');
     }
   }, [memoizedFormData]);
+
   const handleNextStep = useCallback(async () => {
     console.log('=== HANDLE NEXT STEP ===', new Date().toISOString());
     console.log('Current step:', currentStep);
@@ -649,6 +669,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(null);
     }
   }, [currentStep, validateForm, isAuthenticated, authToken, coupleId, contractTemplates, signatures]);
+
   const handlePrevStep = useCallback(() => {
     if (currentStep > 1) {
       console.log('=== HANDLE PREV STEP ===', new Date().toISOString());
@@ -659,9 +680,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setPaymentDetailsComplete(false);
     }
   }, [currentStep]);
+
   const handleSignatureChange = useCallback((serviceType: string, signature: string) => {
     setTempSignatures((prev) => ({ ...prev, [serviceType]: signature }));
   }, []);
+
   const confirmSignature = useCallback((serviceType: string) => {
     console.log('=== CONFIRM SIGNATURE ===', new Date().toISOString());
     console.log('Service type:', serviceType);
@@ -689,6 +712,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Please provide a valid signature');
     }
   }, [currentStep, contractTemplates, signatures, tempSignatures]);
+
   const handleStripePayment = useCallback(async () => {
     if (!stripe || !elements) {
       setError('Payment system not ready. Please try again.');
@@ -874,7 +898,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 name: item.vendor?.name,
                 stripe_account_id: item.vendor?.stripe_account_id,
               },
-              eventDate: approxDate,
+              eventDate: item.eventDate,
               eventTime: item.eventTime,
               endTime: item.endTime,
               venue: item.venue ? {
@@ -905,6 +929,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       return { paymentIntentId: null, pendingBookingId: null };
     }
   }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, totalAmount, platformFee, discountAmount, referralDiscount]);
+
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
       console.log('Payment intent already processed:', paymentIntentId);
@@ -930,6 +955,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
     throw new Error('Booking confirmation timed out');
   }, [processedPaymentIntents, pollTimeout, pollInterval]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('=== HANDLE SUBMIT ===', new Date().toISOString());
@@ -981,6 +1007,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setSubmitting(false);
     }
   }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete]);
+
   return (
     <>
       {error && (
@@ -1213,7 +1240,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     <div className="space-y-6">
                       {contractTemplates.map((template) => {
                         const isSigned = signatures[template.service_type] && signatures[template.service_type].trim() !== '';
-                       
                         return (
                           <div key={template.id} className="border border-gray-200 rounded-lg overflow-hidden">
                             <div
@@ -1400,17 +1426,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                         )}
                       </div>
                     </div>
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={memoizedFormData.acceptStripe}
-                        onChange={(e) => handleInputChange('acceptStripe', e.target.checked)}
-                        className="mt-1 text-rose-500 focus:ring-rose-500"
-                      />
-                      <span className="text-sm text-gray-600">
-                        I accept that Stripe is being used to securely process my payment.
-                      </span>
-                    </div>
+                    {paymentMethod === 'card' && (
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={memoizedFormData.acceptStripe}
+                          onChange={(e) => handleInputChange('acceptStripe', e.target.checked)}
+                          className="mt-1 text-rose-500 focus:ring-rose-500"
+                        />
+                        <span className="text-sm text-gray-600">
+                          I accept that Stripe is being used to securely process my payment.
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg border border-green-200">
                       <Lock className="w-4 h-4 text-green-600" />
                       <span className="text-sm text-green-800">

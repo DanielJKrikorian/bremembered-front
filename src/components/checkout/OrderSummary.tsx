@@ -120,7 +120,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     onDiscountRemoved();
   };
 
-  const totalServiceFee = cartItems.length > 0 ? 150 : 0;
+  const totalServiceFee = cartItems.length > 0 ? 50 : 0;
   const discountedTotal = Math.max(0, totalAmount - appliedDiscount);
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + totalServiceFee * 100;
