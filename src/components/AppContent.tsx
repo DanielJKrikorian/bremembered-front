@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
+import { StoreCartProvider } from '../context/StoreCartContext';
+import { useCart } from '../context/CartContext';
 import { Header } from './common/Header';
 import { Footer } from './common/Footer';
 import { Home } from '../pages/Home';
@@ -33,7 +35,10 @@ import { ResetPassword } from '../pages/ResetPassword';
 import { Cart } from '../pages/Cart';
 import { AdvertiseSuccess } from '../pages/AdvertiseSuccess';
 import { AdvertiseWithUs } from '../pages/AdvertiseWithUs';
-import { useCart } from '../context/CartContext';
+import { WeddingStore } from '../pages/WeddingStore';
+import { ProductDetail } from '../pages/ProductDetail';
+import { OrderTracking } from '../pages/OrderTracking';
+import { StoreSuccess } from '../pages/StoreSuccess';
 
 export const AppContent: React.FC = () => {
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -52,7 +57,7 @@ export const AppContent: React.FC = () => {
         eventDate: eventDetails.eventDate,
         eventTime: eventDetails.eventTime,
         endTime: eventDetails.endTime,
-        venue: eventDetails.venue
+        venue: eventDetails.venue,
       });
     }
     setShowVendorModal(false);
@@ -60,65 +65,61 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/bundle/:id" element={<ServiceBundle />} />
-          <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/my-bookings" element={<MyBookings />} />
-          <Route path="/booking/:id" element={<BookingDetails />} />
-          <Route path="/inspiration" element={<Inspiration />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/advertise-success" element={<AdvertiseSuccess />} />
-          
-          {/* Inspiration Routes */}
-          <Route path="/inspiration/:slug" element={<BlogPost />} />
-          
-          {/* Package Details */}
-          <Route path="/package/:id" element={<PackageDetails />} />
-          
-          {/* Vendor Profile */}
-          <Route path="/vendor/:id" element={<VendorProfile />} />
-          
-          {/* New Booking Flow Routes */}
-          <Route path="/booking/services" element={<ServiceSelection />} />
-          <Route path="/booking/packages" element={<PackageSelection />} />
-          <Route path="/booking/congratulations" element={<PackageCongratulations />} />
-          <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
-          
-          {/* Vendor Onboarding */}
-          <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
-          <Route path="/vendor-application" element={<VendorApplication />} />
-          <Route path="/advertise-with-us" element={<AdvertiseWithUs />} />
-          
-          {/* Legal Pages */}
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/cancellation" element={<CancellationPolicy />} />
-        </Routes>
-      </main>
-      <Footer />
-      <ChatBot />
-      <CartSidebar onChooseVendor={handleChooseVendor} />
-      {selectedCartItem && (
-        <VendorSelectionModal
-          isOpen={showVendorModal}
-          onClose={() => {
-            setShowVendorModal(false);
-            setSelectedCartItem(null);
-          }}
-          cartItem={selectedCartItem}
-          onVendorSelected={handleVendorSelected}
-        />
-      )}
-    </div>
+    <StoreCartProvider>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/bundle/:id" element={<ServiceBundle />} />
+            <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/my-bookings" element={<MyBookings />} />
+            <Route path="/booking/:id" element={<BookingDetails />} />
+            <Route path="/inspiration" element={<Inspiration />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/advertise-success" element={<AdvertiseSuccess />} />
+            <Route path="/inspiration/:slug" element={<BlogPost />} />
+            <Route path="/package/:id" element={<PackageDetails />} />
+            <Route path="/vendor/:id" element={<VendorProfile />} />
+            <Route path="/booking/services" element={<ServiceSelection />} />
+            <Route path="/booking/packages" element={<PackageSelection />} />
+            <Route path="/booking/congratulations" element={<PackageCongratulations />} />
+            <Route path="/booking/vendor-recommendation" element={<VendorRecommendation />} />
+            <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+            <Route path="/vendor-application" element={<VendorApplication />} />
+            <Route path="/advertise-with-us" element={<AdvertiseWithUs />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/cancellation" element={<CancellationPolicy />} />
+            <Route path="/store" element={<WeddingStore />} />
+            <Route path="/store/product/:id" element={<ProductDetail />} />
+            <Route path="/orders" element={<OrderTracking />} />
+            <Route path="/orders/:orderId" element={<OrderTracking />} />
+            <Route path="/store-success" element={<StoreSuccess />} />
+          </Routes>
+          <Outlet />
+        </main>
+        <Footer />
+        <ChatBot />
+        <CartSidebar onChooseVendor={handleChooseVendor} />
+        {selectedCartItem && (
+          <VendorSelectionModal
+            isOpen={showVendorModal}
+            onClose={() => {
+              setShowVendorModal(false);
+              setSelectedCartItem(null);
+            }}
+            cartItem={selectedCartItem}
+            onVendorSelected={handleVendorSelected}
+          />
+        )}
+      </div>
+    </StoreCartProvider>
   );
 };

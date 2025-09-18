@@ -3,8 +3,8 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { BookingProvider } from './context/BookingContext';
+import { AnalyticsTracker } from './AnalyticsTracker';
 import { AppContent } from './components/AppContent';
-import { AnalyticsTracker } from './AnalyticsTracker'; // ✅ new import
 
 function App() {
   return (

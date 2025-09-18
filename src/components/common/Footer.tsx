@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Mail, Phone, MapPin, ExternalLink, Users, FileText, Shield, HelpCircle, Star } from 'lucide-react';
+import { Heart, Mail, Phone, MapPin, ExternalLink, Users, FileText, Shield, HelpCircle, Star, Package, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/Button';
 
@@ -81,6 +81,24 @@ export const Footer: React.FC = () => {
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   My Bookings
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/store')}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Wedding Store
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/orders')}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors"
+                >
+                  <Package className="w-4 h-4 mr-2" />
+                  Order Tracking
                 </button>
               </li>
               <li>
