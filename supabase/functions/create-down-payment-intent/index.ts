@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     const totalDiscount = discountAmount + referralDiscount
     const discountedTotal = Math.max(0, subtotal - totalDiscount)
     const depositAmount = Math.round(discountedTotal * 0.5)
-    const totalServiceFee = 150 * 100 // Single $150 service fee per booking, convert to cents
+    const totalServiceFee = 50 * 100 // Single $150 service fee per booking, convert to cents
     const grandTotal = depositAmount + totalServiceFee
 
     console.log('Amount calculations:')

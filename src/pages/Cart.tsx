@@ -87,7 +87,7 @@ export const Cart: React.FC = () => {
     navigate('/search');
   };
 
-  const totalServiceFee = state.items.length > 0 ? 150 : 0; // $150 per booking
+  const totalServiceFee = state.items.length > 0 ? 50 : 0; // $50 per booking
   const grandTotal = state.totalAmount + totalServiceFee * 100; // Convert to cents
 
   return (

@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
           event_id: newEvent.id,
           venue_id: null,
           initial_payment: itemDepositAmount,
-          platform_fee: 15000, // $150 service fee
+          platform_fee: 5000, // $150 service fee
           paid_amount: itemDepositAmount,
           discount: Math.round((discountAmount + referralDiscount) / cartItems.length) || 0,
           stripe_payment_intent_id: paymentIntentId,
