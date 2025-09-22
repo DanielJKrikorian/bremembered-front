@@ -40,6 +40,9 @@ import { ProductDetail } from '../pages/ProductDetail';
 import { OrderTracking } from '../pages/OrderTracking';
 import { StoreSuccess } from '../pages/StoreSuccess';
 
+// 👇 Import your new wrapper for category pages
+import { CategorySearchWrapper } from '../pages/CategorySearchWrapper';
+
 export const AppContent: React.FC = () => {
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
@@ -72,6 +75,10 @@ export const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />
+
+            {/* ✅ New SEO-friendly service category route */}
+            <Route path="/services/:category" element={<CategorySearchWrapper />} />
+
             <Route path="/bundle/:id" element={<ServiceBundle />} />
             <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
             <Route path="/checkout" element={<Checkout />} />

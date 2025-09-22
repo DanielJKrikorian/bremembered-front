@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Filter, Grid, List, SlidersHorizontal, MapPin, Star, Clock, Users, ChevronDown, Search, X, Check, Camera, Video, Music, Calendar, Package, Heart } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -11,9 +11,27 @@ import { useCart } from '../context/CartContext';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
 
+// Simple debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export const SearchResults: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { category } = useParams<{ category?: string }>();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
@@ -22,6 +40,7 @@ export const SearchResults: React.FC = () => {
   const { addItem, openCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorited, favorites } = useWeddingBoard();
   const { isAuthenticated } = useAuth();
+
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
     eventTypes: [] as string[],
@@ -32,43 +51,97 @@ export const SearchResults: React.FC = () => {
     coverage: [] as string[]
   });
 
+  // Debounce price filter inputs to prevent flickering
+  const debouncedMinPrice = useDebounce(filters.minPrice, 300);
+  const debouncedMaxPrice = useDebounce(filters.maxPrice, 300);
+
+  // Service fee constant (in cents, to match formatPrice)
+  const SERVICE_FEE = 5000; // $50
+
+  // Inject JSON-LD structured data when category is active
+  useEffect(() => {
+    if (!category) return;
+    const formattedCategory = category
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": formattedCategory,
+      "provider": {
+        "@type": "Organization",
+        "name": "B. Remembered",
+        "url": "https://bremembered.io",
+        "logo": "https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "United States"
+      },
+      "availableChannel": {
+        "@type": "ServiceChannel",
+        "serviceUrl": `https://bremembered.io/services/${category}`
+      }
+    };
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.text = JSON.stringify(schema);
+    document.head.appendChild(script);
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [category]);
+
   // Scroll to top when component mounts or location changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
+  // Memoize filter object for useServicePackages
+  const filterConfig = useMemo(() => ({
+    selectedServices: filters.serviceTypes.length > 0 ? filters.serviceTypes : undefined,
+    minHours: filters.minHours,
+    maxHours: filters.maxHours,
+    coverage: filters.coverage.length > 0 ? filters.coverage : undefined,
+    minPrice: debouncedMinPrice,
+    maxPrice: debouncedMaxPrice
+  }), [filters.serviceTypes, filters.minHours, filters.maxHours, filters.coverage, debouncedMinPrice, debouncedMaxPrice]);
+
   // Get all service packages with current filters
   const { packages, loading, error } = useServicePackages(
-    undefined, // Don't filter by single service type
-    undefined, // Don't filter by single event type
-    {
-      selectedServices: filters.serviceTypes.length > 0 ? filters.serviceTypes : undefined,
-      minHours: filters.minHours,
-      maxHours: filters.maxHours,
-      coverage: filters.coverage.length > 0 ? filters.coverage : undefined,
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice
-    }
+    undefined,
+    undefined,
+    filterConfig
   );
 
-  // Initialize filters from navigation state
+  // Initialize filters from navigation state or category param
   useEffect(() => {
     if (location.state?.filters) {
       setFilters(prev => ({ ...prev, ...location.state.filters }));
     }
-    
-    // Scroll to top when coming from navigation with filters
-    if (location.state?.filters) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (category) {
+      // Capitalize and map to match service types
+      const formattedCategory = category
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      setFilters(prev => ({
+        ...prev,
+        serviceTypes: prev.serviceTypes.includes(formattedCategory)
+          ? prev.serviceTypes
+          : [...prev.serviceTypes, formattedCategory]
+      }));
     }
-  }, [location.state]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.state, category]);
 
   // Filter packages by search term and additional filters
-  const filteredPackages = packages.filter(pkg => {
+  const filteredPackages = useMemo(() => packages.filter(pkg => {
     // Search term filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         pkg.name.toLowerCase().includes(searchLower) ||
         pkg.description?.toLowerCase().includes(searchLower) ||
         pkg.service_type.toLowerCase().includes(searchLower) ||
@@ -87,7 +160,15 @@ export const SearchResults: React.FC = () => {
         'Videography': 'videography',
         'Live Musician': 'live_musician',
         'Planning': 'planning',
-        'Photo Booth': 'photo_booth'
+        'Photo Booth': 'photo_booth',
+        'Venues': 'venues',
+        'Catering': 'catering',
+        'Florist': 'florist',
+        'Rentals': 'rentals',
+        'Officiant': 'officiant',
+        'Transportation': 'transportation',
+        'Hair & Makeup': 'hair_makeup',
+        'Cake & Desserts': 'cake_desserts'
       };
       
       const hasMatchingService = filters.serviceTypes.some(serviceType => {
@@ -104,10 +185,10 @@ export const SearchResults: React.FC = () => {
     }
 
     return true;
-  });
+  }), [packages, searchTerm, filters.serviceTypes, filters.eventTypes]);
 
   // Sort packages
-  const sortedPackages = [...filteredPackages].sort((a, b) => {
+  const sortedPackages = useMemo(() => [...filteredPackages].sort((a, b) => {
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
       case 'price-high': return b.price - a.price;
@@ -116,15 +197,25 @@ export const SearchResults: React.FC = () => {
       case 'name': return a.name.localeCompare(b.name);
       default: return 0; // recommended
     }
-  });
+  }), [filteredPackages, sortBy]);
 
+  // Service type options (expanded for global coverage)
   const serviceTypeOptions = [
     { value: 'Photography', label: 'Photography', icon: Camera },
     { value: 'Videography', label: 'Videography', icon: Video },
     { value: 'DJ Services', label: 'DJ Services', icon: Music },
     { value: 'Live Musician', label: 'Live Musician', icon: Music },
     { value: 'Coordination', label: 'Day-of Coordination', icon: Users },
-    { value: 'Planning', label: 'Planning', icon: Calendar }
+    { value: 'Planning', label: 'Planning', icon: Calendar },
+    { value: 'Venues', label: 'Venues', icon: Package },
+    { value: 'Catering', label: 'Catering', icon: Package },
+    { value: 'Florist', label: 'Florist', icon: Package },
+    { value: 'Photo Booth', label: 'Photo Booth', icon: Camera },
+    { value: 'Rentals', label: 'Rentals', icon: Package },
+    { value: 'Officiant', label: 'Officiant', icon: Users },
+    { value: 'Transportation', label: 'Transportation', icon: Package },
+    { value: 'Hair & Makeup', label: 'Hair & Makeup', icon: Package },
+    { value: 'Cake & Desserts', label: 'Cake & Desserts', icon: Package },
   ];
 
   const eventTypeOptions = [
@@ -147,38 +238,38 @@ export const SearchResults: React.FC = () => {
     'Send Off'
   ];
 
-  const handleFilterChange = (key: string, value: any) => {
+  const handleFilterChange = useCallback((key: string, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
-  const handleServiceTypeToggle = (serviceType: string) => {
+  const handleServiceTypeToggle = useCallback((serviceType: string) => {
     setFilters(prev => ({
       ...prev,
       serviceTypes: prev.serviceTypes.includes(serviceType)
         ? prev.serviceTypes.filter(s => s !== serviceType)
         : [...prev.serviceTypes, serviceType]
     }));
-  };
+  }, []);
 
-  const handleEventTypeToggle = (eventType: string) => {
+  const handleEventTypeToggle = useCallback((eventType: string) => {
     setFilters(prev => ({
       ...prev,
       eventTypes: prev.eventTypes.includes(eventType)
         ? prev.eventTypes.filter(e => e !== eventType)
         : [...prev.eventTypes, eventType]
     }));
-  };
+  }, []);
 
-  const handleCoverageToggle = (coverage: string) => {
+  const handleCoverageToggle = useCallback((coverage: string) => {
     setFilters(prev => ({
       ...prev,
       coverage: prev.coverage.includes(coverage)
         ? prev.coverage.filter(c => c !== coverage)
         : [...prev.coverage, coverage]
     }));
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       serviceTypes: [],
       eventTypes: [],
@@ -189,7 +280,7 @@ export const SearchResults: React.FC = () => {
       coverage: []
     });
     setSearchTerm('');
-  };
+  }, []);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -217,11 +308,10 @@ export const SearchResults: React.FC = () => {
     return events;
   };
 
-  const handleToggleFavorite = async (e: React.MouseEvent, pkg: ServicePackage) => {
+  const handleToggleFavorite = useCallback(async (e: React.MouseEvent, pkg: ServicePackage) => {
     e.stopPropagation();
     
     if (!isAuthenticated) {
-      // Could show auth modal here
       alert('Please sign in to save favorites');
       return;
     }
@@ -238,7 +328,7 @@ export const SearchResults: React.FC = () => {
     } catch (error) {
       console.error('Error toggling favorite:', error);
     }
-  };
+  }, [isAuthenticated, favorites, addToFavorites, removeFromFavorites, isFavorited]);
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
@@ -253,7 +343,6 @@ export const SearchResults: React.FC = () => {
   };
 
   const getServicePhoto = (serviceType: string, pkg: ServicePackage) => {
-    // Create a hash from package ID to ensure consistent but unique photos
     const hash = pkg.id.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
@@ -379,7 +468,7 @@ export const SearchResults: React.FC = () => {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <Input
                   type="text"
                   placeholder="Search packages by name, service, or features..."
                   value={searchTerm}
@@ -434,6 +523,24 @@ export const SearchResults: React.FC = () => {
                           className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
                         />
                         <span className="text-sm text-gray-700">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Moments (Coverage) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Moments</label>
+                  <div className="space-y-2">
+                    {coverageOptions.map((coverage) => (
+                      <label key={coverage} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.coverage.includes(coverage)}
+                          onChange={() => handleCoverageToggle(coverage)}
+                          className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
+                        />
+                        <span className="text-sm text-gray-700">{coverage}</span>
                       </label>
                     ))}
                   </div>
@@ -526,6 +633,7 @@ export const SearchResults: React.FC = () => {
             </h2>
             <p className="text-gray-600">
               {searchTerm && `Results for "${searchTerm}"`}
+              {category && !searchTerm && `Results for "${category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}"`}
             </p>
           </div>
           
@@ -617,6 +725,24 @@ export const SearchResults: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Moments (Coverage) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Moments</label>
+                    <div className="space-y-2">
+                      {coverageOptions.map((coverage) => (
+                        <label key={coverage} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={filters.coverage.includes(coverage)}
+                            onChange={() => handleCoverageToggle(coverage)}
+                            className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
+                          />
+                          <span className="text-sm text-gray-700">{coverage}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Price Range */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">Price Range</label>
@@ -689,12 +815,12 @@ export const SearchResults: React.FC = () => {
                 <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No packages found</h3>
                 <p className="text-gray-600 mb-6">
-                  {searchTerm || activeFiltersCount > 0 
+                  {searchTerm || activeFiltersCount > 0 || category
                     ? 'Try adjusting your search or filters to find more options.'
                     : 'No wedding packages are currently available.'
                   }
                 </p>
-                {(searchTerm || activeFiltersCount > 0) && (
+                {(searchTerm || activeFiltersCount > 0 || category) && (
                   <Button variant="primary" onClick={clearFilters}>
                     Clear Search & Filters
                   </Button>
@@ -749,7 +875,6 @@ export const SearchResults: React.FC = () => {
                         <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
                         <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
 
-                        {/* Features */}
                         {pkg.features && pkg.features.length > 0 && (
                           <div className="mb-4">
                             <div className="flex flex-wrap gap-1">
@@ -779,9 +904,9 @@ export const SearchResults: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <div className="text-xl font-bold text-gray-900">
-                              {formatPrice(pkg.price)}
+                              {formatPrice(pkg.price + SERVICE_FEE)}
                             </div>
-                            <div className="text-xs text-gray-500">Starting price</div>
+                            <div className="text-xs text-gray-500">Includes service fee</div>
                           </div>
                         </div>
 
@@ -814,7 +939,6 @@ export const SearchResults: React.FC = () => {
                 })}
               </div>
             ) : (
-              /* List View */
               <div className="space-y-4">
                 {sortedPackages.map((pkg) => {
                   const ServiceIcon = getServiceIcon(pkg.service_type);
@@ -874,7 +998,6 @@ export const SearchResults: React.FC = () => {
                               )}
                             </div>
 
-                            {/* Features and Coverage */}
                             <div className="flex flex-wrap gap-1">
                               {pkg.features?.slice(0, 3).map((feature, index) => (
                                 <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
@@ -897,9 +1020,9 @@ export const SearchResults: React.FC = () => {
                           <div className="flex items-center space-x-4">
                             <div className="text-right">
                               <div className="text-2xl font-bold text-gray-900">
-                                {formatPrice(pkg.price)}
+                                {formatPrice(pkg.price + SERVICE_FEE)}
                               </div>
-                              <div className="text-sm text-gray-500">Starting price</div>
+                              <div className="text-sm text-gray-500">Includes service fee</div>
                             </div>
                             <button
                               onClick={() => {
@@ -937,3 +1060,6 @@ export const SearchResults: React.FC = () => {
     </div>
   );
 };
+
+// Memoize the component to prevent unnecessary rerenders
+export default React.memo(SearchResults);
