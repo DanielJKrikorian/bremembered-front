@@ -1,15 +1,21 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Charset & Viewport -->
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- SEO Meta -->
-    <title>B. Remembered | Wedding Planning & Vendor Booking</title>
-    <meta name="description" content="Plan your dream wedding with B. Remembered. Browse verified vendors, book custom packages, and enjoy 24/7 support for a stress-free celebration." />
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png" />
 
-    <!-- Open Graph -->
+    <!-- Title & Description -->
+    <title>B. Remembered | Wedding Planning & Vendor Booking</title>
+    <meta name="description" content="Plan your dream wedding with B. Remembered. Compare trusted vendors, book custom packages, and enjoy 24/7 support — all in one seamless platform." />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://bremembered.io/" />
+
+    <!-- Open Graph (Facebook/LinkedIn) -->
     <meta property="og:title" content="B. Remembered | Wedding Planning & Vendor Booking" />
     <meta property="og:description" content="Book trusted wedding vendors, explore curated packages, and plan your big day with ease. Verified vendors, real reviews, and 24/7 support." />
     <meta property="og:image" content="https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png" />
@@ -26,20 +32,63 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "B. Remembered",
-      "url": "https://bremembered.io",
-      "logo": "https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png",
-      "sameAs": [
-        "https://www.facebook.com/B.RememberedWeddings",
-        "https://www.instagram.com/b.rememberedweddings",
-        "https://www.pinterest.com/BRememberedWeddings"
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "B. Remembered",
+          "url": "https://bremembered.io",
+          "logo": "https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png",
+          "sameAs": [
+            "https://www.facebook.com/B.RememberedWeddings",
+            "https://www.instagram.com/b.rememberedweddings",
+            "https://www.pinterest.com/BRememberedWeddings"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "url": "https://bremembered.io/",
+          "name": "B. Remembered Wedding Platform",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://bremembered.io/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "B. Remembered",
+          "operatingSystem": "Web",
+          "applicationCategory": "BusinessApplication",
+          "description": "B. Remembered is a SaaS marketplace for weddings. Couples can search, compare, and book trusted vendors with ease, while vendors gain exposure and bookings.",
+          "url": "https://bremembered.io",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock"
+          }
+        }
       ]
     }
+    </script>
+
+    <!-- App Bundles -->
+    <script type="module" crossorigin src="/assets/index.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index.css" />
+
+    <!-- Stripe -->
+    <script src="https://js.stripe.com/v3/"></script>
+
+    <!-- Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JHD0NKW137"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag("js", new Date());
+      gtag("config", "G-JHD0NKW137");
     </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
