@@ -494,7 +494,7 @@ export const PackageDetails: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center text-lg font-semibold border-t pt-3">
                   <span>Total</span>
-                  <span>{formatPrice(packageData.price + 15000)}</span>
+                  <span>{formatPrice(packageData.price + 5000)}</span>
                 </div>
               </div>
 
