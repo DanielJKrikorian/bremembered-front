@@ -183,7 +183,10 @@ export const Cart: React.FC = () => {
                               <div className="flex items-center text-green-700">
                                 <Calendar className="w-4 h-4 mr-2" />
                                 <span>
-                                  {new Date(item.eventDate).toLocaleDateString()}
+                                  {(() => {
+                                    const [year, month, day] = item.eventDate.split('-').map(Number);
+                                    return new Date(year, month - 1, day).toLocaleDateString();
+                                  })()}
                                   {item.eventTime && (
                                     <>
                                       {' at '}

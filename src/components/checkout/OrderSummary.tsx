@@ -140,7 +140,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               <p className="text-sm text-gray-600">{item.package.service_type}</p>
               {item.vendor && <p className="text-xs text-green-600">Vendor: {item.vendor.name}</p>}
               {item.eventDate && (
-                <p className="text-xs text-gray-500">{new Date(item.eventDate).toLocaleDateString()}</p>
+                <p className="text-xs text-gray-500">
+                  {(() => {
+                    const [year, month, day] = item.eventDate.split('-').map(Number);
+                    return new Date(year, month - 1, day).toLocaleDateString();
+                  })()}
+                </p>
               )}
             </div>
             <div className="text-right">

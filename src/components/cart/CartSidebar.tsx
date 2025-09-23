@@ -117,7 +117,10 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ onChooseVendor }) => {
                             <div className="flex items-center text-xs text-gray-500">
                               <Calendar className="w-3 h-3 mr-1" />
                               <span>
-                                {new Date(item.eventDate).toLocaleDateString()}
+                                {(() => {
+                                  const [year, month, day] = item.eventDate.split('-').map(Number);
+                                  return new Date(year, month - 1, day).toLocaleDateString();
+                                })()}
                                 {item.eventTime && (
                                   <>
                                     {' at '}
