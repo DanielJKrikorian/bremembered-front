@@ -747,6 +747,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           throw new Error(paymentMethodError.message || 'Failed to create payment method');
         }
         console.log('Payment Method created:', paymentMethod.id);
+        // Check for existing pending bookings to prevent duplicates
+        const cartItemIds = cartItems.map(item => item.id);
+        const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
+          .from('pending_bookings')
+          .select('id')
+          .contains('cart_items', JSON.stringify(cartItemIds.map(id => ({ id }))));
+        if (pendingBookingsError) {
+          console.error('Error checking existing pending bookings:', pendingBookingsError);
+          throw new Error('Failed to verify booking status. Please try again.');
+        }
+        if (existingPendingBookings?.length > 0) {
+          throw new Error('This booking is already being processed. Please wait or contact support.');
+        }
         // Send Payment Method to server for Payment Intent creation and booking storage
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
           method: 'POST',
@@ -830,6 +843,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         if (!paymentElement) {
           setError('Payment information not found. Please try again.');
           return { paymentIntentId: null, pendingBookingId: null };
+        }
+        // Check for existing pending bookings to prevent duplicates
+        const cartItemIds = cartItems.map(item => item.id);
+        const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
+          .from('pending_bookings')
+          .select('id')
+          .contains('cart_items', JSON.stringify(cartItemIds.map(id => ({ id }))));
+        if (pendingBookingsError) {
+          console.error('Error checking existing pending bookings:', pendingBookingsError);
+          throw new Error('Failed to verify booking status. Please try again.');
+        }
+        if (existingPendingBookings?.length > 0) {
+          throw new Error('This booking is already being processed. Please wait or contact support.');
         }
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
@@ -962,6 +988,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     e.preventDefault();
     console.log('=== HANDLE SUBMIT ===', new Date().toISOString());
     console.log('Current step:', currentStep);
+    console.log('Referral code:', referralCode);
     if (!validateForm()) {
       console.log('Form validation failed');
       return;
@@ -978,6 +1005,15 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     }
     if (loading || submitting) {
       console.log('Submit blocked: Already processing payment');
+      return;
+    }
+    // Explicitly clear referral error and applied referral if no code is entered
+    if (!referralCode.trim()) {
+      setReferralError(null);
+      setAppliedReferral(null);
+      onReferralRemoved();
+    } else if (!appliedReferral && referralCode.trim()) {
+      setError('Please apply a valid referral code or clear the field to proceed.');
       return;
     }
     setLoading(true);
@@ -1008,7 +1044,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setLoading(false);
       setSubmitting(false);
     }
-  }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete]);
+  }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete, referralCode, appliedReferral]);
 
   return (
     <>
@@ -1485,7 +1521,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                         type="button"
                         variant="outline"
                         onClick={handleReferralSubmit}
-                        disabled={loading || !referralCode.trim()}
+                        disabled={referralLoading || !referralCode.trim()}
                         loading={referralLoading}
                       >
                         Apply
@@ -1520,7 +1556,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     type="submit"
                     variant="primary"
                     disabled={loading || submitting || (currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe))}
-                    className={currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe) ? 'opacity-50 cursor-not-allowed' : ''}
+                    className={(loading || submitting || (currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe))) ? 'opacity-50 cursor-not-allowed' : ''}
                     loading={loading}
                     icon={currentStep === 3 ? CreditCard : ArrowRight}
                   >

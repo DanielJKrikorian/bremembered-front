@@ -23,6 +23,7 @@ interface Order {
   created_at: string;
   shipping_address: any;
   email?: string;
+  name?: string;
   order_items: OrderItem[];
   tracking_number?: string | null;
   shipping_provider?: string | null;
@@ -109,6 +110,9 @@ export const StoreSuccess: React.FC = () => {
                     <ul className="text-gray-600 space-y-2 mt-2">
                       <li><span className="font-medium">Status:</span> {orderDetails.status || 'Pending'}</li>
                       <li><span className="font-medium">Total:</span> {formatPrice(orderDetails.total_amount)}</li>
+                      {orderDetails.name && (
+                        <li><span className="font-medium">Name:</span> {orderDetails.name}</li>
+                      )}
                       {orderDetails.email && (
                         <li><span className="font-medium">Email:</span> {orderDetails.email}</li>
                       )}

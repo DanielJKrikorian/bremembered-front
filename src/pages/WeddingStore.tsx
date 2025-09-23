@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { AlertCircle, Trash2, Plus, Minus, X, CreditCard, Mail, MapPin } from 'lucide-react';
+import { AlertCircle, Trash2, Plus, Minus, X, CreditCard, Mail, MapPin, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -32,6 +32,7 @@ interface CartItem {
 
 interface GuestCheckoutData {
   email: string;
+  name: string;
   shippingAddress: {
     line1: string;
     city: string;
@@ -72,6 +73,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
   const [cardError, setCardError] = useState<string | null>(null);
   const [guestData, setGuestData] = useState<GuestCheckoutData>({
     email: '',
+    name: '',
     shippingAddress: {
       line1: '',
       city: '',
@@ -98,6 +100,9 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
     const newErrors: { [key: string]: string } = {};
     if (!guestData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestData.email)) {
       newErrors.email = 'Valid email is required.';
+    }
+    if (!guestData.name) {
+      newErrors.name = 'Name is required.';
     }
     if (!guestData.shippingAddress.line1) newErrors.line1 = 'Street address is required.';
     if (!guestData.shippingAddress.city) newErrors.city = 'City is required.';
@@ -139,6 +144,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
         totalAmount,
         userId: null,
         email: guestData.email,
+        name: guestData.name,
         shippingAddress: guestData.shippingAddress,
       }));
 
@@ -154,6 +160,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
           totalAmount,
           userId: null,
           email: guestData.email,
+          name: guestData.name,
           shippingAddress: guestData.shippingAddress,
         }),
       });
@@ -196,6 +203,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
         created_at: new Date().toISOString(),
         shipping_address: guestData.shippingAddress,
         email: guestData.email,
+        name: guestData.name,
         order_items: cartItems.map(item => ({
           product_id: item.id,
           quantity: item.quantity,
@@ -218,6 +226,20 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ cartItems, totalAmount, onS
   return (
     <form onSubmit={handleSubmit}>
       <div className="mb-6 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <div className="relative">
+            <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              className={`w-full p-3 pl-10 border rounded-lg ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+              value={guestData.name}
+              onChange={(e) => handleInputChange('name', e.target.value)}
+              placeholder="Full Name"
+            />
+          </div>
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <div className="relative">
