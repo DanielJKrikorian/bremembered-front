@@ -803,6 +803,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             discountAmount,
             referralDiscount,
             platformFee: Number(platformFee),
+            grandTotal,
             paymentType: 'deposit',
           }),
         });
@@ -911,6 +912,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             discountAmount,
             referralDiscount,
             platformFee: Number(platformFee),
+            grandTotal,
             paymentType: 'deposit',
           }),
         });
@@ -928,7 +930,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
-  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, totalAmount, platformFee, discountAmount, referralDiscount]);
+  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, totalAmount, platformFee, discountAmount, referralDiscount, grandTotal]);
 
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
