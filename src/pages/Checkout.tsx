@@ -13,7 +13,7 @@ import { OrderSummary } from '../components/checkout/OrderSummary';
 import { AuthModal } from '../components/auth/AuthModal';
 
 // Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY || '');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 // Local formatPrice function
 const formatPrice = (amount: number): string => {
