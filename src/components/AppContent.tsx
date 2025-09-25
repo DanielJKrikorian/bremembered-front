@@ -39,6 +39,8 @@ import { WeddingStore } from '../pages/WeddingStore';
 import { ProductDetail } from '../pages/ProductDetail';
 import { OrderTracking } from '../pages/OrderTracking';
 import { StoreSuccess } from '../pages/StoreSuccess';
+import { LocationServicePage } from "../pages/LocationServicePage"; // ✅ adjust path if it’s in /pages/
+
 
 // 👇 Import your new wrapper for category pages
 import { CategorySearchWrapper } from '../pages/CategorySearchWrapper';
@@ -109,6 +111,7 @@ export const AppContent: React.FC = () => {
             <Route path="/orders" element={<OrderTracking />} />
             <Route path="/orders/:orderId" element={<OrderTracking />} />
             <Route path="/store-success" element={<StoreSuccess />} />
+            <Route path="/locations/:state/:city/:service" element={<LocationServicePage />} />
           </Routes>
           <Outlet />
         </main>
