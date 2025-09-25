@@ -12,8 +12,115 @@ import { WorkSamplesUpload } from '../components/vendor/WorkSamplesUpload';
 import { TermsModal } from '../components/vendor/TermsModal';
 import { useServiceAreas } from '../hooks/useSupabase';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import countries from 'i18n-iso-countries';
+import en from 'i18n-iso-countries/langs/en.json';
+
+// Register English locale for country names
+countries.registerLocale(en);
+
+// Static data for countries and their states/territories
+const COUNTRY_STATES: { [key: string]: { code: string; name: string }[] } = {
+  US: [
+    { code: 'AL', name: 'Alabama' },
+    { code: 'AK', name: 'Alaska' },
+    { code: 'AZ', name: 'Arizona' },
+    { code: 'AR', name: 'Arkansas' },
+    { code: 'CA', name: 'California' },
+    { code: 'CO', name: 'Colorado' },
+    { code: 'CT', name: 'Connecticut' },
+    { code: 'DE', name: 'Delaware' },
+    { code: 'FL', name: 'Florida' },
+    { code: 'GA', name: 'Georgia' },
+    { code: 'HI', name: 'Hawaii' },
+    { code: 'ID', name: 'Idaho' },
+    { code: 'IL', name: 'Illinois' },
+    { code: 'IN', name: 'Indiana' },
+    { code: 'IA', name: 'Iowa' },
+    { code: 'KS', name: 'Kansas' },
+    { code: 'KY', name: 'Kentucky' },
+    { code: 'LA', name: 'Louisiana' },
+    { code: 'ME', name: 'Maine' },
+    { code: 'MD', name: 'Maryland' },
+    { code: 'MA', name: 'Massachusetts' },
+    { code: 'MI', name: 'Michigan' },
+    { code: 'MN', name: 'Minnesota' },
+    { code: 'MS', name: 'Mississippi' },
+    { code: 'MO', name: 'Missouri' },
+    { code: 'MT', name: 'Montana' },
+    { code: 'NE', name: 'Nebraska' },
+    { code: 'NV', name: 'Nevada' },
+    { code: 'NH', name: 'New Hampshire' },
+    { code: 'NJ', name: 'New Jersey' },
+    { code: 'NM', name: 'New Mexico' },
+    { code: 'NY', name: 'New York' },
+    { code: 'NC', name: 'North Carolina' },
+    { code: 'ND', name: 'North Dakota' },
+    { code: 'OH', name: 'Ohio' },
+    { code: 'OK', name: 'Oklahoma' },
+    { code: 'OR', name: 'Oregon' },
+    { code: 'PA', name: 'Pennsylvania' },
+    { code: 'RI', name: 'Rhode Island' },
+    { code: 'SC', name: 'South Carolina' },
+    { code: 'SD', name: 'South Dakota' },
+    { code: 'TN', name: 'Tennessee' },
+    { code: 'TX', name: 'Texas' },
+    { code: 'UT', name: 'Utah' },
+    { code: 'VT', name: 'Vermont' },
+    { code: 'VA', name: 'Virginia' },
+    { code: 'WA', name: 'Washington' },
+    { code: 'WV', name: 'West Virginia' },
+    { code: 'WI', name: 'Wisconsin' },
+    { code: 'WY', name: 'Wyoming' },
+    { code: 'DC', name: 'District of Columbia' },
+    { code: 'AS', name: 'American Samoa' },
+    { code: 'GU', name: 'Guam' },
+    { code: 'MP', name: 'Northern Mariana Islands' },
+    { code: 'PR', name: 'Puerto Rico' },
+    { code: 'VI', name: 'U.S. Virgin Islands' },
+  ],
+  CA: [
+    { code: 'AB', name: 'Alberta' },
+    { code: 'BC', name: 'British Columbia' },
+    { code: 'MB', name: 'Manitoba' },
+    { code: 'NB', name: 'New Brunswick' },
+    { code: 'NL', name: 'Newfoundland and Labrador' },
+    { code: 'NS', name: 'Nova Scotia' },
+    { code: 'ON', name: 'Ontario' },
+    { code: 'PE', name: 'Prince Edward Island' },
+    { code: 'QC', name: 'Quebec' },
+    { code: 'SK', name: 'Saskatchewan' },
+    { code: 'NT', name: 'Northwest Territories' },
+    { code: 'NU', name: 'Nunavut' },
+    { code: 'YT', name: 'Yukon' },
+  ],
+  GB: [
+    { code: 'ENG', name: 'England' },
+    { code: 'SCT', name: 'Scotland' },
+    { code: 'WLS', name: 'Wales' },
+    { code: 'NIR', name: 'Northern Ireland' },
+  ],
+  AU: [
+    { code: 'NSW', name: 'New South Wales' },
+    { code: 'QLD', name: 'Queensland' },
+    { code: 'SA', name: 'South Australia' },
+    { code: 'TAS', name: 'Tasmania' },
+    { code: 'VIC', name: 'Victoria' },
+    { code: 'WA', name: 'Western Australia' },
+    { code: 'ACT', name: 'Australian Capital Territory' },
+    { code: 'NT', name: 'Northern Territory' },
+  ],
+  // Add more countries as needed
+};
 
 // Interfaces
+interface Address {
+  street: string;
+  city: string;
+  country: string;
+  state: string;
+  zip: string;
+}
+
 interface GearItem {
   gear_type: string;
   brand: string;
@@ -26,12 +133,7 @@ interface ApplicationData {
   name: string;
   phone: string;
   email: string;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-  };
+  address: Address;
   service_locations: string[];
   services_applying_for: string[];
   gear: GearItem[];
@@ -51,84 +153,116 @@ interface UploadedFiles {
 }
 
 // Step Components
-const PersonalInfoStep = ({ formData, handleInputChange, handleAddressChange, states }: any) => (
-  <Card className="p-8">
-    <div className="text-center mb-8">
-      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <User className="w-8 h-8 text-blue-600" />
+const PersonalInfoStep = ({ formData, handleInputChange, handleAddressChange }: any) => {
+  // Get list of countries
+  const countryList = Object.entries(countries.getNames('en', { select: 'official' }))
+    .map(([code, name]) => ({ code, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Get states/territories for the selected country
+  const states = formData.address.country ? COUNTRY_STATES[formData.address.country] || [] : [];
+
+  return (
+    <Card className="p-8">
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <User className="w-8 h-8 text-blue-600" />
+        </div>
+        <h2 className="text-2xl font-semibold text-gray-900 mb-3">Personal Information</h2>
+        <p className="text-gray-600">Let's start with your basic contact information</p>
       </div>
-      <h2 className="text-2xl font-semibold text-gray-900 mb-3">Personal Information</h2>
-      <p className="text-gray-600">Let's start with your basic contact information</p>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <Input
-        label="Full Name"
-        value={formData.name}
-        onChange={(e) => handleInputChange('name', e.target.value)}
-        placeholder="John Smith"
-        icon={User}
-        required
-      />
-      <Input
-        label="Phone Number"
-        value={formData.phone}
-        onChange={(e) => handleInputChange('phone', e.target.value)}
-        placeholder="(555) 123-4567"
-        icon={Phone}
-        required
-      />
-      <div className="md:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Input
-          label="Email Address"
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleInputChange('email', e.target.value)}
-          placeholder="john@example.com"
-          icon={Mail}
+          label="Full Name"
+          value={formData.name}
+          onChange={(e) => handleInputChange('name', e.target.value)}
+          placeholder="John Smith"
+          icon={User}
+          required
+        />
+        <Input
+          label="Phone Number"
+          value={formData.phone}
+          onChange={(e) => handleInputChange('phone', e.target.value)}
+          placeholder="(555) 123-4567"
+          icon={Phone}
+          required
+        />
+        <div className="md:col-span-2">
+          <Input
+            label="Email Address"
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            placeholder="john@example.com"
+            icon={Mail}
+            required
+          />
+        </div>
+        <div className="md:col-span-2">
+          <Input
+            label="Street Address"
+            value={formData.address.street}
+            onChange={(e) => handleAddressChange('street', e.target.value)}
+            placeholder="123 Main Street"
+            icon={MapPin}
+            required
+          />
+        </div>
+        <Input
+          label="City"
+          value={formData.address.city}
+          onChange={(e) => handleAddressChange('city', e.target.value)}
+          placeholder="Boston"
+          required
+        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+          <select
+            value={formData.address.country}
+            onChange={(e) => {
+              handleAddressChange('country', e.target.value);
+              handleAddressChange('state', ''); // Reset state when country changes
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+            required
+          >
+            <option value="">Select Country</option>
+            {countryList.map(({ code, name }) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">State/Territory</label>
+          <select
+            value={formData.address.state}
+            onChange={(e) => handleAddressChange('state', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+            required
+            disabled={!formData.address.country}
+          >
+            <option value="">Select State/Territory</option>
+            {states.map(({ code, name }) => (
+              <option key={code} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Input
+          label="ZIP/Postal Code"
+          value={formData.address.zip}
+          onChange={(e) => handleAddressChange('zip', e.target.value)}
+          placeholder="02101"
           required
         />
       </div>
-      <div className="md:col-span-2">
-        <Input
-          label="Street Address"
-          value={formData.address.street}
-          onChange={(e) => handleAddressChange('street', e.target.value)}
-          placeholder="123 Main Street"
-          icon={MapPin}
-          required
-        />
-      </div>
-      <Input
-        label="City"
-        value={formData.address.city}
-        onChange={(e) => handleAddressChange('city', e.target.value)}
-        placeholder="Boston"
-        required
-      />
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-        <select
-          value={formData.address.state}
-          onChange={(e) => handleAddressChange('state', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-          required
-        >
-          <option value="">Select State</option>
-          {states.map((state: string) => (
-            <option key={state} value={state}>{state}</option>
-          ))}
-        </select>
-      </div>
-      <Input
-        label="ZIP Code"
-        value={formData.address.zip}
-        onChange={(e) => handleAddressChange('zip', e.target.value)}
-        placeholder="02101"
-        required
-      />
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 const ServiceLocationsStep = ({ selectedStates, handleStateToggle, serviceAreas, serviceAreasLoading, formData, handleServiceLocationToggle }: any) => (
   <Card className="p-8">
@@ -488,7 +622,7 @@ const WorkSamplesStep = ({
         <Upload className="w-8 h-8 text-green-600" />
       </div>
       <h2 className="text-2xl font-semibold text-gray-900 mb-3">Work Samples</h2>
-      <p className="text-gray-600">Upload examples of your work (photos, videos, etc.)</p>
+      <p className="text-gray-600">Upload examples of your work (photos up to 25MB, videos up to 2GB)</p>
     </div>
     <WorkSamplesUpload
       workSamples={formData.work_samples}
@@ -531,7 +665,7 @@ const ReviewSubmitStep = ({ formData, uploadedFiles, handleSubmit, loading }: an
           <div>
             <span className="text-gray-600">Address:</span>
             <span className="ml-2 font-medium">
-              {formData.address.street}, {formData.address.city}, {formData.address.state} {formData.address.zip}
+              {formData.address.street}, {formData.address.city}, {formData.address.state}, {countries.getName(formData.address.country, 'en') || formData.address.country} {formData.address.zip}
             </span>
           </div>
         </div>
@@ -646,7 +780,7 @@ export const VendorApplication = () => {
     name: '',
     phone: '',
     email: '',
-    address: { street: '', city: '', state: '', zip: '' },
+    address: { street: '', city: '', country: '', state: '', zip: '' },
     service_locations: [],
     services_applying_for: [],
     gear: [],
@@ -687,8 +821,6 @@ export const VendorApplication = () => {
   useEffect(() => {
     if (uploadError) setError(uploadError);
   }, [uploadError]);
-
-  const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT'];
 
   // File upload handlers
   const handleHeadshotSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -771,9 +903,9 @@ export const VendorApplication = () => {
     if (files.length === 0) return;
 
     for (const file of files) {
-      const maxSize = file.type.startsWith('video/') ? 500 * 1024 * 1024 : 25 * 1024 * 1024;
+      const maxSize = file.type.startsWith('video/') ? 2000 * 1024 * 1024 : 25 * 1024 * 1024; // 2GB for videos, 25MB for images
       if (file.size > maxSize) {
-        setError(`${file.name} is too large. Max size: ${file.type.startsWith('video/') ? '500MB' : '25MB'}`);
+        setError(`${file.name} is too large. Max size: ${file.type.startsWith('video/') ? '2GB' : '25MB'}`);
         return;
       }
       if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
@@ -784,7 +916,7 @@ export const VendorApplication = () => {
 
     try {
       const uploadPromises = files.map((file) =>
-        uploadPhoto(file, applicationId, 'vendor-applications', file.type.startsWith('video/') ? 500 : 25, 'work-samples')
+        uploadPhoto(file, applicationId, 'vendor-applications', file.type.startsWith('video/') ? 2000 : 25, 'work-samples')
       );
       const urls = await Promise.all(uploadPromises);
       const validUrls = urls.filter((url): url is string => url !== null);
@@ -999,6 +1131,7 @@ export const VendorApplication = () => {
           formData.email &&
           formData.address.street &&
           formData.address.city &&
+          formData.address.country &&
           formData.address.state &&
           formData.address.zip
         );
@@ -1124,7 +1257,6 @@ export const VendorApplication = () => {
             formData={formData}
             handleInputChange={handleInputChange}
             handleAddressChange={handleAddressChange}
-            states={states}
           />
         )}
         {currentStep === 2 && (
