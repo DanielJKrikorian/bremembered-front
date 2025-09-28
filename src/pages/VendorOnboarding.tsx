@@ -64,7 +64,7 @@ export const VendorOnboarding: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">For Couples</h3>
                   <p className="text-gray-700">
-                    Couples choose their vendors directly, with real reviews and transparent pricing.
+                    Couples choose their vendors directly, with real reviews, transparent pricing, and clear visibility into vendor premiums and travel fees.
                   </p>
                 </div>
                 
@@ -74,7 +74,7 @@ export const VendorOnboarding: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">For Vendors</h3>
                   <p className="text-gray-700">
-                    Vendors gain access to a steady stream of bookings, automation tools, and full customer support from our team.
+                    Vendors set their own premiums and travel fees, gain access to a steady stream of bookings, automation tools, and full customer support from our team.
                   </p>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export const VendorOnboarding: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Transparency</h3>
               <p className="text-gray-600 leading-relaxed">
-                Honest pricing and clear service descriptions.
+                Honest pricing, including clear vendor premiums and travel fees, with accurate service descriptions.
               </p>
             </Card>
 
@@ -185,18 +185,32 @@ export const VendorOnboarding: React.FC = () => {
               Payment Breakdown
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We believe in fairness and shared success. That's why we operate on a 50/50 payment split:
+              We believe in empowering vendors with flexibility and fairness. Here's how our updated payment model works:
             </p>
           </div>
+
+          <Card className="p-8 mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <DollarSign className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+                Flexible Earnings Model
+              </h3>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Set your own premiums and travel fees to maximize your earnings, while the base price split supports platform growth and marketing.
+              </p>
+            </div>
+          </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <Card className="p-8 text-center bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
               <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl font-bold text-white">50%</span>
+                <span className="text-3xl font-bold text-white">100%</span>
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">To You</h3>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">Your Vendor Premium</h3>
               <p className="text-gray-700 leading-relaxed">
-                Goes to the vendor directly for providing the service.
+                You set your own premium, visible to couples during their search, and keep 100% of it.
               </p>
             </Card>
 
@@ -204,25 +218,21 @@ export const VendorOnboarding: React.FC = () => {
               <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-3xl font-bold text-white">50%</span>
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">To B. Remembered</h3>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">Base Price Split</h3>
               <p className="text-gray-700 leading-relaxed">
-                For platform access, client acquisition, automation tools, customer support, and ongoing marketing.
+                You receive 50% of the base price set by B. Remembered, with the other 50% supporting platform operations.
               </p>
             </Card>
           </div>
 
-          <Card className="p-8 mt-12 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <DollarSign className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                Shared Success Structure
-              </h3>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                This structure allows us to keep investing in growth, while ensuring you're rewarded for your talent and hard work.
-              </p>
+          <Card className="p-8 mt-8 text-center bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+            <div className="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl font-bold text-white">100%</span>
             </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-4">Travel Fees</h3>
+            <p className="text-gray-700 leading-relaxed">
+              Set your own travel fees for each area, which you keep in full, giving you control over your earnings.
+            </p>
           </Card>
         </section>
 
@@ -246,7 +256,7 @@ export const VendorOnboarding: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Apply</h3>
               <p className="text-gray-600">
-                Fill out the form with your business information and service details.
+                Fill out the form with your business information, service details, and your custom premium and travel fees.
               </p>
             </div>
 
@@ -276,7 +286,7 @@ export const VendorOnboarding: React.FC = () => {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Onboarding</h3>
               <p className="text-gray-600">
-                If approved, you'll receive a notification to set up your account and begin receiving leads.
+                If approved, you'll set up your account, configure your pricing, and begin receiving leads.
               </p>
             </div>
           </div>
@@ -359,7 +369,7 @@ export const VendorOnboarding: React.FC = () => {
             </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Our Vision</h2>
             <p className="text-xl text-white/90 max-w-4xl mx-auto leading-relaxed">
-              B. Remembered is building the future of wedding planning — one that empowers couples to make confident choices and empowers vendors to thrive. Together, we're creating unforgettable celebrations, backed by technology, transparency, and trust.
+              B. Remembered is building the future of wedding planning — one that empowers couples to make confident choices and empowers vendors to thrive with flexible pricing and transparent earnings. Together, we're creating unforgettable celebrations, backed by technology, transparency, and trust.
             </p>
           </Card>
         </section>
@@ -415,7 +425,7 @@ export const VendorOnboarding: React.FC = () => {
               Ready to Join Our Family?
             </h2>
             <p className="text-xl text-white/90 max-w-3xl mx-auto mb-8">
-              Start your journey with B. Remembered today and help couples create the wedding of their dreams while growing your business.
+              Start your journey with B. Remembered today, set your own premiums and travel fees, and help couples create the wedding of their dreams while growing your business.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
