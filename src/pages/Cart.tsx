@@ -21,13 +21,23 @@ export const Cart: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (amount: number | null | undefined) => {
+    if (amount === undefined || amount === null || amount === 0) return null;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount / 100);
+  };
+
+  const calculateItemTotal = (item: any) => {
+    const packagePrice = item.package.price / 100;
+    const premium = item.vendor && item.vendor.premium_amount && item.vendor.premium_amount > 0 ? item.vendor.premium_amount / 100 : 0;
+    const travel = item.vendor && item.vendor.travel_fee && item.vendor.travel_fee > 0 ? item.vendor.travel_fee / 100 : 0;
+    const total = packagePrice + premium + travel;
+    console.log(`Cart item ${item.id}: Package=${packagePrice}, Premium=${premium}, Travel=${travel}, Total=${total}`);
+    return total;
   };
 
   const getServiceIcon = (serviceType: string) => {
@@ -90,6 +100,9 @@ export const Cart: React.FC = () => {
   const totalServiceFee = state.items.length > 0 ? 50 : 0; // $50 per booking
   const grandTotal = state.totalAmount + totalServiceFee * 100; // Convert to cents
 
+  // Log totalAmount for debugging
+  console.log(`Rendering Cart with totalAmount: ${state.totalAmount} cents (${formatPrice(state.totalAmount)})`);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -131,175 +144,196 @@ export const Cart: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-6">
-              {state.items.map((item) => (
-                <Card key={item.id} className="p-6">
-                  <div className="flex items-start space-x-6">
-                    {/* Service Icon */}
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
-                      {getServiceIcon(item.package.service_type)}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      {/* Package Info */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                            {item.package.name}
-                          </h3>
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                              {item.package.service_type}
-                            </span>
-                            {item.package.hour_amount && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {item.package.hour_amount}h
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-600 text-sm line-clamp-2 mb-3">
-                            {item.package.description}
-                          </p>
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="text-2xl font-bold text-gray-900">
-                            {formatPrice(item.package.price)}
-                          </div>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="text-red-500 hover:text-red-700 transition-colors mt-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+              {state.items.map((item) => {
+                const premiumPrice = item.vendor ? formatPrice(item.vendor.premium_amount) : null;
+                const travelFee = item.vendor ? formatPrice(item.vendor.travel_fee) : null;
+                const itemTotal = calculateItemTotal(item);
+
+                return (
+                  <Card key={item.id} className="p-6">
+                    <div className="flex items-start space-x-6">
+                      {/* Service Icon */}
+                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                        {getServiceIcon(item.package.service_type)}
                       </div>
-
-                      {/* Event Details */}
-                      {(item.eventDate || item.venue) && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                          <h4 className="font-medium text-green-900 mb-2">Event Details</h4>
-                          <div className="space-y-1 text-sm">
-                            {item.eventDate && (
-                              <div className="flex items-center text-green-700">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                <span>
-                                  {(() => {
-                                    const [year, month, day] = item.eventDate.split('-').map(Number);
-                                    return new Date(year, month - 1, day).toLocaleDateString();
-                                  })()}
-                                  {item.eventTime && (
-                                    <>
-                                      {' at '}
-                                      {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: true
-                                      })}
-                                      {item.endTime && (
-                                        <>
-                                          {' - '}
-                                          {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
-                                            hour: 'numeric',
-                                            minute: '2-digit',
-                                            hour12: true
-                                          })}
-                                        </>
-                                      )}
-                                    </>
-                                  )}
+                      
+                      <div className="flex-1 min-w-0">
+                        {/* Package Info */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              {item.package.name}
+                            </h3>
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
+                                {item.package.service_type}
+                              </span>
+                              {item.package.hour_amount && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {item.package.hour_amount}h
                                 </span>
-                              </div>
-                            )}
-                            {item.venue && (
-                              <div className="flex items-center text-green-700">
-                                <MapPin className="w-4 h-4 mr-2" />
-                                <span>{item.venue.name}</span>
-                                {item.venue.city && item.venue.state && (
-                                  <span className="ml-1">({item.venue.city}, {item.venue.state})</span>
-                                )}
-                              </div>
-                            )}
+                              )}
+                            </div>
+                            <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                              {item.package.description}
+                            </p>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Vendor Selection */}
-                      {item.vendor ? (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <User className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-blue-900">Selected Vendor</h4>
-                                <p className="text-blue-700 text-sm">{item.vendor.name}</p>
-                                {item.vendor.rating && (
-                                  <div className="flex items-center text-blue-700 text-sm">
-                                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                    <span>{item.vendor.rating} rating</span>
+                          <div className="text-right ml-4">
+                            <div className="text-lg font-bold text-gray-900">
+                              Total: {formatPrice(itemTotal * 100)}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Package: {formatPrice(item.package.price)}
+                            </div>
+                            {item.vendor && (
+                              <>
+                                {premiumPrice && item.vendor.premium_amount !== null && item.vendor.premium_amount > 0 && (
+                                  <div className="text-sm text-gray-500">
+                                    Premium: {premiumPrice}
                                   </div>
                                 )}
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleChooseVendor(item)}
-                            >
-                              Change
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="font-medium text-amber-900">Vendor Selection Required</h4>
-                              <p className="text-amber-700 text-sm">Choose your preferred vendor for this service</p>
-                            </div>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleChooseVendor(item)}
-                            >
-                              Choose Vendor
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Package Features */}
-                      {item.package.features && item.package.features.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="font-medium text-gray-900 mb-2">What's Included</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {item.package.features.slice(0, 4).map((feature, index) => (
-                              <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                <Check className="w-3 h-3 mr-1" />
-                                {feature}
-                              </span>
-                            ))}
-                            {item.package.features.length > 4 && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                +{item.package.features.length - 4} more
-                              </span>
+                                <div className="text-sm text-gray-500">
+                                  Travel: {travelFee || 'Local ($0.00)'}
+                                </div>
+                              </>
                             )}
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="text-red-500 hover:text-red-700 transition-colors mt-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-                      )}
 
-                      {/* Notes */}
-                      {item.notes && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <h5 className="font-medium text-gray-900 text-sm mb-1">Notes</h5>
-                          <p className="text-gray-700 text-sm">{item.notes}</p>
-                        </div>
-                      )}
+                        {/* Event Details */}
+                        {(item.eventDate || item.venue) && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <h4 className="font-medium text-green-900 mb-2">Event Details</h4>
+                            <div className="space-y-1 text-sm">
+                              {item.eventDate && (
+                                <div className="flex items-center text-green-700">
+                                  <Calendar className="w-4 h-4 mr-2" />
+                                  <span>
+                                    {(() => {
+                                      const [year, month, day] = item.eventDate.split('-').map(Number);
+                                      return new Date(year, month - 1, day).toLocaleDateString();
+                                    })()}
+                                    {item.eventTime && (
+                                      <>
+                                        {' at '}
+                                        {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                        {item.endTime && (
+                                          <>
+                                            {' - '}
+                                            {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
+                                              hour: 'numeric',
+                                              minute: '2-digit',
+                                              hour12: true
+                                            })}
+                                          </>
+                                        )}
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              {item.venue && (
+                                <div className="flex items-center text-green-700">
+                                  <MapPin className="w-4 h-4 mr-2" />
+                                  <span>{item.venue.name}</span>
+                                  {item.venue.city && item.venue.state && (
+                                    <span className="ml-1">({item.venue.city}, {item.venue.state})</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Vendor Selection */}
+                        {item.vendor ? (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <User className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-blue-900">Selected Vendor</h4>
+                                  <p className="text-blue-700 text-sm">{item.vendor.name}</p>
+                                  {item.vendor.rating && (
+                                    <div className="flex items-center text-blue-700 text-sm">
+                                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
+                                      <span>{item.vendor.rating} rating</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleChooseVendor(item)}
+                              >
+                                Change
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium text-amber-900">Vendor Selection Required</h4>
+                                <p className="text-amber-700 text-sm">Choose your preferred vendor for this service</p>
+                              </div>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleChooseVendor(item)}
+                              >
+                                Choose Vendor
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Package Features */}
+                        {item.package.features && item.package.features.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="font-medium text-gray-900 mb-2">What's Included</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {item.package.features.slice(0, 4).map((feature, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  {feature}
+                                </span>
+                              ))}
+                              {item.package.features.length > 4 && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
+                                  +{item.package.features.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Notes */}
+                        {item.notes && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <h5 className="font-medium text-gray-900 text-sm mb-1">Notes</h5>
+                            <p className="text-gray-700 text-sm">{item.notes}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
 
               {/* Clear Cart */}
               <div className="text-center">
@@ -319,21 +353,37 @@ export const Cart: React.FC = () => {
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h3>
                 
                 <div className="space-y-4 mb-6">
-                  {state.items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 text-sm line-clamp-2">
-                          {item.package.name}
-                        </h4>
-                        <p className="text-xs text-gray-600">{item.package.service_type}</p>
-                      </div>
-                      <div className="text-right ml-3">
-                        <div className="font-medium text-gray-900">
-                          {formatPrice(item.package.price)}
+                  {state.items.map((item) => {
+                    const itemTotal = calculateItemTotal(item);
+                    return (
+                      <div key={item.id} className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 text-sm line-clamp-2">
+                            {item.package.name}
+                          </h4>
+                          <p className="text-xs text-gray-600">{item.package.service_type}</p>
+                          {item.vendor && (
+                            <>
+                              <p className="text-xs text-gray-600">Vendor: {item.vendor.name}</p>
+                              {item.vendor.premium_amount && item.vendor.premium_amount > 0 && (
+                                <p className="text-xs text-gray-600">
+                                  Premium: {formatPrice(item.vendor.premium_amount)}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600">
+                                Travel: {item.vendor.travel_fee && item.vendor.travel_fee > 0 ? formatPrice(item.vendor.travel_fee) : 'Local ($0.00)'}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-right ml-3">
+                          <div className="font-medium text-gray-900">
+                            {formatPrice(itemTotal * 100)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="border-t pt-4 space-y-3">

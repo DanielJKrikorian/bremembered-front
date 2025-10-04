@@ -1,5 +1,6 @@
 export interface ServicePackage {
   id: string;
+  slug: string;
   service_type: string;
   name: string;
   description: string;

@@ -26,13 +26,23 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [validatingDiscount, setValidatingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState<string | null>(null);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (amount: number | null | undefined) => {
+    if (amount === undefined || amount === null || amount === 0) return null;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price / 100);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
+  };
+
+  const calculateItemTotal = (item: any) => {
+    const packagePrice = item.package.price / 100;
+    const premium = item.vendor && item.vendor.premium_amount && item.vendor.premium_amount > 0 ? item.vendor.premium_amount / 100 : 0;
+    const travel = item.vendor && item.vendor.travel_fee && item.vendor.travel_fee > 0 ? item.vendor.travel_fee / 100 : 0;
+    const total = packagePrice + premium + travel;
+    console.log(`OrderSummary item ${item.id}: Package=${packagePrice}, Premium=${premium}, Travel=${travel}, Total=${total}`);
+    return total;
   };
 
   const getServiceIcon = (serviceType: string) => {
@@ -125,34 +135,61 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + totalServiceFee * 100;
 
+  // Calculate aggregate premium and travel fees
+  const totalPremium = cartItems.reduce((sum, item) => {
+    return sum + (item.vendor && item.vendor.premium_amount && item.vendor.premium_amount > 0 ? item.vendor.premium_amount / 100 : 0);
+  }, 0);
+  const totalTravel = cartItems.reduce((sum, item) => {
+    return sum + (item.vendor && item.vendor.travel_fee && item.vendor.travel_fee > 0 ? item.vendor.travel_fee / 100 : 0);
+  }, 0);
+  const totalPackages = cartItems.reduce((sum, item) => sum + (item.package.price / 100), 0);
+
+  // Log totals for debugging
+  console.log(`OrderSummary totals: Packages=${totalPackages}, Premium=${totalPremium}, Travel=${totalTravel}, TotalAmount=${totalAmount / 100}, DiscountedTotal=${discountedTotal / 100}, Deposit=${depositAmount / 100}, ServiceFee=${totalServiceFee}, GrandTotal=${grandTotal / 100}`);
+
   return (
     <Card className="p-6 sticky top-4">
       <h3 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h3>
       {/* Cart Items */}
       <div className="space-y-4 mb-6">
-        {cartItems.map((item: any) => (
-          <div key={item.id} className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">
-              {getServiceIcon(item.package.service_type)}
+        {cartItems.map((item: any) => {
+          const premiumPrice = item.vendor ? formatPrice(item.vendor.premium_amount) : null;
+          const travelFee = item.vendor ? formatPrice(item.vendor.travel_fee) : null;
+          const itemTotal = calculateItemTotal(item);
+
+          return (
+            <div key={item.id} className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">
+                {getServiceIcon(item.package.service_type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-gray-900 line-clamp-2">{item.package.name}</h4>
+                <p className="text-sm text-gray-600">{item.package.service_type}</p>
+                {item.vendor && <p className="text-xs text-green-600">Vendor: {item.vendor.name}</p>}
+                {item.eventDate && (
+                  <p className="text-xs text-gray-500">
+                    {(() => {
+                      const [year, month, day] = item.eventDate.split('-').map(Number);
+                      return new Date(year, month - 1, day).toLocaleDateString();
+                    })()}
+                  </p>
+                )}
+                <div className="text-sm text-gray-500 mt-2">
+                  <div className="font-medium">Total: {formatPrice(itemTotal * 100)}</div>
+                  <div>Package: {formatPrice(item.package.price)}</div>
+                  {item.vendor && (
+                    <>
+                      {premiumPrice && item.vendor.premium_amount !== null && item.vendor.premium_amount > 0 && (
+                        <div>Premium: {premiumPrice}</div>
+                      )}
+                      <div>Travel: {travelFee || 'Local ($0.00)'}</div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-gray-900 line-clamp-2">{item.package.name}</h4>
-              <p className="text-sm text-gray-600">{item.package.service_type}</p>
-              {item.vendor && <p className="text-xs text-green-600">Vendor: {item.vendor.name}</p>}
-              {item.eventDate && (
-                <p className="text-xs text-gray-500">
-                  {(() => {
-                    const [year, month, day] = item.eventDate.split('-').map(Number);
-                    return new Date(year, month - 1, day).toLocaleDateString();
-                  })()}
-                </p>
-              )}
-            </div>
-            <div className="text-right">
-              <div className="font-medium text-gray-900">{formatPrice(item.package.price)}</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {/* Discount Code Section */}
       <div className="border-t pt-4 mb-4">
@@ -200,8 +237,24 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* Price Breakdown */}
       <div className="border-t pt-4 space-y-3">
         <div className="flex justify-between">
-          <span className="text-gray-600">Package Total</span>
-          <span className="font-medium">{formatPrice(totalAmount)}</span>
+          <span className="text-gray-600">Packages</span>
+          <span className="font-medium">{formatPrice(totalPackages * 100)}</span>
+        </div>
+        {totalPremium > 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Premium Fees</span>
+            <span className="font-medium">{formatPrice(totalPremium * 100)}</span>
+          </div>
+        )}
+        {totalTravel > 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Travel Fees</span>
+            <span className="font-medium">{formatPrice(totalTravel * 100)}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-medium">
+          <span className="text-gray-600">Subtotal</span>
+          <span>{formatPrice(totalAmount)}</span>
         </div>
         {appliedDiscount > 0 && (
           <div className="flex justify-between text-green-600">

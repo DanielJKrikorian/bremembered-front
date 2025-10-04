@@ -416,7 +416,7 @@ export const CustomPackageModal: React.FC<CustomPackageModalProps> = ({
 
   const handleBookPackage = (pkg: ServicePackage) => {
     onClose();
-    navigate(`/package/${pkg.id}`);
+    navigate(`/package/${pkg.slug}`);
   };
 
   const handleBrowseAll = () => {

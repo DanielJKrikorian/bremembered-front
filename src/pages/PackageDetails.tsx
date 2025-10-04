@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Star, MapPin, Clock, Users, Calendar, Check, Heart, Share2, MessageCircle, Shield, Award, Camera, ArrowLeft, Plus, ChevronRight, Play, Download, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Star, MapPin, Camera, Video, Music, Users, Calendar, Check, Heart, Share2, MessageCircle, Shield, Award, ChevronRight, Play, DollarSign, Clock } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -7,33 +7,205 @@ import { useServicePackages, useVendorsByPackage } from '../hooks/useSupabase';
 import { useCart } from '../context/CartContext';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+
+interface Vendor {
+  id: string;
+  slug: string;
+  name: string;
+  profile?: string;
+  rating?: number;
+  profile_photo?: string;
+  years_experience: number;
+  specialties?: string[];
+  premium_amount?: number | null;
+  travel_fee?: number | null;
+}
 
 export const PackageDetails: React.FC = () => {
-  const { id } = useParams();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const { addItem, openCart, state: cartState } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorited } = useWeddingBoard();
   const { isAuthenticated } = useAuth();
-  
-  // Scroll to top when component mounts or id changes
-  React.useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [id]);
-
-  // Get the specific package
   const { packages, loading: packageLoading } = useServicePackages();
-  const packageData = packages.find(p => p.id === id);
-  
-  // Get vendors who offer this package
-  const { vendors, loading: vendorsLoading } = useVendorsByPackage(id || '');
+  const packageData = packages.find(p => p.slug === slug);
+  const { vendors: rawVendors, loading: vendorsLoading } = useVendorsByPackage(packageData?.id || '', selectedRegion);
+  const [regions, setRegions] = useState<string[]>([]);
+  const [vendorPremiums, setVendorPremiums] = useState<Record<string, number | null>>({});
+  const [vendorTravelFees, setVendorTravelFees] = useState<Record<string, number | null>>({});
 
   const isPackageFavorited = packageData ? isFavorited(packageData.id) : false;
 
+  // Remove duplicate vendors and merge with premium amounts and travel fees
+  const vendors = React.useMemo(() => {
+    const seen = new Set<string>();
+    return rawVendors
+      .filter(vendor => {
+        if (!vendor.id || seen.has(vendor.id)) return false;
+        seen.add(vendor.id);
+        return true;
+      })
+      .map(vendor => ({
+        ...vendor,
+        premium_amount: vendorPremiums[vendor.id] ?? null,
+        travel_fee: vendorTravelFees[vendor.id] ?? null
+      }));
+  }, [rawVendors, vendorPremiums, vendorTravelFees]);
+
+  // Fetch unique regions from vendor_service_areas
+  useEffect(() => {
+    const fetchRegions = async () => {
+      if (!packageData || !supabase) return;
+
+      try {
+        const { data: packageVendors, error: packageVendorsError } = await supabase
+          .from('vendor_service_packages')
+          .select('vendor_id')
+          .eq('service_package_id', packageData.id);
+
+        if (packageVendorsError) {
+          console.error('Error fetching package vendors for regions:', packageVendorsError);
+          throw packageVendorsError;
+        }
+        console.log('Package vendors for regions:', packageVendors);
+
+        const vendorIds = packageVendors?.map(pv => pv.vendor_id) || [];
+        if (vendorIds.length === 0) {
+          console.warn('No vendors found for package_id:', packageData.id);
+          return;
+        }
+
+        const { data: regionsData, error: regionsError } = await supabase
+          .from('vendor_service_areas')
+          .select('region')
+          .in('vendor_id', vendorIds)
+          .order('region');
+
+        if (regionsError) {
+          console.error('Error fetching regions:', regionsError);
+          throw regionsError;
+        }
+        console.log('Fetched regions:', regionsData);
+
+        const uniqueRegions = [...new Set(regionsData?.map(r => r.region) || [])];
+        setRegions(uniqueRegions);
+        if (uniqueRegions.length > 0 && !selectedRegion) {
+          setSelectedRegion(uniqueRegions[0]);
+        }
+      } catch (err) {
+        console.error('Error fetching regions:', err);
+      }
+    };
+
+    fetchRegions();
+  }, [packageData, selectedRegion]);
+
+  // Fetch premium amounts and travel fees directly
+  useEffect(() => {
+    const fetchVendorData = async () => {
+      if (!supabase || !isSupabaseConfigured() || !rawVendors.length || !selectedRegion) {
+        console.log('Supabase not configured, no vendors, or no region selected, using mock data');
+        const mockPremiums: Record<string, number | null> = {
+          '6515f34d-661f-44df-b407-5c5e9f7c17dd': 50000,
+          'fedf2eb8-5627-4958-a5d0-f1d338512b5e': 300000,
+          'e0b8a733-d75f-433b-8659-9e67d2043a2f': 100000,
+          '981f9704-5134-41fc-99f8-656fee171c47': 10000
+        };
+        const mockTravelFees: Record<string, number | null> = {
+          '6515f34d-661f-44df-b407-5c5e9f7c17dd': selectedRegion === 'Newport (RI)' ? 15000 : null,
+          'fedf2eb8-5627-4958-a5d0-f1d338512b5e': null,
+          'e0b8a733-d75f-433b-8659-9e67d2043a2f': null,
+          '981f9704-5134-41fc-99f8-656fee171c47': null
+        };
+        rawVendors.forEach(vendor => {
+          if (!mockPremiums[vendor.id]) {
+            mockPremiums[vendor.id] = null;
+          }
+          if (!mockTravelFees[vendor.id]) {
+            mockTravelFees[vendor.id] = null;
+          }
+        });
+        console.log('Mock vendor premiums:', mockPremiums);
+        console.log('Mock vendor travel fees:', mockTravelFees);
+        setVendorPremiums(mockPremiums);
+        setVendorTravelFees(mockTravelFees);
+        return;
+      }
+
+      try {
+        const vendorIds = rawVendors
+          .map(v => v.id)
+          .filter(id => id && typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i));
+        console.log('Fetching data for vendor IDs:', vendorIds, 'Region:', selectedRegion);
+        if (!vendorIds.length) {
+          console.warn('No valid vendor IDs for data query');
+          setVendorPremiums({});
+          setVendorTravelFees({});
+          return;
+        }
+
+        // Fetch premiums
+        const { data: premiumData, error: premiumError } = await supabase
+          .from('vendor_premiums')
+          .select('vendor_id, amount')
+          .in('vendor_id', vendorIds);
+
+        if (premiumError) {
+          console.error('Error fetching vendor_premiums:', premiumError);
+          throw premiumError;
+        }
+        console.log('Fetched vendor_premiums:', premiumData);
+        const premiums: Record<string, number | null> = {};
+        vendorIds.forEach(id => {
+          const premium = premiumData?.find(p => p.vendor_id === id);
+          premiums[id] = premium ? premium.amount : null;
+        });
+        console.log('Processed vendor premiums:', premiums);
+        setVendorPremiums(premiums);
+
+        // Fetch travel fees
+        const { data: travelData, error: travelError } = await supabase
+          .from('vendor_service_areas')
+          .select('vendor_id, travel_fee')
+          .in('vendor_id', vendorIds)
+          .eq('region', selectedRegion);
+
+        if (travelError) {
+          console.error('Error fetching vendor_service_areas:', travelError);
+          throw travelError;
+        }
+        console.log('Fetched vendor_service_areas:', travelData);
+        const travelFees: Record<string, number | null> = {};
+        vendorIds.forEach(id => {
+          const travel = travelData?.find(t => t.vendor_id === id);
+          travelFees[id] = travel ? travel.travel_fee : null;
+        });
+        console.log('Processed vendor travel fees:', travelFees);
+        setVendorTravelFees(travelFees);
+      } catch (error) {
+        console.error('Error fetching vendor data:', error);
+        setVendorPremiums({});
+        setVendorTravelFees({});
+      }
+    };
+
+    if (rawVendors.length > 0 && selectedRegion) {
+      fetchVendorData();
+    }
+  }, [JSON.stringify(rawVendors.map(v => v.id)), selectedRegion]);
+
+  // Scroll to top when component mounts or slug changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [slug]);
+
   const handleToggleFavorite = async () => {
     if (!packageData) return;
-    
+
     if (!isAuthenticated) {
       alert('Please sign in to save favorites');
       return;
@@ -68,25 +240,25 @@ export const PackageDetails: React.FC = () => {
 
   const getServicePhotos = (serviceType: string) => {
     switch (serviceType) {
-      case 'Photography': 
+      case 'Photography':
         return [
           'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
         ];
-      case 'Videography': 
+      case 'Videography':
         return [
           'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
         ];
-      case 'DJ Services': 
+      case 'DJ Services':
         return [
           'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
         ];
-      default: 
+      default:
         return [
           'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
           'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
@@ -95,46 +267,70 @@ export const PackageDetails: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (amount: number) => {
+    if (amount === undefined || amount === null || amount === 0) return null;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount / 100);
+  };
+
+  const getTotalPrice = (vendor: Vendor) => {
+    const basePrice = packageData?.price || 0;
+    const premium = vendor.premium_amount && vendor.premium_amount > 0 ? vendor.premium_amount : 0;
+    const travel = vendor.travel_fee && vendor.travel_fee > 0 ? vendor.travel_fee : 0;
+    return basePrice + premium + travel;
   };
 
   const getPackageCoverage = (coverage: Record<string, any>) => {
     if (!coverage || typeof coverage !== 'object') return [];
-    
+
     const events = [];
     if (coverage.events && Array.isArray(coverage.events)) {
       events.push(...coverage.events);
     }
-    
+
     Object.keys(coverage).forEach(key => {
       if (key !== 'events' && coverage[key] === true) {
         events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
       }
     });
-    
+
     return events;
   };
 
   const handleBookPackage = () => {
     if (packageData) {
-      // Add to cart instead of going directly to checkout
+      if (!selectedRegion) {
+        alert('Please select a region to book this package');
+        return;
+      }
       addItem({
-        package: packageData
+        package: {
+          ...packageData,
+          region: selectedRegion
+        }
       });
       openCart();
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (vendor: Vendor) => {
     if (packageData) {
+      if (!selectedRegion) {
+        alert('Please select a region to book this package');
+        return;
+      }
       addItem({
-        package: packageData
+        package: {
+          ...packageData,
+          premium_amount: vendor.premium_amount,
+          travel_fee: vendor.travel_fee
+        },
+        vendor,
+        region: selectedRegion
       });
       openCart();
     }
@@ -382,7 +578,20 @@ export const PackageDetails: React.FC = () => {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <h3 className="text-2xl font-semibold text-gray-900">Available Vendors</h3>
-                      <p className="text-gray-600">{vendors.length} vendor{vendors.length !== 1 ? 's' : ''} offer this package</p>
+                      <div className="flex items-center space-x-2">
+                        <label htmlFor="region-select" className="text-gray-600">Select Region:</label>
+                        <select
+                          id="region-select"
+                          value={selectedRegion || ''}
+                          onChange={(e) => setSelectedRegion(e.target.value || null)}
+                          className="border border-gray-300 rounded-md p-1 text-sm"
+                        >
+                          <option value="">Select a region</option>
+                          {regions.map((region, index) => (
+                            <option key={index} value={region}>{region}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     {vendorsLoading ? (
@@ -398,70 +607,106 @@ export const PackageDetails: React.FC = () => {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {vendors.filter((vendor, index, self) => 
-                          index === self.findIndex(v => v.id === vendor.id)
-                        ).map((vendor) => (
-                          <Card key={vendor.id} className="p-6 hover:shadow-lg transition-shadow">
-                            <div className="flex items-start space-x-4 mb-4">
-                              {vendor.profile_photo ? (
-                                <img
-                                  src={vendor.profile_photo}
-                                  alt={vendor.name}
-                                  className="w-16 h-16 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <Users className="w-8 h-8 text-gray-400" />
+                        {vendors.map((vendor) => {
+                          const premiumPrice = formatPrice(vendor.premium_amount);
+                          const travelFee = formatPrice(vendor.travel_fee);
+                          console.log(`Rendering vendor: ${vendor.name}, ID: ${vendor.id}, Premium: ${vendor.premium_amount}, Formatted: ${premiumPrice || 'null'}, Travel Fee: ${vendor.travel_fee}, Region: ${selectedRegion}`);
+                          return (
+                            <Card key={vendor.id} className="p-6 hover:shadow-lg transition-shadow">
+                              <div className="flex items-start space-x-4 mb-4">
+                                {vendor.profile_photo ? (
+                                  <img
+                                    src={vendor.profile_photo}
+                                    alt={vendor.name}
+                                    className="w-16 h-16 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <Users className="w-8 h-8 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <h4 className="text-lg font-semibold text-gray-900">{vendor.name}</h4>
+                                    {premiumPrice && vendor.premium_amount && vendor.premium_amount > 0 && (
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <DollarSign className="w-3 h-3 mr-1" />
+                                        Premium: {premiumPrice}
+                                      </span>
+                                    )}
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      travelFee ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      <MapPin className="w-3 h-3 mr-1" />
+                                      {travelFee ? `Travel: ${travelFee}` : 'Local'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center text-sm text-gray-600 mb-2">
+                                    {vendor.rating && (
+                                      <>
+                                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                                        <span className="mr-2">{vendor.rating.toFixed(1)}</span>
+                                      </>
+                                    )}
+                                    <span>{vendor.years_experience} years experience</span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 line-clamp-2">
+                                    {vendor.profile || `Professional ${packageData.service_type.toLowerCase()} specialist`}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {vendor.specialties && vendor.specialties.length > 0 && (
+                                <div className="mb-4">
+                                  <div className="flex flex-wrap gap-1">
+                                    {vendor.specialties.slice(0, 3).map((specialty, index) => (
+                                      <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                                        {specialty}
+                                      </span>
+                                    ))}
+                                    {vendor.specialties.length > 3 && (
+                                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                                        +{vendor.specialties.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
-                              <div className="flex-1">
-                                <h4 className="text-lg font-semibold text-gray-900">{vendor.name}</h4>
-                                <div className="flex items-center text-sm text-gray-600 mb-2">
-                                  {vendor.rating && (
-                                    <>
-                                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                                      <span className="mr-2">{vendor.rating}</span>
-                                    </>
-                                  )}
-                                  <span>{vendor.years_experience} years experience</span>
-                                </div>
-                                <p className="text-sm text-gray-600 line-clamp-2">
-                                  {vendor.profile || `Professional ${packageData.service_type.toLowerCase()} specialist`}
-                                </p>
-                              </div>
-                            </div>
 
-                            {vendor.specialties && vendor.specialties.length > 0 && (
-                              <div className="mb-4">
-                                <div className="flex flex-wrap gap-1">
-                                  {vendor.specialties.slice(0, 3).map((specialty, index) => (
-                                    <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                                      {specialty}
-                                    </span>
-                                  ))}
-                                  {vendor.specialties.length > 3 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                      +{vendor.specialties.length - 3} more
-                                    </span>
-                                  )}
+                              <div className="flex items-center justify-between">
+                                <div className="text-lg font-bold text-gray-900">
+                                  {formatPrice(getTotalPrice(vendor))}
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    variant="primary" 
+                                    size="sm"
+                                    onClick={() => {
+                                      if (!vendor.slug) {
+                                        console.error('No slug available for vendor:', vendor.name);
+                                        alert('Unable to view vendor profile: Missing slug');
+                                        return;
+                                      }
+                                      navigate(`/vendor/${vendor.slug}`, {
+                                        state: { vendor, package: packageData }
+                                      });
+                                    }}
+                                  >
+                                    View Profile
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAddToCart(vendor)}
+                                    disabled={!selectedRegion}
+                                  >
+                                    Book
+                                  </Button>
                                 </div>
                               </div>
-                            )}
-
-                            <div className="flex space-x-2">
-                              <Button 
-                                variant="primary" 
-                                size="sm" 
-                                className="flex-1"
-                                onClick={() => navigate(`/vendor/${vendor.id}`, {
-                                  state: { vendor, package: packageData }
-                                })}
-                              >
-                                View Profile
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
+                            </Card>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -496,6 +741,22 @@ export const PackageDetails: React.FC = () => {
                   <span>Total</span>
                   <span>{formatPrice(packageData.price + 5000)}</span>
                 </div>
+                <div className="mt-4">
+                  <label htmlFor="quick-book-region" className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Region
+                  </label>
+                  <select
+                    id="quick-book-region"
+                    value={selectedRegion || ''}
+                    onChange={(e) => setSelectedRegion(e.target.value || null)}
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm"
+                  >
+                    <option value="">Select a region</option>
+                    {regions.map((region, index) => (
+                      <option key={index} value={region}>{region}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -503,7 +764,8 @@ export const PackageDetails: React.FC = () => {
                   variant="primary"
                   size="lg"
                   className="w-full"
-                  onClick={handleAddToCart}
+                  onClick={handleBookPackage}
+                  disabled={!selectedRegion}
                 >
                   Add to Cart
                 </Button>

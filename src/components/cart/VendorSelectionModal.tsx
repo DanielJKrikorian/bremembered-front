@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, MapPin, Search, Plus, Check, ArrowRight, ArrowLeft, User, Star, Clock, Shield, Play } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Calendar, MapPin, Search, Plus, Check, ArrowRight, ArrowLeft, User, Star, Clock, Shield, Play, DollarSign } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -49,6 +49,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
     phone: '',
     email: ''
   });
+  const [vendorPremiums, setVendorPremiums] = useState<Record<string, number | null>>({});
 
   const { venues, loading: venuesLoading } = useVenues(venueSearch);
   const { serviceAreas, loading: serviceAreasLoading } = useServiceAreas(newVenue.state);
@@ -61,13 +62,143 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
     region: shouldFetchVendors ? selectedVenue?.region : undefined
   });
 
-  // Remove duplicate vendors
-  const vendors = rawVendors.filter((vendor, index, self) => 
-    index === self.findIndex(v => v.id === vendor.id)
-  );
+  // Remove duplicate vendors and merge with premium amounts
+  const vendors = useMemo(() => {
+    const seen = new Set<string>();
+    return rawVendors
+      .filter(vendor => {
+        if (!vendor.id || seen.has(vendor.id)) return false;
+        seen.add(vendor.id);
+        return true;
+      })
+      .map(vendor => ({
+        ...vendor,
+        premium_amount: vendorPremiums[vendor.id] ?? null
+      }));
+  }, [rawVendors, vendorPremiums]);
 
   // Get reviews for the vendor being viewed
   const { reviews: vendorReviews, loading: reviewsLoading } = useVendorReviews(viewingVendorProfile?.id || '');
+
+  // Calculate average rating from vendor reviews
+  const averageRating = useMemo(() => {
+    if (!vendorReviews || vendorReviews.length === 0) return null;
+    const validRatings = vendorReviews
+      .map(review => review.overall_rating)
+      .filter((rating): rating is number => typeof rating === 'number' && !isNaN(rating));
+    if (validRatings.length === 0) return null;
+    const average = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
+    return Number(average.toFixed(1));
+  }, [vendorReviews]);
+
+  // Fetch premium amounts directly from vendor_premiums
+  useEffect(() => {
+    const fetchVendorPremiums = async () => {
+      if (!supabase || !isSupabaseConfigured() || !rawVendors.length) {
+        console.log('Supabase not configured or no vendors, using mock premiums');
+        const mockPremiums: Record<string, number | null> = {
+          '6515f34d-661f-44df-b407-5c5e9f7c17dd': 50000,
+          'fedf2eb8-5627-4958-a5d0-f1d338512b5e': 300000,
+          'e0b8a733-d75f-433b-8659-9e67d2043a2f': 100000,
+          '981f9704-5134-41fc-99f8-656fee171c47': 10000
+        };
+        rawVendors.forEach(vendor => {
+          if (!mockPremiums[vendor.id]) {
+            mockPremiums[vendor.id] = null;
+          }
+        });
+        console.log('Mock vendor premiums:', mockPremiums);
+        setVendorPremiums(mockPremiums);
+        return;
+      }
+
+      try {
+        const vendorIds = rawVendors
+          .map(v => v.id)
+          .filter(id => id && typeof id === 'string' && id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i));
+        console.log('Fetching premiums for vendor IDs:', vendorIds);
+        if (!vendorIds.length) {
+          console.warn('No valid vendor IDs for premium query');
+          setVendorPremiums({});
+          return;
+        }
+
+        const { data: premiumData, error } = await supabase
+          .from('vendor_premiums')
+          .select('vendor_id, amount')
+          .in('vendor_id', vendorIds);
+
+        if (error) {
+          console.error('Error fetching vendor_premiums:', error);
+          throw error;
+        }
+
+        console.log('Fetched vendor_premiums:', premiumData);
+        const premiums: Record<string, number | null> = {};
+        vendorIds.forEach(id => {
+          const premium = premiumData?.find(p => p.vendor_id === id);
+          premiums[id] = premium ? premium.amount : null;
+        });
+        console.log('Processed vendor premiums:', premiums);
+        setVendorPremiums(premiums);
+      } catch (error) {
+        console.error('Error fetching premiums:', error);
+        setAvailabilityError('Failed to load vendor premium information. Please check your Supabase configuration.');
+        setVendorPremiums({});
+      }
+    };
+
+    if (rawVendors.length > 0) {
+      fetchVendorPremiums();
+    }
+  }, [JSON.stringify(rawVendors.map(v => v.id))]);
+
+  // Format price (cents to USD)
+  const formatPrice = (amount?: number | null) => {
+    if (amount === undefined || amount === null || amount === 0) return null;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount / 100);
+  };
+
+  // Calculate total price for a vendor
+  const calculateTotalPrice = (vendor: Vendor | null) => {
+    if (!vendor) return cartItem.package.price / 100;
+    const packagePrice = cartItem.package.price / 100;
+    const premium = vendor.premium_amount && vendor.premium_amount > 0 ? vendor.premium_amount / 100 : 0;
+    const travel = vendor.travel_fee && vendor.travel_fee > 0 ? vendor.travel_fee / 100 : 0;
+    return packagePrice + premium + travel;
+  };
+
+  // Debug vendor data in Step 3
+  useEffect(() => {
+    if (currentStep === 3 && vendors.length > 0) {
+      console.log('Vendors in Step 3:', vendors.map(v => ({
+        name: v.name,
+        id: v.id,
+        premium_amount: v.premium_amount,
+        travel_fee: v.travel_fee,
+        total_price: calculateTotalPrice(v)
+      })));
+    }
+  }, [vendors, currentStep, cartItem.package.price]);
+
+  // Debug vendor profile in Step 4
+  useEffect(() => {
+    if (currentStep === 4 && viewingVendorProfile) {
+      console.log('Viewing Vendor Profile:', {
+        name: viewingVendorProfile.name,
+        id: viewingVendorProfile.id,
+        premium_amount: viewingVendorProfile.premium_amount,
+        travel_fee: viewingVendorProfile.travel_fee,
+        average_rating: averageRating,
+        total_price: calculateTotalPrice(viewingVendorProfile)
+      });
+    }
+  }, [viewingVendorProfile, currentStep, averageRating]);
 
   // Fetch vendor stats when vendors are loaded
   useEffect(() => {
@@ -295,6 +426,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
       phone: '',
       email: ''
     });
+    setVendorPremiums({});
   };
 
   const canProceedStep = () => {
@@ -692,6 +824,12 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                   <div className="space-y-4 max-w-2xl mx-auto">
                     {vendors.map((vendor) => {
                       const isSelected = selectedVendor?.id === vendor.id;
+                      const premiumPrice = formatPrice(vendor.premium_amount);
+                      const travelFee = formatPrice(vendor.travel_fee);
+                      const totalPrice = calculateTotalPrice(vendor);
+                      
+                      // Debug log for each vendor
+                      console.log(`Rendering vendor: ${vendor.name}, ID: ${vendor.id}, Premium: ${vendor.premium_amount}, Formatted: ${premiumPrice || 'null'}, Travel Fee: ${vendor.travel_fee}, Total: ${totalPrice}`);
                       
                       return (
                         <div
@@ -718,7 +856,21 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                               className="w-16 h-16 rounded-full object-cover"
                             />
                             <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{vendor.name}</h3>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <h3 className="text-lg font-semibold text-gray-900">{vendor.name}</h3>
+                                {premiumPrice && vendor.premium_amount && vendor.premium_amount > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    <DollarSign className="w-3 h-3 mr-1" />
+                                    Premium: {premiumPrice}
+                                  </span>
+                                )}
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  travelFee ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'
+                                }`}>
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  {travelFee ? `Travel: ${travelFee}` : 'Local'}
+                                </span>
+                              </div>
                               <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
                                 {vendor.rating && (
                                   <div className="flex items-center">
@@ -760,7 +912,14 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                                   </div>
                                 </div>
                               )}
-                              
+                              <div className="text-sm text-gray-600 mb-3">
+                                Total Price: {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                }).format(totalPrice)}
+                              </div>
                               {/* Action Buttons */}
                               <div className="flex space-x-2">
                                 <Button
@@ -845,21 +1004,43 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                     className="w-24 h-24 rounded-full object-cover"
                   />
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">{viewingVendorProfile.name}</h3>
+                    <div className="flex items-center space-x-2 mb-3">
+                      <h3 className="text-2xl font-bold text-gray-900">{viewingVendorProfile.name}</h3>
+                      {formatPrice(viewingVendorProfile.premium_amount) && viewingVendorProfile.premium_amount && viewingVendorProfile.premium_amount > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          Premium: {formatPrice(viewingVendorProfile.premium_amount)}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        formatPrice(viewingVendorProfile.travel_fee) ? 'bg-orange-100 text-orange-800' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {formatPrice(viewingVendorProfile.travel_fee) ? `Travel: ${formatPrice(viewingVendorProfile.travel_fee)}` : 'Local'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mb-3">
+                      Total Price: {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }).format(calculateTotalPrice(viewingVendorProfile))}
+                    </div>
                     <div className="flex items-center space-x-4 text-gray-600 mb-4">
-                      {viewingVendorProfile.rating && (
+                      {averageRating !== null && (
                         <div className="flex items-center">
                           <div className="flex items-center mr-2">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star
                                 key={star}
                                 className={`w-5 h-5 ${
-                                  star <= viewingVendorProfile.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                                  star <= averageRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
                                 }`}
                               />
                             ))}
                           </div>
-                          <span className="font-medium text-lg">({viewingVendorProfile.rating})</span>
+                          <span className="font-medium text-lg">({averageRating})</span>
                         </div>
                       )}
                       <span>{viewingVendorProfile.years_experience} years experience</span>
@@ -890,8 +1071,17 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                     <h4 className="font-semibold text-gray-900 mb-3">Service Areas</h4>
                     <div className="flex flex-wrap gap-2">
                       {viewingVendorProfile.service_areas.map((area, index) => (
-                        <span key={index} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm">
+                        <span key={index} className={`px-3 py-1 rounded-full text-sm ${
+                          area === selectedVenue?.region && formatPrice(viewingVendorProfile.travel_fee)
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
                           {area}
+                          {area === selectedVenue?.region && (
+                            <span className="ml-1">
+                              ({formatPrice(viewingVendorProfile.travel_fee) ? formatPrice(viewingVendorProfile.travel_fee) : 'Local'})
+                            </span>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -909,7 +1099,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                       <div className="mb-6">
                         <h5 className="font-medium text-gray-700 mb-3">Recent Photos</h5>
                         <div className="grid grid-cols-3 gap-4">
-                          {viewingVendorProfile.portfolio_photos.slice(0, 6).map((photo, index) => (
+                          {viewingVendorProfile.portfolio_photos.slice(0, 40).map((photo, index) => (
                             <img
                               key={index}
                               src={photo}
@@ -971,7 +1161,7 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-gray-900 mb-1">
-                      {viewingVendorProfile.rating || '4.9'}
+                      {averageRating !== null ? averageRating : 'N/A'}
                     </div>
                     <div className="text-sm text-gray-600">Average Rating</div>
                   </div>
@@ -1088,16 +1278,41 @@ export const VendorSelectionModal: React.FC<VendorSelectionModalProps> = ({
             <div>
               <h4 className="font-semibold text-gray-900">{cartItem.package.name}</h4>
               <p className="text-sm text-gray-600">{cartItem.package.service_type}</p>
+              {selectedVendor && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Vendor: {selectedVendor.name}
+                </p>
+              )}
             </div>
             <div className="text-right">
               <div className="text-xl font-bold text-gray-900">
-                {new Intl.NumberFormat('en-US', {
+                Total: {new Intl.NumberFormat('en-US', {
                   style: 'currency',
                   currency: 'USD',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }).format(calculateTotalPrice(selectedVendor))}
+              </div>
+              <div className="text-sm text-gray-500">
+                Package: {new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
                 }).format(cartItem.package.price / 100)}
               </div>
+              {selectedVendor && (
+                <>
+                  {selectedVendor.premium_amount && selectedVendor.premium_amount > 0 && (
+                    <div className="text-sm text-gray-500">
+                      Premium: {formatPrice(selectedVendor.premium_amount)}
+                    </div>
+                  )}
+                  <div className="text-sm text-gray-500">
+                    Travel: {formatPrice(selectedVendor.travel_fee) ? formatPrice(selectedVendor.travel_fee) : 'Local'}
+                  </div>
+                </>
+              )}
               {cartItem.package.hour_amount && (
                 <div className="text-sm text-gray-500">{cartItem.package.hour_amount} hours</div>
               )}

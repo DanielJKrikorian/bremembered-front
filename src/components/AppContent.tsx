@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Outlet, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { StoreCartProvider } from '../context/StoreCartContext';
 import { useCart } from '../context/CartContext';
 import { Header } from './common/Header';
@@ -39,11 +39,78 @@ import { WeddingStore } from '../pages/WeddingStore';
 import { ProductDetail } from '../pages/ProductDetail';
 import { OrderTracking } from '../pages/OrderTracking';
 import { StoreSuccess } from '../pages/StoreSuccess';
-import { LocationServicePage } from "../pages/LocationServicePage"; // ✅ adjust path if it’s in /pages/
+import { LocationServicePage } from '../pages/LocationServicePage';
+import { supabase } from '../lib/supabase';
 
+// New component for redirecting legacy /package/:id URLs
+const PackageRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-// 👇 Import your new wrapper for category pages
-import { CategorySearchWrapper } from '../pages/CategorySearchWrapper';
+  useEffect(() => {
+    const fetchSlug = async () => {
+      if (!id || !supabase) {
+        navigate('/search', { replace: true });
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('service_packages')
+          .select('slug')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        if (data?.slug) {
+          navigate(`/package/${data.slug}`, { replace: true });
+        } else {
+          console.error('No slug found for package_id:', id);
+          navigate('/search', { replace: true });
+        }
+      } catch (err) {
+        console.error('Error fetching slug for redirect:', err);
+        navigate('/search', { replace: true });
+      }
+    };
+    fetchSlug();
+  }, [id, navigate]);
+
+  return null;
+};
+
+// New component for redirecting legacy /vendor/:id URLs
+const VendorRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchSlug = async () => {
+      if (!id || !supabase) {
+        navigate('/search', { replace: true });
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('vendors')
+          .select('slug')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        if (data?.slug) {
+          navigate(`/vendor/${data.slug}`, { replace: true });
+        } else {
+          console.error('No slug found for vendor_id:', id);
+          navigate('/search', { replace: true });
+        }
+      } catch (err) {
+        console.error('Error fetching slug for redirect:', err);
+        navigate('/search', { replace: true });
+      }
+    };
+    fetchSlug();
+  }, [id, navigate]);
+
+  return null;
+};
 
 export const AppContent: React.FC = () => {
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -77,10 +144,7 @@ export const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />
-
-            {/* ✅ New SEO-friendly service category route */}
-            <Route path="/services/:category" element={<CategorySearchWrapper />} />
-
+            {/* <Route path="/services/:category" element={<CategorySearchWrapper />} /> */} {/* Commented out until component is defined */}
             <Route path="/bundle/:id" element={<ServiceBundle />} />
             <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
             <Route path="/checkout" element={<Checkout />} />
@@ -94,8 +158,10 @@ export const AppContent: React.FC = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/advertise-success" element={<AdvertiseSuccess />} />
             <Route path="/inspiration/:slug" element={<BlogPost />} />
-            <Route path="/package/:id" element={<PackageDetails />} />
-            <Route path="/vendor/:id" element={<VendorProfile />} />
+            <Route path="/package/:slug" element={<PackageDetails />} />
+            <Route path="/package/:id" element={<PackageRedirect />} />
+            <Route path="/vendor/:slug" element={<VendorProfile />} />
+            <Route path="/vendor/:id" element={<VendorRedirect />} />
             <Route path="/booking/services" element={<ServiceSelection />} />
             <Route path="/booking/packages" element={<PackageSelection />} />
             <Route path="/booking/congratulations" element={<PackageCongratulations />} />

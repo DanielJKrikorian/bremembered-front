@@ -4,7 +4,6 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { ServicePackage, Vendor, VendorService, Venue, StyleTag, VibeTag, VendorReview, VendorServicePackage, LeadInformation } from '../types/booking';
 
 const transformToLookupKey = (serviceName: string): string => {
-  // Transform service names to simple lowercase lookup keys
   const lookupMap: Record<string, string> = {
     'Photography': 'photography',
     'Videography': 'videography', 
@@ -30,7 +29,6 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
   useEffect(() => {
     const fetchPackages = async () => {
-      // Check if Supabase is configured first
       if (!isSupabaseConfigured() || !supabase) {
         console.warn('Supabase not configured, returning empty packages');
         setPackages([]);
@@ -39,7 +37,6 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
       }
 
       try {
-        // Service type to lookup_key mapping
         const serviceLookupMap: Record<string, string> = {
           'Photography': 'photography',
           'DJ Services': 'dj',
@@ -52,20 +49,18 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         let query = supabase
           .from('service_packages')
-          .select('id, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, primary_image')
-         .eq('status', 'approved')
-         .neq('service_type', 'Editing')
-         .neq('service_type', 'Photo Booth')
-         .not('service_type', 'like', '%,%');
+          .select('id, slug, service_type, name, description, price, features, coverage, hour_amount, event_type, status, lookup_key, primary_image')
+          .eq('status', 'approved')
+          .neq('service_type', 'Editing')
+          .neq('service_type', 'Photo Booth')
+          .not('service_type', 'like', '%,%');
 
-        // Only filter by service type if specified
         if (serviceType) {
           const lookupKey = serviceLookupMap[serviceType];
           if (lookupKey) {
             query = query.eq('lookup_key', lookupKey);
           }
         } else if (filters?.selectedServices && filters.selectedServices.length > 0) {
-          // Handle multiple selected services
           const lookupKeys = filters.selectedServices
             .map(service => serviceLookupMap[service])
             .filter(Boolean);
@@ -96,7 +91,6 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
         }
 
         if (filters?.coverage && filters.coverage.length > 0) {
-          // Filter packages that have any of the selected coverage options in the events array
           const coverageFilters = filters.coverage.map(c => `coverage->events.cs.["${c}"]`).join(',');
           query = query.or(coverageFilters);
         }
@@ -105,7 +99,19 @@ export const useServicePackages = (serviceType?: string, eventType?: string, fil
 
         if (error) throw error;
         
-        setPackages(data || []);
+        const packageData = data?.map(pkg => ({
+          ...pkg,
+          slug: pkg.slug 
+            ? pkg.slug.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/\s+/g, '-') 
+            : `package-${pkg.id}`
+        })) || [];
+        
+        console.log('Processed package data:', packageData);
+        packageData.forEach(pkg => {
+          console.log(`Package: ${pkg.name}, ID: ${pkg.id}, Slug: ${pkg.slug}`);
+        });
+
+        setPackages(packageData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
@@ -127,13 +133,12 @@ export const useRecommendedVendors = (filters: {
   styles?: number[];
   vibes?: number[];
 }) => {
-  const [recommendedVendors, setRecommendedVendors] = useState<any[]>([]);
+  const [recommendedVendors, setRecommendedVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRecommendedVendors = async () => {
-      // Check if Supabase is configured first
       if (!isSupabaseConfigured() || !supabase || !filters.servicePackageId || filters.servicePackageId.trim() === '') {
         if (loading) {
           setRecommendedVendors([]);
@@ -144,15 +149,16 @@ export const useRecommendedVendors = (filters: {
       }
 
       try {
-        // First, get vendors who have this package approved and are available
-        const { data, error } = await supabase
+        // Step 1: Fetch vendor_service_packages with basic vendor info
+        const { data: servicePackageData, error: servicePackageError } = await supabase
           .from('vendor_service_packages')
           .select(`
             vendor_id,
             service_package_id,
-            vendors!inner(
+            vendors (
               id,
               name,
+              slug,
               profile_photo,
               rating,
               years_experience,
@@ -169,21 +175,62 @@ export const useRecommendedVendors = (filters: {
           .eq('service_package_id', filters.servicePackageId)
           .eq('status', 'approved');
 
-        if (error) {
-          console.warn('Supabase query error:', error);
-          if (loading) {
-            setRecommendedVendors([]);
-            setError(null);
-            setLoading(false);
-          }
-          return;
+        if (servicePackageError) {
+          console.warn('Supabase query error for vendor_service_packages:', servicePackageError);
+          throw servicePackageError;
         }
 
-        let vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+        console.log('Raw vendor_service_packages data:', servicePackageData);
 
-        // Check vendor availability for the event date
+        // Step 2: Fetch premium amounts separately for all vendor IDs
+        const vendorIds = servicePackageData?.map(item => item.vendor_id).filter(Boolean) || [];
+        let vendorPremiums: { vendor_id: string; amount: number }[] = [];
+        if (vendorIds.length > 0) {
+          const { data: premiumData, error: premiumError } = await supabase
+            .from('vendor_premiums')
+            .select('vendor_id, amount')
+            .in('vendor_id', vendorIds);
+
+          if (premiumError) {
+            console.error('Supabase query error for vendor_premiums:', premiumError);
+          } else {
+            vendorPremiums = premiumData || [];
+            console.log('Raw vendor_premiums data:', vendorPremiums);
+          }
+        }
+
+        // Map vendor data with premium_amount
+        let vendorData = servicePackageData?.map(item => {
+          const vendor = item.vendors;
+          const premium = vendorPremiums.find(p => p.vendor_id === item.vendor_id);
+          return {
+            ...vendor,
+            slug: vendor.slug || `vendor-${vendor.id}`,
+            premium_amount: premium ? premium.amount : null
+          };
+        }).filter(Boolean) as Vendor[] || [];
+
+        // Step 3: Fetch travel fees for the selected region
+        if (filters.region && vendorData.length > 0) {
+          const { data: serviceAreasData, error: serviceAreaError } = await supabase
+            .from('vendor_service_areas')
+            .select('vendor_id, travel_fee')
+            .in('vendor_id', vendorData.map(v => v.id))
+            .eq('region', filters.region);
+
+          if (serviceAreaError) {
+            console.error('Error fetching vendor_service_areas:', serviceAreaError);
+          } else {
+            console.log('Raw vendor_service_areas data:', serviceAreasData);
+            vendorData = vendorData.map(vendor => ({
+              ...vendor,
+              travel_fee: serviceAreasData?.find(area => area.vendor_id === vendor.id)?.travel_fee ?? null
+            }));
+          }
+        }
+
+        // Step 4: Filter by event date availability
         if (filters.eventDate && vendorData.length > 0) {
-          const eventDate = new Date(filters.eventDate);
           const { data: availabilityData, error: availabilityError } = await supabase
             .from('events')
             .select('vendor_id')
@@ -191,39 +238,15 @@ export const useRecommendedVendors = (filters: {
             .gte('start_time', filters.eventDate.split('T')[0])
             .lt('start_time', new Date(new Date(filters.eventDate).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
-          if (!availabilityError && availabilityData) {
-            // Filter out vendors who are already booked on this date
-            const bookedVendorIds = availabilityData.map(event => event.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              !bookedVendorIds.includes(vendor.id)
-            );
-          }
-        }
-
-        // Filter by region if specified
-        if (filters.region && vendorData.length > 0) {
-          // Get vendors who serve this region from vendor_service_areas table
-          const { data: vendorServiceAreas, error: serviceAreaError } = await supabase
-            .from('vendor_service_areas')
-            .select('vendor_id')
-            .ilike('region', `%${filters.region}%`);
-
-          if (!serviceAreaError && vendorServiceAreas && vendorServiceAreas.length > 0) {
-            const vendorIdsInRegion = vendorServiceAreas.map(vsa => vsa.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsInRegion.includes(vendor.id)
-            );
+          if (availabilityError) {
+            console.error('Error checking availability:', availabilityError);
           } else {
-            // Fallback to service_areas array if vendor_service_areas query fails
-            vendorData = vendorData.filter(vendor => 
-              vendor.service_areas?.some((area: string) => 
-                area.toLowerCase().includes(filters.region!.toLowerCase())
-              )
-            );
+            const bookedVendorIds = availabilityData?.map(event => event.vendor_id) || [];
+            vendorData = vendorData.filter(vendor => !bookedVendorIds.includes(vendor.id));
           }
         }
 
-        // If we have language preferences, filter vendors
+        // Step 5: Filter by languages
         if (filters.languages && filters.languages.length > 0 && vendorData.length > 0) {
           const { data: vendorLanguages, error: languageError } = await supabase
             .from('vendor_languages')
@@ -231,15 +254,15 @@ export const useRecommendedVendors = (filters: {
             .in('vendor_id', vendorData.map(v => v.id))
             .in('language_id', filters.languages);
 
-          if (!languageError && vendorLanguages && vendorLanguages.length > 0) {
+          if (languageError) {
+            console.error('Error fetching vendor_languages:', languageError);
+          } else if (vendorLanguages && vendorLanguages.length > 0) {
             const vendorIdsWithLanguages = vendorLanguages.map(vl => vl.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithLanguages.includes(vendor.id)
-            );
+            vendorData = vendorData.filter(vendor => vendorIdsWithLanguages.includes(vendor.id));
           }
         }
 
-        // If we have style preferences, filter vendors
+        // Step 6: Filter by styles
         if (filters.styles && filters.styles.length > 0 && vendorData.length > 0) {
           const { data: vendorStyles, error: styleError } = await supabase
             .from('vendor_style_tags')
@@ -247,15 +270,15 @@ export const useRecommendedVendors = (filters: {
             .in('vendor_id', vendorData.map(v => v.id))
             .in('style_id', filters.styles);
 
-          if (!styleError && vendorStyles && vendorStyles.length > 0) {
+          if (styleError) {
+            console.error('Error fetching vendor_style_tags:', styleError);
+          } else if (vendorStyles && vendorStyles.length > 0) {
             const vendorIdsWithStyles = vendorStyles.map(vs => vs.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithStyles.includes(vendor.id)
-            );
+            vendorData = vendorData.filter(vendor => vendorIdsWithStyles.includes(vendor.id));
           }
         }
 
-        // If we have vibe preferences, filter vendors
+        // Step 7: Filter by vibes
         if (filters.vibes && filters.vibes.length > 0 && vendorData.length > 0) {
           const { data: vendorVibes, error: vibeError } = await supabase
             .from('vendor_vibe_tags')
@@ -263,19 +286,24 @@ export const useRecommendedVendors = (filters: {
             .in('vendor_id', vendorData.map(v => v.id))
             .in('vibe_id', filters.vibes);
 
-          if (!vibeError && vendorVibes && vendorVibes.length > 0) {
+          if (vibeError) {
+            console.error('Error fetching vendor_vibe_tags:', vibeError);
+          } else if (vendorVibes && vendorVibes.length > 0) {
             const vendorIdsWithVibes = vendorVibes.map(vv => vv.vendor_id);
-            vendorData = vendorData.filter(vendor => 
-              vendorIdsWithVibes.includes(vendor.id)
-            );
+            vendorData = vendorData.filter(vendor => vendorIdsWithVibes.includes(vendor.id));
           }
         }
 
-        // Sort by rating (highest first)
+        // Sort vendors by rating and experience
         vendorData.sort((a, b) => {
           const ratingDiff = (b.rating || 0) - (a.rating || 0);
           if (ratingDiff !== 0) return ratingDiff;
           return (b.years_experience || 0) - (a.years_experience || 0);
+        });
+
+        console.log('Processed vendor data with travel fees:', vendorData);
+        vendorData.forEach(vendor => {
+          console.log(`Vendor: ${vendor.name}, ID: ${vendor.id}, Premium Amount: ${vendor.premium_amount}, Travel Fee: ${vendor.travel_fee}, Region: ${filters.region}`);
         });
 
         setRecommendedVendors(vendorData);
@@ -292,7 +320,14 @@ export const useRecommendedVendors = (filters: {
     };
 
     fetchRecommendedVendors();
-  }, [filters.servicePackageId, filters.eventDate, filters.region, JSON.stringify(filters.languages), JSON.stringify(filters.styles), JSON.stringify(filters.vibes)]);
+  }, [
+    filters.servicePackageId,
+    filters.eventDate,
+    filters.region,
+    JSON.stringify(filters.languages),
+    JSON.stringify(filters.styles),
+    JSON.stringify(filters.vibes)
+  ]);
 
   return { vendors: recommendedVendors, loading, error };
 };
@@ -305,7 +340,30 @@ export const useVendorsByPackage = (servicePackageId: string) => {
   useEffect(() => {
     const fetchVendorsByPackage = async () => {
       if (!isSupabaseConfigured() || !supabase || !servicePackageId) {
-        setVendors([]);
+        const mockVendors: Vendor[] = [
+          {
+            id: 'mock-vendor-1',
+            slug: 'elegant-moments-photography',
+            name: 'Elegant Moments Photography',
+            profile: 'Professional wedding photographer with over 10 years of experience.',
+            rating: 4.9,
+            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            years_experience: 10,
+            phone: '(555) 123-4567',
+            portfolio_photos: [
+              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
+            ],
+            portfolio_videos: [
+              'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+            ],
+            specialties: ['Outdoor Weddings', 'Intimate Ceremonies'],
+            service_areas: ['Greater Boston', 'Cape Cod'],
+            premium_amount: 50000 // $500 in cents
+          }
+        ];
+        console.log('Using mock vendors:', mockVendors);
+        setVendors(mockVendors);
         setLoading(false);
         return;
       }
@@ -316,8 +374,9 @@ export const useVendorsByPackage = (servicePackageId: string) => {
           .select(`
             vendor_id,
             service_package_id,
-            vendors!inner(
+            vendors (
               id,
+              slug,
               name,
               profile_photo,
               rating,
@@ -333,13 +392,47 @@ export const useVendorsByPackage = (servicePackageId: string) => {
           .eq('service_package_id', servicePackageId)
           .eq('status', 'approved');
 
-        if (error) throw error;
-        
-        // Extract vendors from the joined data
-        const vendorData = data?.map(item => item.vendors).filter(Boolean) || [];
+        if (error) {
+          console.error('Supabase query error for vendor_service_packages:', error);
+          throw error;
+        }
+
+        console.log('Raw vendor_service_packages data:', data);
+
+        // Fetch premium amounts separately
+        const vendorIds = data?.map(item => item.vendor_id).filter(Boolean) || [];
+        let vendorPremiums = [];
+        if (vendorIds.length > 0) {
+          const { data: premiumData, error: premiumError } = await supabase
+            .from('vendor_premiums')
+            .select('vendor_id, amount')
+            .in('vendor_id', vendorIds);
+
+          if (premiumError) {
+            console.error('Supabase query error for vendor_premiums:', premiumError);
+          } else {
+            vendorPremiums = premiumData || [];
+            console.log('Raw vendor_premiums data:', premiumData);
+          }
+        }
+
+        // Map vendors and include premium_amount and slug with fallback
+        const vendorData = data?.map(item => ({
+          ...item.vendors,
+          slug: item.vendors.slug || `vendor-${item.vendors.id}`,
+          premium_amount: vendorPremiums.find(p => p.vendor_id === item.vendor_id)?.amount ?? null
+        })).filter(Boolean) || [];
+
+        console.log('Processed vendor data:', vendorData);
+        vendorData.forEach(vendor => {
+          console.log(`Vendor: ${vendor.name}, ID: ${vendor.id}, Slug: ${vendor.slug}, Premium Amount: ${vendor.premium_amount}`);
+        });
+
         setVendors(vendorData);
       } catch (err) {
+        console.error('Error fetching vendors:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
+        setVendors([]);
       } finally {
         setLoading(false);
       }
@@ -352,6 +445,7 @@ export const useVendorsByPackage = (servicePackageId: string) => {
 
   return { vendors, loading, error };
 };
+
 export const useVendors = (serviceType?: string, location?: string) => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -359,13 +453,53 @@ export const useVendors = (serviceType?: string, location?: string) => {
 
   useEffect(() => {
     const fetchVendors = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        const mockVendors: Vendor[] = [
+          {
+            id: 'mock-vendor-1',
+            slug: 'elegant-moments-photography',
+            name: 'Elegant Moments Photography',
+            profile: 'Professional wedding photographer with over 10 years of experience.',
+            rating: 4.9,
+            profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
+            years_experience: 10,
+            phone: '(555) 123-4567',
+            portfolio_photos: [
+              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
+              'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
+            ],
+            portfolio_videos: [
+              'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4'
+            ],
+            specialties: ['Outdoor Weddings', 'Intimate Ceremonies'],
+            service_areas: ['Greater Boston', 'Cape Cod'],
+            premium_amount: 50000 // $500 in cents
+          }
+        ];
+        console.log('Using mock vendors:', mockVendors);
+        setVendors(mockVendors);
+        setLoading(false);
+        return;
+      }
 
       try {
         let query = supabase
           .from('vendors')
           .select(`
-            *,
-            vendor_services!inner(service_type, is_active)
+            id,
+            slug,
+            name,
+            profile_photo,
+            rating,
+            years_experience,
+            phone,
+            portfolio_photos,
+            portfolio_videos,
+            profile,
+            specialties,
+            service_areas,
+            vendor_services!inner(service_type, is_active),
+            vendor_premiums!left(amount)
           `);
 
         if (serviceType) {
@@ -379,10 +513,29 @@ export const useVendors = (serviceType?: string, location?: string) => {
 
         const { data, error } = await query.order('rating', { ascending: false, nullsLast: true });
 
-        if (error) throw error;
-        setVendors(data || []);
+        if (error) {
+          console.error('Supabase query error:', error);
+          throw error;
+        }
+
+        console.log('Raw vendors data:', data);
+
+        const vendorData = data?.map(vendor => ({
+          ...vendor,
+          slug: vendor.slug || `vendor-${vendor.id}`,
+          premium_amount: vendor.vendor_premiums?.amount ?? null
+        })) || [];
+
+        console.log('Processed vendor data:', vendorData);
+        vendorData.forEach(vendor => {
+          console.log(`Vendor: ${vendor.name}, ID: ${vendor.id}, Slug: ${vendor.slug}, Premium Amount: ${vendor.premium_amount}`);
+        });
+
+        setVendors(vendorData);
       } catch (err) {
+        console.error('Error fetching vendors:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
+        setVendors([]);
       } finally {
         setLoading(false);
       }
@@ -401,6 +554,22 @@ export const useVenues = (searchTerm?: string) => {
 
   useEffect(() => {
     const fetchVenues = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        const mockVenues: Venue[] = [
+          {
+            id: 'mock-venue-1',
+            name: 'Sunset Gardens',
+            street_address: '123 Garden Lane',
+            city: 'Los Angeles',
+            state: 'CA',
+            region: 'Southern California',
+            booking_count: 150
+          }
+        ];
+        setVenues(mockVenues);
+        setLoading(false);
+        return;
+      }
 
       try {
         let query = supabase.from('venues').select('*');
@@ -433,6 +602,16 @@ export const useStyleTags = () => {
 
   useEffect(() => {
     const fetchStyleTags = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        const mockStyleTags: StyleTag[] = [
+          { id: 1, label: 'Classic' },
+          { id: 2, label: 'Modern' },
+          { id: 3, label: 'Rustic' }
+        ];
+        setStyleTags(mockStyleTags);
+        setLoading(false);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
@@ -462,6 +641,16 @@ export const useVibeTags = () => {
 
   useEffect(() => {
     const fetchVibeTags = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        const mockVibeTags: VibeTag[] = [
+          { id: 1, label: 'Romantic' },
+          { id: 2, label: 'Fun' },
+          { id: 3, label: 'Elegant' }
+        ];
+        setVibeTags(mockVibeTags);
+        setLoading(false);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
@@ -492,7 +681,6 @@ export const useServiceAreas = (state?: string) => {
   useEffect(() => {
     const fetchServiceAreas = async () => {
       if (!isSupabaseConfigured() || !supabase) {
-        // Mock service areas for demo
         const mockServiceAreas = [
           { id: '1', state: 'MA', region: 'Greater Boston' },
           { id: '2', state: 'MA', region: 'Cape Cod' },
@@ -549,6 +737,16 @@ export const useLanguages = () => {
 
   useEffect(() => {
     const fetchLanguages = async () => {
+      if (!isSupabaseConfigured() || !supabase) {
+        const mockLanguages = [
+          { id: '1', language: 'English' },
+          { id: '2', language: 'Spanish' },
+          { id: '3', language: 'French' }
+        ];
+        setLanguages(mockLanguages);
+        setLoading(false);
+        return;
+      }
 
       try {
         const { data, error } = await supabase
@@ -573,6 +771,7 @@ export const useLanguages = () => {
 
 export const useVendorReviews = (vendorId: string) => {
   const [reviews, setReviews] = useState<VendorReview[]>([]);
+  const [averageRating, setAverageRating] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -618,6 +817,7 @@ export const useVendorReviews = (vendorId: string) => {
           }
         ];
         setReviews(mockReviews);
+        setAverageRating(5.0); // Mock average rating
         setLoading(false);
         return;
       }
@@ -649,9 +849,21 @@ export const useVendorReviews = (vendorId: string) => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
+
         setReviews(data || []);
+
+        // Calculate average rating from overall_rating
+        if (data && data.length > 0) {
+          const totalRating = data.reduce((sum, review) => sum + (review.overall_rating || 0), 0);
+          const avgRating = totalRating / data.length;
+          setAverageRating(avgRating);
+        } else {
+          setAverageRating(null);
+        }
       } catch (err) {
+        console.error('Error fetching reviews:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
+        setAverageRating(null);
       } finally {
         setLoading(false);
       }
@@ -662,7 +874,7 @@ export const useVendorReviews = (vendorId: string) => {
     }
   }, [vendorId]);
 
-  return { reviews, loading, error };
+  return { reviews, averageRating, loading, error };
 };
 
 export const useLatestReviews = (limit: number = 3) => {
@@ -673,16 +885,14 @@ export const useLatestReviews = (limit: number = 3) => {
 
   useEffect(() => {
     const fetchLatestReviews = async () => {
-      // Check if we need to refresh (weekly = 7 days = 604800000 ms)
       const now = Date.now();
       const weekInMs = 7 * 24 * 60 * 60 * 1000;
       
       if (lastFetch && (now - lastFetch) < weekInMs && reviews.length > 0) {
-        return; // Don't fetch if less than a week has passed and we have data
+        return;
       }
 
       if (!isSupabaseConfigured() || !supabase) {
-        // Return mock data if Supabase not configured
         const mockReviews = [
           {
             id: 'mock-1',
@@ -736,13 +946,11 @@ export const useLatestReviews = (limit: number = 3) => {
 
         if (error) throw error;
         
-        // Get service types from bookings table
         const transformedReviews = [];
         
         for (const review of data || []) {
           let serviceType = null;
           
-          // Only query bookings if we have valid vendor_id and couple_id  
           if (review.vendor_id && review.couple_id) {
             const { data: booking } = await supabase
               .from('bookings')
@@ -771,7 +979,6 @@ export const useLatestReviews = (limit: number = 3) => {
       } catch (err) {
         console.error('Error fetching latest reviews:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
-        // Fallback to empty array
         setReviews([]);
       } finally {
         setLoading(false);
@@ -784,12 +991,10 @@ export const useLatestReviews = (limit: number = 3) => {
   return { reviews, loading, error };
 };
 
-// Generate a unique session ID for anonymous users
 const generateSessionId = () => {
   return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
 };
 
-// Get or create session ID
 const getSessionId = () => {
   let sessionId = localStorage.getItem('booking_session_id');
   if (!sessionId) {
@@ -806,7 +1011,6 @@ export const useLeadInformation = () => {
 
   useEffect(() => {
     const fetchOrCreateLeadInfo = async () => {
-      // Check if Supabase is configured first
       if (!isSupabaseConfigured() || !supabase) {
         const defaultLeadInfo: LeadInformation = {
           id: getSessionId(),
@@ -841,7 +1045,6 @@ export const useLeadInformation = () => {
       try {
         const sessionId = getSessionId();
         
-        // Try to get existing lead information
         const { data: createdLead, error: createError } = await supabase
           .from('leads_information')
           .select('*')
@@ -853,7 +1056,6 @@ export const useLeadInformation = () => {
         if (createdLead) {
           setLeadInfo(createdLead);
         } else {
-          // Create new lead information record in database
           const newLeadInfo = {
             session_id: sessionId,
             user_id: null,
@@ -873,8 +1075,7 @@ export const useLeadInformation = () => {
             selected_packages: {},
             selected_vendors: {},
             total_estimated_cost: 0,
-            current_step: 'service_selection',
-            service_type: serviceType
+            current_step: 'service_selection'
           };
           
           const { data: createdLead, error: createError } = await supabase!
@@ -888,7 +1089,6 @@ export const useLeadInformation = () => {
         }
       } catch (err) {
         console.error('Error with leads_information:', err);
-        // Fallback to local state if database operations fail
         const defaultLeadInfo: LeadInformation = {
           id: getSessionId(),
           session_id: getSessionId(),
@@ -930,7 +1130,6 @@ export const useLeadInformation = () => {
       return null;
     }
 
-    // Always update local state first
     const updatedLeadInfo = { ...leadInfo, ...updates, updated_at: new Date().toISOString() };
     setLeadInfo(updatedLeadInfo);
 
@@ -951,12 +1150,10 @@ export const useLeadInformation = () => {
         return updatedLeadInfo;
       }
       
-      // Update local state with database response
       setLeadInfo(data);
       return data;
     } catch (err) {
       console.error('Error updating lead info:', err);
-      // Local state is already updated, just return it
       return updatedLeadInfo;
     }
   };

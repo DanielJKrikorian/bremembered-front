@@ -40,6 +40,7 @@ export interface Booking {
     rating?: number;
     years_experience: number;
     user_id: string;
+    premium_amount?: number; // Added premium_amount in cents
   };
   service_packages?: {
     id: string;
@@ -105,7 +106,8 @@ export const useBookings = () => {
               profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400',
               rating: 4.9,
               years_experience: 10,
-              user_id: 'mock-user-1'
+              user_id: 'mock-user-1',
+              premium_amount: 50000 // $500 in cents
             },
             service_packages: {
               id: 'mock-package-1',
@@ -177,7 +179,8 @@ export const useBookings = () => {
               profile_photo,
               rating,
               years_experience,
-              user_id
+              user_id,
+              vendor_premiums(amount)
             ),
             service_packages(
               id,
@@ -215,7 +218,17 @@ export const useBookings = () => {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setBookings(data || []);
+
+        // Map the data to include premium_amount
+        const formattedBookings = data?.map(booking => ({
+          ...booking,
+          vendors: {
+            ...booking.vendors,
+            premium_amount: booking.vendors?.vendor_premiums?.amount
+          }
+        })) || [];
+
+        setBookings(formattedBookings);
       } catch (err) {
         console.error('Error fetching bookings:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch bookings');

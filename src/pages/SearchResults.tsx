@@ -928,7 +928,7 @@ export const SearchResults: React.FC = () => {
                           className="w-full mt-2"
                           onClick={(e) => { 
                             e.stopPropagation(); 
-                            navigate(`/package/${pkg.id}`);
+                            navigate(`/package/${pkg.slug}`);
                           }}
                         >
                           View Details

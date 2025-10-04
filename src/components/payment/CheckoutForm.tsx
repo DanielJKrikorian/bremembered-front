@@ -154,7 +154,15 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Couple:', couple ? { id: couple.id, email: couple.email } : 'No couple');
     console.log('Form data:', memoizedFormData);
     console.log('Payment details complete:', paymentDetailsComplete);
-  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete]);
+    console.log('Cart items:', cartItems.map(item => ({
+      id: item.id,
+      package_price: item.package?.price,
+      premium_amount: item.package?.premium_amount,
+      travel_fee: item.package?.travel_fee,
+      service_type: item.package?.service_type,
+      event_type: item.package?.event_type,
+    })));
+  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, cartItems]);
 
   // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
@@ -224,7 +232,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       }));
     };
     fetchSessionAndCouple();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, memoizedFormData]);
 
   // Fetch contract templates
   useEffect(() => {
@@ -234,6 +242,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         id: item.id,
         service_type: item.package?.service_type,
         package_name: item.package?.name,
+        price: item.package?.price,
+        premium_amount: item.package?.premium_amount,
+        travel_fee: item.package?.travel_fee,
       })));
       if (!cartItems.length) {
         console.log('No cart items, skipping contract fetch');
@@ -253,13 +264,18 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Supabase not configured, generating mock contract templates');
         const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
-        const mockTemplates: ContractTemplate[] = cartItems.map((item) => ({
-          id: `template-${item.package.service_type || 'unknown'}`,
-          service_type: item.package.service_type || 'unknown',
-          content: `${(item.package.service_type || 'Service').toUpperCase()} SERVICE AGREEMENT
+        const mockTemplates: ContractTemplate[] = cartItems.map((item) => {
+          const packagePrice = item.package?.price || 0;
+          const premiumAmount = item.package?.premium_amount || 0;
+          const travelFee = item.package?.travel_fee || 0;
+          const vendorDeposit = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
+          return {
+            id: `template-${item.package.service_type || 'unknown'}`,
+            service_type: item.package.service_type || 'unknown',
+            content: `${(item.package.service_type || 'Service').toUpperCase()} SERVICE AGREEMENT
 This agreement is between ${memoizedFormData.partner1Name || 'Client'}${
-            memoizedFormData.partner2Name ? ` & ${memoizedFormData.partner2Name}` : ''
-          } (Client) and the selected vendor (Service Provider) for ${(item.package.service_type || 'service').toLowerCase()} services.
+              memoizedFormData.partner2Name ? ` & ${memoizedFormData.partner2Name}` : ''
+            } (Client) and ${item.vendor?.name || 'Service Provider'} for ${(item.package.service_type || 'service').toLowerCase()} services.
 EVENT DETAILS:
 - Date: ${item.eventDate || 'N/A'}
 - Time: ${item.eventTime || 'N/A'} to ${item.endTime || 'N/A'}
@@ -269,10 +285,13 @@ EVENT DETAILS:
 SERVICES PROVIDED:
 ${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${(item.package.service_type || 'service').toLowerCase()} services`}
 PAYMENT TERMS:
-- Total Amount: $${(item.package.price / 100).toFixed(0) || '0'}
-- Deposit (50%): $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
-- Platform Fee (Per Order): $${(platformFee / 100).toFixed(0)}
-- Balance Due: $${(Math.round((item.package.price || 0) * 0.5) / 100).toFixed(0)}
+- Package Price: $${(packagePrice / 100).toFixed(2)}
+- Premium Fee: ${premiumAmount > 0 ? `$${premiumAmount / 100}` : 'None'}
+- Travel Fee: ${travelFee > 0 ? `$${travelFee / 100}` : 'None'}
+- Vendor Deposit (25% Package + 50% Premium + 50% Travel): $${(vendorDeposit / 100).toFixed(2)}
+- Platform Fee (Per Order): $${(platformFee / 100).toFixed(2)}
+- Total Deposit Due: $${((vendorDeposit + platformFee) / 100).toFixed(2)}
+- Balance Due: $${((packagePrice * 0.5 + premiumAmount * 0.5 + travelFee * 0.5) / 100).toFixed(2)}
 TERMS AND CONDITIONS:
 1. The Service Provider agrees to provide professional ${(item.package.service_type || 'service').toLowerCase()} services for the specified event.
 2. The Client agrees to pay the total amount as outlined in the payment schedule.
@@ -281,9 +300,10 @@ TERMS AND CONDITIONS:
 5. Weather contingency plans will be discussed prior to the event.
 6. Any changes to services must be agreed upon in writing by both parties.
 By signing below, both parties agree to the terms outlined in this contract.`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }));
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+        });
         console.log('Mock templates generated:', mockTemplates);
         setContractTemplates(mockTemplates);
         setContractsLoading(false);
@@ -692,7 +712,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     if (signature && signature.trim()) {
       console.log('Confirming signature for', serviceType, ':', signature);
       setSignatures((prev) => ({ ...prev, [serviceType]: signature.trim() }));
-      // Check if all contracts are signed
       const allSigned = contractTemplates.every(
         (template) =>
           (template.service_type === serviceType ? signature.trim() : signatures[template.service_type]) &&
@@ -760,65 +779,79 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         if (existingPendingBookings?.length > 0) {
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
+        // Calculate vendor amounts for the deposit
+        const cartItemsWithVendorAmount = cartItems.map(item => {
+          const packagePrice = item.package?.price || 0;
+          const premiumAmount = item.package?.premium_amount || 0;
+          const travelFee = item.package?.travel_fee || 25000; // Default to 25000 if not provided
+          const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
+          return {
+            id: item.id,
+            package: {
+              id: item.package.id,
+              name: item.package.name,
+              price: packagePrice,
+              premium_amount: premiumAmount,
+              travel_fee: travelFee,
+              service_type: item.package.service_type,
+              event_type: item.package.event_type?.toLowerCase(),
+            },
+            vendor: {
+              id: item.vendor?.id,
+              name: item.vendor?.name,
+              stripe_account_id: item.vendor?.stripe_account_id,
+            },
+            vendor_amount: vendorAmount,
+            eventDate: item.eventDate,
+            eventTime: item.eventTime,
+            endTime: item.endTime,
+            venue: item.venue ? {
+              id: item.venue.id,
+              name: item.venue.name,
+            } : null,
+          };
+        });
+        console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
         // Send Payment Method to server for Payment Intent creation and booking storage
+        const payload = {
+          paymentMethodId: paymentMethod.id,
+          customerInfo: {
+            coupleId,
+            email: memoizedFormData.email,
+            partner1Name: memoizedFormData.partner1Name || 'Unknown',
+            partner2Name: memoizedFormData.partner2Name || '',
+            phone: memoizedFormData.phone || '',
+            billingAddress: memoizedFormData.billingAddress || '',
+            city: memoizedFormData.city || '',
+            state: memoizedFormData.state || '',
+            zipCode: memoizedFormData.zipCode || '',
+            eventDate: cartItems[0]?.eventDate || '',
+            eventTime: cartItems[0]?.eventTime || '',
+            endTime: cartItems[0]?.endTime || '',
+            eventLocation: cartItems[0]?.venue?.name || '',
+            eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            guestCount: memoizedFormData.guestCount || '',
+            specialRequests: memoizedFormData.specialRequests || '',
+            savePaymentMethod: memoizedFormData.savePaymentMethod || false,
+            agreedToTerms: memoizedFormData.agreedToTerms || false,
+          },
+          cartItems: cartItemsWithVendorAmount,
+          signatures,
+          totalAmount,
+          discountAmount,
+          referralDiscount,
+          platformFee: Number(platformFee),
+          grandTotal,
+          paymentType: 'deposit',
+        };
+        console.log('Sending payload to backend:', JSON.stringify(payload, null, 2));
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`,
           },
-          body: JSON.stringify({
-            paymentMethodId: paymentMethod.id,
-            customerInfo: {
-              coupleId,
-              email: memoizedFormData.email,
-              partner1Name: memoizedFormData.partner1Name || 'Unknown',
-              partner2Name: memoizedFormData.partner2Name || '',
-              phone: memoizedFormData.phone || '',
-              billingAddress: memoizedFormData.billingAddress || '',
-              city: memoizedFormData.city || '',
-              state: memoizedFormData.state || '',
-              zipCode: memoizedFormData.zipCode || '',
-              eventDate: cartItems[0]?.eventDate || '',
-              eventTime: cartItems[0]?.eventTime || '',
-              endTime: cartItems[0]?.endTime || '',
-              eventLocation: cartItems[0]?.venue?.name || '',
-              eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
-              guestCount: memoizedFormData.guestCount || '',
-              specialRequests: memoizedFormData.specialRequests || '',
-              savePaymentMethod: memoizedFormData.savePaymentMethod || false,
-              agreedToTerms: memoizedFormData.agreedToTerms || false,
-            },
-            cartItems: cartItems.map(item => ({
-              id: item.id,
-              package: {
-                id: item.package.id,
-                name: item.package.name,
-                price: item.package.price,
-                service_type: item.package.service_type,
-                event_type: item.package.event_type?.toLowerCase(),
-              },
-              vendor: {
-                id: item.vendor?.id,
-                name: item.vendor?.name,
-                stripe_account_id: item.vendor?.stripe_account_id,
-              },
-              eventDate: item.eventDate,
-              eventTime: item.eventTime,
-              endTime: item.endTime,
-              venue: item.venue ? {
-                id: item.venue.id,
-                name: item.venue.name,
-              } : null,
-            })),
-            signatures,
-            totalAmount,
-            discountAmount,
-            referralDiscount,
-            platformFee: Number(platformFee),
-            grandTotal,
-            paymentType: 'deposit',
-          }),
+          body: JSON.stringify(payload),
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -857,6 +890,71 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         if (existingPendingBookings?.length > 0) {
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
+        // Calculate vendor amounts for the deposit
+        const cartItemsWithVendorAmount = cartItems.map(item => {
+          const packagePrice = item.package?.price || 0;
+          const premiumAmount = item.package?.premium_amount || 0;
+          const travelFee = item.package?.travel_fee || 25000; // Default to 25000 if not provided
+          const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
+          return {
+            id: item.id,
+            package: {
+              id: item.package.id,
+              name: item.package.name,
+              price: packagePrice,
+              premium_amount: premiumAmount,
+              travel_fee: travelFee,
+              service_type: item.package.service_type,
+              event_type: item.package.event_type?.toLowerCase(),
+            },
+            vendor: {
+              id: item.vendor?.id,
+              name: item.vendor?.name,
+              stripe_account_id: item.vendor?.stripe_account_id,
+            },
+            vendor_amount: vendorAmount,
+            eventDate: item.eventDate,
+            eventTime: item.eventTime,
+            endTime: item.endTime,
+            venue: item.venue ? {
+              id: item.venue.id,
+              name: item.venue.name,
+            } : null,
+          };
+        });
+        console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
+        const payload = {
+          paymentIntentId: paymentIntent.id,
+          customerInfo: {
+            coupleId,
+            email: memoizedFormData.email,
+            partner1Name: memoizedFormData.partner1Name || 'Unknown',
+            partner2Name: memoizedFormData.partner2Name || '',
+            phone: memoizedFormData.phone || '',
+            billingAddress: memoizedFormData.billingAddress || '',
+            city: memoizedFormData.city || '',
+            state: memoizedFormData.state || '',
+            zipCode: memoizedFormData.zipCode || '',
+            eventDate: cartItems[0]?.eventDate || '',
+            eventTime: cartItems[0]?.eventTime || '',
+            endTime: cartItems[0]?.endTime || '',
+            eventLocation: cartItems[0]?.venue?.name || '',
+            eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            guestCount: memoizedFormData.guestCount || '',
+            specialRequests: memoizedFormData.specialRequests || '',
+            savePaymentMethod: memoizedFormData.savePaymentMethod || false,
+            agreedToTerms: memoizedFormData.agreedToTerms || false,
+          },
+          cartItems: cartItemsWithVendorAmount,
+          signatures,
+          totalAmount,
+          discountAmount,
+          referralDiscount,
+          platformFee: Number(platformFee),
+          grandTotal,
+          paymentType: 'deposit',
+        };
+        console.log('Sending payload to backend:', JSON.stringify(payload, null, 2));
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
@@ -889,58 +987,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`,
           },
-          body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
-            customerInfo: {
-              coupleId,
-              email: memoizedFormData.email,
-              partner1Name: memoizedFormData.partner1Name || 'Unknown',
-              partner2Name: memoizedFormData.partner2Name || '',
-              phone: memoizedFormData.phone || '',
-              billingAddress: memoizedFormData.billingAddress || '',
-              city: memoizedFormData.city || '',
-              state: memoizedFormData.state || '',
-              zipCode: memoizedFormData.zipCode || '',
-              eventDate: cartItems[0]?.eventDate || '',
-              eventTime: cartItems[0]?.eventTime || '',
-              endTime: cartItems[0]?.endTime || '',
-              eventLocation: cartItems[0]?.venue?.name || '',
-              eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
-              guestCount: memoizedFormData.guestCount || '',
-              specialRequests: memoizedFormData.specialRequests || '',
-              savePaymentMethod: memoizedFormData.savePaymentMethod || false,
-              agreedToTerms: memoizedFormData.agreedToTerms || false,
-            },
-            cartItems: cartItems.map(item => ({
-              id: item.id,
-              package: {
-                id: item.package.id,
-                name: item.package.name,
-                price: item.package.price,
-                service_type: item.package.service_type,
-                event_type: item.package.event_type?.toLowerCase(),
-              },
-              vendor: {
-                id: item.vendor?.id,
-                name: item.vendor?.name,
-                stripe_account_id: item.vendor?.stripe_account_id,
-              },
-              eventDate: item.eventDate,
-              eventTime: item.eventTime,
-              endTime: item.endTime,
-              venue: item.venue ? {
-                id: item.venue.id,
-                name: item.venue.name,
-              } : null,
-            })),
-            signatures,
-            totalAmount,
-            discountAmount,
-            referralDiscount,
-            platformFee: Number(platformFee),
-            grandTotal,
-            paymentType: 'deposit',
-          }),
+          body: JSON.stringify(payload),
         });
         if (!response.ok) {
           const errorData = await response.json();
@@ -1007,7 +1054,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       console.log('Submit blocked: Already processing payment');
       return;
     }
-    // Explicitly clear referral error and applied referral if no code is entered
     if (!referralCode.trim()) {
       setReferralError(null);
       setAppliedReferral(null);
@@ -1039,7 +1085,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     } catch (err) {
       console.error('Checkout error:', err);
       setError(err instanceof Error ? `Checkout failed: ${err.message}` : 'Checkout failed. Please try again.');
-      setCurrentStep(3); // Stay on step 3 to allow retry
+      setCurrentStep(3);
     } finally {
       setLoading(false);
       setSubmitting(false);

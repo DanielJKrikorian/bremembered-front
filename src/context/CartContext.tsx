@@ -28,6 +28,20 @@ interface CartState {
 // Local storage key for cart persistence
 const CART_STORAGE_KEY = 'bremembered_cart';
 
+// Calculate total amount including package, premium, and travel fees
+const calculateTotalAmount = (items: CartItem[]): number => {
+  const total = items.reduce((sum, item) => {
+    const packagePrice = item.package.price / 100;
+    const premium = item.vendor && item.vendor.premium_amount && item.vendor.premium_amount > 0 ? item.vendor.premium_amount / 100 : 0;
+    const travel = item.vendor && item.vendor.travel_fee && item.vendor.travel_fee > 0 ? item.vendor.travel_fee / 100 : 0;
+    console.log(`Calculating for item ${item.id}: Package=${packagePrice}, Premium=${premium}, Travel=${travel}, Item Total=${packagePrice + premium + travel}`);
+    return sum + packagePrice + premium + travel;
+  }, 0);
+  const totalCents = total * 100;
+  console.log(`Calculated totalAmount: ${totalCents} cents for ${items.length} items`);
+  return totalCents;
+};
+
 // Default empty cart state
 const DEFAULT_EMPTY_CART: CartState = {
   items: [],
@@ -43,24 +57,49 @@ const loadCartFromStorage = (): CartState => {
       const parsed = JSON.parse(stored);
       // Validate the structure
       if (parsed && Array.isArray(parsed.items)) {
+        const totalAmount = calculateTotalAmount(parsed.items);
+        console.log('Loaded cart from storage:', {
+          items: parsed.items.map((item: CartItem) => ({
+            id: item.id,
+            packagePrice: item.package.price,
+            vendor: item.vendor ? { name: item.vendor.name, premium_amount: item.vendor.premium_amount, travel_fee: item.vendor.travel_fee } : null
+          })),
+          storedTotal: parsed.totalAmount,
+          recalculatedTotal: totalAmount
+        });
         return {
           ...DEFAULT_EMPTY_CART,
           ...parsed,
-          // Recalculate total amount to ensure consistency
-          totalAmount: parsed.items.reduce((sum: number, item: CartItem) => sum + item.package.price, 0)
+          totalAmount
         };
       }
     }
   } catch (error) {
     console.error('Error loading cart from storage:', error);
   }
+  console.log('Returning default empty cart');
   return DEFAULT_EMPTY_CART;
 };
 
 // Save cart to localStorage
 const saveCartToStorage = (state: CartState) => {
   try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state));
+    const stateToSave = {
+      ...state,
+      items: state.items.map(item => ({
+        ...item,
+        vendor: item.vendor ? { ...item.vendor } : undefined
+      }))
+    };
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(stateToSave));
+    console.log('Saved cart to storage:', {
+      items: stateToSave.items.map((item: CartItem) => ({
+        id: item.id,
+        packagePrice: item.package.price,
+        vendor: item.vendor ? { name: item.vendor.name, premium_amount: item.vendor.premium_amount, travel_fee: item.vendor.travel_fee } : null
+      })),
+      totalAmount: stateToSave.totalAmount
+    });
   } catch (error) {
     console.error('Error saving cart to storage:', error);
   }
@@ -86,18 +125,20 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         addedAt: new Date().toISOString()
       };
       const newItems = [...state.items, newItem];
+      console.log('ADD_ITEM:', { newItem: { id: newItem.id, packagePrice: newItem.package.price, vendor: newItem.vendor } });
       return {
         ...state,
         items: newItems,
-        totalAmount: newItems.reduce((sum, item) => sum + item.package.price, 0)
+        totalAmount: calculateTotalAmount(newItems)
       };
     
     case 'REMOVE_ITEM':
       const filteredItems = state.items.filter(item => item.id !== action.payload);
+      console.log('REMOVE_ITEM:', { removedId: action.payload, remainingItems: filteredItems.length });
       return {
         ...state,
         items: filteredItems,
-        totalAmount: filteredItems.reduce((sum, item) => sum + item.package.price, 0)
+        totalAmount: calculateTotalAmount(filteredItems)
       };
     
     case 'UPDATE_ITEM':
@@ -106,13 +147,15 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           ? { ...item, ...action.payload.updates }
           : item
       );
+      console.log('UPDATE_ITEM:', { id: action.payload.id, updates: action.payload.updates });
       return {
         ...state,
         items: updatedItems,
-        totalAmount: updatedItems.reduce((sum, item) => sum + item.package.price, 0)
+        totalAmount: calculateTotalAmount(updatedItems)
       };
     
     case 'CLEAR_CART':
+      console.log('CLEAR_CART');
       return {
         ...state,
         items: [],
@@ -120,24 +163,28 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       };
     
     case 'TOGGLE_CART':
+      console.log('TOGGLE_CART:', { isOpen: !state.isOpen });
       return {
         ...state,
         isOpen: !state.isOpen
       };
     
     case 'OPEN_CART':
+      console.log('OPEN_CART');
       return {
         ...state,
         isOpen: true
       };
     
     case 'CLOSE_CART':
+      console.log('CLOSE_CART');
       return {
         ...state,
         isOpen: false
       };
     
     default:
+      console.log('Unknown action:', action);
       return state;
   }
 };
@@ -162,6 +209,18 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     saveCartToStorage(state);
   }, [state]);
+
+  // Validate totalAmount on state change
+  useEffect(() => {
+    const recalculatedTotal = calculateTotalAmount(state.items);
+    if (recalculatedTotal !== state.totalAmount) {
+      console.warn(`Total amount mismatch! State: ${state.totalAmount}, Recalculated: ${recalculatedTotal}`);
+      dispatch({
+        type: 'UPDATE_ITEM',
+        payload: { id: state.items[0]?.id || '', updates: {} } // Trigger recalculation
+      });
+    }
+  }, [state.items, state.totalAmount]);
 
   const addItem = (item: Omit<CartItem, 'id' | 'addedAt'>) => {
     dispatch({ type: 'ADD_ITEM', payload: item });

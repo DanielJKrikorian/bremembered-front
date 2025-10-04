@@ -2,7 +2,7 @@ import { loadStripe } from '@stripe/stripe-js';
 
 // Initialize Stripe with fallback
 const getStripeKey = () => {
-  const key = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+  const key = import.meta.env._VITE_STRIPE_TEST_PUBLISHABLE_KEY;
   if (!key || key === 'your_stripe_publishable_key_here') {
     console.warn('Stripe publishable key not configured');
     return null;
