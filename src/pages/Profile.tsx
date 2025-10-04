@@ -1,6 +1,6 @@
 import React, { Component, ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Heart, Camera, Settings, Shield, Download, Share2, MessageCircle, CreditCard, Star, FileText, Eye, CheckCircle, AlertCircle, X, Check, AlertTriangle } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, Shield, Download, Share2, MessageCircle, CreditCard, Star, FileText, Eye, CheckCircle, AlertCircle, X, Check, AlertTriangle, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { useWeddingGallery } from '../hooks/useWeddingGallery';
@@ -13,6 +13,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { StripePaymentModal } from '../components/payment/StripePaymentModal';
 import { WeddingTimeline } from '../components/profile/WeddingTimeline';
+import { GuestManagement } from '../components/profile/GuestManagement'; // Added import
 import { ConversationList } from '../components/messaging/ConversationList';
 import { ChatWindow } from '../components/messaging/ChatWindow';
 import { Conversation } from '../hooks/useMessaging';
@@ -27,19 +28,15 @@ import { parse, format, isValid } from 'date-fns';
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
-
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
-
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false, error: null };
-
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
-
   render() {
     if (this.state.hasError) {
       return (
@@ -185,7 +182,7 @@ export const Profile: React.FC = () => {
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'guests' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews'>('overview');
   const [contracts, setContracts] = useState<any[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -237,7 +234,7 @@ export const Profile: React.FC = () => {
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['overview', 'profile', 'timeline', 'gallery', 'messages', 'payments', 'contracts', 'preferences', 'settings', 'wedding-board', 'reviews'].includes(tab)) {
+    if (tab && ['overview', 'profile', 'timeline', 'guests', 'gallery', 'messages', 'payments', 'contracts', 'preferences', 'settings', 'wedding-board', 'reviews'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
       setActiveTab('overview');
@@ -635,6 +632,7 @@ export const Profile: React.FC = () => {
     { key: 'overview', label: 'Overview', icon: Calendar },
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
+    { key: 'guests', label: 'Guest Management', icon: Users }, // Added Guest Management tab
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
     { key: 'messages', label: 'Messages', icon: MessageCircle },
     { key: 'payments', label: 'Payments', icon: CreditCard },
@@ -888,6 +886,9 @@ export const Profile: React.FC = () => {
             )}
             {activeTab === 'timeline' && (
               <WeddingTimeline />
+            )}
+            {activeTab === 'guests' && (
+              <GuestManagement />
             )}
             {activeTab === 'wedding-board' && (
               <WeddingBoard />

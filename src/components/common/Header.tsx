@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { AuthModal } from '../auth/AuthModal';
+import { AuthModal } from '../../components/auth/AuthModal';
 import { NotificationBell } from '../notifications/NotificationBell';
 
 export const Header: React.FC = () => {
