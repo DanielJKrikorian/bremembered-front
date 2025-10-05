@@ -1,6 +1,6 @@
 import React, { Component, ReactNode, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
@@ -19,6 +19,7 @@ import { PreferencesSection } from '../components/profile/PreferencesSection';
 import { SettingsSection } from '../components/profile/SettingsSection';
 import { ProfileInformation } from '../components/profile/ProfileInformation';
 import { WeddingGallery } from '../components/profile/WeddingGallery';
+import { NotesSection } from '../components/profile/NotesSection';
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -57,13 +58,14 @@ export const Profile: React.FC = () => {
   const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'guests' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews' | 'wedding-website'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'guests' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews' | 'wedding-website' | 'notes'>('overview');
 
   // Get active tab from URL params
   useEffect(() => {
+    console.log('Profile rendered, activeTab:', activeTab);
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab && ['overview', 'profile', 'timeline', 'guests', 'gallery', 'messages', 'payments', 'contracts', 'preferences', 'settings', 'wedding-board', 'reviews', 'wedding-website'].includes(tab)) {
+    if (tab && ['overview', 'profile', 'timeline', 'guests', 'gallery', 'messages', 'payments', 'contracts', 'preferences', 'settings', 'wedding-board', 'reviews', 'wedding-website', 'notes'].includes(tab)) {
       setActiveTab(tab as any);
     } else {
       setActiveTab('overview');
@@ -85,7 +87,7 @@ export const Profile: React.FC = () => {
       const photoUrl = await uploadPhoto(file, user.id);
       await couple?.updateCouple({ profile_photo: photoUrl });
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('Error uploading photo:', err);
     }
   };
 
@@ -113,7 +115,8 @@ export const Profile: React.FC = () => {
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
-    { key: 'wedding-website', label: 'Wedding Website', icon: Globe },
+    { key: 'wedding-website', label: 'Wedding Website (BETA)', icon: Globe },
+     { key: 'notes', label: 'Notes', icon: StickyNote },
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'guests', label: 'Guest Management', icon: Users },
@@ -204,7 +207,7 @@ export const Profile: React.FC = () => {
           </div>
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'overview' && <OverviewDashboard />}
+            {activeTab === 'overview' && <OverviewDashboard onTabChange={handleTabChange} />}
             {activeTab === 'profile' && <ProfileInformation />}
             {activeTab === 'timeline' && <WeddingTimeline />}
             {activeTab === 'guests' && <GuestManagement />}
@@ -221,6 +224,7 @@ export const Profile: React.FC = () => {
             {activeTab === 'preferences' && <PreferencesSection />}
             {activeTab === 'settings' && <SettingsSection />}
             {activeTab === 'wedding-website' && <WeddingWebsiteSettings />}
+            {activeTab === 'notes' && <NotesSection />}
           </div>
         </div>
       </div>

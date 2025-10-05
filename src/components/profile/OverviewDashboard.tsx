@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart, CreditCard, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, CheckSquare, AlertCircle, Plus, X, Edit2, Save, MessageCircle, User, Camera, Heart, CreditCard } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -45,6 +46,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
   const { couple } = useCouple();
   const { conversations } = useConversations();
   const { files } = useWeddingGallery();
+  const navigate = useNavigate();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [newTodo, setNewTodo] = useState('');
   const [isAddingTodo, setIsAddingTodo] = useState(false);
@@ -586,7 +588,15 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
               <Button
                 variant="primary"
                 icon={CreditCard}
-                onClick={() => onTabChange?.('payments')}
+                onClick={() => {
+                  console.log('Pay Now button clicked, navigating to /profile?tab=payments');
+                  if (onTabChange) {
+                    onTabChange('payments');
+                  } else {
+                    console.warn('onTabChange is undefined, using navigate fallback');
+                    navigate('/profile?tab=payments');
+                  }
+                }}
               >
                 Pay Now
               </Button>
@@ -639,7 +649,10 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Messages</h3>
             <button
-              onClick={() => onTabChange?.('messages')}
+              onClick={() => {
+                console.log('Navigating to Messages tab');
+                onTabChange?.('messages');
+              }}
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
             >
               View All
@@ -849,28 +862,40 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ onTabChang
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => onTabChange?.('timeline')}
+            onClick={() => {
+              console.log('Navigating to Timeline tab');
+              onTabChange?.('timeline');
+            }}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Calendar className="w-6 h-6 mb-2" />
             <span>Update Timeline</span>
           </button>
           <button
-            onClick={() => onTabChange?.('messages')}
+            onClick={() => {
+              console.log('Navigating to Messages tab');
+              onTabChange?.('messages');
+            }}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <MessageCircle className="w-6 h-6 mb-2" />
             <span>Message Vendors</span>
           </button>
           <button
-            onClick={() => onTabChange?.('gallery')}
+            onClick={() => {
+              console.log('Navigating to Gallery tab');
+              onTabChange?.('gallery');
+            }}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <Camera className="w-6 h-6 mb-2" />
             <span>View Memories</span>
           </button>
           <button
-            onClick={() => onTabChange?.('payments')}
+            onClick={() => {
+              console.log('Navigating to Payments tab');
+              onTabChange?.('payments');
+            }}
             className="h-16 flex flex-col items-center justify-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-colors"
           >
             <CreditCard className="w-6 h-6 mb-2" />
