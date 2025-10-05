@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useWebsiteGallery } from '../hooks/useWebsiteGallery';
-import { useWeddingTimeline } from '../hooks/useWeddingTimeline';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
-import { RsvpModal } from '../components/profile/RsvpModal';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
+import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { RsvpModal } from '../../components/profile/RsvpModal';
 import { Lock, Check, User, Calendar, Image } from 'lucide-react';
 
 interface WebsiteSettings {
