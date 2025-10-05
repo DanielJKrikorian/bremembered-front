@@ -116,7 +116,7 @@ export const Profile: React.FC = () => {
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
     { key: 'wedding-website', label: 'Wedding Website (BETA)', icon: Globe },
-     { key: 'notes', label: 'Notes', icon: StickyNote },
+     { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'guests', label: 'Guest Management', icon: Users },
