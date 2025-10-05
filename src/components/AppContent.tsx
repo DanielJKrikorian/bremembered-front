@@ -40,6 +40,7 @@ import { ProductDetail } from '../pages/ProductDetail';
 import { OrderTracking } from '../pages/OrderTracking';
 import { StoreSuccess } from '../pages/StoreSuccess';
 import { LocationServicePage } from '../pages/LocationServicePage';
+import { WeddingWebsite } from '../components/profile/WeddingWebsite';
 import { supabase } from '../lib/supabase';
 
 // New component for redirecting legacy /package/:id URLs
@@ -176,6 +177,7 @@ export const AppContent: React.FC = () => {
             <Route path="/store/product/:id" element={<ProductDetail />} />
             <Route path="/orders" element={<OrderTracking />} />
             <Route path="/orders/:orderId" element={<OrderTracking />} />
+            <Route path="/wedding/:slug" element={<WeddingWebsite />} />
             <Route path="/store-success" element={<StoreSuccess />} />
             <Route path="/locations/:state/:city/:service" element={<LocationServicePage />} />
           </Routes>

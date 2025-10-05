@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
 
 // Initialize Stripe at the top level
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY || '');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface BookingBalance {
   id: string;
