@@ -20,6 +20,7 @@
     "date-fns-tz": "^3.2.0",
     "i18n-iso-countries": "^7.14.0",
     "jspdf": "^3.0.1",
+    "konva": "^8.4.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.5.3",
@@ -28,6 +29,7 @@
     "react-ga4": "^2.1.0",
     "react-helmet": "^6.1.0",
     "react-helmet-async": "^2.0.5",
+    "react-konva": "^18.2.10",
     "react-router-dom": "^7.6.3",
     "uuid": "^11.1.0"
   },

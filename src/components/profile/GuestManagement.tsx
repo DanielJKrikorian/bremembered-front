@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
-import { 
-  User, MapPin, List, StickyNote, Check, Trash2, Edit2, Send, X, Plus, Save, ArrowLeft, ArrowRight, 
-  ChevronDown, ChevronUp, Mail, Phone, Utensils, Users, Table2, Upload, Download, AlertCircle, SortAsc, SortDesc 
-} from 'lucide-react';
+import { Check, Trash2, Edit2, Send, Plus, Table2, Utensils, Upload, AlertCircle, SortAsc, SortDesc, Users, Download } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
+import { GuestModal } from './GuestModal';
+import { TableEditModal } from './TableEditModal';
+import { MealEditModal } from './MealEditModal';
 
 interface Guest {
   id: string;
@@ -20,9 +20,10 @@ interface Guest {
   address?: string;
   table_id?: string;
   table_name?: string;
-  list_priority: 'A' | 'B' | 'C';
+  list_priority: '1' | '2' | '3';
   has_plus_one: boolean;
   plus_one_name?: string;
+  family_members?: { name: string; age_category: 'adult' | 'child'; meal_option_id?: string; meal_option_name?: string }[];
   notes?: string;
   meal_option_id?: string;
   meal_option_name?: string;
@@ -49,6 +50,24 @@ interface MealOption {
   updated_at: string;
 }
 
+interface TableLayout {
+  id: string;
+  couple_id: string;
+  table_id: string;
+  table_name: string;
+  type: 'round' | 'rectangle' | 'sweetheart';
+  x: number;
+  y: number;
+}
+
+interface RsvpShare {
+  id: string;
+  guest_id: string;
+  token: string;
+  status: string;
+  created_at: string;
+}
+
 interface GuestFormData {
   name: string;
   email: string;
@@ -60,33 +79,28 @@ interface GuestFormData {
   zip: string;
   country: string;
   table_id: string;
-  list_priority: 'A' | 'B' | 'C';
+  list_priority: '1' | '2' | '3';
   has_plus_one: boolean;
   plus_one_name: string;
+  family_members: { name: string; age_category: 'adult' | 'child'; meal_option_id: string }[];
   notes: string;
   meal_option_id: string;
   guest_type: string;
   partner_id: string;
 }
 
-interface RsvpShare {
-  id: string;
-  guest_id: string;
-  token: string;
-  status: string;
-  created_at: string;
-}
-
 const listPriorities = [
-  { value: 'A', label: 'A List (Must Invite)' },
-  { value: 'B', label: 'B List (Should Invite)' },
-  { value: 'C', label: 'C List (Optional)' },
+  { value: '1', label: 'Tier 1 (Must Invite)' },
+  { value: '2', label: 'Tier 2 (Should Invite)' },
+  { value: '3', label: 'Tier 3 (Optional)' },
 ];
 
 const guestTypes = [
   { value: 'best_man', label: 'Best Man' },
   { value: 'maid_of_honor', label: 'Maid of Honor' },
   { value: 'matron_of_honor', label: 'Matron of Honor' },
+  { value: 'groomsman', label: 'Groomsman' },
+  { value: 'bridesmaid', label: 'Bridesmaid' },
   { value: 'family', label: 'Family' },
   { value: 'family_friend', label: 'Family Friend' },
   { value: 'friend', label: 'Friend' },
@@ -106,376 +120,14 @@ const sortOptions = [
   { value: 'rsvp_status', label: 'RSVP Status' }
 ];
 
-// GuestModal Component
-const GuestModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  guest?: Guest;
-  mealOptions: MealOption[];
-  tables: TableData[];
-  couple: any;
-  onSave: (guestData: GuestFormData) => void;
-  isEditing: boolean;
-}> = ({ isOpen, onClose, guest, mealOptions, tables, couple, onSave, isEditing }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<GuestFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    street: '',
-    apt: '',
-    city: '',
-    state: '',
-    zip: '',
-    country: '',
-    table_id: '',
-    list_priority: 'A',
-    has_plus_one: false,
-    plus_one_name: '',
-    notes: '',
-    meal_option_id: '',
-    guest_type: 'friend',
-    partner_id: ''
-  });
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-
-  useEffect(() => {
-    if (guest) {
-      let street = '', apt = '', city = '', state = '', zip = '', country = '';
-      if (guest.address) {
-        const parts = guest.address.split(', ').map(p => p.trim());
-        street = parts[0] || '';
-        apt = parts[1] || '';
-        city = parts[2] || '';
-        state = parts[3] || '';
-        zip = parts[4] || '';
-        country = parts[5] || '';
-      }
-      setFormData({
-        name: guest.name,
-        email: guest.email || '',
-        phone: guest.phone || '',
-        street,
-        apt,
-        city,
-        state,
-        zip,
-        country,
-        table_id: guest.table_id || '',
-        list_priority: guest.list_priority,
-        has_plus_one: guest.has_plus_one,
-        plus_one_name: guest.plus_one_name || '',
-        notes: guest.notes || '',
-        meal_option_id: guest.meal_option_id || '',
-        guest_type: guest.guest_type || 'friend',
-        partner_id: guest.partner_id || ''
-      });
-    } else {
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        street: '',
-        apt: '',
-        city: '',
-        state: '',
-        zip: '',
-        country: '',
-        table_id: '',
-        list_priority: 'A',
-        has_plus_one: false,
-        plus_one_name: '',
-        notes: '',
-        meal_option_id: '',
-        guest_type: 'friend',
-        partner_id: ''
-      });
-    }
-    setCurrentStep(1);
-    setFormErrors({});
-  }, [guest, isOpen]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    if (type === 'checkbox') {
-      setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateCurrentStep = () => {
-    const errors: { [key: string]: string } = {};
-    if (currentStep === 1) {
-      if (!formData.name.trim()) errors.name = "Guest name is required";
-      if (formData.has_plus_one && !formData.plus_one_name.trim()) errors.plus_one_name = "Plus-one name is required";
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const canProceedToNextStep = () => formData.name.trim() && (!formData.has_plus_one || formData.plus_one_name.trim());
-
-  const handleNext = () => {
-    if (validateCurrentStep() && currentStep < 3) setCurrentStep(currentStep + 1);
-  };
-
-  const handleBack = () => currentStep > 1 && setCurrentStep(currentStep - 1);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateCurrentStep()) {
-      onSave(formData);
-      onClose();
-      setCurrentStep(1);
-    }
-  };
-
-  const getStepTitle = () => ['Guest Details', 'Seating & Priority', 'Additional Notes'][currentStep - 1];
-
-  const partnerOptions = [
-    { value: '', label: 'Select Partner' },
-    ...(couple?.partner1_name ? [{ value: couple.partner1_name, label: couple.partner1_name }] : []),
-    ...(couple?.partner2_name ? [{ value: couple.partner2_name, label: couple.partner2_name }] : [])
-  ];
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">{isEditing ? 'Edit Guest' : 'Add New Guest'}</h3>
-            <p className="text-sm text-gray-600 mt-1">Step {currentStep} of 3: {getStepTitle()}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-center space-x-4">
-            {[1, 2, 3].map(step => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  currentStep >= step ? 'bg-rose-500 text-white shadow-lg' : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
-                </div>
-                {step < 3 && <div className={`w-16 h-1 mx-2 rounded-full ${currentStep > step ? 'bg-rose-500' : 'bg-gray-200'}`} />}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-4 md:p-6">
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Guest Details</h2>
-              </div>
-              <Input label="Guest Name" name="name" value={formData.name} onChange={handleInputChange} required icon={User} error={formErrors.name} />
-              <Input label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} icon={Mail} error={formErrors.email} />
-              <Input label="Phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} icon={Phone} error={formErrors.phone} />
-              <Input label="Street Address" name="street" value={formData.street} onChange={handleInputChange} placeholder="123 Main St" />
-              <Input label="Apt/Suite #" name="apt" value={formData.apt} onChange={handleInputChange} placeholder="Apt 4B" />
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="City" name="city" value={formData.city} onChange={handleInputChange} placeholder="New York" />
-                <Input label="State/Province" name="state" value={formData.state} onChange={handleInputChange} placeholder="NY" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="ZIP/Postal Code" name="zip" value={formData.zip} onChange={handleInputChange} placeholder="10001" />
-                <Input label="Country" name="country" value={formData.country} onChange={handleInputChange} placeholder="USA" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Guest Type</label>
-                <select name="guest_type" value={formData.guest_type} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
-                  {guestTypes.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Invited By</label>
-                <select name="partner_id" value={formData.partner_id} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500">
-                  {partnerOptions.map(partner => <option key={partner.value} value={partner.value}>{partner.label}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Seating & Priority</h2>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Table Assignment</label>
-                <select name="table_id" value={formData.table_id} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">Select table</option>
-                  {tables.map(table => <option key={table.id} value={table.id}>{table.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">List Priority</label>
-                <select name="list_priority" value={formData.list_priority} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  {listPriorities.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Meal Option</label>
-                <select name="meal_option_id" value={formData.meal_option_id} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">Select meal</option>
-                  {mealOptions.filter(m => m.is_active).map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
-                </select>
-              </div>
-              <label className="flex items-center space-x-2">
-                <input type="checkbox" name="has_plus_one" checked={formData.has_plus_one} onChange={handleInputChange} className="h-4 w-4 text-rose-500" />
-                <span>Has Plus One</span>
-              </label>
-              {formData.has_plus_one && (
-                <Input
-                  label="Plus-One Name"
-                  name="plus_one_name"
-                  value={formData.plus_one_name}
-                  onChange={handleInputChange}
-                  required
-                  error={formErrors.plus_one_name}
-                  placeholder="Enter plus-one name"
-                />
-              )}
-            </div>
-          )}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <StickyNote className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Notes</h2>
-              </div>
-              <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows={6} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Notes" />
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between items-center p-4 md:p-6 border-t border-gray-200">
-          {currentStep > 1 && <Button type="button" variant="outline" onClick={handleBack} icon={ArrowLeft}>Back</Button>}
-          <div className="flex space-x-3">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            {currentStep < 3 ? (
-              <Button type="button" variant="primary" onClick={handleNext} disabled={!canProceedToNextStep()} icon={ArrowRight}>
-                Next
-              </Button>
-            ) : (
-              <Button type="button" variant="primary" onClick={handleSubmit} icon={Save}>
-                {isEditing ? 'Update' : 'Add'} Guest
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
-
-// TableEditModal
-const TableEditModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  table: TableData | null;
-  onSave: (id: string, name: string) => void;
-}> = ({ isOpen, onClose, table, onSave }) => {
-  const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setName(table?.name || '');
-    setError(null);
-  }, [table]);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      setError('Table name is required');
-      return;
-    }
-    onSave(table?.id || '', name);
-    setError(null);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold mb-4">{table ? 'Edit Table' : 'Add Table'}</h3>
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Table name" error={error} />
-        <div className="flex justify-end space-x-2 mt-4">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave}>Save</Button>
-        </div>
-      </Card>
-    </div>
-  );
-};
-
-// MealEditModal
-const MealEditModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  meal: MealOption | null;
-  onSave: (id: string, name: string, description: string) => void;
-}> = ({ isOpen, onClose, meal, onSave }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setName(meal?.name || '');
-    setDescription(meal?.description || '');
-    setError(null);
-  }, [meal]);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      setError('Meal name is required');
-      return;
-    }
-    onSave(meal?.id || '', name, description);
-    setError(null);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md p-6">
-        <h3 className="text-xl font-semibold mb-4">{meal ? 'Edit Meal' : 'Add Meal'}</h3>
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Meal name" className="mb-4" error={error} />
-        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4" />
-        <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave}>Save</Button>
-        </div>
-      </Card>
-    </div>
-  );
-};
-
-// Main GuestManagement Component
 export const GuestManagement: React.FC = () => {
   const { user } = useAuth();
   const { couple } = useCouple();
-  const [activeSubTab, setActiveSubTab] = useState<'guests' | 'tables' | 'meals' | 'import-export'>('guests');
+  const [activeSubTab, setActiveSubTab] = useState<'guests' | 'tables' | 'meals' | 'import-export' | 'layout'>('guests');
   const [guests, setGuests] = useState<Guest[]>([]);
   const [tables, setTables] = useState<TableData[]>([]);
   const [mealOptions, setMealOptions] = useState<MealOption[]>([]);
+  const [layouts, setLayouts] = useState<TableLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -503,7 +155,8 @@ export const GuestManagement: React.FC = () => {
     await Promise.all([
       fetchGuests(),
       fetchTables(),
-      fetchMealOptions()
+      fetchMealOptions(),
+      fetchLayouts()
     ]);
     setLoading(false);
   };
@@ -515,19 +168,24 @@ export const GuestManagement: React.FC = () => {
         {
           id: '1',
           couple_id: couple.id,
-          name: 'John Doe',
+          name: 'Smith Family',
           email: 'john@example.com',
           phone: '123-456-7890',
           address: '123 Main St, Apt 4B, New York, NY, 10001, USA',
           table_id: 'table1',
           table_name: 'Table 1',
-          list_priority: 'A',
-          has_plus_one: true,
-          plus_one_name: 'Jane Doe',
-          notes: 'Best friend',
-          meal_option_id: mealOptions[0]?.id || '',
-          meal_option_name: mealOptions[0]?.name || 'Beef',
-          guest_type: 'friend',
+          list_priority: '1',
+          has_plus_one: false,
+          plus_one_name: '',
+          family_members: [
+            { name: 'John Smith', age_category: 'adult', meal_option_id: mealOptions[0]?.id, meal_option_name: 'Beef' },
+            { name: 'Jane Smith', age_category: 'adult', meal_option_id: mealOptions[0]?.id, meal_option_name: 'Beef' },
+            { name: 'Timmy Smith', age_category: 'child', meal_option_id: '', meal_option_name: '' }
+          ],
+          notes: 'Family with kids',
+          meal_option_id: '',
+          meal_option_name: '',
+          guest_type: 'family',
           partner_id: couple.partner1_name || '',
           rsvp_status: 'accepted',
           created_at: new Date().toISOString(),
@@ -553,10 +211,11 @@ export const GuestManagement: React.FC = () => {
         meal_option_name: g.meal_option?.name || '',
         guest_type: g.guest_type || 'friend',
         partner_id: g.partner_id || '',
-        plus_one_name: g.plus_one_name || ''
+        plus_one_name: g.plus_one_name || '',
+        family_members: g.family_members || []
       })));
     } catch (err) {
-      setError('Failed to fetch guests');
+      setError('Failed to fetch guests: ' + (err as Error).message);
     }
   };
 
@@ -575,7 +234,7 @@ export const GuestManagement: React.FC = () => {
       if (error) throw error;
       setTables(data || []);
     } catch (err) {
-      setError('Failed to fetch tables');
+      setError('Failed to fetch tables: ' + (err as Error).message);
     }
   };
 
@@ -598,7 +257,25 @@ export const GuestManagement: React.FC = () => {
       if (error) throw error;
       setMealOptions(data || []);
     } catch (err) {
-      setError('Failed to fetch meal options');
+      setError('Failed to fetch meal options: ' + (err as Error).message);
+    }
+  };
+
+  const fetchLayouts = async () => {
+    if (!couple?.id) return;
+    if (!supabase || !isSupabaseConfigured()) {
+      setLayouts([{ id: 'layout1', couple_id: couple.id, table_id: 'table1', table_name: 'Table 1', type: 'round', x: 50, y: 50 }]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('table_layouts')
+        .select('*')
+        .eq('couple_id', couple.id);
+      if (error) throw error;
+      setLayouts(data || []);
+    } catch (err) {
+      setError('Failed to fetch table layouts: ' + (err as Error).message);
     }
   };
 
@@ -614,6 +291,7 @@ export const GuestManagement: React.FC = () => {
       list_priority: formData.list_priority,
       has_plus_one: formData.has_plus_one,
       plus_one_name: formData.has_plus_one ? formData.plus_one_name || null : null,
+      family_members: formData.family_members.length > 0 ? formData.family_members : null,
       notes: formData.notes || null,
       meal_option_id: formData.meal_option_id || null,
       guest_type: formData.guest_type,
@@ -627,7 +305,11 @@ export const GuestManagement: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         table_name: tables.find(t => t.id === formData.table_id)?.name || '',
-        meal_option_name: mealOptions.find(m => m.id === formData.meal_option_id)?.name || ''
+        meal_option_name: mealOptions.find(m => m.id === formData.meal_option_id)?.name || '',
+        family_members: formData.family_members.map(member => ({
+          ...member,
+          meal_option_name: mealOptions.find(m => m.id === member.meal_option_id)?.name || ''
+        }))
       };
       if (editingGuest) {
         setGuests(prev => prev.map(g => g.id === editingGuest.id ? newGuest : g));
@@ -650,7 +332,7 @@ export const GuestManagement: React.FC = () => {
       setSuccessMessage(editingGuest ? 'Guest updated' : 'Guest added');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save guest');
+      setError('Failed to save guest: ' + (err as Error).message);
     } finally {
       setShowGuestModal(false);
       setEditingGuest(null);
@@ -670,7 +352,7 @@ export const GuestManagement: React.FC = () => {
       setSuccessMessage('Guest deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to delete guest');
+      setError('Failed to delete guest: ' + (err as Error).message);
     }
   };
 
@@ -682,8 +364,10 @@ export const GuestManagement: React.FC = () => {
     if (!supabase || !isSupabaseConfigured()) {
       if (id) {
         setTables(prev => prev.map(t => t.id === id ? { ...t, name } : t));
+        setLayouts(prev => prev.map(l => l.table_id === id ? { ...l, table_name: name } : l));
       } else {
-        setTables(prev => [...prev, { id: Date.now().toString(), name }]);
+        const newId = Date.now().toString();
+        setTables(prev => [...prev, { id: newId, name }]);
       }
       setSuccessMessage(id ? 'Table updated' : 'Table added');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -691,21 +375,28 @@ export const GuestManagement: React.FC = () => {
     }
     try {
       if (id) {
-        await supabase.from('tables').update({ name }).eq('id', id).eq('couple_id', couple!.id);
+        await Promise.all([
+          supabase.from('tables').update({ name }).eq('id', id).eq('couple_id', couple!.id),
+          supabase.from('table_layouts').update({ table_name: name }).eq('table_id', id).eq('couple_id', couple!.id)
+        ]);
       } else {
-        await supabase.from('tables').insert({ couple_id: couple!.id, name });
+        const { data } = await supabase.from('tables').insert({ couple_id: couple!.id, name }).select().single();
+        if (data) {
+          setTables(prev => [...prev, { id: data.id, name }]);
+        }
       }
-      await fetchTables();
+      await Promise.all([fetchTables(), fetchLayouts()]);
       setSuccessMessage(id ? 'Table updated' : 'Table added');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save table');
+      setError('Failed to save table: ' + (err as Error).message);
     }
   };
 
   const handleDeleteTable = async (id: string) => {
     if (!supabase || !isSupabaseConfigured()) {
       setTables(prev => prev.filter(t => t.id !== id));
+      setLayouts(prev => prev.filter(l => l.table_id === id));
       setSuccessMessage('Table deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
       return;
@@ -720,12 +411,15 @@ export const GuestManagement: React.FC = () => {
         setError('Cannot delete table: it is assigned to guests');
         return;
       }
-      await supabase.from('tables').delete().eq('id', id).eq('couple_id', couple!.id);
-      await fetchTables();
+      await Promise.all([
+        supabase.from('tables').delete().eq('id', id).eq('couple_id', couple!.id),
+        supabase.from('table_layouts').delete().eq('table_id', id).eq('couple_id', couple!.id)
+      ]);
+      await Promise.all([fetchTables(), fetchLayouts()]);
       setSuccessMessage('Table deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to delete table');
+      setError('Failed to delete table: ' + (err as Error).message);
     }
   };
 
@@ -754,7 +448,7 @@ export const GuestManagement: React.FC = () => {
       setSuccessMessage(id ? 'Meal updated' : 'Meal added');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to save meal');
+      setError('Failed to save meal: ' + (err as Error).message);
     }
   };
 
@@ -780,7 +474,7 @@ export const GuestManagement: React.FC = () => {
       setSuccessMessage('Meal deleted');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to delete meal');
+      setError('Failed to delete meal: ' + (err as Error).message);
     }
   };
 
@@ -811,7 +505,29 @@ export const GuestManagement: React.FC = () => {
       setSuccessMessage('RSVP link generated');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError('Failed to generate RSVP link');
+      setError('Failed to generate RSVP link: ' + (err as Error).message);
+    }
+  };
+
+  const handleSaveLayout = async (newLayouts: TableLayout[]) => {
+    if (!supabase || !isSupabaseConfigured()) {
+      setLayouts(newLayouts);
+      setSuccessMessage('Layout saved');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      return;
+    }
+    try {
+      console.log('Saving layouts:', newLayouts);
+      const { error } = await supabase
+        .from('table_layouts')
+        .upsert(newLayouts, { onConflict: 'id', ignoreDuplicates: false });
+      if (error) throw error;
+      await fetchLayouts();
+      setSuccessMessage('Layout saved');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Layout save error:', err);
+      setError('Failed to save layout: ' + (err as Error).message);
     }
   };
 
@@ -830,7 +546,6 @@ export const GuestManagement: React.FC = () => {
             importErrors.push(`Row ${i + 1}: Missing name`);
             continue;
           }
-          // Find or create meal option
           let mealOptionId = '';
           if (row.meal_name) {
             const existingMeal = mealOptions.find(m => m.name.toLowerCase() === row.meal_name.toLowerCase());
@@ -845,7 +560,6 @@ export const GuestManagement: React.FC = () => {
               if (newMeal) mealOptionId = newMeal.id;
             }
           }
-          // Find or create table
           let tableId = '';
           if (row.table_name) {
             const existingTable = tables.find(t => t.name === row.table_name);
@@ -859,22 +573,49 @@ export const GuestManagement: React.FC = () => {
               if (newTable) tableId = newTable.id;
             }
           }
-          // Handle guest type
           const guestType = row.guest_type ? row.guest_type.toLowerCase().replace(/\s+/g, '_') : 'friend';
           const validGuestTypes = guestTypes.map(t => t.value);
           const finalGuestType = validGuestTypes.includes(guestType) ? guestType : 'friend';
-          // Handle partner_id
           const validPartners = [couple?.partner1_name, couple?.partner2_name].filter(Boolean) as string[];
           const partnerId = row.partner_id && validPartners.includes(row.partner_id) ? row.partner_id : null;
+          const listPriority = ['1', '2', '3'].includes(row.list_priority) ? row.list_priority : '1';
+          let familyMembers: { name: string; age_category: 'adult' | 'child'; meal_option_id: string }[] = [];
+          if (row.family_members_names) {
+            const names = row.family_members_names.split(';').map((n: string) => n.trim());
+            const ages = row.family_members_ages ? row.family_members_ages.split(';').map((a: string) => a.trim()) : names.map(() => 'adult');
+            const meals = row.family_members_meals ? row.family_members_meals.split(';').map((m: string) => m.trim()) : names.map(() => '');
+            for (let j = 0; j < names.length; j++) {
+              let mealOptionId = '';
+              if (meals[j]) {
+                const existingMeal = mealOptions.find(m => m.name.toLowerCase() === meals[j].toLowerCase());
+                if (existingMeal) {
+                  mealOptionId = existingMeal.id;
+                } else if (supabase) {
+                  const { data: newMeal } = await supabase.from('meal_options').insert({
+                    couple_id: couple!.id,
+                    name: meals[j],
+                    is_active: true
+                  }).select().single();
+                  if (newMeal) mealOptionId = newMeal.id;
+                }
+              }
+              familyMembers.push({
+                name: names[j],
+                age_category: ages[j] === 'child' ? 'child' : 'adult',
+                meal_option_id: mealOptionId
+              });
+            }
+          }
           newGuests.push({
             name: row.name,
             email: row.email || null,
             phone: row.phone || null,
             address: [row.street, row.apt, row.city, row.state, row.zip, row.country].filter(Boolean).join(', ') || null,
             table_id: tableId || null,
-            list_priority: ['A', 'B', 'C'].includes(row.list_priority) ? row.list_priority : 'A',
+            list_priority: listPriority,
             has_plus_one: row.has_plus_one === 'true' || false,
             plus_one_name: row.has_plus_one === 'true' ? row.plus_one_name || null : null,
+            family_members: familyMembers.length > 0 ? familyMembers : null,
             notes: row.notes || null,
             meal_option_id: mealOptionId || null,
             guest_type: finalGuestType,
@@ -901,11 +642,18 @@ export const GuestManagement: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country', 'Table', 'Priority', 'Plus One', 'Plus One Name', 'Meal', 'Guest Type', 'Partner', 'Notes', 'RSVP Status'];
+    const headers = [
+      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country', 
+      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names', 
+      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes', 'RSVP Status'
+    ];
     const csvContent = [
       headers.join(','),
       ...guests.map(guest => {
         const addressParts = (guest.address || '').split(', ').map(p => p.trim());
+        const familyMembersNames = guest.family_members ? guest.family_members.map(m => m.name).join(';') : '';
+        const familyMembersAges = guest.family_members ? guest.family_members.map(m => m.age_category).join(';') : '';
+        const familyMembersMeals = guest.family_members ? guest.family_members.map(m => m.meal_option_name || '').join(';') : '';
         return [
           `"${guest.name.replace(/"/g, '""')}"`,
           `"${(guest.email || '').replace(/"/g, '""')}"`,
@@ -920,6 +668,9 @@ export const GuestManagement: React.FC = () => {
           guest.list_priority,
           guest.has_plus_one,
           `"${(guest.plus_one_name || '').replace(/"/g, '""')}"`,
+          `"${familyMembersNames.replace(/"/g, '""')}"`,
+          `"${familyMembersAges}"`,
+          `"${familyMembersMeals.replace(/"/g, '""')}"`,
           `"${guest.meal_option_name || ''}"`,
           `"${guest.guest_type || ''}"`,
           `"${guest.partner_id || ''}"`,
@@ -936,6 +687,30 @@ export const GuestManagement: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
     setSuccessMessage('CSV exported successfully');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleExportExampleCSV = () => {
+    const headers = [
+      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country', 
+      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names', 
+      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes', 'RSVP Status'
+    ];
+    const exampleData = [
+      [
+        '"Smith Family"', '"john@example.com"', '"123-456-7890"', '"123 Main St"', '"Apt 4B"', '"New York"', '"NY"', '"10001"', '"USA"',
+        '"Table 1"', '1', 'false', '""', '"John Smith;Jane Smith;Timmy Smith"', '"adult;adult;child"', '"Beef;Beef;"', '""', '"family"', '"Partner 1"', '"Family with kids"', '"accepted"'
+      ]
+    ];
+    const csvContent = [headers.join(','), ...exampleData].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `example_guests.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setSuccessMessage('Example CSV downloaded');
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
@@ -959,20 +734,64 @@ export const GuestManagement: React.FC = () => {
     return 0;
   });
 
-  // Calculate guest statistics
-  const totalGuests = sortedGuests.length;
-  const aListGuests = sortedGuests.filter(g => g.list_priority === 'A').length;
-  const bListGuests = sortedGuests.filter(g => g.list_priority === 'B').length;
-  const cListGuests = sortedGuests.filter(g => g.list_priority === 'C').length;
-  const pendingGuests = sortedGuests.filter(g => g.rsvp_status === 'pending').length;
-  const rsvpdGuests = sortedGuests.filter(g => g.rsvp_status === 'accepted' || g.rsvp_status === 'declined').length;
+  const totalGuests = sortedGuests.reduce((count, guest) => {
+    let total = 1; // Primary guest
+    if (guest.has_plus_one && guest.plus_one_name) total += 1;
+    if (guest.family_members) total += guest.family_members.length;
+    return count + total;
+  }, 0);
+  const tier1Guests = sortedGuests.reduce((count, guest) => {
+    if (guest.list_priority === '1') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const tier2Guests = sortedGuests.reduce((count, guest) => {
+    if (guest.list_priority === '2') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const tier3Guests = sortedGuests.reduce((count, guest) => {
+    if (guest.list_priority === '3') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const pendingGuests = sortedGuests.reduce((count, guest) => {
+    if (guest.rsvp_status === 'pending') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const rsvpdGuests = sortedGuests.reduce((count, guest) => {
+    if (guest.rsvp_status === 'accepted' || guest.rsvp_status === 'declined') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
 
   if (loading) return <div className="text-center py-8">Loading...</div>;
 
   return (
     <div className="space-y-6">
       {successMessage && <Card className="p-4 bg-green-50 border-green-200"><Check className="w-5 h-5 text-green-500 mr-2 inline" />{successMessage}</Card>}
-      {error && <Card className="p-4 bg-red-50 border-red-200"><X className="w-5 h-5 text-red-500 mr-2 inline" />{error}</Card>}
+      {error && <Card className="p-4 bg-red-50 border-red-200"><AlertCircle className="w-5 h-5 text-red-500 mr-2 inline" />{error}</Card>}
       {importErrors.length > 0 && <Card className="p-4 bg-yellow-50 border-yellow-200"><AlertCircle className="w-5 h-5 text-yellow-500 mr-2 inline" />{importErrors.join('; ')}</Card>}
 
       <Card className="p-6">
@@ -983,18 +802,6 @@ export const GuestManagement: React.FC = () => {
             <div className="text-lg font-semibold text-blue-800">{totalGuests}</div>
             <div className="text-sm text-gray-600">Total Guests</div>
           </div>
-          <div className="bg-green-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-green-800">{aListGuests}</div>
-            <div className="text-sm text-gray-600">A List</div>
-          </div>
-          <div className="bg-yellow-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-yellow-800">{bListGuests}</div>
-            <div className="text-sm text-gray-600">B List</div>
-          </div>
-          <div className="bg-red-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-red-800">{cListGuests}</div>
-            <div className="text-sm text-gray-600">C List</div>
-          </div>
           <div className="bg-purple-50 p-3 rounded-lg text-center">
             <div className="text-lg font-semibold text-purple-800">{pendingGuests}</div>
             <div className="text-sm text-gray-600">Pending</div>
@@ -1003,12 +810,25 @@ export const GuestManagement: React.FC = () => {
             <div className="text-lg font-semibold text-indigo-800">{rsvpdGuests}</div>
             <div className="text-sm text-gray-600">RSVP'd</div>
           </div>
+          <div className="bg-green-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-green-800">{tier1Guests}</div>
+            <div className="text-sm text-gray-600">Tier 1</div>
+          </div>
+          <div className="bg-yellow-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-yellow-800">{tier2Guests}</div>
+            <div className="text-sm text-gray-600">Tier 2</div>
+          </div>
+          <div className="bg-red-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-red-800">{tier3Guests}</div>
+            <div className="text-sm text-gray-600">Tier 3</div>
+          </div>
         </div>
         <div className="flex space-x-2 border-b">
           {[
             { key: 'guests', label: 'Guests', icon: Users },
             { key: 'tables', label: 'Tables', icon: Table2 },
             { key: 'meals', label: 'Meals', icon: Utensils },
+            { key: 'layout', label: 'Table Layout', icon: Table2 },
             { key: 'import-export', label: 'Import/Export', icon: Upload }
           ].map(tab => (
             <button
@@ -1060,9 +880,19 @@ export const GuestManagement: React.FC = () => {
               <div className="flex justify-between">
                 <div>
                   <h5 className="font-semibold">{guest.name}{guest.has_plus_one && guest.plus_one_name ? ` & ${guest.plus_one_name}` : ''}</h5>
+                  {guest.family_members && guest.family_members.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 font-semibold">Family Members:</p>
+                      <ul className="text-sm text-gray-600">
+                        {guest.family_members.map((member, index) => (
+                          <li key={index}>{member.name} ({member.age_category}, Meal: {member.meal_option_name || 'None'})</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-600">Email: {guest.email || 'N/A'} | Phone: {guest.phone || 'N/A'}</p>
                   <p className="text-sm text-gray-600">Address: {guest.address || 'N/A'}</p>
-                  <p className="text-sm text-gray-600">Table: {guest.table_name || 'Unassigned'} | Priority: {guest.list_priority} | Meal: {guest.meal_option_name || 'None'}</p>
+                  <p className="text-sm text-gray-600">Table: {guest.table_name || 'Unassigned'} | Priority: {listPriorities.find(p => p.value === guest.list_priority)?.label || guest.list_priority} | Meal: {guest.meal_option_name || 'None'}</p>
                   <p className="text-sm text-gray-600">Type: {guestTypes.find(t => t.value === guest.guest_type)?.label || 'N/A'} | Invited By: {guest.partner_id || 'N/A'} | Plus One: {guest.has_plus_one ? 'Yes' : 'No'}</p>
                   <p className="text-sm text-gray-600">RSVP: {rsvpStatuses[guest.rsvp_status || 'pending'].label}</p>
                   <p className="text-sm text-gray-600">Notes: {guest.notes || 'N/A'}</p>
@@ -1089,6 +919,8 @@ export const GuestManagement: React.FC = () => {
             couple={couple}
             onSave={handleSaveGuest}
             isEditing={!!editingGuest}
+            listPriorities={listPriorities}
+            guestTypes={guestTypes}
           />
         </div>
       )}
@@ -1148,6 +980,13 @@ export const GuestManagement: React.FC = () => {
         </div>
       )}
 
+      {activeSubTab === 'layout' && (
+        <Card className="p-6 text-center">
+          <h4 className="text-lg font-semibold mb-4">Table Layout</h4>
+          <p className="text-gray-600">Coming Soon</p>
+        </Card>
+      )}
+
       {activeSubTab === 'import-export' && (
         <Card className="p-6">
           <h4 className="text-lg font-semibold mb-4">Bulk Operations</h4>
@@ -1155,12 +994,16 @@ export const GuestManagement: React.FC = () => {
             <div>
               <h5 className="font-medium mb-2 flex items-center"><Upload className="w-4 h-4 mr-2" />Import CSV</h5>
               <Input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files?.[0] || null)} />
-              <p className="text-sm text-gray-600 mt-1">Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (A/B/C), has_plus_one (true/false), plus_one_name, meal_name, guest_type, partner_id, notes</p>
+              <p className="text-sm text-gray-600 mt-1">Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (1/2/3), has_plus_one (true/false), plus_one_name, family_members_names, family_members_ages, family_members_meals, meal_name, guest_type, partner_id, notes</p>
               <Button onClick={handleImportCSV} loading={importLoading} disabled={!csvFile} className="mt-2">Import</Button>
             </div>
             <div>
               <h5 className="font-medium mb-2 flex items-center"><Download className="w-4 h-4 mr-2" />Export CSV</h5>
               <Button onClick={handleExportCSV} variant="outline">Download Guests CSV</Button>
+            </div>
+            <div>
+              <h5 className="font-medium mb-2 flex items-center"><Download className="w-4 h-4 mr-2" />Download Example CSV</h5>
+              <Button onClick={handleExportExampleCSV} variant="outline">Download Example CSV</Button>
             </div>
           </div>
         </Card>
