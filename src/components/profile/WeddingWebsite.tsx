@@ -199,6 +199,34 @@ export const WeddingWebsite: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${styles.container}`}>
+      <style>
+        {`
+          .masonry-grid {
+            display: grid;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            gap: 1rem;
+            grid-auto-rows: 10px;
+            grid-auto-flow: dense;
+          }
+          @media (min-width: 768px) {
+            .masonry-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+          }
+          @media (min-width: 1024px) {
+            .masonry-grid {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+          }
+          .masonry-item img {
+            width: 100%;
+            max-height: 24rem; /* 384px */
+            object-fit: contain;
+            aspect-ratio: auto;
+            display: block;
+          }
+        `}
+      </style>
       <header className={`py-12 ${styles.header}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl font-bold mb-4">
@@ -298,9 +326,9 @@ export const WeddingWebsite: React.FC = () => {
           ) : photos.length === 0 ? (
             <p>No photos available.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="masonry-grid">
               {photos.map(photo => (
-                <Card key={photo.id} className="overflow-hidden">
+                <Card key={photo.id} className="masonry-item overflow-hidden">
                   <img
                     src={photo.public_url}
                     alt={photo.file_name}
