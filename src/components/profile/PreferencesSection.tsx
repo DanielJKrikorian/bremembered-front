@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCouple, useCouplePreferences, useStyleTags, useVibeTags, useLanguages } from '../../hooks/useCouple';
-import { Card } from '../components/ui/Card';
+import { Card } from '../../components/ui/Card';
 
 export const PreferencesSection: React.FC = () => {
   const { couple, refetchCouple } = useCouple();
