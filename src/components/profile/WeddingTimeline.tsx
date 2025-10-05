@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, Plus, Edit2, Trash2, Save, X, MapPin, Users, Music, Camera, AlertCircle, Check, ArrowLeft, ArrowRight, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
-import { format, parseISO, addMinutes } from 'date-fns';
+import { Calendar, Clock, Plus, Edit2, MapPin, Trash2, AlertCircle, Check, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2, Users } from 'lucide-react';
+import { format, parseISO, addMinutes, subDays, addDays } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { jsPDF } from 'jspdf';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { Input } from '../ui/Input';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useCouple } from '../../hooks/useCouple';
+import { TimelineEventModal } from './TimelineEventModal';
 
 interface TimelineEvent {
   id: string;
@@ -29,25 +29,13 @@ interface TimelineEvent {
   wedding_website: boolean;
 }
 
-interface EventFormData {
-  title: string;
-  description: string;
-  event_time: string;
-  location: string;
-  type: string;
-  duration_minutes: number;
-  music_notes: string;
-  playlist_requests: string;
-  photo_shotlist: string;
-  wedding_website: boolean;
-}
-
 interface StandardEvent {
   type: string;
   title: string;
   description: string;
   duration_minutes: number;
   order: number;
+  default_day: 'day_before' | 'wedding_day' | 'day_after';
 }
 
 interface Vendor {
@@ -55,529 +43,136 @@ interface Vendor {
   name: string;
 }
 
-interface EventModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  event?: TimelineEvent;
-  weddingDate: string;
-  onSave: (eventData: EventFormData) => void;
-  isEditing: boolean;
-}
-
-const eventTypes = [
-  { value: "custom", label: "Custom Event" },
-  { value: "getting_ready", label: "Getting Ready" },
-  { value: "first_look", label: "First Look" },
-  { value: "ceremony", label: "Ceremony" },
-  { value: "cocktail_hour", label: "Cocktail Hour" },
-  { value: "reception_entrance", label: "Reception Entrance" },
-  { value: "first_dance", label: "First Dance" },
-  { value: "dinner", label: "Dinner" },
-  { value: "toasts", label: "Toasts & Speeches" },
-  { value: "cake_cutting", label: "Cake Cutting" },
-  { value: "parent_dances", label: "Parent Dances" },
-  { value: "open_dancing", label: "Open Dancing" },
-  { value: "bouquet_toss", label: "Bouquet & Garter Toss" },
-  { value: "send_off", label: "Grand Send-Off" },
-  { value: "photo_session", label: "Photo Session" },
-  { value: "transportation", label: "Transportation" },
-  { value: "vendor_arrival", label: "Vendor Arrival" },
-  { value: "other", label: "Other" },
-];
-
 const standardEvents: StandardEvent[] = [
+  {
+    type: "rehearsal_dinner",
+    title: "Rehearsal Dinner",
+    description: "Dinner with wedding party and family the evening before",
+    duration_minutes: 120,
+    order: 0,
+    default_day: 'day_before',
+  },
+  {
+    type: "welcome_party",
+    title: "Welcome Party",
+    description: "Casual gathering to welcome guests",
+    duration_minutes: 90,
+    order: 1,
+    default_day: 'day_before',
+  },
   {
     type: "getting_ready",
     title: "Getting Ready",
     description: "Hair, makeup, and final preparations",
     duration_minutes: 120,
-    order: 1,
+    order: 2,
+    default_day: 'wedding_day',
   },
   {
     type: "first_look",
     title: "First Look",
     description: "Private moment seeing each other before the ceremony",
     duration_minutes: 30,
-    order: 2,
+    order: 3,
+    default_day: 'wedding_day',
   },
   {
     type: "ceremony",
     title: "Ceremony",
     description: "Wedding ceremony",
     duration_minutes: 60,
-    order: 3,
+    order: 4,
+    default_day: 'wedding_day',
   },
   {
     type: "cocktail_hour",
     title: "Cocktail Hour",
     description: "Drinks and appetizers for guests",
     duration_minutes: 60,
-    order: 4,
+    order: 5,
+    default_day: 'wedding_day',
   },
   {
     type: "reception_entrance",
     title: "Grand Entrance",
     description: "Introduction of the wedding party and newlyweds",
     duration_minutes: 15,
-    order: 5,
+    order: 6,
+    default_day: 'wedding_day',
   },
   {
     type: "first_dance",
     title: "First Dance",
     description: "First dance as a married couple",
     duration_minutes: 10,
-    order: 6,
+    order: 7,
+    default_day: 'wedding_day',
   },
   {
     type: "dinner",
     title: "Dinner Service",
     description: "Meal service for all guests",
     duration_minutes: 60,
-    order: 7,
+    order: 8,
+    default_day: 'wedding_day',
   },
   {
     type: "toasts",
     title: "Toasts & Speeches",
     description: "Speeches from wedding party and family",
     duration_minutes: 30,
-    order: 8,
+    order: 9,
+    default_day: 'wedding_day',
   },
   {
     type: "cake_cutting",
     title: "Cake Cutting",
     description: "Ceremonial cutting of the wedding cake",
     duration_minutes: 15,
-    order: 9,
+    order: 10,
+    default_day: 'wedding_day',
   },
   {
     type: "parent_dances",
     title: "Parent Dances",
     description: "Special dances with parents",
     duration_minutes: 15,
-    order: 10,
+    order: 11,
+    default_day: 'wedding_day',
   },
   {
     type: "open_dancing",
     title: "Open Dancing",
     description: "Dance floor opens for all guests",
     duration_minutes: 120,
-    order: 11,
+    order: 12,
+    default_day: 'wedding_day',
   },
   {
     type: "bouquet_toss",
     title: "Bouquet & Garter Toss",
     description: "Traditional bouquet and garter toss",
     duration_minutes: 15,
-    order: 12,
+    order: 13,
+    default_day: 'wedding_day',
   },
   {
     type: "send_off",
     title: "Grand Send-Off",
     description: "Final farewell as you depart the reception",
     duration_minutes: 15,
-    order: 13,
+    order: 14,
+    default_day: 'wedding_day',
+  },
+  {
+    type: "day_after_brunch",
+    title: "Day-After Brunch",
+    description: "Post-wedding brunch with guests",
+    duration_minutes: 120,
+    order: 15,
+    default_day: 'day_after',
   },
 ];
-
-const EventModal: React.FC<EventModalProps> = ({
-  isOpen,
-  onClose,
-  event,
-  weddingDate,
-  onSave,
-  isEditing
-}) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<EventFormData>({
-    title: '',
-    description: '',
-    event_time: '',
-    location: '',
-    type: 'custom',
-    duration_minutes: 60,
-    music_notes: '',
-    playlist_requests: '',
-    photo_shotlist: '',
-    wedding_website: true
-  });
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-
-  useEffect(() => {
-    if (event) {
-      setFormData({
-        title: event.title,
-        description: event.description || '',
-        event_time: event.event_time,
-        location: event.location || '',
-        type: event.type,
-        duration_minutes: event.duration_minutes || 60,
-        music_notes: event.music_notes || '',
-        playlist_requests: event.playlist_requests || '',
-        photo_shotlist: event.photo_shotlist || '',
-        wedding_website: event.wedding_website
-      });
-    } else {
-      setFormData({
-        title: '',
-        description: '',
-        event_time: '',
-        location: '',
-        type: 'custom',
-        duration_minutes: 60,
-        music_notes: '',
-        playlist_requests: '',
-        photo_shotlist: '',
-        wedding_website: true
-      });
-    }
-    setCurrentStep(1);
-    setFormErrors({});
-  }, [event, isOpen]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLInputElement>
-  ) => {
-    const { name, value, type, checked } = e.target as HTMLInputElement;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    if (formErrors[name]) {
-      setFormErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedType = e.target.value;
-    const standardEvent = standardEvents.find(event => event.type === selectedType);
-    if (standardEvent) {
-      setFormData(prev => ({
-        ...prev,
-        type: selectedType,
-        title: standardEvent.title,
-        description: standardEvent.description,
-        duration_minutes: standardEvent.duration_minutes,
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, type: selectedType }));
-    }
-  };
-
-  const validateCurrentStep = () => {
-    const errors: { [key: string]: string } = {};
-    if (currentStep === 1) {
-      if (!formData.title.trim()) {
-        errors.title = "Title is required";
-      }
-      if (!formData.event_time) {
-        errors.event_time = "Time is required";
-      }
-      if (isNaN(formData.duration_minutes) || formData.duration_minutes < 5) {
-        errors.duration_minutes = "Duration must be at least 5 minutes";
-      }
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const canProceedToNextStep = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.title.trim() && formData.event_time && !isNaN(formData.duration_minutes) && formData.duration_minutes >= 5;
-      case 2:
-      case 3:
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  const handleNext = () => {
-    if (validateCurrentStep() && currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateCurrentStep()) {
-      onSave(formData);
-      onClose();
-      setCurrentStep(1);
-    }
-  };
-
-  const getStepTitle = () => {
-    switch (currentStep) {
-      case 1: return 'Event Details';
-      case 2: return 'Music & Playlist';
-      case 3: return 'Photo Shotlist';
-      default: return 'Event Details';
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900">
-              {isEditing ? 'Edit Event' : 'Add New Event'}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Step {currentStep} of 3: {getStepTitle()}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-center space-x-4">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                  ${currentStep >= step
-                    ? 'bg-rose-500 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-600'
-                  }
-                `}>
-                  {currentStep > step ? <Check className="w-4 h-4" /> : step}
-                </div>
-                {step < 3 && (
-                  <div className={`w-16 h-1 mx-2 rounded-full transition-all ${
-                    currentStep > step ? 'bg-rose-500' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-center mt-2">
-            <span className="text-sm text-gray-600">{getStepTitle()}</span>
-          </div>
-        </div>
-        <div className="p-4 md:p-6">
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Event Details</h2>
-                <p className="text-gray-600">Basic information about your event</p>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Event Type
-                  </label>
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleTypeChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  >
-                    {eventTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Input
-                  label="Title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Enter event title"
-                  error={formErrors.title}
-                  required
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    placeholder="Enter event description"
-                  />
-                </div>
-                <Input
-                  label="Time"
-                  name="event_time"
-                  type="time"
-                  value={formData.event_time}
-                  onChange={handleInputChange}
-                  error={formErrors.event_time}
-                  required
-                />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    placeholder="Enter location"
-                    icon={MapPin}
-                  />
-                  <Input
-                    label="Duration (minutes)"
-                    name="duration_minutes"
-                    type="number"
-                    value={formData.duration_minutes}
-                    onChange={handleInputChange}
-                    min="5"
-                    step="5"
-                    error={formErrors.duration_minutes}
-                    icon={Clock}
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      name="wedding_website"
-                      checked={formData.wedding_website}
-                      onChange={handleInputChange}
-                      className="h-4 w-4 text-rose-500 focus:ring-rose-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Show on Wedding Website</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Music className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Music & Playlist</h2>
-                <p className="text-gray-600">Share your music preferences and requests</p>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Specific Song Requests
-                  </label>
-                  <textarea
-                    name="music_notes"
-                    value={formData.music_notes}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="e.g., 'Bridal party entrance song: Perfect by Ed Sheeran', 'First dance: At Last by Etta James'"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Playlist Requests & Preferences
-                  </label>
-                  <textarea
-                    name="playlist_requests"
-                    value={formData.playlist_requests}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="e.g., 'Cocktail hour: Jazz and acoustic covers', 'Reception: Mix of 80s, 90s, and current hits', 'Do NOT play: Country music'"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Camera className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-3">Photo Shotlist</h2>
-                <p className="text-gray-600">Specify the photos you want captured</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Photo Requests & Must-Have Shots
-                </label>
-                <textarea
-                  name="photo_shotlist"
-                  value={formData.photo_shotlist}
-                  onChange={handleInputChange}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 'Family group photo with grandparents', 'Ring exchange close-up', 'Bride with bridesmaids getting ready', 'Sunset couple portraits', 'Detail shots of flowers and decor'"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  List specific photos you want captured during this event. This helps your photographer plan and ensures no important moments are missed.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between items-center p-4 md:p-6 border-t border-gray-200">
-          <div>
-            {currentStep > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                icon={ArrowLeft}
-              >
-                Back
-              </Button>
-            )}
-          </div>
-          <div className="flex space-x-3">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            {currentStep < 3 ? (
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleNext}
-                disabled={!canProceedToNextStep()}
-                icon={ArrowRight}
-              >
-                Next: {currentStep === 1 ? 'Music' : 'Photos'}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleSubmit}
-                icon={Save}
-                disabled={!canProceedToNextStep()}
-              >
-                {isEditing ? 'Update Event' : 'Add Event'}
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-};
 
 export const WeddingTimeline: React.FC = () => {
   const { user } = useAuth();
@@ -627,6 +222,21 @@ export const WeddingTimeline: React.FC = () => {
         {
           id: 'mock-event-1',
           couple_id: couple.id,
+          title: 'Rehearsal Dinner',
+          description: 'Dinner with wedding party and family',
+          event_date: couple.wedding_date ? format(subDays(parseISO(couple.wedding_date), 1), 'yyyy-MM-dd') : '2026-05-23',
+          event_time: '18:00',
+          location: 'Restaurant Venue',
+          type: 'rehearsal_dinner',
+          duration_minutes: 120,
+          is_standard: true,
+          wedding_website: true,
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z'
+        },
+        {
+          id: 'mock-event-2',
+          couple_id: couple.id,
           title: 'Getting Ready',
           description: 'Bride and groom preparation',
           event_date: couple.wedding_date || '2026-05-24',
@@ -641,7 +251,7 @@ export const WeddingTimeline: React.FC = () => {
           updated_at: '2024-01-15T10:00:00Z'
         },
         {
-          id: 'mock-event-2',
+          id: 'mock-event-3',
           couple_id: couple.id,
           title: 'Ceremony',
           description: 'Wedding ceremony',
@@ -658,40 +268,20 @@ export const WeddingTimeline: React.FC = () => {
           updated_at: '2024-01-15T10:00:00Z'
         },
         {
-          id: 'mock-event-3',
-          couple_id: couple.id,
-          title: 'Cocktail Hour',
-          description: 'Guests mingle while couple takes photos',
-          event_date: couple.wedding_date || '2026-05-24',
-          event_time: '16:30',
-          location: 'Garden Terrace',
-          type: 'cocktail_hour',
-          duration_minutes: 60,
-          is_standard: true,
-          music_notes: 'Jazz playlist, acoustic background music',
-          photo_shotlist: 'Couple portraits, family photos, guest candids',
-          wedding_website: false,
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z'
-        },
-        {
           id: 'mock-event-4',
           couple_id: couple.id,
-          title: 'Reception',
-          description: 'Dinner, dancing, and celebration',
-          event_date: couple.wedding_date || '2026-05-24',
-          event_time: '17:30',
-          location: 'Main Ballroom',
-          type: 'reception_entrance',
-          duration_minutes: 300,
+          title: 'Day-After Brunch',
+          description: 'Brunch with guests',
+          event_date: couple.wedding_date ? format(addDays(parseISO(couple.wedding_date), 1), 'yyyy-MM-dd') : '2026-05-25',
+          event_time: '11:00',
+          location: 'Hotel Cafe',
+          type: 'day_after_brunch',
+          duration_minutes: 120,
           is_standard: true,
-          music_notes: 'First dance: Perfect by Ed Sheeran, Party playlist attached',
-          playlist_requests: 'Upbeat dance music, no explicit lyrics, mix of decades',
-          photo_shotlist: 'First dance, toasts, cake cutting, dancing, candids',
           wedding_website: true,
           created_at: '2024-01-15T10:00:00Z',
           updated_at: '2024-01-15T10:00:00Z'
-        }
+        },
       ];
       setTimelineEvents(mockEvents);
       setLoading(false);
@@ -736,6 +326,20 @@ export const WeddingTimeline: React.FC = () => {
     }
   };
 
+  const calculateEventDate = (eventDay: string, weddingDate: string): string => {
+    if (!weddingDate) return new Date().toISOString().split('T')[0];
+    const parsedWeddingDate = parseISO(weddingDate);
+    switch (eventDay) {
+      case 'day_before':
+        return format(subDays(parsedWeddingDate, 1), 'yyyy-MM-dd');
+      case 'day_after':
+        return format(addDays(parsedWeddingDate, 1), 'yyyy-MM-dd');
+      case 'wedding_day':
+      default:
+        return weddingDate;
+    }
+  };
+
   const handleSaveEvent = async (eventData: EventFormData) => {
     if (!couple?.id) return;
 
@@ -745,7 +349,7 @@ export const WeddingTimeline: React.FC = () => {
         couple_id: couple.id,
         title: eventData.title,
         description: eventData.description,
-        event_date: editingEvent ? editingEvent.event_date : (couple.wedding_date || '2026-05-24'),
+        event_date: calculateEventDate(eventData.event_day, couple.wedding_date || '2026-05-24'),
         event_time: eventData.event_time,
         location: eventData.location,
         type: eventData.type,
@@ -785,7 +389,7 @@ export const WeddingTimeline: React.FC = () => {
       const dataToSave = {
         ...eventData,
         couple_id: couple.id,
-        event_date: editingEvent ? editingEvent.event_date : (couple.wedding_date || new Date().toISOString().split('T')[0]),
+        event_date: calculateEventDate(eventData.event_day, couple.wedding_date || new Date().toISOString().split('T')[0]),
         is_standard: eventData.type !== 'custom' && eventData.type !== 'other'
       };
 
@@ -856,12 +460,12 @@ export const WeddingTimeline: React.FC = () => {
           couple_id: couple.id,
           title: stdEvent.title,
           description: stdEvent.description,
-          event_date: couple.wedding_date,
+          event_date: calculateEventDate(stdEvent.default_day, couple.wedding_date),
           event_time: format(currentTime, "HH:mm"),
           type: stdEvent.type,
           duration_minutes: stdEvent.duration_minutes,
           is_standard: true,
-          wedding_website: ['ceremony', 'reception_entrance', 'first_dance'].includes(stdEvent.type),
+          wedding_website: ['ceremony', 'reception_entrance', 'first_dance', 'rehearsal_dinner', 'welcome_party', 'day_after_brunch'].includes(stdEvent.type),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -880,17 +484,20 @@ export const WeddingTimeline: React.FC = () => {
     }
 
     try {
-      let currentTime = new Date(`${couple.wedding_date}T12:00:00`);
       const ceremonyEvent = timelineEvents.find((e) => e.type === "ceremony");
-      if (ceremonyEvent) {
-        currentTime = new Date(`${ceremonyEvent.event_date}T${ceremonyEvent.event_time}`);
-      }
+      let currentTime = ceremonyEvent
+        ? new Date(`${ceremonyEvent.event_date}T${ceremonyEvent.event_time}`)
+        : new Date(`${couple.wedding_date}T12:00:00`);
 
       const standardEventsToAdd = standardEvents
         .filter((stdEvent) => !timelineEvents.some((e) => e.type === stdEvent.type))
         .map((stdEvent) => {
           let eventTime = currentTime;
-          if (stdEvent.order < 3 && ceremonyEvent) {
+          if (stdEvent.default_day === 'day_before') {
+            eventTime = new Date(`${calculateEventDate('day_before', couple.wedding_date)}T18:00:00`);
+          } else if (stdEvent.default_day === 'day_after') {
+            eventTime = new Date(`${calculateEventDate('day_after', couple.wedding_date)}T11:00:00`);
+          } else if (stdEvent.order < 3 && ceremonyEvent) {
             const ceremonyTime = new Date(`${ceremonyEvent.event_date}T${ceremonyEvent.event_time}`);
             if (stdEvent.type === "getting_ready") {
               eventTime = new Date(ceremonyTime);
@@ -907,12 +514,12 @@ export const WeddingTimeline: React.FC = () => {
             couple_id: couple.id,
             title: stdEvent.title,
             description: stdEvent.description,
-            event_date: couple.wedding_date,
+            event_date: calculateEventDate(stdEvent.default_day, couple.wedding_date),
             event_time: format(eventTime, "HH:mm"),
             type: stdEvent.type,
             duration_minutes: stdEvent.duration_minutes,
             is_standard: true,
-            wedding_website: ['ceremony', 'reception_entrance', 'first_dance'].includes(stdEvent.type)
+            wedding_website: ['ceremony', 'reception_entrance', 'first_dance', 'rehearsal_dinner', 'welcome_party', 'day_after_brunch'].includes(stdEvent.type)
           };
           currentTime = addMinutes(eventTime, stdEvent.duration_minutes);
           return eventData;
@@ -945,18 +552,18 @@ export const WeddingTimeline: React.FC = () => {
     }
 
     if (!supabase || !isSupabaseConfigured()) {
-      let eventTime = new Date(`${couple.wedding_date}T12:00:00`);
+      let eventTime = new Date(`${calculateEventDate(stdEvent.default_day, couple.wedding_date)}T12:00:00`);
       const mockEvent: TimelineEvent = {
         id: `mock-${stdEvent.type}`,
         couple_id: couple.id,
         title: stdEvent.title,
         description: stdEvent.description,
-        event_date: couple.wedding_date,
+        event_date: calculateEventDate(stdEvent.default_day, couple.wedding_date),
         event_time: format(eventTime, "HH:mm"),
         type: stdEvent.type,
         duration_minutes: stdEvent.duration_minutes,
         is_standard: true,
-        wedding_website: ['ceremony', 'reception_entrance', 'first_dance'].includes(stdEvent.type),
+        wedding_website: ['ceremony', 'reception_entrance', 'first_dance', 'rehearsal_dinner', 'welcome_party', 'day_after_brunch'].includes(stdEvent.type),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -971,39 +578,41 @@ export const WeddingTimeline: React.FC = () => {
     }
 
     try {
-      let eventTime = new Date(`${couple.wedding_date}T12:00:00`);
-      const ceremonyEvent = timelineEvents.find((e) => e.type === "ceremony");
-      if (ceremonyEvent) {
-        const ceremonyTime = new Date(
-          `${ceremonyEvent.event_date}T${ceremonyEvent.event_time}`
-        );
-        if (stdEvent.order < 3) {
-          if (stdEvent.type === "getting_ready") {
-            eventTime = new Date(ceremonyTime);
-            eventTime.setHours(eventTime.getHours() - 3);
-          } else if (stdEvent.type === "first_look") {
-            eventTime = new Date(ceremonyTime);
-            eventTime.setHours(eventTime.getHours() - 1);
-          }
-        } else if (stdEvent.order > 3) {
-          const sortedEvents = [...timelineEvents].sort((a, b) => {
-            const dateA = new Date(`${a.event_date}T${a.event_time}`);
-            const dateB = new Date(`${b.event_date}T${b.event_time}`);
-            return dateA.getTime() - dateB.getTime();
-          });
-          if (sortedEvents.length > 0) {
-            const lastEvent = sortedEvents[sortedEvents.length - 1];
-            eventTime = new Date(
-              `${lastEvent.event_date}T${lastEvent.event_time}`
-            );
-            if (lastEvent.duration_minutes) {
-              eventTime = addMinutes(eventTime, lastEvent.duration_minutes);
+      let eventTime = new Date(`${calculateEventDate(stdEvent.default_day, couple.wedding_date)}T12:00:00`);
+      if (stdEvent.default_day === 'day_before') {
+        eventTime = new Date(`${calculateEventDate('day_before', couple.wedding_date)}T18:00:00`);
+      } else if (stdEvent.default_day === 'day_after') {
+        eventTime = new Date(`${calculateEventDate('day_after', couple.wedding_date)}T11:00:00`);
+      } else {
+        const ceremonyEvent = timelineEvents.find((e) => e.type === "ceremony");
+        if (ceremonyEvent) {
+          const ceremonyTime = new Date(`${ceremonyEvent.event_date}T${ceremonyEvent.event_time}`);
+          if (stdEvent.order < 3) {
+            if (stdEvent.type === "getting_ready") {
+              eventTime = new Date(ceremonyTime);
+              eventTime.setHours(eventTime.getHours() - 3);
+            } else if (stdEvent.type === "first_look") {
+              eventTime = new Date(ceremonyTime);
+              eventTime.setHours(eventTime.getHours() - 1);
             }
-          } else if (ceremonyEvent) {
-            eventTime = addMinutes(ceremonyTime, 30);
+          } else if (stdEvent.order > 3) {
+            const sortedEvents = [...timelineEvents].sort((a, b) => {
+              const dateA = new Date(`${a.event_date}T${a.event_time}`);
+              const dateB = new Date(`${b.event_date}T${b.event_time}`);
+              return dateA.getTime() - dateB.getTime();
+            });
+            if (sortedEvents.length > 0) {
+              const lastEvent = sortedEvents[sortedEvents.length - 1];
+              eventTime = new Date(`${lastEvent.event_date}T${lastEvent.event_time}`);
+              if (lastEvent.duration_minutes) {
+                eventTime = addMinutes(eventTime, lastEvent.duration_minutes);
+              }
+            } else {
+              eventTime = addMinutes(ceremonyTime, 30);
+            }
+          } else {
+            eventTime = ceremonyTime;
           }
-        } else {
-          eventTime = ceremonyTime;
         }
       }
 
@@ -1011,12 +620,12 @@ export const WeddingTimeline: React.FC = () => {
         couple_id: couple.id,
         title: stdEvent.title,
         description: stdEvent.description,
-        event_date: couple.wedding_date,
+        event_date: calculateEventDate(stdEvent.default_day, couple.wedding_date),
         event_time: format(eventTime, "HH:mm"),
         type: stdEvent.type,
         duration_minutes: stdEvent.duration_minutes,
         is_standard: true,
-        wedding_website: ['ceremony', 'reception_entrance', 'first_dance'].includes(stdEvent.type)
+        wedding_website: ['ceremony', 'reception_entrance', 'first_dance', 'rehearsal_dinner', 'welcome_party', 'day_after_brunch'].includes(stdEvent.type)
       };
 
       const { error } = await supabase
@@ -1082,74 +691,70 @@ export const WeddingTimeline: React.FC = () => {
       let yPos = 40;
       if (couple?.wedding_date) {
         doc.text(
-          `Date: ${formatInTimeZone(parseISO(couple.wedding_date), 'America/New_York', 'MMMM d, yyyy')}`,
+          `Wedding Date: ${formatInTimeZone(parseISO(couple.wedding_date), 'America/New_York', 'MMMM d, yyyy')}`,
           105,
           yPos,
           { align: "center" }
         );
         yPos += 7;
       }
-      doc.setFont("helvetica", "bold");
-      doc.text("SCHEDULE", 20, yPos + 10);
-      yPos += 15;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      timelineEvents.forEach((event) => {
-        if (yPos > 270) {
+
+      const groupedEvents = groupEventsByDay(timelineEvents, couple?.wedding_date);
+      Object.entries(groupedEvents).forEach(([day, events]) => {
+        if (yPos > 250) {
           doc.addPage();
           yPos = 20;
         }
-        const eventTime = format(
-          parseISO(`2000-01-01T${event.event_time}`),
-          "h:mm a"
-        );
-        const endTime = event.duration_minutes
-          ? format(
-              addMinutes(
-                parseISO(`2000-01-01T${event.event_time}`),
-                event.duration_minutes
-              ),
-              "h:mm a"
-            )
-          : null;
         doc.setFont("helvetica", "bold");
-        doc.text(
-          `${eventTime}${endTime ? ` - ${endTime}` : ""}: ${event.title}`,
-          20,
-          yPos
-        );
-        yPos += 6;
-        if (event.description) {
-          doc.setFont("helvetica", "normal");
-          const descriptionLines = doc.splitTextToSize(event.description, 170);
-          doc.text(descriptionLines, 25, yPos);
-          yPos += 6 * descriptionLines.length;
-        }
-        if (event.location) {
-          doc.setFont("helvetica", "normal");
-          doc.text(`Location: ${event.location}`, 25, yPos);
-          yPos += 6;
-        }
-        if (event.music_notes) {
-          doc.setFont("helvetica", "normal");
-          doc.text(`Music: ${event.music_notes}`, 25, yPos);
-          yPos += 6;
-        }
-        if (event.playlist_requests) {
-          doc.setFont("helvetica", "normal");
-          doc.text(`Playlist: ${event.playlist_requests}`, 25, yPos);
-          yPos += 6;
-        }
-        if (event.photo_shotlist) {
-          doc.setFont("helvetica", "normal");
-          doc.text(`Photos: ${event.photo_shotlist}`, 25, yPos);
-          yPos += 6;
-        }
+        doc.text(day, 20, yPos);
+        yPos += 10;
         doc.setFont("helvetica", "normal");
-        doc.text(`Show on Website: ${event.wedding_website ? 'Yes' : 'No'}`, 25, yPos);
-        yPos += 6;
-        yPos += 4;
+        events.forEach((event) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+          const eventTime = format(parseISO(`2000-01-01T${event.event_time}`), "h:mm a");
+          const endTime = event.duration_minutes
+            ? format(addMinutes(parseISO(`2000-01-01T${event.event_time}`), event.duration_minutes), "h:mm a")
+            : null;
+          doc.setFont("helvetica", "bold");
+          doc.text(`${eventTime}${endTime ? ` - ${endTime}` : ""}: ${event.title}`, 20, yPos);
+          yPos += 6;
+          if (event.description) {
+            doc.setFont("helvetica", "normal");
+            const descriptionLines = doc.splitTextToSize(event.description, 170);
+            doc.text(descriptionLines, 25, yPos);
+            yPos += 6 * descriptionLines.length;
+          }
+          if (event.location) {
+            doc.setFont("helvetica", "normal");
+            doc.text(`Location: ${event.location}`, 25, yPos);
+            yPos += 6;
+          }
+          if (event.music_notes) {
+            doc.setFont("helvetica", "normal");
+            doc.text(`Music: ${event.music_notes}`, 25, yPos);
+            yPos += 6;
+          }
+          if (event.playlist_requests) {
+            doc.setFont("helvetica", "normal");
+            doc.text(`Playlist: ${event.playlist_requests}`, 25, yPos);
+            yPos += 6;
+          }
+          if (event.photo_shotlist) {
+            doc.setFont("helvetica", "normal");
+            doc.text(`Photos: ${event.photo_shotlist}`, 25, yPos);
+            yPos += 6;
+          }
+          doc.setFont("helvetica", "normal");
+          doc.text(`Show on Website: ${event.wedding_website ? 'Yes' : 'No'}`, 25, yPos);
+          yPos += 6;
+          yPos += 4;
+        });
+        yPos += 10;
       });
+
       doc.save(`Wedding_Timeline_${format(new Date(), "yyyy-MM-dd")}.pdf`);
       setSuccessMessage("Timeline downloaded as PDF successfully");
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -1168,24 +773,28 @@ export const WeddingTimeline: React.FC = () => {
       return;
     }
     const headers = [
-      "Title", "Type", "Date", "Time", "Duration (min)", "Location", "Description",
+      "Day", "Title", "Type", "Date", "Time", "Duration (min)", "Location", "Description",
       "Music Notes", "Playlist Requests", "Photo Shotlist", "Show on Website"
     ];
+    const groupedEvents = groupEventsByDay(timelineEvents, couple?.wedding_date);
     const csvContent = [
       headers.join(","),
-      ...timelineEvents.map(event => [
-        `"${event.title.replace(/"/g, '""')}"`,
-        event.type,
-        event.event_date,
-        event.event_time,
-        event.duration_minutes || "",
-        `"${(event.location || "").replace(/"/g, '""')}"`,
-        `"${(event.description || "").replace(/"/g, '""')}"`,
-        `"${(event.music_notes || "").replace(/"/g, '""')}"`,
-        `"${(event.playlist_requests || "").replace(/"/g, '""')}"`,
-        `"${(event.photo_shotlist || "").replace(/"/g, '""')}"`,
-        event.wedding_website
-      ].join(","))
+      ...Object.entries(groupedEvents).flatMap(([day, events]) =>
+        events.map(event => [
+          `"${day.replace(/"/g, '""')}"`,
+          `"${event.title.replace(/"/g, '""')}"`,
+          event.type,
+          event.event_date,
+          event.event_time,
+          event.duration_minutes || "",
+          `"${(event.location || "").replace(/"/g, '""')}"`,
+          `"${(event.description || "").replace(/"/g, '""')}"`,
+          `"${(event.music_notes || "").replace(/"/g, '""')}"`,
+          `"${(event.playlist_requests || "").replace(/"/g, '""')}"`,
+          `"${(event.photo_shotlist || "").replace(/"/g, '""')}"`,
+          event.wedding_website
+        ].join(","))
+      )
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -1201,6 +810,55 @@ export const WeddingTimeline: React.FC = () => {
     setSuccessMessage("Timeline downloaded as CSV successfully");
     setTimeout(() => setSuccessMessage(null), 3000);
     setShowDownloadMenu(false);
+  };
+
+  const groupEventsByDay = (events: TimelineEvent[], weddingDate?: string) => {
+    const grouped: { [key: string]: TimelineEvent[] } = {};
+    const parsedWeddingDate = weddingDate ? parseISO(weddingDate) : null;
+
+    events.forEach(event => {
+      let dayLabel = event.event_date;
+      if (parsedWeddingDate) {
+        if (event.event_date === weddingDate) {
+          dayLabel = `Wedding Day: ${format(parsedWeddingDate, 'MMMM d, yyyy')}`;
+        } else if (event.event_date === format(subDays(parsedWeddingDate, 1), 'yyyy-MM-dd')) {
+          dayLabel = `Day Before: ${format(subDays(parsedWeddingDate, 1), 'MMMM d, yyyy')}`;
+        } else if (event.event_date === format(addDays(parsedWeddingDate, 1), 'yyyy-MM-dd')) {
+          dayLabel = `Day After: ${format(addDays(parsedWeddingDate, 1), 'MMMM d, yyyy')}`;
+        } else {
+          dayLabel = format(parseISO(event.event_date), 'MMMM d, yyyy');
+        }
+      }
+      if (!grouped[dayLabel]) {
+        grouped[dayLabel] = [];
+      }
+      grouped[dayLabel].push(event);
+    });
+
+    // Sort days: Day Before, Wedding Day, Day After, then others
+    const orderedDays = Object.keys(grouped).sort((a, b) => {
+      const weddingDateStr = weddingDate || '9999-12-31';
+      const dateA = a.includes('Day Before') ? format(subDays(parseISO(weddingDateStr), 1), 'yyyy-MM-dd')
+        : a.includes('Wedding Day') ? weddingDateStr
+        : a.includes('Day After') ? format(addDays(parseISO(weddingDateStr), 1), 'yyyy-MM-dd')
+        : a;
+      const dateB = b.includes('Day Before') ? format(subDays(parseISO(weddingDateStr), 1), 'yyyy-MM-dd')
+        : b.includes('Wedding Day') ? weddingDateStr
+        : b.includes('Day After') ? format(addDays(parseISO(weddingDateStr), 1), 'yyyy-MM-dd')
+        : b;
+      return dateA.localeCompare(dateB);
+    });
+
+    const sortedGroups: { [key: string]: TimelineEvent[] } = {};
+    orderedDays.forEach(day => {
+      sortedGroups[day] = grouped[day].sort((a, b) => {
+        const dateA = new Date(`${a.event_date}T${a.event_time}`);
+        const dateB = new Date(`${b.event_date}T${b.event_time}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+    });
+
+    return sortedGroups;
   };
 
   const calculateTimeDifference = (
@@ -1265,13 +923,16 @@ export const WeddingTimeline: React.FC = () => {
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'ceremony': return Calendar;
+      case 'rehearsal_dinner':
+      case 'welcome_party':
       case 'cocktail_hour':
       case 'reception_entrance':
       case 'dinner':
       case 'toasts':
       case 'cake_cutting':
       case 'open_dancing':
-      case 'bouquet_toss': return Users;
+      case 'bouquet_toss':
+      case 'day_after_brunch': return Users;
       case 'getting_ready':
       case 'first_look':
       case 'parent_dances':
@@ -1288,13 +949,16 @@ export const WeddingTimeline: React.FC = () => {
   const getEventColor = (type: string) => {
     switch (type) {
       case 'ceremony': return 'bg-rose-100 text-rose-800 border-rose-200';
+      case 'rehearsal_dinner':
+      case 'welcome_party':
       case 'cocktail_hour':
       case 'reception_entrance':
       case 'dinner':
       case 'toasts':
       case 'cake_cutting':
       case 'open_dancing':
-      case 'bouquet_toss': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'bouquet_toss':
+      case 'day_after_brunch': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'getting_ready':
       case 'first_look':
       case 'parent_dances':
@@ -1317,6 +981,8 @@ export const WeddingTimeline: React.FC = () => {
       </div>
     );
   }
+
+  const groupedEvents = groupEventsByDay(timelineEvents, couple?.wedding_date);
 
   return (
     <div className="space-y-6">
@@ -1343,7 +1009,7 @@ export const WeddingTimeline: React.FC = () => {
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Timeline</h3>
             <p className="text-gray-600">
-              Plan your perfect day and share it with your vendors
+              Plan your events across multiple days and share with vendors
             </p>
             {couple?.wedding_date && (
               <p className="text-sm text-gray-500 mt-1">
@@ -1519,6 +1185,9 @@ export const WeddingTimeline: React.FC = () => {
                     <Clock className="h-4 w-4 mr-1" />
                     {event.duration_minutes} minutes
                   </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {event.default_day === 'day_before' ? 'Day Before' : event.default_day === 'wedding_day' ? 'Wedding Day' : 'Day After'}
+                  </div>
                 </div>
               );
             })}
@@ -1531,7 +1200,7 @@ export const WeddingTimeline: React.FC = () => {
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No timeline events yet</h3>
           <p className="text-gray-600 mb-6">
-            Start building your wedding day timeline by adding events and sharing details with your vendors
+            Start building your multi-day wedding timeline by adding events
           </p>
           <Button
             variant="primary"
@@ -1542,120 +1211,127 @@ export const WeddingTimeline: React.FC = () => {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {timelineEvents.map((event, index) => {
-            const EventIcon = getEventIcon(event.type);
-            const eventColorClass = getEventColor(event.type);
-            
-            return (
-              <Card key={event.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${eventColorClass}`}>
-                      <EventIcon className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-lg font-semibold text-gray-900">{event.title}</h4>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${eventColorClass}`}>
-                          {event.type}
-                        </span>
-                        {event.is_standard && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <Check className="w-3 h-3 mr-1" />
-                            Standard
-                          </span>
-                        )}
-                        {event.wedding_website && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <Check className="w-3 h-3 mr-1" />
-                            On Website
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>{formatTime(event.event_time)}</span>
-                        </div>
-                        {event.duration_minutes && (
-                          <div className="flex items-center">
-                            <span>{event.duration_minutes} minutes</span>
+        <div className="space-y-6">
+          {Object.entries(groupedEvents).map(([day, events]) => (
+            <div key={day}>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-4">{day}</h2>
+              <div className="space-y-4">
+                {events.map((event, index) => {
+                  const EventIcon = getEventIcon(event.type);
+                  const eventColorClass = getEventColor(event.type);
+                  
+                  return (
+                    <Card key={event.id} className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-4 flex-1">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${eventColorClass}`}>
+                            <EventIcon className="w-6 h-6" />
                           </div>
-                        )}
-                        {event.location && (
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span>{event.location}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          <span>{formatInTimeZone(parseISO(event.event_date), 'America/New_York', 'MMMM d, yyyy')}</span>
-                        </div>
-                      </div>
-                      {event.description && (
-                        <p className="text-gray-600 mb-3">{event.description}</p>
-                      )}
-                      <div className="space-y-2">
-                        {event.music_notes && (
-                          <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Music className="w-4 h-4 text-indigo-600" />
-                              <span className="font-medium text-indigo-900 text-sm">Music Notes</span>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900">{event.title}</h4>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${eventColorClass}`}>
+                                {event.type}
+                              </span>
+                              {event.is_standard && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Standard
+                                </span>
+                              )}
+                              {event.wedding_website && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  On Website
+                                </span>
+                              )}
                             </div>
-                            <p className="text-indigo-800 text-sm">{event.music_notes}</p>
-                          </div>
-                        )}
-                        {event.playlist_requests && (
-                          <div className="bg-purple-50 border border-purple-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Music className="w-4 h-4 text-purple-600" />
-                              <span className="font-medium text-purple-900 text-sm">Playlist Requests</span>
+                            <div className="flex items-center space-x-6 text-sm text-gray-600 mb-3">
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-1" />
+                                <span>{formatTime(event.event_time)}</span>
+                              </div>
+                              {event.duration_minutes && (
+                                <div className="flex items-center">
+                                  <span>{event.duration_minutes} minutes</span>
+                                </div>
+                              )}
+                              {event.location && (
+                                <div className="flex items-center">
+                                  <MapPin className="w-4 h-4 mr-1" />
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                <span>{formatInTimeZone(parseISO(event.event_date), 'America/New_York', 'MMMM d, yyyy')}</span>
+                              </div>
                             </div>
-                            <p className="text-purple-800 text-sm">{event.playlist_requests}</p>
-                          </div>
-                        )}
-                        {event.photo_shotlist && (
-                          <div className="bg-rose-50 border border-rose-200 rounded p-3">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <Camera className="w-4 h-4 text-rose-600" />
-                              <span className="font-medium text-rose-900 text-sm">Photo Shot List</span>
+                            {event.description && (
+                              <p className="text-gray-600 mb-3">{event.description}</p>
+                            )}
+                            <div className="space-y-2">
+                              {event.music_notes && (
+                                <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <Music className="w-4 h-4 text-indigo-600" />
+                                    <span className="font-medium text-indigo-900 text-sm">Music Notes</span>
+                                  </div>
+                                  <p className="text-indigo-800 text-sm">{event.music_notes}</p>
+                                </div>
+                              )}
+                              {event.playlist_requests && (
+                                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <Music className="w-4 h-4 text-purple-600" />
+                                    <span className="font-medium text-purple-900 text-sm">Playlist Requests</span>
+                                  </div>
+                                  <p className="text-purple-800 text-sm">{event.playlist_requests}</p>
+                                </div>
+                              )}
+                              {event.photo_shotlist && (
+                                <div className="bg-rose-50 border border-rose-200 rounded p-3">
+                                  <div className="flex items-center space-x-2 mb-1">
+                                    <Camera className="w-4 h-4 text-rose-600" />
+                                    <span className="font-medium text-rose-900 text-sm">Photo Shot List</span>
+                                  </div>
+                                  <p className="text-rose-800 text-sm">{event.photo_shotlist}</p>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-rose-800 text-sm">{event.photo_shotlist}</p>
+                            {index < events.length - 1 && (
+                              <div className="mt-4 text-sm text-gray-500 italic">
+                                {calculateTimeDifference(event, events[index + 1])}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {index < timelineEvents.length - 1 && (
-                        <div className="mt-4 text-sm text-gray-500 italic">
-                          {calculateTimeDifference(event, timelineEvents[index + 1])}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={Edit2}
-                      onClick={() => {
-                        setEditingEvent(event);
-                        setShowEventModal(true);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={Trash2}
-                      onClick={() => deleteTimelineEvent(event.id)}
-                      className="text-red-400 hover:text-red-600"
-                    />
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={Edit2}
+                            onClick={() => {
+                              setEditingEvent(event);
+                              setShowEventModal(true);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={Trash2}
+                            onClick={() => deleteTimelineEvent(event.id)}
+                            className="text-red-400 hover:text-red-600"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -1683,7 +1359,7 @@ export const WeddingTimeline: React.FC = () => {
         </Card>
       )}
 
-      <EventModal
+      <TimelineEventModal
         isOpen={showEventModal}
         onClose={() => {
           setShowEventModal(false);

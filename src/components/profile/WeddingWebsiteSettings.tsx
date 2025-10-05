@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { format, parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { useCouple } from '../../hooks/useCouple';
 import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
 import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
@@ -6,7 +8,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { Globe, Lock, Image, Calendar, User, Upload, Trash, Check, Eye, EyeOff, MapPin } from 'lucide-react';
+import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin } from 'lucide-react';
 import { debounce } from 'lodash';
 
 interface WebsiteSettings {
@@ -249,12 +251,13 @@ export const WeddingWebsiteSettings: React.FC = () => {
 
   const formatDateTime = (event: TimelineEvent) => {
     try {
-      const date = new Date(event.event_date);
-      const time = new Date(`2000-01-01T${event.event_time}`);
-      const formattedDate = date.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-      const formattedTime = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const date = parseISO(event.event_date); // Parse event_date as ISO string
+      const time = parseISO(`2000-01-01T${event.event_time}`);
+      const formattedDate = formatInTimeZone(date, 'America/New_York', 'MM/dd/yyyy');
+      const formattedTime = format(time, 'h:mm a');
       return `${formattedDate} at ${formattedTime}`;
-    } catch {
+    } catch (error) {
+      console.error('Error formatting date/time:', error, 'Event:', event);
       return 'Invalid date/time';
     }
   };
@@ -262,7 +265,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
   const layoutPreviews = {
     classic: { bg: 'bg-white border-rose-200', header: 'bg-rose-100 text-rose-800', button: 'bg-rose-500 text-white' },
     modern: { bg: 'bg-gray-900 text-white border-gray-700', header: 'bg-gray-800 text-gray-100', button: 'bg-blue-600 text-white' },
-    romantic: { bg: 'bg-pink-50 border-pink-200', header: 'bg-pink-200 text-pink-800', button: 'bg-pink-500 text-white' }
+    romantic: { bg: 'bg-pink-50 border-pink-200', header: 'bg-pink-200 text-pink-900', button: 'bg-pink-500 text-white' }
   };
 
   return (
@@ -368,7 +371,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
                   {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  Wedding Date: {memoizedCouple?.wedding_date ? new Date(memoizedCouple.wedding_date).toLocaleDateString() : 'Not set'}
+                  Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
                 </p>
                 {memoizedCouple?.venue_name && (
                   <p className="text-sm text-gray-600 mt-1 flex items-center">
@@ -456,18 +459,16 @@ export const WeddingWebsiteSettings: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h5 className="font-medium text-gray-900">{event.title}</h5>
-                        <>
-                          <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
-                          {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
-                          {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
-                          {event.photo_shotlist && (
-                            <p className="text-sm text-blue-600 mt-1 flex items-center">
-                              <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
-                            </p>
-                          )}
-                          {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
-                          {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
-                        </>
+                        <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
+                        {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
+                        {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
+                        {event.photo_shotlist && (
+                          <p className="text-sm text-blue-600 mt-1 flex items-center">
+                            <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
+                          </p>
+                        )}
+                        {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
+                        {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
                       </div>
                     </div>
                   </Card>

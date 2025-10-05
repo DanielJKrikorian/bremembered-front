@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
 import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
@@ -102,12 +104,13 @@ export const WeddingWebsite: React.FC = () => {
 
   const formatDateTime = (event: { event_date: string; event_time: string }) => {
     try {
-      const date = new Date(event.event_date);
-      const time = new Date(`2000-01-01T${event.event_time}`);
-      const formattedDate = date.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-      const formattedTime = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const date = parseISO(event.event_date);
+      const time = parseISO(`2000-01-01T${event.event_time}`);
+      const formattedDate = formatInTimeZone(date, 'America/New_York', 'MM/dd/yyyy');
+      const formattedTime = format(time, 'h:mm a');
       return `${formattedDate} at ${formattedTime}`;
-    } catch {
+    } catch (error) {
+      console.error('Error formatting date/time:', error, 'Event:', event);
       return 'Invalid date/time';
     }
   };
@@ -205,7 +208,7 @@ export const WeddingWebsite: React.FC = () => {
             {memoizedSettings.couple.wedding_date && (
               <p className="text-lg flex items-center justify-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                {new Date(memoizedSettings.couple.wedding_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
+                {formatInTimeZone(parseISO(memoizedSettings.couple.wedding_date), 'America/New_York', 'MM/dd/yyyy')}
               </p>
             )}
             {memoizedSettings.couple.venue_name && (
@@ -280,11 +283,9 @@ export const WeddingWebsite: React.FC = () => {
               {events.map(event => (
                 <Card key={event.id} className="p-4">
                   <h3 className="font-medium">{event.title}</h3>
-                  <>
-                    <p className="text-sm">{formatDateTime(event)}</p>
-                    {event.description && <p className="text-sm mt-1">{event.description}</p>}
-                    {event.location && <p className="text-sm mt-1">Location: {event.location}</p>}
-                  </>
+                  <p className="text-sm">{formatDateTime(event)}</p>
+                  {event.description && <p className="text-sm mt-1">{event.description}</p>}
+                  {event.location && <p className="text-sm mt-1">Location: {event.location}</p>}
                 </Card>
               ))}
             </div>
