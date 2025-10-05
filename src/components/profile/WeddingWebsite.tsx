@@ -304,7 +304,7 @@ export const WeddingWebsite: React.FC = () => {
                   <img
                     src={photo.public_url}
                     alt={photo.file_name}
-                    className="w-full h-48 object-cover"
+                    className="w-full max-h-96 object-contain aspect-auto"
                   />
                 </Card>
               ))}

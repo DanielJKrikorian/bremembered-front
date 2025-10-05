@@ -491,6 +491,14 @@ export const WeddingWebsiteSettings: React.FC = () => {
                 disabled={photoUploading || photos.length >= 6}
               />
             </label>
+            {photoUploading && (
+              <div className="mt-2">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Uploading...</p>
+              </div>
+            )}
             {galleryLoading ? (
               <p className="text-gray-600 mt-4">Loading gallery...</p>
             ) : photos.length === 0 ? (
