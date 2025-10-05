@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Input } from '../components/ui/Input';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
 import { Shield, Download, Check, AlertTriangle } from 'lucide-react';
 
 export const SettingsSection: React.FC = () => {

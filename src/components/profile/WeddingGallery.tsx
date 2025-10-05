@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useWeddingGallery } from '../hooks/useWeddingGallery';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import { useWeddingGallery } from '../../hooks/useWeddingGallery';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { Camera, Download, Share2 } from 'lucide-react';
-import { StripePaymentModal } from '../components/payment/StripePaymentModal';
+import { StripePaymentModal } from '../../components/payment/StripePaymentModal';
 
 export const WeddingGallery: React.FC = () => {
   const {
