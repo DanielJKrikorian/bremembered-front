@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useConversations } from '../hooks/useMessaging';
-import { Card } from '../components/ui/Card';
-import { ConversationList } from '../components/messaging/ConversationList';
-import { ChatWindow } from '../components/messaging/ChatWindow';
-import { Conversation } from '../hooks/useMessaging';
+import { useConversations } from '../../hooks/useMessaging';
+import { Card } from '../../components/ui/Card';
+import { ConversationList } from '../../components/messaging/ConversationList';
+import { ChatWindow } from '../../components/messaging/ChatWindow';
+import { Conversation } from '../../hooks/useMessaging';
 
 export const MessagesSection: React.FC = () => {
   const { conversations, loading: conversationsLoading } = useConversations();
