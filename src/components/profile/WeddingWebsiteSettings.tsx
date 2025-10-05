@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCouple } from '../../hooks/useCouple';
 import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
 import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
@@ -6,7 +6,8 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { Globe, Lock, Image, Calendar, User, Upload, Trash } from 'lucide-react';
+import { Globe, Lock, Image, Calendar, User, Upload, Trash, Check, Eye, EyeOff, MapPin } from 'lucide-react';
+import { debounce } from 'lodash';
 
 interface WebsiteSettings {
   id?: string;
@@ -23,58 +24,114 @@ interface TimelineEvent {
   id: string;
   couple_id: string;
   title: string;
-  start_time: string;
-  end_time?: string;
   description?: string;
+  event_date: string;
+  event_time: string;
+  location?: string;
+  type: string;
+  duration_minutes: number;
+  is_standard: boolean;
+  music_notes?: string;
+  playlist_requests?: string;
   photo_shotlist?: string;
+  wedding_website: boolean;
 }
 
 export const WeddingWebsiteSettings: React.FC = () => {
   const { couple, updateCouple } = useCouple();
   const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery();
-  const { events, loading: timelineLoading } = useWeddingTimeline();
-  const [settings, setSettings] = useState<WebsiteSettings>({
-    couple_id: couple?.id || '',
-    slug: couple?.slug || '',
-    password: '',
-    layout: 'classic',
-    about_us: '',
-    love_story: '',
-    accommodations: [{ name: '', website: '', room_block: '' }]
+  const { events, loading: timelineLoading } = useWeddingTimeline(true); // Fetch only website events
+  const memoizedCouple = useMemo(() => couple, [couple?.id, couple?.slug, couple?.partner1_name, couple?.partner2_name, couple?.wedding_date, couple?.venue_name]);
+  const [settings, setSettings] = useState<WebsiteSettings>(() => {
+    const saved = localStorage.getItem(`wedding_website_settings_${memoizedCouple?.id || 'default'}`);
+    return saved ? JSON.parse(saved) : {
+      couple_id: memoizedCouple?.id || '',
+      slug: memoizedCouple?.slug || '',
+      password: 'wedding123',
+      layout: 'classic',
+      about_us: '',
+      love_story: '',
+      accommodations: [{ name: '', website: '', room_block: '' }]
+    };
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Fetch existing website settings
+  // Debug re-renders
   useEffect(() => {
-    const fetchSettings = async () => {
-      if (!couple?.id || !supabase || !isSupabaseConfigured()) return;
-      try {
-        const { data, error } = await supabase
-          .from('wedding_websites')
-          .select('*')
-          .eq('couple_id', couple.id)
-          .single();
-        if (error && error.code !== 'PGRST116') throw error;
-        if (data) {
-          setSettings({
-            ...data,
-            accommodations: data.accommodations || [{ name: '', website: '', room_block: '' }],
-            slug: couple.slug || data.slug
-          });
-          setIsEditing(true);
-        }
-      } catch (err) {
-        console.error('Error fetching website settings:', err);
-      }
-    };
-    if (couple?.id) fetchSettings();
-  }, [couple]);
+    console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple);
+  }, [memoizedCouple]);
 
-  // Validate form
+  // Debounced fetchSettings
+  const fetchSettings = useCallback(debounce(async (coupleId: string) => {
+    if (!coupleId || !supabase || !isSupabaseConfigured()) {
+      setSettings(prev => ({
+        ...prev,
+        couple_id: coupleId || '',
+        slug: memoizedCouple?.slug || '',
+        password: 'wedding123',
+        layout: 'classic'
+      }));
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('wedding_websites')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .single();
+      if (error && error.code !== 'PGRST116') {
+        throw new Error(`Failed to fetch website settings: ${error.message}`);
+      }
+      const newSettings = {
+        couple_id: coupleId,
+        slug: data?.slug || memoizedCouple?.slug || '',
+        password: data?.password || 'wedding123',
+        layout: data?.layout || 'classic',
+        about_us: data?.about_us || '',
+        love_story: data?.love_story || '',
+        accommodations: data?.accommodations || [{ name: '', website: '', room_block: '' }],
+        id: data?.id
+      };
+      setSettings(newSettings);
+      localStorage.setItem(`wedding_website_settings_${coupleId}`, JSON.stringify(newSettings));
+    } catch (err) {
+      console.error('Error fetching website settings:', err);
+      setFormErrors({ general: 'Failed to load settings' });
+    }
+  }, 500), [memoizedCouple?.slug]);
+
+  useEffect(() => {
+    if (memoizedCouple?.id) {
+      fetchSettings(memoizedCouple.id);
+    }
+  }, [memoizedCouple?.id, fetchSettings]);
+
+  useEffect(() => {
+    if (memoizedCouple?.id) {
+      localStorage.setItem(`wedding_website_settings_${memoizedCouple.id}`, JSON.stringify(settings));
+    }
+  }, [settings, memoizedCouple?.id]);
+
+  // Handle Supabase auth state changes
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, 'Session:', !!session);
+      if (event === 'TOKEN_REFRESHED' && memoizedCouple?.id) {
+        const saved = localStorage.getItem(`wedding_website_settings_${memoizedCouple.id}`);
+        if (saved) {
+          setSettings(JSON.parse(saved));
+        }
+      }
+    });
+    return () => {
+      authListener.subscription?.unsubscribe();
+    };
+  }, [memoizedCouple?.id]);
+
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
     if (!settings.slug.trim()) errors.slug = 'Slug is required';
@@ -89,14 +146,17 @@ export const WeddingWebsiteSettings: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setSettings(prev => ({ ...prev, [name]: value }));
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  // Handle accommodation changes
+  const handleLayoutChange = (layout: 'classic' | 'modern' | 'romantic') => {
+    setSettings(prev => ({ ...prev, layout }));
+    setFormErrors(prev => ({ ...prev, layout: '' }));
+  };
+
   const handleAccommodationChange = (index: number, field: string, value: string) => {
     const newAccommodations = [...settings.accommodations];
     newAccommodations[index] = { ...newAccommodations[index], [field]: value };
@@ -104,7 +164,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
     setFormErrors(prev => ({ ...prev, [`hotel_${field}_${index}`]: '' }));
   };
 
-  // Add a new hotel
   const addHotel = () => {
     if (settings.accommodations.length < 3) {
       setSettings(prev => ({
@@ -114,7 +173,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
     }
   };
 
-  // Remove a hotel
   const removeHotel = (index: number) => {
     setSettings(prev => ({
       ...prev,
@@ -122,7 +180,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
     }));
   };
 
-  // Handle photo upload
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -135,7 +192,10 @@ export const WeddingWebsiteSettings: React.FC = () => {
     setPhotoUploading(false);
   };
 
-  // Save settings
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSave = async () => {
     if (!validateForm()) return;
     setLoading(true);
@@ -145,41 +205,60 @@ export const WeddingWebsiteSettings: React.FC = () => {
         setLoading(false);
         return;
       }
-      // Update couples table with slug
-      await updateCouple({ slug: settings.slug });
-      // Save website settings
+      if (!memoizedCouple?.id) {
+        throw new Error('No couple ID available');
+      }
+      // Update couples table if slug has changed
+      if (memoizedCouple.slug !== settings.slug) {
+        try {
+          await updateCouple({ slug: settings.slug });
+        } catch (err) {
+          console.error('Error updating couple slug:', err);
+          // Fallback: Direct Supabase update
+          const { error: coupleError } = await supabase
+            .from('couples')
+            .update({ slug: settings.slug, updated_at: new Date().toISOString() })
+            .eq('id', memoizedCouple.id);
+          if (coupleError) throw coupleError;
+        }
+      }
       const { error } = await supabase
         .from('wedding_websites')
         .upsert({
           id: settings.id,
-          couple_id: couple!.id,
+          couple_id: memoizedCouple.id,
           slug: settings.slug,
           password: settings.password,
           layout: settings.layout,
           about_us: settings.about_us,
           love_story: settings.love_story,
-          accommodations: settings.accommodations.filter(hotel => hotel.name)
+          accommodations: settings.accommodations.filter(hotel => hotel.name),
+          updated_at: new Date().toISOString()
         }, { onConflict: 'couple_id' });
       if (error) throw error;
       setSuccessMessage('Website settings saved successfully');
+      localStorage.removeItem(`wedding_website_settings_${memoizedCouple.id}`);
       setTimeout(() => setSuccessMessage(null), 3000);
-      setIsEditing(true);
     } catch (err) {
       console.error('Error saving website settings:', err);
-      setFormErrors({ general: 'Failed to save settings' });
+      setFormErrors({ general: err instanceof Error ? err.message : 'Failed to save settings' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Format time for display
-  const formatTime = (timeString: string | null) => {
-    if (!timeString) return 'Not set';
-    const date = new Date(`2000-01-01T${timeString}`);
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const formatDateTime = (event: TimelineEvent) => {
+    try {
+      const date = new Date(event.event_date);
+      const time = new Date(`2000-01-01T${event.event_time}`);
+      const formattedDate = date.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      const formattedTime = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      return `${formattedDate} at ${formattedTime}`;
+    } catch {
+      return 'Invalid date/time';
+    }
   };
 
-  // Layout preview styles
   const layoutPreviews = {
     classic: { bg: 'bg-white border-rose-200', header: 'bg-rose-100 text-rose-800', button: 'bg-rose-500 text-white' },
     modern: { bg: 'bg-gray-900 text-white border-gray-700', header: 'bg-gray-800 text-gray-100', button: 'bg-blue-600 text-white' },
@@ -191,8 +270,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
       <Card className="p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-4">Wedding Website Settings</h3>
         <p className="text-gray-600 mb-6">Configure your public wedding website for guests</p>
-
-        {/* Website Configuration Form */}
         <div className="space-y-6">
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Website Details</h4>
@@ -210,43 +287,59 @@ export const WeddingWebsiteSettings: React.FC = () => {
                 <p className="text-sm text-gray-600 mt-1">
                   Your website URL: {window.location.origin}/wedding/{settings.slug || 'your-slug'}
                 </p>
+                {memoizedCouple?.slug && !settings.id && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Pregenerated slug: {memoizedCouple.slug}
+                  </p>
+                )}
               </div>
-              <div>
+              <div className="relative flex items-center">
                 <Input
                   label="Website Password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={settings.password}
                   onChange={handleInputChange}
                   placeholder="Enter a password"
                   error={formErrors.password}
                   icon={Lock}
+                  className="pr-10"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Layout</label>
-                <select
-                  name="layout"
-                  value={settings.layout}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-500 hover:text-gray-700"
                 >
-                  <option value="classic">Classic</option>
-                  <option value="modern">Modern</option>
-                  <option value="romantic">Romantic</option>
-                </select>
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+                <p className="text-sm text-gray-600 mt-1">
+                  Default password: wedding123
+                </p>
               </div>
             </div>
           </div>
-
-          {/* Layout Previews */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Layout Previews</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {Object.entries(layoutPreviews).map(([layout, styles]) => (
-                <Card key={layout} className={`p-4 ${styles.bg} border ${settings.layout === layout ? 'border-rose-500' : ''}`}>
-                  <div className={`${styles.header} p-2 rounded-t-lg text-center`}>
+                <Card
+                  key={layout}
+                  className={`p-4 ${styles.bg} border ${settings.layout === layout ? 'border-rose-500' : ''} cursor-pointer`}
+                  onClick={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
+                >
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="radio"
+                      name="layout"
+                      value={layout}
+                      checked={settings.layout === layout}
+                      onChange={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
+                      className="h-4 w-4 text-rose-500 focus:ring-rose-500 border-gray-300 mr-2"
+                    />
                     <h5 className="font-medium capitalize">{layout}</h5>
+                  </div>
+                  <div className={`${styles.header} p-2 rounded-t-lg text-center`}>
+                    <h6 className="font-medium">Preview</h6>
                   </div>
                   <div className="p-2">
                     <p className="text-sm">Sample content</p>
@@ -256,14 +349,12 @@ export const WeddingWebsiteSettings: React.FC = () => {
               ))}
             </div>
           </div>
-
-          {/* Couple Information */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
             <div className="flex items-center space-x-4">
-              {couple?.profile_photo ? (
+              {memoizedCouple?.profile_photo ? (
                 <img
-                  src={couple.profile_photo}
+                  src={memoizedCouple.profile_photo}
                   alt="Couple"
                   className="w-16 h-16 rounded-full object-cover"
                 />
@@ -274,16 +365,19 @@ export const WeddingWebsiteSettings: React.FC = () => {
               )}
               <div>
                 <p className="text-gray-900 font-medium">
-                  {couple?.partner1_name || 'Partner 1'} & {couple?.partner2_name || 'Partner 2'}
+                  {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
                 </p>
-                <p className="text-gray-600 text-sm">
-                  Wedding Date: {couple?.wedding_date ? new Date(couple.wedding_date).toLocaleDateString() : 'Not set'}
+                <p className="text-sm text-gray-600">
+                  Wedding Date: {memoizedCouple?.wedding_date ? new Date(memoizedCouple.wedding_date).toLocaleDateString() : 'Not set'}
                 </p>
+                {memoizedCouple?.venue_name && (
+                  <p className="text-sm text-gray-600 mt-1 flex items-center">
+                    <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
+                  </p>
+                )}
               </div>
             </div>
           </div>
-
-          {/* About Us */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">About Us</h4>
             <textarea
@@ -295,8 +389,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
-
-          {/* How We Met / Our Love Story */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">How We Met / Our Love Story</h4>
             <textarea
@@ -308,8 +400,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
-
-          {/* Accommodations */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Accommodation Information</h4>
             {settings.accommodations.map((hotel, index) => (
@@ -349,19 +439,16 @@ export const WeddingWebsiteSettings: React.FC = () => {
               </div>
             ))}
             {settings.accommodations.length < 3 && (
-              <Button variant="outline" onClick={addHotel}>
-                Add Hotel
-              </Button>
+              <Button variant="outline" onClick={addHotel}>Add Hotel</Button>
             )}
           </div>
-
-          {/* Timeline Preview */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Timeline</h4>
+            <p className="text-gray-600 mb-4">Events marked to show on your wedding website</p>
             {timelineLoading ? (
               <p className="text-gray-600">Loading timeline...</p>
             ) : events.length === 0 ? (
-              <p className="text-gray-600">No timeline events added yet.</p>
+              <p className="text-gray-600">No events set to show on the website. Edit your timeline to select events.</p>
             ) : (
               <div className="space-y-4">
                 {events.map(event => (
@@ -369,15 +456,18 @@ export const WeddingWebsiteSettings: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <h5 className="font-medium text-gray-900">{event.title}</h5>
-                        <p className="text-sm text-gray-600">
-                          {formatTime(event.start_time)} {event.end_time ? `- ${formatTime(event.end_time)}` : ''}
-                        </p>
-                        {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
-                        {event.photo_shotlist && (
-                          <p className="text-sm text-blue-600 mt-1 flex items-center">
-                            <Camera className="w-4 h-4 mr-1" /> {event.photo_shotlist}
-                          </p>
-                        )}
+                        <>
+                          <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
+                          {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
+                          {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
+                          {event.photo_shotlist && (
+                            <p className="text-sm text-blue-600 mt-1 flex items-center">
+                              <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
+                            </p>
+                          )}
+                          {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
+                          {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
+                        </>
                       </div>
                     </div>
                   </Card>
@@ -385,8 +475,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Website Gallery */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
             <p className="text-gray-600 mb-4">Upload up to 6 photos for your public website</p>
@@ -427,8 +515,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Save Button */}
           {formErrors.general && <p className="text-red-600 text-sm mt-2">{formErrors.general}</p>}
           {successMessage && (
             <p className="text-green-600 text-sm mt-2 flex items-center">

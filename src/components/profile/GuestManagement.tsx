@@ -740,6 +740,33 @@ export const GuestManagement: React.FC = () => {
     if (guest.family_members) total += guest.family_members.length;
     return count + total;
   }, 0);
+  const rsvpdGuests = sortedGuests.reduce((count, guest) => {
+    if (guest.rsvp_status === 'accepted') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const declinedGuests = sortedGuests.reduce((count, guest) => {
+    if (guest.rsvp_status === 'declined') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const pendingGuests = sortedGuests.reduce((count, guest) => {
+    if (guest.rsvp_status === 'pending') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
   const tier1Guests = sortedGuests.reduce((count, guest) => {
     if (guest.list_priority === '1') {
       let total = 1; // Primary guest
@@ -767,24 +794,6 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const pendingGuests = sortedGuests.reduce((count, guest) => {
-    if (guest.rsvp_status === 'pending') {
-      let total = 1; // Primary guest
-      if (guest.has_plus_one && guest.plus_one_name) total += 1;
-      if (guest.family_members) total += guest.family_members.length;
-      return count + total;
-    }
-    return count;
-  }, 0);
-  const rsvpdGuests = sortedGuests.reduce((count, guest) => {
-    if (guest.rsvp_status === 'accepted' || guest.rsvp_status === 'declined') {
-      let total = 1; // Primary guest
-      if (guest.has_plus_one && guest.plus_one_name) total += 1;
-      if (guest.family_members) total += guest.family_members.length;
-      return count + total;
-    }
-    return count;
-  }, 0);
 
   if (loading) return <div className="text-center py-8">Loading...</div>;
 
@@ -797,29 +806,33 @@ export const GuestManagement: React.FC = () => {
       <Card className="p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Guest Management</h3>
         <p className="text-gray-600 mb-4">Manage guests, tables, meals, and bulk operations</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 p-3 rounded-lg text-center">
             <div className="text-lg font-semibold text-blue-800">{totalGuests}</div>
             <div className="text-sm text-gray-600">Total Guests</div>
           </div>
-          <div className="bg-purple-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-purple-800">{pendingGuests}</div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </div>
           <div className="bg-indigo-50 p-3 rounded-lg text-center">
             <div className="text-lg font-semibold text-indigo-800">{rsvpdGuests}</div>
-            <div className="text-sm text-gray-600">RSVP'd</div>
+            <div className="text-sm text-gray-600">RSVPs</div>
+          </div>
+          <div className="bg-red-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-red-800">{declinedGuests}</div>
+            <div className="text-sm text-gray-600">Declined</div>
+          </div>
+          <div className="bg-yellow-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-yellow-800">{pendingGuests}</div>
+            <div className="text-sm text-gray-600">Pending</div>
           </div>
           <div className="bg-green-50 p-3 rounded-lg text-center">
             <div className="text-lg font-semibold text-green-800">{tier1Guests}</div>
             <div className="text-sm text-gray-600">Tier 1</div>
           </div>
-          <div className="bg-yellow-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-yellow-800">{tier2Guests}</div>
+          <div className="bg-orange-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-orange-800">{tier2Guests}</div>
             <div className="text-sm text-gray-600">Tier 2</div>
           </div>
-          <div className="bg-red-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-red-800">{tier3Guests}</div>
+          <div className="bg-purple-50 p-3 rounded-lg text-center">
+            <div className="text-lg font-semibold text-purple-800">{tier3Guests}</div>
             <div className="text-sm text-gray-600">Tier 3</div>
           </div>
         </div>

@@ -6,12 +6,19 @@ export interface TimelineEvent {
   id: string;
   couple_id: string;
   title: string;
-  start_time: string;
-  end_time?: string;
   description?: string;
+  event_date: string;
+  event_time: string;
+  location?: string;
+  type: string;
+  duration_minutes: number;
+  is_standard: boolean;
+  music_notes?: string;
+  playlist_requests?: string;
   photo_shotlist?: string;
   created_at: string;
   updated_at: string;
+  wedding_website: boolean;
 }
 
 interface UseWeddingTimeline {
@@ -20,7 +27,7 @@ interface UseWeddingTimeline {
   error: string | null;
 }
 
-export const useWeddingTimeline = (): UseWeddingTimeline => {
+export const useWeddingTimeline = (forWebsite: boolean = false): UseWeddingTimeline => {
   const { couple } = useCouple();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,10 +45,14 @@ export const useWeddingTimeline = (): UseWeddingTimeline => {
             id: '1',
             couple_id: couple.id,
             title: 'Ceremony',
-            start_time: '14:00',
-            end_time: '15:00',
+            event_date: new Date().toISOString().split('T')[0],
+            event_time: '14:00',
+            duration_minutes: 60,
+            type: 'ceremony',
+            is_standard: true,
             description: 'Wedding ceremony at the chapel',
             photo_shotlist: 'Bride walking down the aisle',
+            wedding_website: true,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
@@ -50,11 +61,15 @@ export const useWeddingTimeline = (): UseWeddingTimeline => {
         return;
       }
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from('timeline_events')
           .select('*')
-          .eq('couple_id', couple.id)
-          .order('start_time', { ascending: true });
+          .eq('couple_id', couple.id);
+        if (forWebsite) {
+          query = query.eq('wedding_website', true);
+        }
+        query = query.order('event_date', { ascending: true }).order('event_time', { ascending: true });
+        const { data, error } = await query;
         if (error) throw error;
         setEvents(data || []);
       } catch (err) {
@@ -64,7 +79,7 @@ export const useWeddingTimeline = (): UseWeddingTimeline => {
       }
     };
     fetchEvents();
-  }, [couple]);
+  }, [couple, forWebsite]);
 
   return { events, loading, error };
 };
