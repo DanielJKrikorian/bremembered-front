@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
-import { usePhotoUpload } from '../hooks/usePhotoUpload';
+import { supabase } from '../lib/supabase'; // For direct storage and table updates
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { WeddingTimeline } from '../components/profile/WeddingTimeline';
@@ -55,10 +55,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { couple, loading: coupleLoading } = useCouple();
-  const { uploadPhoto, uploading: photoUploading } = usePhotoUpload();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'timeline' | 'guests' | 'gallery' | 'messages' | 'payments' | 'contracts' | 'preferences' | 'settings' | 'wedding-board' | 'reviews' | 'wedding-website' | 'notes'>('overview');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(couple?.profile_photo || null);
 
   // Get active tab from URL params
   useEffect(() => {
@@ -82,12 +85,76 @@ export const Profile: React.FC = () => {
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !couple) return;
+
+    // Client-side validation
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Invalid file type. Please upload an image (JPEG, PNG, GIF).');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+      setUploadError('File size exceeds 50MB limit.');
+      return;
+    }
+
+    setUploadError(null);
+    setUploading(true);
+    setProgress(0);
+
     try {
-      const photoUrl = await uploadPhoto(file, user.id);
-      await couple?.updateCouple({ profile_photo: photoUrl });
+      console.log('Uploading photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id });
+
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          const newProgress = Math.min(prev + Math.random() * 15, 90);
+          if (newProgress >= 90) clearInterval(progressInterval);
+          return newProgress;
+        });
+      }, 200);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('couple-photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      clearInterval(progressInterval);
+      setProgress(100);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('couple-photos')
+        .getPublicUrl(filePath);
+
+      // Update the couples table with the new profile_photo URL
+      const { error: updateError } = await supabase
+        .from('couples')
+        .update({ profile_photo: publicUrl })
+        .eq('id', couple.id);
+      if (updateError) throw updateError;
+
+      setPhotoUrl(publicUrl); // Update the displayed photo
+      setUploading(false);
+      setProgress(0);
     } catch (error) {
-      console.error('Error uploading photo:', err);
+      console.error('Error uploading photo:', error);
+      if ((error as Error).message.includes('Bucket not found')) {
+        setUploadError('Upload failed: The "couple-photos" bucket does not exist. Please create it in your Supabase Dashboard under Storage.');
+      } else if ((error as Error).message.includes('net::ERR_NETWORK_CHANGED') || (error as Error).message.includes('Failed to fetch')) {
+        setUploadError('Upload failed due to a network issue. Please check your connection and try again.');
+      } else {
+        setUploadError('Failed to upload photo: ' + (error as Error).message);
+      }
+      setUploading(false);
+      setProgress(0);
     }
   };
 
@@ -116,7 +183,7 @@ export const Profile: React.FC = () => {
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
     { key: 'wedding-website', label: 'Wedding Website (BETA)', icon: Globe },
-     { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
+    { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'guests', label: 'Guest Management', icon: Users },
@@ -137,7 +204,13 @@ export const Profile: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              {couple?.profile_photo ? (
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Profile"
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : couple?.profile_photo ? (
                 <img
                   src={couple.profile_photo}
                   alt="Profile"
@@ -155,9 +228,15 @@ export const Profile: React.FC = () => {
                   accept="image/*"
                   onChange={handlePhotoUpload}
                   className="hidden"
-                  disabled={photoUploading}
+                  disabled={uploading}
                 />
               </label>
+              {uploadError && (
+                <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+              )}
+              {uploading && (
+                <p className="mt-2 text-sm text-blue-600">Uploading: {Math.round(progress)}%</p>
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">

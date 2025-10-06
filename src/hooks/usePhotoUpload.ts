@@ -89,12 +89,16 @@ export const useVendorPhotoUpload = () => {
     } catch (err) {
       let errorMessage = 'Failed to upload file';
       if (err instanceof Error) {
-        if (err.message.includes('504') || err.message.includes('timeout')) {
+        if (err.message.includes('net::ERR_NETWORK_CHANGED') || err.message.includes('Failed to fetch')) {
+          errorMessage = 'Upload failed due to a network issue. Please check your connection and try again.';
+        } else if (err.message.includes('504') || err.message.includes('timeout')) {
           errorMessage = 'Upload timed out. Please try again with a smaller file or check your connection.';
         } else if (err.message.includes('413') || err.message.includes('too large')) {
           errorMessage = `File is too large. Maximum size is ${maxFileSizeMB}MB.`;
         } else if (err.message.includes('<!DOCTYPE')) {
           errorMessage = 'Server error occurred. Please try again later.';
+        } else if (err.message.includes('Bucket not found')) {
+          errorMessage = `Upload failed: The "${bucketName}" bucket does not exist. Please create it in your Supabase Dashboard under Storage.`;
         } else {
           errorMessage = err.message;
         }
@@ -149,7 +153,7 @@ export const usePhotoUpload = () => {
   const uploadPhoto = async (
     file: File,
     userId: string,
-    bucketName: string = 'user-profiles',
+    bucketName: string = 'couple-photos',
     maxFileSizeMB: number = 5,
     folder?: string
   ): Promise<string | null> => {
@@ -228,12 +232,16 @@ export const usePhotoUpload = () => {
     } catch (err) {
       let errorMessage = 'Failed to upload file';
       if (err instanceof Error) {
-        if (err.message.includes('504') || err.message.includes('timeout')) {
+        if (err.message.includes('net::ERR_NETWORK_CHANGED') || err.message.includes('Failed to fetch')) {
+          errorMessage = 'Upload failed due to a network issue. Please check your connection and try again.';
+        } else if (err.message.includes('504') || err.message.includes('timeout')) {
           errorMessage = 'Upload timed out. Please try again with a smaller file or check your connection.';
         } else if (err.message.includes('413') || err.message.includes('too large')) {
           errorMessage = `File is too large. Maximum size is ${maxFileSizeMB}MB.`;
         } else if (err.message.includes('<!DOCTYPE')) {
           errorMessage = 'Server error occurred. Please try again later.';
+        } else if (err.message.includes('Bucket not found')) {
+          errorMessage = `Upload failed: The "${bucketName}" bucket does not exist. Please create it in your Supabase Dashboard under Storage.`;
         } else {
           errorMessage = err.message;
         }
