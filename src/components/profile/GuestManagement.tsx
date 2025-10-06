@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
-import { Check, Trash2, Edit2, Send, Plus, Table2, Utensils, Upload, AlertCircle, SortAsc, SortDesc, Users, Download } from 'lucide-react';
+import { Check, Trash2, Edit2, Send, Plus, Table2, Utensils, Upload, AlertCircle, SortAsc, SortDesc, Users, Download, Search } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -117,7 +117,9 @@ const rsvpStatuses = {
 const sortOptions = [
   { value: 'list_priority', label: 'Priority' },
   { value: 'meal_option_name', label: 'Meal' },
-  { value: 'rsvp_status', label: 'RSVP Status' }
+  { value: 'rsvp_status', label: 'RSVP Status' },
+  { value: 'guest_type', label: 'Type' },
+  { value: 'partner_id', label: 'Invited By' }
 ];
 
 export const GuestManagement: React.FC = () => {
@@ -141,8 +143,9 @@ export const GuestManagement: React.FC = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'list_priority' | 'meal_option_name' | 'rsvp_status'>('list_priority');
+  const [sortBy, setSortBy] = useState<'list_priority' | 'meal_option_name' | 'rsvp_status' | 'guest_type' | 'partner_id'>('list_priority');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (couple?.id) {
@@ -538,52 +541,54 @@ export const GuestManagement: React.FC = () => {
     Papa.parse(csvFile, {
       header: true,
       complete: async (results: any) => {
+        console.log('Parsed headers:', results.meta.fields); // Debug header mapping
+        console.log('Parsed data:', results.data); // Debug all rows
         const importErrors: string[] = [];
         const newGuests: any[] = [];
         for (let i = 0; i < results.data.length; i++) {
           const row = results.data[i];
-          if (!row.name) {
+          if (!row.Name || row.Name.trim() === '') {
             importErrors.push(`Row ${i + 1}: Missing name`);
             continue;
           }
           let mealOptionId = '';
-          if (row.meal_name) {
-            const existingMeal = mealOptions.find(m => m.name.toLowerCase() === row.meal_name.toLowerCase());
+          if (row.Meal) {
+            const existingMeal = mealOptions.find(m => m.name.toLowerCase() === row.Meal.toLowerCase());
             if (existingMeal) {
               mealOptionId = existingMeal.id;
             } else if (supabase) {
               const { data: newMeal } = await supabase.from('meal_options').insert({
                 couple_id: couple!.id,
-                name: row.meal_name,
+                name: row.Meal,
                 is_active: true
               }).select().single();
               if (newMeal) mealOptionId = newMeal.id;
             }
           }
           let tableId = '';
-          if (row.table_name) {
-            const existingTable = tables.find(t => t.name === row.table_name);
+          if (row.Table) {
+            const existingTable = tables.find(t => t.name === row.Table);
             if (existingTable) {
               tableId = existingTable.id;
             } else if (supabase) {
               const { data: newTable } = await supabase.from('tables').insert({
                 couple_id: couple!.id,
-                name: row.table_name
+                name: row.Table
               }).select().single();
               if (newTable) tableId = newTable.id;
             }
           }
-          const guestType = row.guest_type ? row.guest_type.toLowerCase().replace(/\s+/g, '_') : 'friend';
+          const guestType = row.Guest_Type ? row.Guest_Type.toLowerCase().replace(/\s+/g, '_') : 'friend';
           const validGuestTypes = guestTypes.map(t => t.value);
           const finalGuestType = validGuestTypes.includes(guestType) ? guestType : 'friend';
           const validPartners = [couple?.partner1_name, couple?.partner2_name].filter(Boolean) as string[];
-          const partnerId = row.partner_id && validPartners.includes(row.partner_id) ? row.partner_id : null;
-          const listPriority = ['1', '2', '3'].includes(row.list_priority) ? row.list_priority : '1';
+          const partnerId = row.Partner ? (validPartners.includes(row.Partner) ? row.Partner : null) : null;
+          const listPriority = ['1', '2', '3'].includes(row.Priority) ? row.Priority : '1';
           let familyMembers: { name: string; age_category: 'adult' | 'child'; meal_option_id: string }[] = [];
-          if (row.family_members_names) {
-            const names = row.family_members_names.split(';').map((n: string) => n.trim());
-            const ages = row.family_members_ages ? row.family_members_ages.split(';').map((a: string) => a.trim()) : names.map(() => 'adult');
-            const meals = row.family_members_meals ? row.family_members_meals.split(';').map((m: string) => m.trim()) : names.map(() => '');
+          if (row['Family Members Names']) {
+            const names = row['Family Members Names'].split(';').map((n: string) => n.trim());
+            const ages = row['Family Members Ages'] ? row['Family Members Ages'].split(';').map((a: string) => a.trim()) : names.map(() => 'adult');
+            const meals = row['Family Members Meals'] ? row['Family Members Meals'].split(';').map((m: string) => m.trim()) : names.map(() => '');
             for (let j = 0; j < names.length; j++) {
               let mealOptionId = '';
               if (meals[j]) {
@@ -607,16 +612,16 @@ export const GuestManagement: React.FC = () => {
             }
           }
           newGuests.push({
-            name: row.name,
-            email: row.email || null,
-            phone: row.phone || null,
-            address: [row.street, row.apt, row.city, row.state, row.zip, row.country].filter(Boolean).join(', ') || null,
+            name: row.Name,
+            email: row.Email || null,
+            phone: row.Phone || null,
+            address: [row.Street, row.Apt, row.City, row.State, row.Zip, row.Country].filter(Boolean).join(', ') || null,
             table_id: tableId || null,
             list_priority: listPriority,
-            has_plus_one: row.has_plus_one === 'true' || false,
-            plus_one_name: row.has_plus_one === 'true' ? row.plus_one_name || null : null,
+            has_plus_one: row['Plus One'] === 'true' || false,
+            plus_one_name: row['Plus One'] === 'true' ? row['Plus One Name'] || null : null,
             family_members: familyMembers.length > 0 ? familyMembers : null,
-            notes: row.notes || null,
+            notes: row.Notes || null,
             meal_option_id: mealOptionId || null,
             guest_type: finalGuestType,
             partner_id: partnerId,
@@ -637,6 +642,11 @@ export const GuestManagement: React.FC = () => {
         await fetchAllData();
         setImportLoading(false);
         setCsvFile(null);
+      },
+      error: (error) => {
+        console.error('CSV parsing error:', error);
+        setImportErrors(['Failed to parse CSV file']);
+        setImportLoading(false);
       }
     });
   };
@@ -730,17 +740,29 @@ export const GuestManagement: React.FC = () => {
       const aStatus = a.rsvp_status || 'pending';
       const bStatus = b.rsvp_status || 'pending';
       return aStatus.localeCompare(bStatus) * direction;
+    } else if (sortBy === 'guest_type') {
+      const aType = a.guest_type || '';
+      const bType = b.guest_type || '';
+      return aType.localeCompare(bType) * direction;
+    } else if (sortBy === 'partner_id') {
+      const aPartner = a.partner_id || '';
+      const bPartner = b.partner_id || '';
+      return aPartner.localeCompare(bPartner) * direction;
     }
     return 0;
   });
 
-  const totalGuests = sortedGuests.reduce((count, guest) => {
+  const filteredGuests = sortedGuests.filter(guest =>
+    guest.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalGuests = filteredGuests.reduce((count, guest) => {
     let total = 1; // Primary guest
     if (guest.has_plus_one && guest.plus_one_name) total += 1;
     if (guest.family_members) total += guest.family_members.length;
     return count + total;
   }, 0);
-  const rsvpdGuests = sortedGuests.reduce((count, guest) => {
+  const rsvpdGuests = filteredGuests.reduce((count, guest) => {
     if (guest.rsvp_status === 'accepted') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -749,7 +771,7 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const declinedGuests = sortedGuests.reduce((count, guest) => {
+  const declinedGuests = filteredGuests.reduce((count, guest) => {
     if (guest.rsvp_status === 'declined') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -758,7 +780,7 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const pendingGuests = sortedGuests.reduce((count, guest) => {
+  const pendingGuests = filteredGuests.reduce((count, guest) => {
     if (guest.rsvp_status === 'pending') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -767,7 +789,7 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const tier1Guests = sortedGuests.reduce((count, guest) => {
+  const tier1Guests = filteredGuests.reduce((count, guest) => {
     if (guest.list_priority === '1') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -776,7 +798,7 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const tier2Guests = sortedGuests.reduce((count, guest) => {
+  const tier2Guests = filteredGuests.reduce((count, guest) => {
     if (guest.list_priority === '2') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -785,7 +807,7 @@ export const GuestManagement: React.FC = () => {
     }
     return count;
   }, 0);
-  const tier3Guests = sortedGuests.reduce((count, guest) => {
+  const tier3Guests = filteredGuests.reduce((count, guest) => {
     if (guest.list_priority === '3') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
@@ -860,16 +882,26 @@ export const GuestManagement: React.FC = () => {
 
       {activeSubTab === 'guests' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h4 className="text-lg font-semibold">Guest List ({guests.length})</h4>
-            <div className="flex space-x-2">
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <h4 className="text-lg font-semibold">Guest List ({filteredGuests.length})</h4>
+            <div className="flex space-x-2 items-center">
+              <Input
+                type="text"
+                placeholder="Search by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                icon={Search}
+                className="w-full md:w-64"
+              />
               <select
                 value={sortBy}
-                onChange={e => setSortBy(e.target.value as any)}
+                onChange={(e) => setSortBy(e.target.value as any)}
                 className="px-3 py-2 border border-gray-300 rounded-lg"
               >
-                {sortOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
               <Button
@@ -882,31 +914,43 @@ export const GuestManagement: React.FC = () => {
               <Button
                 variant="primary"
                 icon={Plus}
-                onClick={() => { setEditingGuest(null); setShowGuestModal(true); }}
+                onClick={() => {
+                  setEditingGuest(null);
+                  setShowGuestModal(true);
+                }}
               >
                 Add Guest
               </Button>
             </div>
           </div>
-          {sortedGuests.map(guest => (
+          {filteredGuests.map((guest) => (
             <Card key={guest.id} className="p-4">
               <div className="flex justify-between">
                 <div>
-                  <h5 className="font-semibold">{guest.name}{guest.has_plus_one && guest.plus_one_name ? ` & ${guest.plus_one_name}` : ''}</h5>
+                  <h5 className="font-semibold">
+                    {guest.name}
+                    {guest.has_plus_one && guest.plus_one_name ? ` & ${guest.plus_one_name}` : ''}
+                  </h5>
                   {guest.family_members && guest.family_members.length > 0 && (
                     <div className="mt-2">
                       <p className="text-sm text-gray-600 font-semibold">Family Members:</p>
                       <ul className="text-sm text-gray-600">
                         {guest.family_members.map((member, index) => (
-                          <li key={index}>{member.name} ({member.age_category}, Meal: {member.meal_option_name || 'None'})</li>
+                          <li key={index}>
+                            {member.name} ({member.age_category}, Meal: {member.meal_option_name || 'None'})
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
                   <p className="text-sm text-gray-600">Email: {guest.email || 'N/A'} | Phone: {guest.phone || 'N/A'}</p>
                   <p className="text-sm text-gray-600">Address: {guest.address || 'N/A'}</p>
-                  <p className="text-sm text-gray-600">Table: {guest.table_name || 'Unassigned'} | Priority: {listPriorities.find(p => p.value === guest.list_priority)?.label || guest.list_priority} | Meal: {guest.meal_option_name || 'None'}</p>
-                  <p className="text-sm text-gray-600">Type: {guestTypes.find(t => t.value === guest.guest_type)?.label || 'N/A'} | Invited By: {guest.partner_id || 'N/A'} | Plus One: {guest.has_plus_one ? 'Yes' : 'No'}</p>
+                  <p className="text-sm text-gray-600">
+                    Table: {guest.table_name || 'Unassigned'} | Priority: {listPriorities.find((p) => p.value === guest.list_priority)?.label || guest.list_priority} | Meal: {guest.meal_option_name || 'None'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Type: {guestTypes.find((t) => t.value === guest.guest_type)?.label || 'N/A'} | Invited By: {guest.partner_id || 'N/A'} | Plus One: {guest.has_plus_one ? 'Yes' : 'No'}
+                  </p>
                   <p className="text-sm text-gray-600">RSVP: {rsvpStatuses[guest.rsvp_status || 'pending'].label}</p>
                   <p className="text-sm text-gray-600">Notes: {guest.notes || 'N/A'}</p>
                 </div>
@@ -946,7 +990,7 @@ export const GuestManagement: React.FC = () => {
               Add Table
             </Button>
           </div>
-          {tables.map(table => (
+          {tables.map((table) => (
             <Card key={table.id} className="p-4 flex justify-between items-center">
               <span>{table.name}</span>
               <div className="flex space-x-2">
@@ -970,12 +1014,12 @@ export const GuestManagement: React.FC = () => {
       {activeSubTab === 'meals' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h4 className="text-lg font-semibold">Meal Options ({mealOptions.filter(m => m.is_active).length})</h4>
+            <h4 className="text-lg font-semibold">Meal Options ({mealOptions.filter((m) => m.is_active).length})</h4>
             <Button variant="primary" icon={Plus} onClick={() => { setEditingMeal(null); setShowMealModal(true); }}>
               Add Meal
             </Button>
           </div>
-          {mealOptions.filter(m => m.is_active).map(meal => (
+          {mealOptions.filter((m) => m.is_active).map((meal) => (
             <Card key={meal.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
@@ -1006,17 +1050,25 @@ export const GuestManagement: React.FC = () => {
           <div className="space-y-6">
             <div>
               <h5 className="font-medium mb-2 flex items-center"><Upload className="w-4 h-4 mr-2" />Import CSV</h5>
-              <Input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files?.[0] || null)} />
-              <p className="text-sm text-gray-600 mt-1">Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (1/2/3), has_plus_one (true/false), plus_one_name, family_members_names, family_members_ages, family_members_meals, meal_name, guest_type, partner_id, notes</p>
-              <Button onClick={handleImportCSV} loading={importLoading} disabled={!csvFile} className="mt-2">Import</Button>
+              <Input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
+              <p className="text-sm text-gray-600 mt-1">
+                Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (1/2/3), has_plus_one (true/false), plus_one_name, family_members_names, family_members_ages, family_members_meals, meal_name, guest_type, partner_id, notes
+              </p>
+              <Button onClick={handleImportCSV} loading={importLoading} disabled={!csvFile} className="mt-2">
+                Import
+              </Button>
             </div>
             <div>
               <h5 className="font-medium mb-2 flex items-center"><Download className="w-4 h-4 mr-2" />Export CSV</h5>
-              <Button onClick={handleExportCSV} variant="outline">Download Guests CSV</Button>
+              <Button onClick={handleExportCSV} variant="outline">
+                Download Guests CSV
+              </Button>
             </div>
             <div>
               <h5 className="font-medium mb-2 flex items-center"><Download className="w-4 h-4 mr-2" />Download Example CSV</h5>
-              <Button onClick={handleExportExampleCSV} variant="outline">Download Example CSV</Button>
+              <Button onClick={handleExportExampleCSV} variant="outline">
+                Download Example CSV
+              </Button>
             </div>
           </div>
         </Card>

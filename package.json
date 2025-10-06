@@ -30,7 +30,8 @@
     "react-helmet": "^6.1.0",
     "react-helmet-async": "^2.0.5",
     "react-konva": "^18.2.10",
-    "react-router-dom": "^7.6.3",
+    "react-router-dom": "^7.9.3",
+    "supabase": "^2.48.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
