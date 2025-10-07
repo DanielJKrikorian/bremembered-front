@@ -9,7 +9,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { RsvpModal } from '../../components/profile/RsvpModal';
-import { Lock, Eye, EyeOff, User, Calendar, MapPin } from 'lucide-react';
+import { Heart, Lock, Eye, EyeOff, Calendar, MapPin, Home, Users, Book, Image, Hotel } from 'lucide-react';
 
 interface WebsiteSettings {
   couple_id: string;
@@ -23,6 +23,7 @@ interface WebsiteSettings {
     partner1_name: string;
     partner2_name: string;
     profile_photo?: string;
+    cover_photo?: string;
     wedding_date?: string;
     venue_name?: string;
   };
@@ -31,7 +32,7 @@ interface WebsiteSettings {
 export const WeddingWebsite: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { photos, loading: galleryLoading } = useWebsiteGallery();
-  const { events, loading: timelineLoading } = useWeddingTimeline(true); // Fetch only website events
+  const { events, loading: timelineLoading } = useWeddingTimeline(true);
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,6 +40,7 @@ export const WeddingWebsite: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showRsvpModal, setShowRsvpModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [likedEvents, setLikedEvents] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -56,6 +58,7 @@ export const WeddingWebsite: React.FC = () => {
               partner1_name,
               partner2_name,
               profile_photo,
+              cover_photo,
               wedding_date,
               venue_name
             )
@@ -79,7 +82,6 @@ export const WeddingWebsite: React.FC = () => {
     fetchSettings();
   }, [slug]);
 
-  // Handle Supabase auth state changes
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       console.log('Auth event:', event);
@@ -102,11 +104,15 @@ export const WeddingWebsite: React.FC = () => {
     setShowPassword(!showPassword);
   };
 
+  const handleLikeEvent = (eventId: string) => {
+    setLikedEvents(prev => ({ ...prev, [eventId]: !prev[eventId] }));
+  };
+
   const formatDateTime = (event: { event_date: string; event_time: string }) => {
     try {
       const date = parseISO(event.event_date);
       const time = parseISO(`2000-01-01T${event.event_time}`);
-      const formattedDate = formatInTimeZone(date, 'America/New_York', 'MM/dd/yyyy');
+      const formattedDate = formatInTimeZone(date, 'America/New_York', 'MMMM d, yyyy');
       const formattedTime = format(time, 'h:mm a');
       return `${formattedDate} at ${formattedTime}`;
     } catch (error) {
@@ -117,22 +123,43 @@ export const WeddingWebsite: React.FC = () => {
 
   const layoutStyles = {
     classic: {
-      container: 'bg-white',
-      header: 'bg-rose-100 text-rose-800',
-      section: 'border-rose-200',
-      button: 'bg-rose-500 hover:bg-rose-600 text-white'
+      container: 'bg-white text-gray-800',
+      header: 'bg-ivory-100 text-rose-900',
+      nav: 'bg-ivory-50 border-b border-rose-200',
+      section: 'py-12 px-4',
+      button: 'bg-rose-600 hover:bg-rose-700 text-white',
+      font: 'font-serif',
+      galleryGrid: 'grid-cols-1 sm:grid-cols-2 gap-6',
+      timelineClass: 'space-y-6 max-w-2xl mx-auto',
+      accommodationClass: 'grid-cols-1 sm:grid-cols-2 gap-6',
+      card: 'bg-white border border-rose-200 shadow-md rounded-lg',
+      accentColor: 'text-rose-600',
     },
     modern: {
-      container: 'bg-gray-900 text-white',
-      header: 'bg-gray-800 text-gray-100',
-      section: 'border-gray-700',
-      button: 'bg-blue-600 hover:bg-blue-700 text-white'
+      container: 'bg-gray-50 text-gray-900',
+      header: 'bg-gradient-to-b from-indigo-900 to-indigo-700 text-white',
+      nav: 'bg-white shadow-md',
+      section: 'py-16 px-4',
+      button: 'bg-indigo-600 hover:bg-indigo-700 text-white',
+      font: 'font-sans',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
+      timelineClass: 'space-y-6 max-w-md mx-auto',
+      accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
+      card: 'bg-white shadow-lg hover:shadow-xl transition duration-300 rounded-xl',
+      accentColor: 'text-indigo-600',
     },
     romantic: {
-      container: 'bg-pink-50',
-      header: 'bg-pink-200 text-pink-800',
-      section: 'border-pink-200',
-      button: 'bg-pink-500 hover:bg-pink-600 text-white'
+      container: 'bg-pink-50 text-pink-900',
+      header: 'bg-gradient-to-b from-pink-300 to-pink-100 text-pink-800',
+      nav: 'bg-pink-50 border-b border-pink-200',
+      section: 'py-12 px-4',
+      button: 'bg-pink-500 hover:bg-pink-600 text-white',
+      font: 'font-serif italic',
+      galleryGrid: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
+      timelineClass: 'space-y-8 max-w-3xl mx-auto',
+      accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
+      card: 'bg-white border border-pink-100 shadow-sm rounded-lg',
+      accentColor: 'text-pink-500',
     }
   };
 
@@ -140,17 +167,17 @@ export const WeddingWebsite: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   if (!memoizedSettings) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Website Not Found</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="p-8 text-center shadow-xl rounded-xl animate-fade-in">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4 font-sans">Website Not Found</h2>
           <p className="text-gray-600">{error || 'The wedding website you are looking for does not exist.'}</p>
         </Card>
       </div>
@@ -159,11 +186,11 @@ export const WeddingWebsite: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="p-8 w-full max-w-md">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Enter Password</h2>
-          <p className="text-gray-600 mb-6">Please enter the password to view this wedding website.</p>
-          <div className="space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-200">
+        <Card className="p-8 w-full max-w-sm shadow-xl rounded-xl animate-fade-in">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center font-sans">Private Celebration</h2>
+          <p className="text-gray-600 mb-6 text-center">Enter the password to join our special day.</p>
+          <div className="space-y-6">
             <div className="relative flex items-center">
               <Input
                 type={showPassword ? 'text' : 'password'}
@@ -171,23 +198,23 @@ export const WeddingWebsite: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 icon={Lock}
-                className="pr-10"
+                className="pr-12 py-3 text-lg rounded-full border-gray-300 focus:ring-rose-600 focus:border-rose-600"
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-rose-600"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             <Button
               variant="primary"
               onClick={handlePasswordSubmit}
-              className="w-full"
+              className={`${layoutStyles[memoizedSettings.layout || 'modern'].button} w-full py-3 rounded-full text-lg font-medium transition duration-300 transform hover:scale-105`}
             >
-              Submit
+              Unlock
             </Button>
           </div>
         </Card>
@@ -195,72 +222,94 @@ export const WeddingWebsite: React.FC = () => {
     );
   }
 
-  const styles = layoutStyles[memoizedSettings.layout] || layoutStyles.classic;
+  const styles = layoutStyles[memoizedSettings.layout] || layoutStyles.modern;
 
   return (
-    <div className={`min-h-screen ${styles.container}`}>
-      <header className={`py-12 ${styles.header}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-bold mb-4">
+    <div className={`min-h-screen ${styles.container} ${styles.font}`}>
+      <header className={`relative h-[60vh] ${styles.header}`}>
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${memoizedSettings.couple.cover_photo || '/default-cover.jpg'})` }}
+        >
+          <div className="absolute inset-0 bg-black opacity-50"></div>
+        </div>
+        <div className="relative flex flex-col items-center justify-center h-full text-center px-4">
+          <img
+            src={memoizedSettings.couple.profile_photo || '/default-profile.jpg'}
+            alt="Couple"
+            className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white shadow-lg mb-4 animate-fade-in"
+          />
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight animate-fade-in">
             {memoizedSettings.couple.partner1_name} & {memoizedSettings.couple.partner2_name}
           </h1>
-          <div className="space-y-2">
+          <div className="flex flex-col md:flex-row gap-4 text-lg text-white animate-fade-in">
             {memoizedSettings.couple.wedding_date && (
-              <p className="text-lg flex items-center justify-center">
+              <p className="flex items-center justify-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                {formatInTimeZone(parseISO(memoizedSettings.couple.wedding_date), 'America/New_York', 'MM/dd/yyyy')}
+                {formatInTimeZone(parseISO(memoizedSettings.couple.wedding_date), 'America/New_York', 'MMMM d, yyyy')}
               </p>
             )}
             {memoizedSettings.couple.venue_name && (
-              <p className="text-lg flex items-center justify-center">
+              <p className="flex items-center justify-center">
                 <MapPin className="w-5 h-5 mr-2" />
-                Venue: {memoizedSettings.couple.venue_name}
+                {memoizedSettings.couple.venue_name}
               </p>
             )}
           </div>
-          {memoizedSettings.couple.profile_photo && (
-            <img
-              src={memoizedSettings.couple.profile_photo}
-              alt="Couple"
-              className="w-32 h-32 rounded-full object-cover mx-auto mt-4"
-            />
-          )}
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <section className="text-center mb-12">
+      <nav className={`sticky top-0 ${styles.nav} z-10 py-4 px-4 sm:px-6 lg:px-8`}>
+        <div className="max-w-7xl mx-auto flex justify-center gap-4 sm:gap-6 flex-wrap">
+          <a href="#home" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Home className="w-5 h-5 inline mr-1" /> Home</a>
+          <a href="#about" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Users className="w-5 h-5 inline mr-1" /> About</a>
+          <a href="#story" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Book className="w-5 h-5 inline mr-1" /> Story</a>
+          <a href="#timeline" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Calendar className="w-5 h-5 inline mr-1" /> Timeline</a>
+          <a href="#gallery" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Image className="w-5 h-5 inline mr-1" /> Gallery</a>
+          <a href="#accommodations" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Hotel className="w-5 h-5 inline mr-1" /> Accommodations</a>
           <Button
             variant="primary"
-            className={`${styles.button} text-lg px-8 py-3`}
+            className={`${styles.button} text-sm px-4 py-2 rounded-full font-medium transition duration-300 transform hover:scale-105`}
             onClick={() => setShowRsvpModal(true)}
           >
-            RSVP Now
+            RSVP
           </Button>
+        </div>
+      </nav>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <section id="home" className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 animate-fade-in">Welcome to Our Day</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto animate-fade-in">Join us as we celebrate our love and commitment.</p>
         </section>
         {memoizedSettings.about_us && (
-          <section className={`mb-12 border-t pt-8 ${styles.section}`}>
-            <h2 className="text-2xl font-semibold mb-4">About Us</h2>
-            <p className="text-gray-700">{memoizedSettings.about_us}</p>
+          <section id="about" className={`${styles.section} animate-fade-in`}>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">About Us</h2>
+            <Card className={`${styles.card} p-6`}>
+              <p className="text-gray-700 leading-relaxed">{memoizedSettings.about_us}</p>
+            </Card>
           </section>
         )}
         {memoizedSettings.love_story && (
-          <section className={`mb-12 border-t pt-8 ${styles.section}`}>
-            <h2 className="text-2xl font-semibold mb-4">Our Love Story</h2>
-            <p className="text-gray-700">{memoizedSettings.love_story}</p>
+          <section id="story" className={`${styles.section} animate-fade-in`}>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center flex items-center justify-center">
+              Our Love Story {memoizedSettings.layout === 'romantic' && <Heart className="w-6 h-6 ml-2 ${styles.accentColor}" />}
+            </h2>
+            <Card className={`${styles.card} p-6`}>
+              <p className="text-gray-700 leading-relaxed">{memoizedSettings.love_story}</p>
+            </Card>
           </section>
         )}
         {memoizedSettings.accommodations && memoizedSettings.accommodations.length > 0 && (
-          <section className={`mb-12 border-t pt-8 ${styles.section}`}>
-            <h2 className="text-2xl font-semibold mb-4">Accommodations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <section id="accommodations" className={`${styles.section} animate-fade-in`}>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Accommodations</h2>
+            <div className={`grid ${styles.accommodationClass}`}>
               {memoizedSettings.accommodations.map((hotel, index) => (
-                <Card key={index} className="p-4">
-                  <h3 className="font-medium text-lg">{hotel.name}</h3>
+                <Card key={index} className={`${styles.card} p-6 hover:scale-105 transition duration-300`}>
+                  <h3 className="font-medium text-lg mb-2">{hotel.name}</h3>
                   <a
                     href={hotel.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className={`${styles.accentColor} hover:underline font-medium`}
                   >
                     Visit Website
                   </a>
@@ -272,39 +321,56 @@ export const WeddingWebsite: React.FC = () => {
             </div>
           </section>
         )}
-        <section className={`mb-12 border-t pt-8 ${styles.section}`}>
-          <h2 className="text-2xl font-semibold mb-4">Our Wedding Day</h2>
+        <section id="timeline" className={`${styles.section} animate-fade-in`}>
+          <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Timeline</h2>
           {timelineLoading ? (
-            <p>Loading timeline...</p>
+            <p className="text-center">Loading timeline...</p>
           ) : events.length === 0 ? (
-            <p>No timeline events available.</p>
+            <p className="text-center">No timeline events available.</p>
           ) : (
-            <div className="space-y-4">
+            <div className={styles.timelineClass}>
               {events.map(event => (
-                <Card key={event.id} className="p-4">
-                  <h3 className="font-medium">{event.title}</h3>
-                  <p className="text-sm">{formatDateTime(event)}</p>
-                  {event.description && <p className="text-sm mt-1">{event.description}</p>}
-                  {event.location && <p className="text-sm mt-1">Location: {event.location}</p>}
+                <Card key={event.id} className={`${styles.card} p-6 hover:shadow-xl transition duration-300`}>
+                  <div className="flex items-center mb-2">
+                    <img
+                      src={memoizedSettings.couple.profile_photo || '/default-profile.jpg'}
+                      alt="Couple"
+                      className="w-10 h-10 rounded-full object-cover mr-3"
+                    />
+                    <h3 className="font-medium text-lg">{event.title}</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
+                  {event.description && <p className="text-sm mt-2 text-gray-700">{event.description}</p>}
+                  {event.location && (
+                    <p className="text-sm mt-2 text-gray-600 flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" /> {event.location}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => handleLikeEvent(event.id)}
+                    className={`mt-4 ${likedEvents[event.id] ? styles.accentColor : 'text-gray-500'} hover:${styles.accentColor} transition duration-200`}
+                  >
+                    <Heart className={`w-5 h-5 ${likedEvents[event.id] ? 'fill-current' : ''}`} />
+                  </button>
                 </Card>
               ))}
             </div>
           )}
         </section>
-        <section className={`mb-12 border-t pt-8 ${styles.section}`}>
-          <h2 className="text-2xl font-semibold mb-4">Gallery</h2>
+        <section id="gallery" className={`${styles.section} animate-fade-in`}>
+          <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Gallery</h2>
           {galleryLoading ? (
-            <p>Loading gallery...</p>
+            <p className="text-center">Loading gallery...</p>
           ) : photos.length === 0 ? (
-            <p>No photos available.</p>
+            <p className="text-center">No photos available.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={styles.galleryGrid}>
               {photos.map(photo => (
-                <Card key={photo.id} className="overflow-hidden">
+                <Card key={photo.id} className={`${styles.card} overflow-hidden hover:scale-105 transition duration-300 break-inside-avoid`}>
                   <img
                     src={photo.public_url}
                     alt={photo.file_name}
-                    className="w-full max-h-96 object-contain aspect-auto"
+                    className="w-full h-auto object-cover"
                   />
                 </Card>
               ))}

@@ -4,6 +4,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { useCouple } from '../../hooks/useCouple';
 import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
 import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
+import { useAuth } from '../../context/AuthContext'; // Added for user access
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -20,6 +21,7 @@ interface WebsiteSettings {
   about_us?: string;
   love_story?: string;
   accommodations?: { name: string; website: string; room_block?: string }[];
+  cover_photo?: string;
 }
 
 interface TimelineEvent {
@@ -40,9 +42,10 @@ interface TimelineEvent {
 }
 
 export const WeddingWebsiteSettings: React.FC = () => {
+  const { user } = useAuth(); // Added to access authenticated user
   const { couple, updateCouple } = useCouple();
   const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery();
-  const { events, loading: timelineLoading } = useWeddingTimeline(true); // Fetch only website events
+  const { events, loading: timelineLoading } = useWeddingTimeline(true);
   const memoizedCouple = useMemo(() => couple, [couple?.id, couple?.slug, couple?.partner1_name, couple?.partner2_name, couple?.wedding_date, couple?.venue_name]);
   const [settings, setSettings] = useState<WebsiteSettings>(() => {
     const saved = localStorage.getItem(`wedding_website_settings_${memoizedCouple?.id || 'default'}`);
@@ -53,21 +56,26 @@ export const WeddingWebsiteSettings: React.FC = () => {
       layout: 'classic',
       about_us: '',
       love_story: '',
-      accommodations: [{ name: '', website: '', room_block: '' }]
+      accommodations: [{ name: '', website: '', room_block: '' }],
+      cover_photo: memoizedCouple?.cover_photo || ''
     };
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [coverPhotoUploading, setCoverPhotoUploading] = useState(false);
+  const [coverPhotoProgress, setCoverPhotoProgress] = useState<number>(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Debug re-renders
   useEffect(() => {
-    console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple);
-  }, [memoizedCouple]);
+    console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple, 'user:', user);
+    // Log to debug ID mismatch
+    if (user && memoizedCouple) {
+      console.log('User ID vs Couple ID:', { userId: user.id, coupleId: memoizedCouple.id });
+    }
+  }, [memoizedCouple, user]);
 
-  // Debounced fetchSettings
   const fetchSettings = useCallback(debounce(async (coupleId: string) => {
     if (!coupleId || !supabase || !isSupabaseConfigured()) {
       setSettings(prev => ({
@@ -75,7 +83,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
         couple_id: coupleId || '',
         slug: memoizedCouple?.slug || '',
         password: 'wedding123',
-        layout: 'classic'
+        layout: 'classic',
+        cover_photo: memoizedCouple?.cover_photo || ''
       }));
       return;
     }
@@ -96,6 +105,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
         about_us: data?.about_us || '',
         love_story: data?.love_story || '',
         accommodations: data?.accommodations || [{ name: '', website: '', room_block: '' }],
+        cover_photo: memoizedCouple?.cover_photo || data?.cover_photo || '',
         id: data?.id
       };
       setSettings(newSettings);
@@ -104,7 +114,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
       console.error('Error fetching website settings:', err);
       setFormErrors({ general: 'Failed to load settings' });
     }
-  }, 500), [memoizedCouple?.slug]);
+  }, 500), [memoizedCouple?.slug, memoizedCouple?.cover_photo]);
 
   useEffect(() => {
     if (memoizedCouple?.id) {
@@ -118,7 +128,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
     }
   }, [settings, memoizedCouple?.id]);
 
-  // Handle Supabase auth state changes
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth event:', event, 'Session:', !!session);
@@ -194,6 +203,118 @@ export const WeddingWebsiteSettings: React.FC = () => {
     setPhotoUploading(false);
   };
 
+  const handleCoverPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !memoizedCouple?.id) {
+      setFormErrors({ cover_photo: 'No file selected, user not authenticated, or couple ID missing' });
+      return;
+    }
+
+    // Client-side validation (matching Profile.tsx)
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setFormErrors({ cover_photo: 'Invalid file type. Please upload an image (JPEG, PNG, GIF).' });
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+      setFormErrors({ cover_photo: 'File size exceeds 50MB limit.' });
+      return;
+    }
+
+    setFormErrors({ cover_photo: '' });
+    setCoverPhotoUploading(true);
+    setCoverPhotoProgress(0);
+
+    try {
+      console.log('Uploading cover photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id, coupleId: memoizedCouple.id });
+
+      // Simulate progress (matching Profile.tsx)
+      const progressInterval = setInterval(() => {
+        setCoverPhotoProgress((prev) => {
+          const newProgress = Math.min(prev + Math.random() * 15, 90);
+          if (newProgress >= 90) clearInterval(progressInterval);
+          return newProgress;
+        });
+      }, 200);
+
+      const fileExt = file.name.split('.').pop();
+      const randomString = Math.random().toString(36).substr(2, 9);
+      const fileName = `cover-${Date.now()}-${randomString}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`; // Use user.id to match Profile.tsx ownership
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('couple-photos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      clearInterval(progressInterval);
+      setCoverPhotoProgress(100);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('couple-photos')
+        .getPublicUrl(filePath);
+      if (!publicUrl) throw new Error('Failed to retrieve public URL');
+
+      setSettings(prev => ({ ...prev, cover_photo: publicUrl }));
+      const { error: updateError } = await supabase
+        .from('couples')
+        .update({ cover_photo: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', memoizedCouple.id);
+      if (updateError) throw new Error(`Failed to update cover photo: ${updateError.message}`);
+
+      setSuccessMessage('Cover photo uploaded successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Error uploading cover photo:', error);
+      if ((error as Error).message.includes('Bucket not found')) {
+        setFormErrors({ cover_photo: 'Upload failed: The "couple-photos" bucket does not exist. Please create it in your Supabase Dashboard under Storage.' });
+      } else if ((error as Error).message.includes('net::ERR_NETWORK_CHANGED') || (error as Error).message.includes('Failed to fetch')) {
+        setFormErrors({ cover_photo: 'Upload failed due to a network issue. Please check your connection and try again.' });
+      } else if ((error as Error).message.includes('row-level security policy')) {
+        setFormErrors({ cover_photo: 'Upload failed due to permissions. Ensure you are authenticated and the storage policies allow uploads to "couple-photos".' });
+      } else {
+        setFormErrors({ cover_photo: `Failed to upload cover photo: ${(error as Error).message}` });
+      }
+    } finally {
+      setCoverPhotoUploading(false);
+      setCoverPhotoProgress(0);
+    }
+  };
+
+  const handleCoverPhotoDelete = async () => {
+    if (!settings.cover_photo) return;
+
+    try {
+      // Extract full path from publicUrl (e.g., 'user.id/cover-filename.ext')
+      const fullPath = settings.cover_photo.split('/object/public/couple-photos/')[1];
+      if (!fullPath) throw new Error('Invalid cover photo URL format');
+
+      console.log('Deleting cover photo:', { fullPath, coverPhotoUrl: settings.cover_photo });
+
+      const { error: deleteError } = await supabase.storage
+        .from('couple-photos')
+        .remove([fullPath]);
+      if (deleteError) throw new Error(`Delete failed: ${deleteError.message}`);
+      
+      setSettings(prev => ({ ...prev, cover_photo: '' }));
+      const { error: updateError } = await supabase
+        .from('couples')
+        .update({ cover_photo: null, updated_at: new Date().toISOString() })
+        .eq('id', memoizedCouple.id);
+      if (updateError) throw new Error(`Failed to update cover photo: ${updateError.message}`);
+      
+      setSuccessMessage('Cover photo removed successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error deleting cover photo:', err);
+      setFormErrors({ cover_photo: err instanceof Error ? err.message : 'Failed to delete cover photo' });
+    }
+  };
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -210,13 +331,11 @@ export const WeddingWebsiteSettings: React.FC = () => {
       if (!memoizedCouple?.id) {
         throw new Error('No couple ID available');
       }
-      // Update couples table if slug has changed
       if (memoizedCouple.slug !== settings.slug) {
         try {
           await updateCouple({ slug: settings.slug });
         } catch (err) {
           console.error('Error updating couple slug:', err);
-          // Fallback: Direct Supabase update
           const { error: coupleError } = await supabase
             .from('couples')
             .update({ slug: settings.slug, updated_at: new Date().toISOString() })
@@ -235,6 +354,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
           about_us: settings.about_us,
           love_story: settings.love_story,
           accommodations: settings.accommodations.filter(hotel => hotel.name),
+          cover_photo: settings.cover_photo,
           updated_at: new Date().toISOString()
         }, { onConflict: 'couple_id' });
       if (error) throw error;
@@ -251,7 +371,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
 
   const formatDateTime = (event: TimelineEvent) => {
     try {
-      const date = parseISO(event.event_date); // Parse event_date as ISO string
+      const date = parseISO(event.event_date);
       const time = parseISO(`2000-01-01T${event.event_time}`);
       const formattedDate = formatInTimeZone(date, 'America/New_York', 'MM/dd/yyyy');
       const formattedTime = format(time, 'h:mm a');
@@ -263,8 +383,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
   };
 
   const layoutPreviews = {
-    classic: { bg: 'bg-white border-rose-200', header: 'bg-rose-100 text-rose-800', button: 'bg-rose-500 text-white' },
-    modern: { bg: 'bg-gray-900 text-white border-gray-700', header: 'bg-gray-800 text-gray-100', button: 'bg-blue-600 text-white' },
+    classic: { bg: 'bg-white border-rose-200', header: 'bg-rose-100 text-rose-800', button: 'bg-rose-600 text-white' },
+    modern: { bg: 'bg-gray-50 text-gray-900 border-gray-200', header: 'bg-indigo-800 text-white', button: 'bg-indigo-600 text-white' },
     romantic: { bg: 'bg-pink-50 border-pink-200', header: 'bg-pink-200 text-pink-900', button: 'bg-pink-500 text-white' }
   };
 
@@ -354,30 +474,75 @@ export const WeddingWebsiteSettings: React.FC = () => {
           </div>
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
-            <div className="flex items-center space-x-4">
-              {memoizedCouple?.profile_photo ? (
-                <img
-                  src={memoizedCouple.profile_photo}
-                  alt="Couple"
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-8 h-8 text-gray-500" />
-                </div>
-              )}
-              <div>
-                <p className="text-gray-900 font-medium">
-                  {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
-                </p>
-                {memoizedCouple?.venue_name && (
-                  <p className="text-sm text-gray-600 mt-1 flex items-center">
-                    <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
-                  </p>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                {memoizedCouple?.profile_photo ? (
+                  <img
+                    src={memoizedCouple.profile_photo}
+                    alt="Couple"
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="w-8 h-8 text-gray-500" />
+                  </div>
                 )}
+                <div>
+                  <p className="text-gray-900 font-medium">
+                    {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
+                  </p>
+                  {memoizedCouple?.venue_name && (
+                    <p className="text-sm text-gray-600 mt-1 flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h5 className="text-md font-medium text-gray-900 mb-2">Cover Photo</h5>
+                {settings.cover_photo ? (
+                  <div className="relative">
+                    <img
+                      src={settings.cover_photo}
+                      alt="Cover"
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <Button
+                      variant="ghost"
+                      icon={Trash}
+                      className="absolute top-2 right-2 text-red-600"
+                      onClick={handleCoverPhotoDelete}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-gray-600">No cover photo uploaded.</p>
+                )}
+                <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600 mt-2">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Cover Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverPhotoUpload}
+                    className="hidden"
+                    disabled={coverPhotoUploading || !user || !memoizedCouple?.id}
+                  />
+                </label>
+                {coverPhotoUploading && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-rose-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.round(coverPhotoProgress)}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-blue-600 mt-1">Uploading: {Math.round(coverPhotoProgress)}%</p>
+                  </div>
+                )}
+                {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
               </div>
             </div>
           </div>
