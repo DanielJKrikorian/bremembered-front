@@ -183,7 +183,7 @@ export const Profile: React.FC = () => {
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
-    { key: 'budget-table', label: 'Budget Table', icon: DollarSign },
+    { key: 'budget-table', label: 'Budget Table BETA', icon: DollarSign },
     { key: 'wedding-website', label: 'Wedding Website', icon: Globe },
     { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
