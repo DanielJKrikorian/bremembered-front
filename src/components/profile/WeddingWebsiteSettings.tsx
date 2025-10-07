@@ -21,7 +21,7 @@ interface WebsiteSettings {
   love_story?: string;
   accommodations?: { name: string; website: string; room_block?: string }[];
   cover_photo?: string;
-  announcements?: string[]; // Added for announcements
+  announcements?: string[];
 }
 
 interface TimelineEvent {
@@ -43,8 +43,8 @@ interface TimelineEvent {
 
 export const WeddingWebsiteSettings: React.FC = () => {
   const { couple, updateCouple } = useCouple();
-  const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery();
-  const { events, loading: timelineLoading } = useWeddingTimeline(true);
+  const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery(couple?.slug);
+  const { events, loading: timelineLoading } = useWeddingTimeline(true, couple?.slug);
   const memoizedCouple = useMemo(() => couple, [couple?.id, couple?.slug, couple?.partner1_name, couple?.partner2_name, couple?.wedding_date, couple?.venue_name]);
   const [settings, setSettings] = useState<WebsiteSettings>(() => {
     const saved = localStorage.getItem(`wedding_website_settings_${memoizedCouple?.id || 'default'}`);
@@ -57,7 +57,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
       love_story: '',
       accommodations: [{ name: '', website: '', room_block: '' }],
       cover_photo: memoizedCouple?.cover_photo || '',
-      announcements: [], // Initialize empty announcements array
+      announcements: [],
     };
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -222,7 +222,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoUploading(true);
-    const photoUrl = await uploadPhoto(file);
+    const photoUrl = await uploadPhoto(file, memoizedCouple?.id);
     if (photoUrl) {
       setSuccessMessage('Photo uploaded successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
