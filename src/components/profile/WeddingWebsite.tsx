@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -32,8 +32,10 @@ interface WebsiteSettings {
 
 export const WeddingWebsite: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { photos, loading: galleryLoading } = useWebsiteGallery();
-  const { events, loading: timelineLoading } = useWeddingTimeline(true);
+  const [searchParams] = useSearchParams();
+  const vendorToken = searchParams.get('vendorToken') || undefined;
+  const { photos, loading: galleryLoading, error: galleryError } = useWebsiteGallery(slug);
+  const { events, loading: timelineLoading, error: timelineError } = useWeddingTimeline(true, slug, vendorToken);
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -86,9 +88,9 @@ export const WeddingWebsite: React.FC = () => {
   }, [slug]);
 
   useEffect(() => {
-    console.log('Timeline state:', { timelineLoading, events });
-    console.log('Gallery state:', { galleryLoading, photos });
-  }, [timelineLoading, events, galleryLoading, photos]);
+    console.log('Timeline state:', { timelineLoading, events, timelineError, vendorToken });
+    console.log('Gallery state:', { galleryLoading, photos, galleryError });
+  }, [timelineLoading, events, timelineError, galleryLoading, photos, galleryError, vendorToken]);
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
@@ -137,7 +139,7 @@ export const WeddingWebsite: React.FC = () => {
       section: 'py-12 px-4 min-h-0 overflow-auto',
       button: 'bg-rose-600 hover:bg-rose-700 text-white',
       font: 'font-serif',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0',
       timelineClass: 'space-y-6 max-w-2xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 gap-6',
       card: 'bg-white border border-rose-200 shadow-md rounded-lg',
@@ -150,7 +152,7 @@ export const WeddingWebsite: React.FC = () => {
       section: 'py-16 px-4 min-h-0 overflow-auto',
       button: 'bg-indigo-600 hover:bg-indigo-700 text-white',
       font: 'font-sans',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0',
       timelineClass: 'space-y-6 max-w-md mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
       card: 'bg-white shadow-lg hover:shadow-xl transition duration-300 rounded-xl',
@@ -163,7 +165,7 @@ export const WeddingWebsite: React.FC = () => {
       section: 'py-12 px-4 min-h-0 overflow-auto',
       button: 'bg-pink-500 hover:bg-pink-600 text-white',
       font: 'font-serif italic',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0',
       timelineClass: 'space-y-8 max-w-3xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
       card: 'bg-white border border-pink-100 shadow-sm rounded-lg',
@@ -192,7 +194,7 @@ export const WeddingWebsite: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && memoizedSettings.password) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-200">
         <Card className="p-8 w-full max-w-sm shadow-xl rounded-xl animate-fade-in">
@@ -341,6 +343,7 @@ export const WeddingWebsite: React.FC = () => {
         )}
         <section id="timeline" className={`${styles.section} animate-fade-in`}>
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Timeline</h2>
+          {timelineError && <p className="text-red-600 text-center">Error: {timelineError}</p>}
           {timelineLoading ? (
             <p className="text-center">Loading timeline...</p>
           ) : events.length === 0 ? (
@@ -377,6 +380,7 @@ export const WeddingWebsite: React.FC = () => {
         </section>
         <section id="gallery" className={`${styles.section} animate-fade-in`}>
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Gallery</h2>
+          {galleryError && <p className="text-red-600 text-center">Error: {galleryError}</p>}
           {galleryLoading ? (
             <p className="text-center">Loading gallery...</p>
           ) : photos.length === 0 ? (
