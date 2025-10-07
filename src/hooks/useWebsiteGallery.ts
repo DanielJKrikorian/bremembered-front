@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useCouple } from './useCouple';
 
 export interface WebsitePhoto {
   id: string;
@@ -14,21 +13,19 @@ interface UseWebsiteGallery {
   photos: WebsitePhoto[];
   loading: boolean;
   error: string | null;
-  uploadPhoto: (file: File) => Promise<string | null>;
+  uploadPhoto: (file: File, coupleId?: string) => Promise<string | null>;
   deletePhoto: (photoId: string) => Promise<void>;
 }
 
-export const useWebsiteGallery = (): UseWebsiteGallery => {
-  const { couple } = useCouple();
+export const useWebsiteGallery = (slug?: string): UseWebsiteGallery => {
   const [photos, setPhotos] = useState<WebsitePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch website photos
   useEffect(() => {
     const fetchPhotos = async () => {
-      if (!couple?.id) {
-        console.warn('No couple ID available for fetching photos', { couple });
+      if (!slug) {
+        console.warn('No slug provided for fetching photos');
         setLoading(false);
         return;
       }
@@ -39,13 +36,24 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
         return;
       }
       try {
-        console.log('Fetching photos for couple:', couple);
+        console.log('Fetching couple_id for slug:', slug);
+        const { data: websiteData, error: websiteError } = await supabase
+          .from('wedding_websites')
+          .select('couple_id')
+          .eq('slug', slug)
+          .single();
+        if (websiteError || !websiteData?.couple_id) {
+          console.error('Error fetching couple_id:', websiteError);
+          throw new Error('Failed to fetch couple_id for photos');
+        }
+        const coupleId = websiteData.couple_id;
+        console.log('Fetching photos for couple_id:', coupleId);
         const { data, error } = await supabase
           .from('website_photos')
           .select('*')
-          .eq('couple_id', couple.id)
+          .eq('couple_id', coupleId)
           .order('created_at', { ascending: true })
-          .limit(12); // Increased limit to 12
+          .limit(12);
         if (error) {
           console.error('Supabase fetch error:', error);
           throw new Error(`Failed to fetch website photos: ${error.message}`);
@@ -59,13 +67,12 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
       }
     };
     fetchPhotos();
-  }, [couple]);
+  }, [slug]);
 
-  // Upload a photo
-  const uploadPhoto = async (file: File): Promise<string | null> => {
-    if (!couple?.id) {
+  const uploadPhoto = async (file: File, coupleId?: string): Promise<string | null> => {
+    if (!coupleId) {
       setError('No couple ID available');
-      console.error('Upload failed: No couple ID', { couple });
+      console.error('Upload failed: No couple ID');
       return null;
     }
     if (photos.length >= 12) {
@@ -85,9 +92,9 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
         console.error('Upload failed: No authenticated user');
         return null;
       }
-      console.log('Uploading photo for couple:', couple, 'User ID:', user.id);
+      console.log('Uploading photo for couple_id:', coupleId, 'User ID:', user.id);
       const fileExt = file.name.split('.').pop();
-      const fileName = `${couple.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${coupleId}/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from('website-photos')
         .upload(fileName, file, {
@@ -95,7 +102,7 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
           contentType: file.type
         });
       if (uploadError) {
-        console.error('Storage upload error:', uploadError, 'File:', fileName, 'User ID:', user.id, 'Couple:', couple);
+        console.error('Storage upload error:', uploadError, 'File:', fileName, 'User ID:', user.id);
         throw new Error(`Failed to upload to storage: ${uploadError.message}`);
       }
 
@@ -111,7 +118,7 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
       const { data: insertedData, error: insertError } = await supabase
         .from('website_photos')
         .insert({
-          couple_id: couple.id,
+          couple_id: coupleId,
           file_name: fileName,
           public_url: urlData.publicUrl
         })
@@ -124,7 +131,7 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
 
       const newPhoto: WebsitePhoto = {
         id: insertedData.id,
-        couple_id: couple.id,
+        couple_id: coupleId,
         file_name: fileName,
         public_url: urlData.publicUrl,
         created_at: insertedData.created_at || new Date().toISOString()
@@ -138,7 +145,6 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
     }
   };
 
-  // Delete a photo
   const deletePhoto = async (photoId: string) => {
     try {
       if (!supabase || !isSupabaseConfigured()) {
