@@ -51,6 +51,7 @@ export const WeddingWebsite: React.FC = () => {
         return;
       }
       try {
+        console.log('Fetching website settings for slug:', slug);
         const { data, error } = await supabase
           .from('wedding_websites')
           .select(`
@@ -67,6 +68,7 @@ export const WeddingWebsite: React.FC = () => {
           .eq('slug', slug)
           .single();
         if (error) {
+          console.error('Supabase fetch error:', error);
           throw new Error(`Failed to fetch website settings: ${error.message}`);
         }
         if (!data) {
@@ -82,6 +84,11 @@ export const WeddingWebsite: React.FC = () => {
     };
     fetchSettings();
   }, [slug]);
+
+  useEffect(() => {
+    console.log('Timeline state:', { timelineLoading, events });
+    console.log('Gallery state:', { galleryLoading, photos });
+  }, [timelineLoading, events, galleryLoading, photos]);
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
@@ -127,10 +134,10 @@ export const WeddingWebsite: React.FC = () => {
       container: 'bg-white text-gray-800',
       header: 'bg-ivory-100 text-rose-900',
       nav: 'bg-ivory-50 border-b border-rose-200',
-      section: 'py-12 px-4',
+      section: 'py-12 px-4 min-h-0 overflow-auto',
       button: 'bg-rose-600 hover:bg-rose-700 text-white',
       font: 'font-serif',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
       timelineClass: 'space-y-6 max-w-2xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 gap-6',
       card: 'bg-white border border-rose-200 shadow-md rounded-lg',
@@ -140,10 +147,10 @@ export const WeddingWebsite: React.FC = () => {
       container: 'bg-gray-50 text-gray-900',
       header: 'bg-gradient-to-b from-indigo-900 to-indigo-700 text-white',
       nav: 'bg-white shadow-md',
-      section: 'py-16 px-4',
+      section: 'py-16 px-4 min-h-0 overflow-auto',
       button: 'bg-indigo-600 hover:bg-indigo-700 text-white',
       font: 'font-sans',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
       timelineClass: 'space-y-6 max-w-md mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4',
       card: 'bg-white shadow-lg hover:shadow-xl transition duration-300 rounded-xl',
@@ -153,10 +160,10 @@ export const WeddingWebsite: React.FC = () => {
       container: 'bg-pink-50 text-pink-900',
       header: 'bg-gradient-to-b from-pink-300 to-pink-100 text-pink-800',
       nav: 'bg-pink-50 border-b border-pink-200',
-      section: 'py-12 px-4',
+      section: 'py-12 px-4 min-h-0 overflow-auto',
       button: 'bg-pink-500 hover:bg-pink-600 text-white',
       font: 'font-serif italic',
-      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0', // Fallback grid for mobile
       timelineClass: 'space-y-8 max-w-3xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
       card: 'bg-white border border-pink-100 shadow-sm rounded-lg',
@@ -375,7 +382,7 @@ export const WeddingWebsite: React.FC = () => {
           ) : photos.length === 0 ? (
             <p className="text-center">No photos available.</p>
           ) : (
-            <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
+            <div className={styles.galleryGrid}>
               {photos.map(photo => (
                 <Card key={photo.id} className={`${styles.card} overflow-hidden break-inside-avoid hover:scale-105 transition duration-300`}>
                   <img
