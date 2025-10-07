@@ -68,7 +68,7 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
       console.error('Upload failed: No couple ID', { couple });
       return null;
     }
-    if (photos.length >= 6) {
+    if (photos.length >= 12) {
       setError('Maximum 6 photos allowed');
       console.warn('Upload failed: Maximum 6 photos reached');
       return null;
