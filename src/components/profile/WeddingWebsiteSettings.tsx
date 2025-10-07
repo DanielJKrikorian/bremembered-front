@@ -4,7 +4,6 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { useCouple } from '../../hooks/useCouple';
 import { useWebsiteGallery } from '../../hooks/useWebsiteGallery';
 import { useWeddingTimeline } from '../../hooks/useWeddingTimeline';
-import { useAuth } from '../../context/AuthContext'; // Added for user access
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -42,7 +41,6 @@ interface TimelineEvent {
 }
 
 export const WeddingWebsiteSettings: React.FC = () => {
-  const { user } = useAuth(); // Added to access authenticated user
   const { couple, updateCouple } = useCouple();
   const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery();
   const { events, loading: timelineLoading } = useWeddingTimeline(true);
@@ -69,12 +67,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple, 'user:', user);
-    // Log to debug ID mismatch
-    if (user && memoizedCouple) {
-      console.log('User ID vs Couple ID:', { userId: user.id, coupleId: memoizedCouple.id });
-    }
-  }, [memoizedCouple, user]);
+    console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple);
+  }, [memoizedCouple]);
 
   const fetchSettings = useCallback(debounce(async (coupleId: string) => {
     if (!coupleId || !supabase || !isSupabaseConfigured()) {
@@ -205,18 +199,18 @@ export const WeddingWebsiteSettings: React.FC = () => {
 
   const handleCoverPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user || !memoizedCouple?.id) {
-      setFormErrors({ cover_photo: 'No file selected, user not authenticated, or couple ID missing' });
+    if (!file) {
+      setFormErrors({ cover_photo: 'No file selected' });
       return;
     }
 
-    // Client-side validation (matching Profile.tsx)
+    // Client-side validation
     const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (!validTypes.includes(file.type)) {
       setFormErrors({ cover_photo: 'Invalid file type. Please upload an image (JPEG, PNG, GIF).' });
       return;
     }
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+    if (file.size > 50 * 1024 * 1024) {
       setFormErrors({ cover_photo: 'File size exceeds 50MB limit.' });
       return;
     }
@@ -226,9 +220,12 @@ export const WeddingWebsiteSettings: React.FC = () => {
     setCoverPhotoProgress(0);
 
     try {
-      console.log('Uploading cover photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id, coupleId: memoizedCouple.id });
+      // Check authentication
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      console.log('Uploading cover photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id });
 
-      // Simulate progress (matching Profile.tsx)
+      // Simulate progress
       const progressInterval = setInterval(() => {
         setCoverPhotoProgress((prev) => {
           const newProgress = Math.min(prev + Math.random() * 15, 90);
@@ -238,9 +235,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
       }, 200);
 
       const fileExt = file.name.split('.').pop();
-      const randomString = Math.random().toString(36).substr(2, 9);
-      const fileName = `cover-${Date.now()}-${randomString}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`; // Use user.id to match Profile.tsx ownership
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { data, error: uploadError } = await supabase.storage
         .from('couple-photos')
@@ -274,8 +270,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
         setFormErrors({ cover_photo: 'Upload failed: The "couple-photos" bucket does not exist. Please create it in your Supabase Dashboard under Storage.' });
       } else if ((error as Error).message.includes('net::ERR_NETWORK_CHANGED') || (error as Error).message.includes('Failed to fetch')) {
         setFormErrors({ cover_photo: 'Upload failed due to a network issue. Please check your connection and try again.' });
-      } else if ((error as Error).message.includes('row-level security policy')) {
-        setFormErrors({ cover_photo: 'Upload failed due to permissions. Ensure you are authenticated and the storage policies allow uploads to "couple-photos".' });
       } else {
         setFormErrors({ cover_photo: `Failed to upload cover photo: ${(error as Error).message}` });
       }
@@ -286,19 +280,18 @@ export const WeddingWebsiteSettings: React.FC = () => {
   };
 
   const handleCoverPhotoDelete = async () => {
-    if (!settings.cover_photo) return;
-
+    if (!memoizedCouple?.id || !settings.cover_photo) return;
     try {
-      // Extract full path from publicUrl (e.g., 'user.id/cover-filename.ext')
-      const fullPath = settings.cover_photo.split('/object/public/couple-photos/')[1];
-      if (!fullPath) throw new Error('Invalid cover photo URL format');
-
-      console.log('Deleting cover photo:', { fullPath, coverPhotoUrl: settings.cover_photo });
-
-      const { error: deleteError } = await supabase.storage
-        .from('couple-photos')
-        .remove([fullPath]);
-      if (deleteError) throw new Error(`Delete failed: ${deleteError.message}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      const fileName = settings.cover_photo.split('/').pop();
+      if (fileName) {
+        console.log('Deleting cover photo:', { userId: user.id, fileName });
+        const { error: deleteError } = await supabase.storage
+          .from('couple-photos')
+          .remove([`${user.id}/${fileName}`]);
+        if (deleteError) throw new Error(`Delete failed: ${deleteError.message}`);
+      }
       
       setSettings(prev => ({ ...prev, cover_photo: '' }));
       const { error: updateError } = await supabase
@@ -528,14 +521,14 @@ export const WeddingWebsiteSettings: React.FC = () => {
                     accept="image/*"
                     onChange={handleCoverPhotoUpload}
                     className="hidden"
-                    disabled={coverPhotoUploading || !user || !memoizedCouple?.id}
+                    disabled={coverPhotoUploading || !memoizedCouple?.id}
                   />
                 </label>
                 {coverPhotoUploading && (
                   <div className="mt-2">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-rose-500 h-2 rounded-full transition-all duration-300"
+                        className="bg-rose-500 h-2 rounded-full"
                         style={{ width: `${Math.round(coverPhotoProgress)}%` }}
                       ></div>
                     </div>
@@ -643,7 +636,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
           </div>
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
-            <p className="text-gray-600 mb-4">Upload up to 6 photos for your public website</p>
+            <p className="text-gray-600 mb-4">Upload up to 12 photos for your public website</p>
             {galleryError && <p className="text-red-600 text-sm mb-2">{galleryError}</p>}
             <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600">
               <Upload className="w-4 h-4" />
@@ -653,7 +646,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
                 accept="image/*"
                 onChange={handlePhotoUpload}
                 className="hidden"
-                disabled={photoUploading || photos.length >= 6}
+                disabled={photoUploading || photos.length >= 12}
               />
             </label>
             {photoUploading && (

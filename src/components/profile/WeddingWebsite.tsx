@@ -129,7 +129,7 @@ export const WeddingWebsite: React.FC = () => {
       section: 'py-12 px-4',
       button: 'bg-rose-600 hover:bg-rose-700 text-white',
       font: 'font-serif',
-      galleryGrid: 'grid-cols-1 sm:grid-cols-2 gap-6',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
       timelineClass: 'space-y-6 max-w-2xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 gap-6',
       card: 'bg-white border border-rose-200 shadow-md rounded-lg',
@@ -155,7 +155,7 @@ export const WeddingWebsite: React.FC = () => {
       section: 'py-12 px-4',
       button: 'bg-pink-500 hover:bg-pink-600 text-white',
       font: 'font-serif italic',
-      galleryGrid: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
+      galleryGrid: 'columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4',
       timelineClass: 'space-y-8 max-w-3xl mx-auto',
       accommodationClass: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8',
       card: 'bg-white border border-pink-100 shadow-sm rounded-lg',
@@ -364,13 +364,13 @@ export const WeddingWebsite: React.FC = () => {
           ) : photos.length === 0 ? (
             <p className="text-center">No photos available.</p>
           ) : (
-            <div className={styles.galleryGrid}>
+            <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
               {photos.map(photo => (
-                <Card key={photo.id} className={`${styles.card} overflow-hidden hover:scale-105 transition duration-300 break-inside-avoid`}>
+                <Card key={photo.id} className={`${styles.card} overflow-hidden break-inside-avoid hover:scale-105 transition duration-300`}>
                   <img
                     src={photo.public_url}
                     alt={photo.file_name}
-                    className="w-full h-auto object-cover"
+                    className="w-full h-auto object-cover rounded-lg"
                   />
                 </Card>
               ))}
