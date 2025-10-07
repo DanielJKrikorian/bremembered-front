@@ -8,7 +8,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin } from 'lucide-react';
+import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin, Megaphone } from 'lucide-react';
 import { debounce } from 'lodash';
 
 interface WebsiteSettings {
@@ -21,6 +21,7 @@ interface WebsiteSettings {
   love_story?: string;
   accommodations?: { name: string; website: string; room_block?: string }[];
   cover_photo?: string;
+  announcements?: string[]; // Added for announcements
 }
 
 interface TimelineEvent {
@@ -55,7 +56,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
       about_us: '',
       love_story: '',
       accommodations: [{ name: '', website: '', room_block: '' }],
-      cover_photo: memoizedCouple?.cover_photo || ''
+      cover_photo: memoizedCouple?.cover_photo || '',
+      announcements: [], // Initialize empty announcements array
     };
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -78,7 +80,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
         slug: memoizedCouple?.slug || '',
         password: 'wedding123',
         layout: 'classic',
-        cover_photo: memoizedCouple?.cover_photo || ''
+        cover_photo: memoizedCouple?.cover_photo || '',
+        announcements: [],
       }));
       return;
     }
@@ -100,6 +103,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
         love_story: data?.love_story || '',
         accommodations: data?.accommodations || [{ name: '', website: '', room_block: '' }],
         cover_photo: memoizedCouple?.cover_photo || data?.cover_photo || '',
+        announcements: data?.announcements || [],
         id: data?.id
       };
       setSettings(newSettings);
@@ -147,6 +151,11 @@ export const WeddingWebsiteSettings: React.FC = () => {
       if (hotel.name && !hotel.website) errors[`hotel_website_${index}`] = `Website required for ${hotel.name}`;
       if (hotel.website && !/^https?:\/\/.+/.test(hotel.website)) errors[`hotel_website_${index}`] = 'Invalid URL';
     });
+    settings.announcements?.forEach((announcement, index) => {
+      if (announcement && announcement.length > 280) {
+        errors[`announcement_${index}`] = 'Announcement must be 280 characters or less';
+      }
+    });
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -167,6 +176,30 @@ export const WeddingWebsiteSettings: React.FC = () => {
     newAccommodations[index] = { ...newAccommodations[index], [field]: value };
     setSettings(prev => ({ ...prev, accommodations: newAccommodations }));
     setFormErrors(prev => ({ ...prev, [`hotel_${field}_${index}`]: '' }));
+  };
+
+  const handleAnnouncementChange = (index: number, value: string) => {
+    const newAnnouncements = [...(settings.announcements || [])];
+    newAnnouncements[index] = value;
+    setSettings(prev => ({ ...prev, announcements: newAnnouncements }));
+    setFormErrors(prev => ({ ...prev, [`announcement_${index}`]: '' }));
+  };
+
+  const addAnnouncement = () => {
+    if ((settings.announcements?.length || 0) < 3) {
+      setSettings(prev => ({
+        ...prev,
+        announcements: [...(prev.announcements || []), '']
+      }));
+    }
+  };
+
+  const removeAnnouncement = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      announcements: (prev.announcements || []).filter((_, i) => i !== index)
+    }));
+    setFormErrors(prev => ({ ...prev, [`announcement_${index}`]: '' }));
   };
 
   const addHotel = () => {
@@ -204,7 +237,6 @@ export const WeddingWebsiteSettings: React.FC = () => {
       return;
     }
 
-    // Client-side validation
     const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (!validTypes.includes(file.type)) {
       setFormErrors({ cover_photo: 'Invalid file type. Please upload an image (JPEG, PNG, GIF).' });
@@ -220,12 +252,10 @@ export const WeddingWebsiteSettings: React.FC = () => {
     setCoverPhotoProgress(0);
 
     try {
-      // Check authentication
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
       console.log('Uploading cover photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id });
 
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setCoverPhotoProgress((prev) => {
           const newProgress = Math.min(prev + Math.random() * 15, 90);
@@ -348,6 +378,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
           love_story: settings.love_story,
           accommodations: settings.accommodations.filter(hotel => hotel.name),
           cover_photo: settings.cover_photo,
+          announcements: settings.announcements?.filter(a => a.trim()) || [],
           updated_at: new Date().toISOString()
         }, { onConflict: 'couple_id' });
       if (error) throw error;
@@ -538,6 +569,32 @@ export const WeddingWebsiteSettings: React.FC = () => {
                 {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
               </div>
             </div>
+          </div>
+          <div>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">Announcements</h4>
+            <p className="text-gray-600 mb-4">Add up to 3 short announcements (max 280 characters each) to share updates with your guests</p>
+            {settings.announcements?.map((announcement, index) => (
+              <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                <Input
+                  label={`Announcement ${index + 1}`}
+                  value={announcement}
+                  onChange={(e) => handleAnnouncementChange(index, e.target.value)}
+                  placeholder="Enter a short announcement..."
+                  maxLength={280}
+                  error={formErrors[`announcement_${index}`]}
+                  icon={Megaphone}
+                />
+                <Button
+                  variant="ghost"
+                  icon={Trash}
+                  className="absolute top-2 right-2 text-red-600"
+                  onClick={() => removeAnnouncement(index)}
+                />
+              </div>
+            ))}
+            {(settings.announcements?.length || 0) < 3 && (
+              <Button variant="outline" onClick={addAnnouncement}>Add Announcement</Button>
+            )}
           </div>
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">About Us</h4>

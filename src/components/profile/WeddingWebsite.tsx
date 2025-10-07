@@ -9,7 +9,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { RsvpModal } from '../../components/profile/RsvpModal';
-import { Heart, Lock, Eye, EyeOff, Calendar, MapPin, Home, Users, Book, Image, Hotel } from 'lucide-react';
+import { Heart, Lock, Eye, EyeOff, Calendar, MapPin, Home, Users, Book, Image, Hotel, Megaphone } from 'lucide-react';
 
 interface WebsiteSettings {
   couple_id: string;
@@ -27,6 +27,7 @@ interface WebsiteSettings {
     wedding_date?: string;
     venue_name?: string;
   };
+  announcements?: string[];
 }
 
 export const WeddingWebsite: React.FC = () => {
@@ -279,6 +280,16 @@ export const WeddingWebsite: React.FC = () => {
         <section id="home" className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 animate-fade-in">Welcome to Our Day</h2>
           <p className="text-gray-600 max-w-2xl mx-auto animate-fade-in">Join us as we celebrate our love and commitment.</p>
+          {memoizedSettings.announcements && memoizedSettings.announcements.length > 0 && (
+            <div className="mt-6 space-y-4 max-w-2xl mx-auto">
+              {memoizedSettings.announcements.map((announcement, index) => (
+                <Card key={index} className={`${styles.card} p-4 flex items-start animate-fade-in`}>
+                  <Megaphone className={`w-5 h-5 mr-3 ${styles.accentColor}`} />
+                  <p className="text-gray-700 text-left">{announcement}</p>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
         {memoizedSettings.about_us && (
           <section id="about" className={`${styles.section} animate-fade-in`}>
@@ -291,7 +302,7 @@ export const WeddingWebsite: React.FC = () => {
         {memoizedSettings.love_story && (
           <section id="story" className={`${styles.section} animate-fade-in`}>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center flex items-center justify-center">
-              Our Love Story {memoizedSettings.layout === 'romantic' && <Heart className="w-6 h-6 ml-2 ${styles.accentColor}" />}
+              Our Love Story {memoizedSettings.layout === 'romantic' && <Heart className={`w-6 h-6 ml-2 ${styles.accentColor}`} />}
             </h2>
             <Card className={`${styles.card} p-6`}>
               <p className="text-gray-700 leading-relaxed">{memoizedSettings.love_story}</p>

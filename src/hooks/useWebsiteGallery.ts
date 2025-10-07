@@ -45,7 +45,7 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
           .select('*')
           .eq('couple_id', couple.id)
           .order('created_at', { ascending: true })
-          .limit(6);
+          .limit(12); // Increased limit to 12
         if (error) {
           console.error('Supabase fetch error:', error);
           throw new Error(`Failed to fetch website photos: ${error.message}`);
@@ -69,8 +69,8 @@ export const useWebsiteGallery = (): UseWebsiteGallery => {
       return null;
     }
     if (photos.length >= 12) {
-      setError('Maximum 6 photos allowed');
-      console.warn('Upload failed: Maximum 6 photos reached');
+      setError('Maximum 12 photos allowed');
+      console.warn('Upload failed: Maximum 12 photos reached');
       return null;
     }
     try {
