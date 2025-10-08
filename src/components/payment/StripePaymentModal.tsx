@@ -8,7 +8,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 
-// Initialize stripePromise outside the component to avoid re-initialization
+// Initialize stripePromise outside the component
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface StoragePlan {
@@ -39,7 +39,8 @@ const PaymentForm: React.FC<{
   onEmailChange: (email: string) => void;
   onSuccess: () => void;
   onClose: () => void;
-}> = ({ plan, email, onEmailChange, onSuccess, onClose }) => {
+  coupleId: string;
+}> = ({ plan, email, onEmailChange, onSuccess, onClose, coupleId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { user } = useAuth();
@@ -53,7 +54,8 @@ const PaymentForm: React.FC<{
     console.log('Stripe instance:', !!stripe);
     console.log('Elements instance:', !!elements);
     console.log('User authenticated:', !!user);
-  }, [stripe, elements, user]);
+    console.log('Couple ID:', coupleId);
+  }, [stripe, elements, user, coupleId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +68,7 @@ const PaymentForm: React.FC<{
     console.log('Email:', email);
     console.log('Terms agreed:', agreedToTerms);
     console.log('Card ready:', cardReady);
+    console.log('Couple ID:', coupleId);
 
     if (!stripe || !elements || !user) {
       setError('Payment system not ready or user not authenticated');
@@ -110,9 +113,24 @@ const PaymentForm: React.FC<{
         throw new Error(customerData.error || 'Failed to create customer');
       }
 
+      console.log('Creating payment method...');
+      const { paymentMethod, error: paymentMethodError } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: {
+          email: email,
+          name: user.user_metadata?.name || 'Wedding Customer',
+        },
+      });
+
+      if (paymentMethodError) {
+        console.error('Payment method creation error:', paymentMethodError);
+        throw new Error(paymentMethodError.message || 'Failed to create payment method');
+      }
+
       console.log('Creating payment intent...');
       const paymentIntentResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/couple-gallery-payment-intent`,
         {
           method: 'POST',
           headers: {
@@ -124,6 +142,8 @@ const PaymentForm: React.FC<{
             currency: plan.currency,
             customerId: customerData.customerId,
             planId: plan.plan_id,
+            coupleId,
+            paymentMethodId: paymentMethod.id,
           }),
         }
       );
@@ -135,66 +155,13 @@ const PaymentForm: React.FC<{
         throw new Error(paymentIntentData.error || 'Failed to create payment intent');
       }
 
-      console.log('Confirming card payment...');
-      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-        paymentIntentData.clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-            billing_details: {
-              email: email,
-              name: user.user_metadata?.name || 'Wedding Customer',
-            },
-          },
-        }
-      );
-
-      if (confirmError) {
-        console.error('Payment confirmation error:', confirmError);
-        throw new Error(confirmError.message || 'Payment failed');
+      if (paymentIntentData.error) {
+        throw new Error(paymentIntentData.error);
       }
 
-      console.log('Payment intent status:', paymentIntent?.status);
-      if (paymentIntent?.status === 'succeeded') {
-        const { data: coupleData } = await supabase
-          .from('couples')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (coupleData) {
-          console.log('Confirming subscription...');
-          const confirmResponse = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/confirm-subscription`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                paymentIntentId: paymentIntent.id,
-                customerId: customerData.customerId,
-                planId: plan.plan_id,
-                coupleId: coupleData.id,
-              }),
-            }
-          );
-
-          const confirmData = await confirmResponse.json();
-          console.log('Subscription confirmation response:', confirmData);
-
-          if (!confirmResponse.ok) {
-            console.warn('Subscription confirmation failed:', confirmData.error);
-          }
-        }
-
-        console.log('✅ Payment successful!');
-        onSuccess();
-        onClose();
-      } else {
-        throw new Error('Payment was not completed successfully');
-      }
+      console.log('✅ Payment successful!');
+      onSuccess();
+      onClose();
     } catch (err) {
       console.error('Payment error:', err);
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
@@ -301,6 +268,27 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const [email, setEmail] = useState(user?.email || '');
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [coupleId, setCoupleId] = useState<string | null>(null);
+
+  // Fetch couple ID
+  useEffect(() => {
+    const fetchCoupleId = async () => {
+      if (!isSupabaseConfigured() || !supabase || !user) return;
+      try {
+        const { data, error } = await supabase
+          .from('couples')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        if (error) throw new Error(`Failed to fetch couple ID: ${error.message}`);
+        setCoupleId(data.id);
+      } catch (err) {
+        console.error('Error fetching couple ID:', err);
+        setStripeError('Failed to load user data. Please refresh and try again.');
+      }
+    };
+    if (isOpen) fetchCoupleId();
+  }, [isOpen, user]);
 
   // Handle stripePromise resolution
   useEffect(() => {
@@ -369,7 +357,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     }
   }, [isOpen, planId, planName, amount]);
 
-  if (!isOpen || !plan) return null;
+  if (!isOpen || !plan || !coupleId) return null;
 
   if (stripeError || !stripeLoaded) {
     return (
@@ -443,6 +431,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 onEmailChange={setEmail}
                 onSuccess={onSuccess}
                 onClose={onClose}
+                coupleId={coupleId}
               />
             </Elements>
             <div className="mt-3 text-center">
