@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { useCouple } from '../../hooks/useCouple';
@@ -8,8 +8,10 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin, Megaphone, Bus, Shirt, Hotel, Calendar, ImageIcon } from 'lucide-react';
+import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin, Megaphone, Bus, Shirt, Hotel, Calendar, ImageIcon, QrCode } from 'lucide-react';
 import { debounce } from 'lodash';
+import { QRCodeCanvas } from 'qrcode.react';
+import { toPng } from 'html-to-image';
 
 interface WebsiteSettings {
   id?: string;
@@ -81,6 +83,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
   const [coverPhotoProgress, setCoverPhotoProgress] = useState<number>(0);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'couple' | 'guestinfo' | 'timeline' | 'gallery'>('couple');
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple);
@@ -429,6 +432,24 @@ export const WeddingWebsiteSettings: React.FC = () => {
     }
   };
 
+  const handleDownloadQrCode = async () => {
+    if (!qrCodeRef.current || !settings.slug) return;
+    try {
+      const dataUrl = await toPng(qrCodeRef.current, { pixelRatio: 3 });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${settings.slug}-wedding-qr.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMessage('QR code downloaded successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error downloading QR code:', err);
+      setFormErrors({ qr_code: 'Failed to download QR code' });
+    }
+  };
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -516,477 +537,521 @@ export const WeddingWebsiteSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Website Settings</h3>
-        <p className="text-gray-600 mb-4">Configure your public wedding website for guests</p>
-        <div className="space-y-6">
-          {/* Website Details */}
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Website Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3 space-y-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Website Settings</h3>
+            <p className="text-gray-600 mb-4">Configure your public wedding website for guests</p>
+            <div className="space-y-6">
+              {/* Website Details */}
               <div>
-                <Input
-                  label="Website Slug"
-                  name="slug"
-                  value={settings.slug}
-                  onChange={handleInputChange}
-                  placeholder="jane-and-john"
-                  error={formErrors.slug}
-                  icon={Globe}
-                />
-                <p className="text-sm text-gray-600 mt-1">
-                  Your website URL: {window.location.origin}/wedding/{settings.slug || 'your-slug'}
-                </p>
-                {memoizedCouple?.slug && !settings.id && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Pregenerated slug: {memoizedCouple.slug}
-                  </p>
-                )}
-              </div>
-              <div className="relative flex items-center">
-                <Input
-                  label="Website Password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={settings.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter a password"
-                  error={formErrors.password}
-                  icon={Lock}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-600 hover:text-gray-800"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-                <p className="text-sm text-gray-600 mt-1">
-                  Default password: wedding123
-                </p>
-              </div>
-            </div>
-          </div>
-          {/* Layout Previews */}
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Layout Previews</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.entries(layoutPreviews).map(([layout, styles]) => (
-                <Card
-                  key={layout}
-                  className={`p-4 ${styles.bg} border ${settings.layout === layout ? 'border-rose-500' : ''} cursor-pointer`}
-                  onClick={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
-                >
-                  <div className="flex items-center mb-2">
-                    <input
-                      type="radio"
-                      name="layout"
-                      value={layout}
-                      checked={settings.layout === layout}
-                      onChange={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
-                      className="h-4 w-4 text-rose-500 focus:ring-rose-500 border-gray-300 mr-2"
-                    />
-                    <h5 className="font-medium capitalize">{layout}</h5>
-                  </div>
-                  <div className={`${styles.header} p-2 rounded-t-lg text-center`}>
-                    <h6 className="font-medium">Preview</h6>
-                  </div>
-                  <div className="p-2">
-                    <p className="text-sm">Sample content</p>
-                    <Button className={`mt-2 ${styles.button}`}>RSVP</Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-          {/* Announcements */}
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Announcements</h4>
-            <p className="text-gray-600 mb-4">Add up to 3 short announcements (max 280 characters each) to share updates with your guests</p>
-            {settings.announcements?.map((announcement, index) => (
-              <div key={index} className="border p-4 rounded-lg mb-4 relative">
-                <Input
-                  label={`Announcement ${index + 1}`}
-                  value={announcement}
-                  onChange={(e) => handleAnnouncementChange(index, e.target.value)}
-                  placeholder="Enter a short announcement..."
-                  maxLength={280}
-                  error={formErrors[`announcement_${index}`]}
-                  icon={Megaphone}
-                />
-                <Button
-                  variant="ghost"
-                  icon={Trash}
-                  className="absolute top-2 right-2 text-red-600"
-                  onClick={() => removeAnnouncement(index)}
-                />
-              </div>
-            ))}
-            {(settings.announcements?.length || 0) < 3 && (
-              <Button variant="outline" onClick={addAnnouncement}>Add Announcement</Button>
-            )}
-          </div>
-          {/* Tabs */}
-          <div className="flex space-x-2 border-b mb-4 flex-wrap">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-t-lg ${
-                  activeTab === tab.key ? 'bg-rose-500 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-          {/* Tabbed Content */}
-          <div className="space-y-6">
-            {activeTab === 'couple' && (
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
-                <div className="space-y-6">
-                  <div className="flex items-center space-x-4">
-                    {memoizedCouple?.profile_photo ? (
-                      <img
-                        src={memoizedCouple.profile_photo}
-                        alt="Couple"
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-8 h-8 text-gray-500" />
-                      </div>
-                    )}
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Website Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <p className="text-gray-900 font-medium">
-                        {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
+                      <Input
+                        label="Website Slug"
+                        name="slug"
+                        value={settings.slug}
+                        onChange={handleInputChange}
+                        placeholder="jane-and-john"
+                        error={formErrors.slug}
+                        icon={Globe}
+                      />
+                      <p className="text-sm text-gray-600 mt-1">
+                        Your website URL: {window.location.origin}/wedding/{settings.slug || 'your-slug'}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
-                      </p>
-                      {memoizedCouple?.venue_name && (
-                        <p className="text-sm text-gray-600 mt-1 flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
+                      {memoizedCouple?.slug && !settings.id && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          Pregenerated slug: {memoizedCouple.slug}
                         </p>
                       )}
                     </div>
-                  </div>
-                  <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">Cover Photo</h5>
-                    {settings.cover_photo ? (
-                      <div className="relative">
-                        <img
-                          src={settings.cover_photo}
-                          alt="Cover"
-                          className="w-full h-48 object-cover rounded-lg"
-                        />
-                        <Button
-                          variant="ghost"
-                          icon={Trash}
-                          className="absolute top-2 right-2 text-red-600"
-                          onClick={handleCoverPhotoDelete}
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-gray-600">No cover photo uploaded.</p>
-                    )}
-                    <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600 mt-2">
-                      <Upload className="w-4 h-4" />
-                      <span>Upload Cover Photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleCoverPhotoUpload}
-                        className="hidden"
-                        disabled={coverPhotoUploading || !memoizedCouple?.id}
+                    <div className="relative flex items-center">
+                      <Input
+                        label="Website Password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={settings.password}
+                        onChange={handleInputChange}
+                        placeholder="Enter a password"
+                        error={formErrors.password}
+                        icon={Lock}
+                        className="pr-10"
                       />
-                    </label>
-                    {coverPhotoUploading && (
-                      <div className="mt-2">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-rose-500 h-2 rounded-full"
-                            style={{ width: `${Math.round(coverPhotoProgress)}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-sm text-blue-600 mt-1">Uploading: {Math.round(coverPhotoProgress)}%</p>
-                      </div>
-                    )}
-                    {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
-                  </div>
-                  <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">About Us</h5>
-                    <textarea
-                      name="about_us"
-                      value={settings.about_us || ''}
-                      onChange={handleInputChange}
-                      placeholder="Tell your guests about yourselves..."
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
-                  </div>
-                  <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">How We Met / Our Love Story</h5>
-                    <textarea
-                      name="love_story"
-                      value={settings.love_story || ''}
-                      onChange={handleInputChange}
-                      placeholder="Share your love story..."
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
+                      <button
+                        type="button"
+                        onClick={togglePasswordVisibility}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-600 hover:text-gray-800"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Default password: wedding123
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
-            {activeTab === 'guestinfo' && (
+              {/* Layout Previews */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">Guest Information</h4>
-                <p className="text-gray-600 mb-4">Add hotel, transportation, and dress code information for your guests</p>
-                <div className="space-y-6">
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Layout Previews</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {Object.entries(layoutPreviews).map(([layout, styles]) => (
+                    <Card
+                      key={layout}
+                      className={`p-4 ${styles.bg} border ${settings.layout === layout ? 'border-rose-500' : ''} cursor-pointer`}
+                      onClick={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
+                    >
+                      <div className="flex items-center mb-2">
+                        <input
+                          type="radio"
+                          name="layout"
+                          value={layout}
+                          checked={settings.layout === layout}
+                          onChange={() => handleLayoutChange(layout as 'classic' | 'modern' | 'romantic')}
+                          className="h-4 w-4 text-rose-500 focus:ring-rose-500 border-gray-300 mr-2"
+                        />
+                        <h5 className="font-medium capitalize">{layout}</h5>
+                      </div>
+                      <div className={`${styles.header} p-2 rounded-t-lg text-center`}>
+                        <h6 className="font-medium">Preview</h6>
+                      </div>
+                      <div className="p-2">
+                        <p className="text-sm">Sample content</p>
+                        <Button className={`mt-2 ${styles.button}`}>RSVP</Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+              {/* Announcements */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Announcements</h4>
+                <p className="text-gray-600 mb-4">Add up to 3 short announcements (max 280 characters each) to share updates with your guests</p>
+                {settings.announcements?.map((announcement, index) => (
+                  <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                    <Input
+                      label={`Announcement ${index + 1}`}
+                      value={announcement}
+                      onChange={(e) => handleAnnouncementChange(index, e.target.value)}
+                      placeholder="Enter a short announcement..."
+                      maxLength={280}
+                      error={formErrors[`announcement_${index}`]}
+                      icon={Megaphone}
+                    />
+                    <Button
+                      variant="ghost"
+                      icon={Trash}
+                      className="absolute top-2 right-2 text-red-600"
+                      onClick={() => removeAnnouncement(index)}
+                    />
+                  </div>
+                ))}
+                {(settings.announcements?.length || 0) < 3 && (
+                  <Button variant="outline" onClick={addAnnouncement}>Add Announcement</Button>
+                )}
+              </div>
+              {/* Tabs */}
+              <div className="flex space-x-2 border-b mb-4 flex-wrap">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key as any)}
+                    className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-t-lg ${
+                      activeTab === tab.key ? 'bg-rose-500 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Tabbed Content */}
+              <div className="space-y-6">
+                {activeTab === 'couple' && (
                   <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">Hotels</h5>
-                    {settings.accommodations.map((hotel, index) => (
-                      <div key={index} className="border p-4 rounded-lg mb-4 relative">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input
-                            label="Hotel Name"
-                            value={hotel.name}
-                            onChange={(e) => handleAccommodationChange(index, 'name', e.target.value)}
-                            placeholder="Hotel name"
-                            error={formErrors[`hotel_name_${index}`]}
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
+                    <div className="space-y-6">
+                      <div className="flex items-center space-x-4">
+                        {memoizedCouple?.profile_photo ? (
+                          <img
+                            src={memoizedCouple.profile_photo}
+                            alt="Couple"
+                            className="w-16 h-16 rounded-full object-cover"
                           />
-                          <Input
-                            label="Website"
-                            value={hotel.website}
-                            onChange={(e) => handleAccommodationChange(index, 'website', e.target.value)}
-                            placeholder="https://hotelwebsite.com"
-                            error={formErrors[`hotel_website_${index}`]}
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                            <User className="w-8 h-8 text-gray-500" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-gray-900 font-medium">
+                            {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
+                          </p>
+                          {memoizedCouple?.venue_name && (
+                            <p className="text-sm text-gray-600 mt-1 flex items-center">
+                              <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">Cover Photo</h5>
+                        {settings.cover_photo ? (
+                          <div className="relative">
+                            <img
+                              src={settings.cover_photo}
+                              alt="Cover"
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                            <Button
+                              variant="ghost"
+                              icon={Trash}
+                              className="absolute top-2 right-2 text-red-600"
+                              onClick={handleCoverPhotoDelete}
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-gray-600">No cover photo uploaded.</p>
+                        )}
+                        <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600 mt-2">
+                          <Upload className="w-4 h-4" />
+                          <span>Upload Cover Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverPhotoUpload}
+                            className="hidden"
+                            disabled={coverPhotoUploading || !memoizedCouple?.id}
                           />
-                          <div className="md:col-span-2">
+                        </label>
+                        {coverPhotoUploading && (
+                          <div className="mt-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-rose-500 h-2 rounded-full"
+                                style={{ width: `${Math.round(coverPhotoProgress)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-sm text-blue-600 mt-1">Uploading: {Math.round(coverPhotoProgress)}%</p>
+                          </div>
+                        )}
+                        {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
+                      </div>
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">About Us</h5>
+                        <textarea
+                          name="about_us"
+                          value={settings.about_us || ''}
+                          onChange={handleInputChange}
+                          placeholder="Tell your guests about yourselves..."
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">How We Met / Our Love Story</h5>
+                        <textarea
+                          name="love_story"
+                          value={settings.love_story || ''}
+                          onChange={handleInputChange}
+                          placeholder="Share your love story..."
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'guestinfo' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Guest Information</h4>
+                    <p className="text-gray-600 mb-4">Add hotel, transportation, and dress code information for your guests</p>
+                    <div className="space-y-6">
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">Hotels</h5>
+                        {settings.accommodations.map((hotel, index) => (
+                          <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <Input
+                                label="Hotel Name"
+                                value={hotel.name}
+                                onChange={(e) => handleAccommodationChange(index, 'name', e.target.value)}
+                                placeholder="Hotel name"
+                                error={formErrors[`hotel_name_${index}`]}
+                              />
+                              <Input
+                                label="Website"
+                                value={hotel.website}
+                                onChange={(e) => handleAccommodationChange(index, 'website', e.target.value)}
+                                placeholder="https://hotelwebsite.com"
+                                error={formErrors[`hotel_website_${index}`]}
+                              />
+                              <div className="md:col-span-2">
+                                <Input
+                                  label="Room Block Information"
+                                  value={hotel.room_block}
+                                  onChange={(e) => handleAccommodationChange(index, 'room_block', e.target.value)}
+                                  placeholder="Room block details (optional)"
+                                />
+                              </div>
+                            </div>
+                            {index > 0 && (
+                              <Button
+                                variant="ghost"
+                                icon={Trash}
+                                className="absolute top-2 right-2 text-red-600"
+                                onClick={() => removeHotel(index)}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {settings.accommodations.length < 3 && (
+                          <Button variant="outline" onClick={addHotel}>Add Hotel</Button>
+                        )}
+                      </div>
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">Transportation</h5>
+                        {settings.transportation?.map((trans, index) => (
+                          <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                            <div className="space-y-4">
+                              <Input
+                                label="Transportation Name"
+                                value={trans.name}
+                                onChange={(e) => handleTransportationChange(index, 'name', e.target.value)}
+                                placeholder="e.g., Shuttle Service"
+                                error={formErrors[`trans_name_${index}`]}
+                                icon={Bus}
+                              />
+                              <Input
+                                label="Description (optional)"
+                                value={trans.description}
+                                onChange={(e) => handleTransportationChange(index, 'description', e.target.value)}
+                                placeholder="e.g., Shuttle from hotel to venue"
+                              />
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Stops</label>
+                                {trans.stops.map((stop, stopIndex) => (
+                                  <div key={stopIndex} className="flex items-center space-x-2 mb-2">
+                                    <Input
+                                      value={stop}
+                                      onChange={(e) => handleTransportationStopChange(index, stopIndex, e.target.value)}
+                                      placeholder={`Stop ${stopIndex + 1}`}
+                                      error={formErrors[`trans_stops_${index}`]}
+                                    />
+                                    {trans.stops.length > 1 && (
+                                      <Button
+                                        variant="ghost"
+                                        icon={Trash}
+                                        onClick={() => removeTransportationStop(index, stopIndex)}
+                                        className="text-red-600"
+                                      />
+                                    )}
+                                  </div>
+                                ))}
+                                {trans.stops.length < 5 && (
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => addTransportationStop(index)}
+                                    className="mt-2"
+                                  >
+                                    Add Stop
+                                  </Button>
+                                )}
+                              </div>
+                              <Input
+                                label="Frequency (optional)"
+                                value={trans.frequency}
+                                onChange={(e) => handleTransportationChange(index, 'frequency', e.target.value)}
+                                placeholder="e.g., Every 30 minutes"
+                              />
+                              <Input
+                                label="Start Time (optional)"
+                                value={trans.start_time}
+                                onChange={(e) => handleTransportationChange(index, 'start_time', e.target.value)}
+                                placeholder="e.g., 6:00 PM"
+                                error={formErrors[`trans_start_time_${index}`]}
+                              />
+                            </div>
+                            {index > 0 && (
+                              <Button
+                                variant="ghost"
+                                icon={Trash}
+                                className="absolute top-2 right-2 text-red-600"
+                                onClick={() => removeTransportation(index)}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {(settings.transportation?.length || 0) < 3 && (
+                          <Button variant="outline" onClick={addTransportation}>Add Transportation</Button>
+                        )}
+                      </div>
+                      <div>
+                        <h5 className="text-md font-medium text-gray-900 mb-2">Dress Code</h5>
+                        <div className="border p-4 rounded-lg mb-4">
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Dress Code</label>
+                              <select
+                                name="dress_code_title"
+                                value={settings.dress_code?.title || ''}
+                                onChange={(e) => handleDressCodeChange('title', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                              >
+                                <option value="">Select a dress code</option>
+                                {predefinedDressCodes.map(code => (
+                                  <option key={code.title} value={code.title}>{code.title}</option>
+                                ))}
+                              </select>
+                            </div>
                             <Input
-                              label="Room Block Information"
-                              value={hotel.room_block}
-                              onChange={(e) => handleAccommodationChange(index, 'room_block', e.target.value)}
-                              placeholder="Room block details (optional)"
+                              label="Description"
+                              value={settings.dress_code?.description || ''}
+                              onChange={(e) => handleDressCodeChange('description', e.target.value)}
+                              placeholder="Enter dress code description"
+                              error={formErrors.dress_code_description}
+                              icon={Shirt}
                             />
                           </div>
                         </div>
-                        {index > 0 && (
-                          <Button
-                            variant="ghost"
-                            icon={Trash}
-                            className="absolute top-2 right-2 text-red-600"
-                            onClick={() => removeHotel(index)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    {settings.accommodations.length < 3 && (
-                      <Button variant="outline" onClick={addHotel}>Add Hotel</Button>
-                    )}
-                  </div>
-                  <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">Transportation</h5>
-                    {settings.transportation?.map((trans, index) => (
-                      <div key={index} className="border p-4 rounded-lg mb-4 relative">
-                        <div className="space-y-4">
-                          <Input
-                            label="Transportation Name"
-                            value={trans.name}
-                            onChange={(e) => handleTransportationChange(index, 'name', e.target.value)}
-                            placeholder="e.g., Shuttle Service"
-                            error={formErrors[`trans_name_${index}`]}
-                            icon={Bus}
-                          />
-                          <Input
-                            label="Description (optional)"
-                            value={trans.description}
-                            onChange={(e) => handleTransportationChange(index, 'description', e.target.value)}
-                            placeholder="e.g., Shuttle from hotel to venue"
-                          />
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Stops</label>
-                            {trans.stops.map((stop, stopIndex) => (
-                              <div key={stopIndex} className="flex items-center space-x-2 mb-2">
-                                <Input
-                                  value={stop}
-                                  onChange={(e) => handleTransportationStopChange(index, stopIndex, e.target.value)}
-                                  placeholder={`Stop ${stopIndex + 1}`}
-                                  error={formErrors[`trans_stops_${index}`]}
-                                />
-                                {trans.stops.length > 1 && (
-                                  <Button
-                                    variant="ghost"
-                                    icon={Trash}
-                                    onClick={() => removeTransportationStop(index, stopIndex)}
-                                    className="text-red-600"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                            {trans.stops.length < 5 && (
-                              <Button variant="outline" onClick={() => addTransportationStop(index)} className="mt-2">
-                                Add Stop
-                              </Button>
-                            )}
-                          </div>
-                          <Input
-                            label="Frequency (optional)"
-                            value={trans.frequency}
-                            onChange={(e) => handleTransportationChange(index, 'frequency', e.target.value)}
-                            placeholder="e.g., Every 30 minutes"
-                          />
-                          <Input
-                            label="Start Time (optional)"
-                            value={trans.start_time}
-                            onChange={(e) => handleTransportationChange(index, 'start_time', e.target.value)}
-                            placeholder="e.g., 6:00 PM"
-                            error={formErrors[`trans_start_time_${index}`]}
-                          />
-                        </div>
-                        {index > 0 && (
-                          <Button
-                            variant="ghost"
-                            icon={Trash}
-                            className="absolute top-2 right-2 text-red-600"
-                            onClick={() => removeTransportation(index)}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    {(settings.transportation?.length || 0) < 3 && (
-                      <Button variant="outline" onClick={addTransportation}>Add Transportation</Button>
-                    )}
-                  </div>
-                  <div>
-                    <h5 className="text-md font-medium text-gray-900 mb-2">Dress Code</h5>
-                    <div className="border p-4 rounded-lg mb-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Dress Code</label>
-                          <select
-                            name="dress_code_title"
-                            value={settings.dress_code?.title || ''}
-                            onChange={(e) => handleDressCodeChange('title', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                          >
-                            <option value="">Select a dress code</option>
-                            {predefinedDressCodes.map(code => (
-                              <option key={code.title} value={code.title}>{code.title}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <Input
-                          label="Description"
-                          value={settings.dress_code?.description || ''}
-                          onChange={(e) => handleDressCodeChange('description', e.target.value)}
-                          placeholder="Enter dress code description"
-                          error={formErrors.dress_code_description}
-                          icon={Shirt}
-                        />
                       </div>
                     </div>
                   </div>
+                )}
+                {activeTab === 'timeline' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Timeline</h4>
+                    <p className="text-gray-600 mb-4">Events marked to show on your wedding website</p>
+                    {timelineLoading ? (
+                      <p className="text-gray-600">Loading timeline...</p>
+                    ) : events.length === 0 ? (
+                      <p className="text-gray-600">No events set to show on the website. Edit your timeline to select events.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {events.map(event => (
+                          <Card key={event.id} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h5 className="font-medium text-gray-900">{event.title}</h5>
+                                <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
+                                {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
+                                {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
+                                {event.photo_shotlist && (
+                                  <p className="text-sm text-blue-600 mt-1 flex items-center">
+                                    <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
+                                  </p>
+                                )}
+                                {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
+                                {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTab === 'gallery' && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
+                    <p className="text-gray-600 mb-4">Upload up to 12 photos for your public website</p>
+                    {galleryError && <p className="text-red-600 text-sm mb-2">{galleryError}</p>}
+                    <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        disabled={photoUploading || photos.length >= 12}
+                      />
+                    </label>
+                    {photoUploading && (
+                      <div className="mt-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">Uploading...</p>
+                      </div>
+                    )}
+                    {galleryLoading ? (
+                      <p className="text-gray-600 mt-4">Loading gallery...</p>
+                    ) : photos.length === 0 ? (
+                      <p className="text-gray-600 mt-4">No photos uploaded yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                        {photos.map(photo => (
+                          <Card key={photo.id} className="overflow-hidden relative">
+                            <img
+                              src={photo.public_url}
+                              alt={photo.file_name}
+                              className="w-full h-32 object-cover"
+                            />
+                            <Button
+                              variant="ghost"
+                              icon={Trash}
+                              className="absolute top-2 right-2 text-red-600"
+                              onClick={() => deletePhoto(photo.id)}
+                            />
+                            <p className="text-sm text-gray-600 p-2 truncate">{photo.file_name}</p>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {formErrors.general && <p className="text-red-600 text-sm mt-2">{formErrors.general}</p>}
+                {successMessage && (
+                  <p className="text-green-600 text-sm mt-2 flex items-center">
+                    <Check className="w-4 h-4 mr-2" /> {successMessage}
+                  </p>
+                )}
+                <div className="flex justify-end mt-4">
+                  <Button variant="primary" onClick={handleSave} loading={loading} disabled={loading}>
+                    Save Settings
+                  </Button>
                 </div>
               </div>
-            )}
-            {activeTab === 'timeline' && (
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">Timeline</h4>
-                <p className="text-gray-600 mb-4">Events marked to show on your wedding website</p>
-                {timelineLoading ? (
-                  <p className="text-gray-600">Loading timeline...</p>
-                ) : events.length === 0 ? (
-                  <p className="text-gray-600">No events set to show on the website. Edit your timeline to select events.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {events.map(event => (
-                      <Card key={event.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h5 className="font-medium text-gray-900">{event.title}</h5>
-                            <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
-                            {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
-                            {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
-                            {event.photo_shotlist && (
-                              <p className="text-sm text-blue-600 mt-1 flex items-center">
-                                <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
-                              </p>
-                            )}
-                            {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
-                            {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {activeTab === 'gallery' && (
-              <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
-                <p className="text-gray-600 mb-4">Upload up to 12 photos for your public website</p>
-                {galleryError && <p className="text-red-600 text-sm mb-2">{galleryError}</p>}
-                <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600">
-                  <Upload className="w-4 h-4" />
-                  <span>Upload Photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    disabled={photoUploading || photos.length >= 12}
-                  />
-                </label>
-                {photoUploading && (
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">Uploading...</p>
-                  </div>
-                )}
-                {galleryLoading ? (
-                  <p className="text-gray-600 mt-4">Loading gallery...</p>
-                ) : photos.length === 0 ? (
-                  <p className="text-gray-600 mt-4">No photos uploaded yet.</p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                    {photos.map(photo => (
-                      <Card key={photo.id} className="overflow-hidden relative">
-                        <img
-                          src={photo.public_url}
-                          alt={photo.file_name}
-                          className="w-full h-32 object-cover"
-                        />
-                        <Button
-                          variant="ghost"
-                          icon={Trash}
-                          className="absolute top-2 right-2 text-red-600"
-                          onClick={() => deletePhoto(photo.id)}
-                        />
-                        <p className="text-sm text-gray-600 p-2 truncate">{photo.file_name}</p>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {formErrors.general && <p className="text-red-600 text-sm mt-2">{formErrors.general}</p>}
-            {successMessage && (
-              <p className="text-green-600 text-sm mt-2 flex items-center">
-                <Check className="w-4 h-4 mr-2" /> {successMessage}
-              </p>
-            )}
-            <div className="flex justify-end mt-4">
-              <Button variant="primary" onClick={handleSave} loading={loading} disabled={loading}>
-                Save Settings
-              </Button>
             </div>
+          </div>
+          {/* QR Code Section */}
+          <div className="lg:col-span-1">
+            <Card className="p-4 max-w-xs">
+              {settings.slug ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <h4 className="text-md font-medium text-gray-900">QR Code</h4>
+                  <p className="text-gray-600 text-sm">Scan to visit your site</p>
+                  <div ref={qrCodeRef} className="bg-white p-2 rounded-lg">
+                    <QRCodeCanvas
+                      value={`${window.location.origin}/wedding/${settings.slug}`}
+                      size={100}
+                      includeMargin={true}
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    icon={QrCode}
+                    size="sm"
+                    className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+                    onClick={handleDownloadQrCode}
+                    disabled={!settings.slug}
+                  >
+                    Download
+                  </Button>
+                  {formErrors.qr_code && <p className="text-red-600 text-sm">{formErrors.qr_code}</p>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <h4 className="text-md font-medium text-gray-900">QR Code</h4>
+                  <p className="text-gray-600 text-sm">Enter a slug to generate a QR code.</p>
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </Card>
