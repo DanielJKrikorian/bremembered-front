@@ -19,7 +19,7 @@ import { PreferencesSection } from '../components/profile/PreferencesSection';
 import { SettingsSection } from '../components/profile/SettingsSection';
 import { ProfileInformation } from '../components/profile/ProfileInformation';
 import { WeddingGallery } from '../components/profile/WeddingGallery';
-import { WeddingBudgetTable } from '../components/profile/WeddingBudgetTable';
+import { WeddingBudget } from '../components/profile/WeddingBudget';
 import { NotesSection } from '../components/profile/NotesSection';
 
 // Error Boundary Component
@@ -183,10 +183,9 @@ export const Profile: React.FC = () => {
 
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
-    { key: 'budget-table', label: 'Budget Table BETA', icon: DollarSign },
+    { key: 'budget', label: 'Budget Planning', icon: DollarSign },
     { key: 'wedding-website', label: 'Wedding Website', icon: Globe },
     { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
-    { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
     { key: 'guests', label: 'Guest Management', icon: Users },
     { key: 'gallery', label: 'Wedding Gallery', icon: Camera },
@@ -194,6 +193,7 @@ export const Profile: React.FC = () => {
     { key: 'payments', label: 'Payments', icon: CreditCard },
     { key: 'contracts', label: 'Contracts', icon: FileText },
     { key: 'reviews', label: 'My Reviews', icon: Star },
+    { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'preferences', label: 'Preferences', icon: Heart },
     { key: 'profile', label: 'Profile Information', icon: User },
     { key: 'settings', label: 'Settings', icon: Settings }
@@ -299,7 +299,7 @@ export const Profile: React.FC = () => {
               </ErrorBoundary>
             )}
             {activeTab === 'messages' && <MessagesSection />}
-            {activeTab === 'budget-table' && <WeddingBudgetTable />}
+            {activeTab === 'budget' && <WeddingBudget />}
             {activeTab === 'payments' && <PaymentsSection />}
             {activeTab === 'reviews' && <ReviewsSection />}
             {activeTab === 'contracts' && <ContractsSection />}
