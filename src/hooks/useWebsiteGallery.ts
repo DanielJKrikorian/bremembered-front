@@ -1,298 +1,189 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { differenceInDays, addDays } from 'date-fns';
 
-export interface FileUpload {
+export interface WebsitePhoto {
   id: string;
-  vendor_id: string;
   couple_id: string;
-  file_path: string;
-  public_url?: string;
   file_name: string;
-  file_size: number;
-  upload_date: string;
-  expiry_date: string;
-  created_at: string;
-  vendors?: {
-    id: string;
-    name: string;
-    profile_photo?: string;
-  };
-}
-
-export interface GalleryFolder {
-  name: string;
-  path: string;
-  fileCount: number;
-  totalSize: number;
-  lastModified: string;
-  vendor?: {
-    id: string;
-    name: string;
-    profile_photo?: string;
-  };
-  previewImage?: string;
-}
-
-export interface CoupleSubscription {
-  id: string;
-  couple_id: string;
-  subscription_id?: string;
-  payment_status?: string;
-  plan_id?: string;
-  customer_id?: string;
-  free_period_expiry?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StorageExtension {
-  id: string;
-  couple_id: string;
-  file_upload_id: string;
-  expiry_date: string;
-  payment_id: string;
+  public_url: string;
   created_at: string;
 }
 
-export const useWeddingGallery = () => {
-  const { user, isAuthenticated } = useAuth();
-  const [files, setFiles] = useState<FileUpload[]>([]);
-  const [folders, setFolders] = useState<GalleryFolder[]>([]);
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [currentFolderFiles, setCurrentFolderFiles] = useState<FileUpload[]>([]);
-  const [subscription, setSubscription] = useState<CoupleSubscription | null>(null);
-  const [extensions, setExtensions] = useState<StorageExtension[]>([]);
+interface UseWebsiteGallery {
+  photos: WebsitePhoto[];
+  loading: boolean;
+  error: string | null;
+  uploadPhoto: (file: File, coupleId?: string) => Promise<string | null>;
+  deletePhoto: (photoId: string) => Promise<void>;
+}
+
+export const useWebsiteGallery = (slug?: string): UseWebsiteGallery => {
+  const [photos, setPhotos] = useState<WebsitePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(false);
-  const [freeAccessActive, setFreeAccessActive] = useState(false);
 
   useEffect(() => {
-    const fetchGalleryData = async () => {
-      if (!isAuthenticated || !user) {
-        setFiles([]);
-        setFolders([]);
-        setSubscription(null);
-        setExtensions([]);
-        setHasSubscription(false);
-        setFreeAccessActive(false);
+    const fetchPhotos = async () => {
+      if (!slug) {
+        console.warn('No slug provided for fetching photos');
         setLoading(false);
         return;
       }
-
       if (!supabase || !isSupabaseConfigured()) {
-        setError('Supabase not configured');
+        console.warn('Supabase not configured for fetching photos');
+        setPhotos([]);
         setLoading(false);
         return;
       }
-
       try {
-        // Get couple ID
-        const { data: coupleData, error: coupleError } = await supabase
-          .from('couples')
-          .select('id, created_at')
-          .eq('user_id', user.id)
+        console.log('Fetching couple_id for slug:', slug);
+        const { data: websiteData, error: websiteError } = await supabase
+          .from('wedding_websites')
+          .select('couple_id')
+          .eq('slug', slug)
           .single();
-        if (coupleError) throw new Error(`Failed to fetch couple: ${coupleError.message}`);
-
-        // Fetch files, subscription, and extensions in parallel
-        const [filesRyanlt, subscriptionResult, extensionsResult] = await Promise.all([
-          supabase
-            .from('file_uploads')
-            .select(`
-              id, vendor_id, couple_id, file_path, file_name, file_size, upload_date, expiry_date, created_at,
-              vendors(id, name, profile_photo)
-            `)
-            .eq('couple_id', coupleData.id)
-            .order('upload_date', { ascending: false }),
-          supabase
-            .from('couple_subscriptions')
-            .select('id, couple_id, subscription_id, payment_status, plan_id, customer_id, free_period_expiry, created_at, updated_at')
-            .eq('couple_id', coupleData.id)
-            .maybeSingle(),
-          supabase
-            .from('couple_storage_extensions')
-            .select('id, couple_id, file_upload_id, expiry_date, payment_id, created_at')
-            .eq('couple_id', coupleData.id),
-        ]);
-
-        if (filesRyanlt.error) throw new Error(`Failed to fetch files: ${filesRyanlt.error.message}`);
-        if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') {
-          throw new Error(`Failed to fetch subscription: ${subscriptionResult.error.message}`);
+        if (websiteError || !websiteData?.couple_id) {
+          console.error('Error fetching couple_id:', websiteError);
+          throw new Error('Failed to fetch couple_id for photos');
         }
-        if (extensionsResult.error) throw new Error(`Failed to fetch extensions: ${extensionsResult.error.message}`);
-
-        // Process subscription and free access
-        const subData = subscriptionResult.data;
-        setSubscription(subData);
-        setHasSubscription(!!subData && subData.payment_status === 'active');
-
-        // Determine free access (15 days from earliest file upload or couple.created_at)
-        let freePeriodStart: Date;
-        if (filesRyanlt.data && filesRyanlt.data.length > 0) {
-          freePeriodStart = new Date(
-            filesRyanlt.data.reduce((earliest, file) => {
-              const uploadDate = new Date(file.upload_date);
-              return uploadDate < new Date(earliest) ? file.upload_date : earliest;
-            }, filesRyanlt.data[0].upload_date)
-          );
-        } else {
-          freePeriodStart = new Date(coupleData.created_at);
+        const coupleId = websiteData.couple_id;
+        console.log('Fetching photos for couple_id:', coupleId);
+        const { data, error } = await supabase
+          .from('website_photos')
+          .select('*')
+          .eq('couple_id', coupleId)
+          .order('created_at', { ascending: true })
+          .limit(12);
+        if (error) {
+          console.error('Supabase fetch error:', error);
+          throw new Error(`Failed to fetch website photos: ${error.message}`);
         }
-        const freePeriodEnd = addDays(freePeriodStart, 15);
-        const isFreeAccessActive = differenceInDays(freePeriodEnd, new Date()) > 0;
-        setFreeAccessActive(isFreeAccessActive);
-
-        // Process files with public URLs
-        const processedFiles = (filesRyanlt.data || []).map(file => {
-          let publicUrl = file.public_url;
-          if (!publicUrl && file.file_path && supabase && isSupabaseConfigured()) {
-            try {
-              const { data } = supabase.storage.from('vendor_media').getPublicUrl(file.file_path);
-              publicUrl = data.publicUrl;
-            } catch (err) {
-              console.error('Error getting public URL for file:', file.file_path, err);
-            }
-          }
-          return { ...file, public_url: publicUrl || '/default-file.jpg' };
-        });
-        setFiles(processedFiles);
-
-        // Process folders from files
-        const folderMap = new Map<string, GalleryFolder>();
-        processedFiles.forEach(file => {
-          const pathParts = file.file_path.split('/').filter(part => part.trim());
-          if (pathParts.length < 2) return; // Skip files without a folder structure
-          const folderPath = pathParts.slice(0, -1).join('/');
-          const folderName = pathParts[pathParts.length - 2] || 'Root';
-
-          if (!folderMap.has(folderPath)) {
-            folderMap.set(folderPath, {
-              name: folderName,
-              path: folderPath,
-              fileCount: 0,
-              totalSize: 0,
-              lastModified: file.upload_date,
-              vendor: file.vendors,
-              previewImage: file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? file.public_url : undefined,
-            });
-          }
-
-          const folder = folderMap.get(folderPath)!;
-          folder.fileCount += 1;
-          folder.totalSize += file.file_size;
-          if (new Date(file.upload_date) > new Date(folder.lastModified)) {
-            folder.lastModified = file.upload_date;
-            if (file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-              folder.previewImage = file.public_url;
-            }
-          }
-        });
-        setFolders(Array.from(folderMap.values()).filter(folder => folder.fileCount > 0));
-
-        setExtensions(extensionsResult.data || []);
+        setPhotos(data || []);
       } catch (err) {
-        console.error('Error fetching gallery data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load gallery data');
+        console.error('Error fetching website photos:', err);
+        setError('Failed to fetch website photos: ' + (err as Error).message);
       } finally {
         setLoading(false);
       }
     };
-    fetchGalleryData();
-  }, [user, isAuthenticated]);
+    fetchPhotos();
+  }, [slug]);
 
-  useEffect(() => {
-    if (currentFolder) {
-      const folderFiles = files.filter(file => file.file_path.startsWith(currentFolder));
-      setCurrentFolderFiles(folderFiles);
-    } else {
-      setCurrentFolderFiles([]);
+  const uploadPhoto = async (file: File, coupleId?: string): Promise<string | null> => {
+    if (!coupleId) {
+      setError('No couple ID available');
+      console.error('Upload failed: No couple ID');
+      return null;
     }
-  }, [currentFolder, files]);
-
-  const downloadFile = async (file: FileUpload) => {
-    if (!freeAccessActive && !hasSubscription) return;
+    if (photos.length >= 12) {
+      setError('Maximum 12 photos allowed');
+      console.warn('Upload failed: Maximum 12 photos reached');
+      return null;
+    }
     try {
-      const response = await fetch(file.public_url || file.file_path);
-      if (!response.ok) throw new Error('Failed to fetch file');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = file.file_name;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      if (!supabase || !isSupabaseConfigured()) {
+        setError('Supabase not configured');
+        console.error('Upload failed: Supabase not configured');
+        return null;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) {
+        setError('No authenticated user');
+        console.error('Upload failed: No authenticated user');
+        return null;
+      }
+      console.log('Uploading photo for couple_id:', coupleId, 'User ID:', user.id);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${coupleId}/${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('website-photos')
+        .upload(fileName, file, {
+          upsert: false,
+          contentType: file.type
+        });
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError, 'File:', fileName, 'User ID:', user.id);
+        throw new Error(`Failed to upload to storage: ${uploadError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('website-photos')
+        .getPublicUrl(fileName);
+
+      if (!urlData.publicUrl) {
+        console.error('Failed to retrieve public URL for file:', fileName);
+        throw new Error('Failed to retrieve public URL');
+      }
+
+      const { data: insertedData, error: insertError } = await supabase
+        .from('website_photos')
+        .insert({
+          couple_id: coupleId,
+          file_name: fileName,
+          public_url: urlData.publicUrl
+        })
+        .select()
+        .single();
+      if (insertError) {
+        console.error('Database insert error:', insertError, 'File:', fileName);
+        throw new Error(`Failed to insert photo metadata: ${insertError.message}`);
+      }
+
+      const newPhoto: WebsitePhoto = {
+        id: insertedData.id,
+        couple_id: coupleId,
+        file_name: fileName,
+        public_url: urlData.publicUrl,
+        created_at: insertedData.created_at || new Date().toISOString()
+      };
+      setPhotos([...photos, newPhoto]);
+      return urlData.publicUrl;
     } catch (err) {
-      console.error('Error downloading file:', err);
-      throw new Error('Failed to download file');
+      console.error('Error uploading photo:', err);
+      setError('Failed to upload photo: ' + (err as Error).message);
+      return null;
     }
   };
 
-  const downloadAllFiles = async () => {
-    if (!freeAccessActive && !hasSubscription) return;
-    setDownloadingAll(true);
+  const deletePhoto = async (photoId: string) => {
     try {
-      const filesToDownload = currentFolder
-        ? files.filter(file => file.file_path.startsWith(currentFolder))
-        : files;
-      for (const file of filesToDownload) {
-        await downloadFile(file);
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (!supabase || !isSupabaseConfigured()) {
+        setError('Supabase not configured');
+        console.error('Delete failed: Supabase not configured');
+        return;
+      }
+      const { data: photo, error: fetchError } = await supabase
+        .from('website_photos')
+        .select('file_name')
+        .eq('id', photoId)
+        .single();
+      if (fetchError) {
+        console.error('Error fetching photo metadata:', fetchError, 'Photo ID:', photoId);
+        throw new Error(`Failed to fetch photo metadata: ${fetchError.message}`);
+      }
+      if (photo) {
+        const { error: storageError } = await supabase.storage
+          .from('website-photos')
+          .remove([photo.file_name]);
+        if (storageError) {
+          console.error('Error deleting from storage:', storageError, 'File:', photo.file_name);
+          throw new Error(`Failed to delete from storage: ${storageError.message}`);
+        }
+        const { error: deleteError } = await supabase
+          .from('website_photos')
+          .delete()
+          .eq('id', photoId);
+        if (deleteError) {
+          console.error('Error deleting photo metadata:', deleteError, 'Photo ID:', photoId);
+          throw new Error(`Failed to delete photo metadata: ${deleteError.message}`);
+        }
+        setPhotos(photos.filter(p => p.id !== photoId));
       }
     } catch (err) {
-      console.error('Error downloading all files:', err);
-      throw new Error('Failed to download all files');
-    } finally {
-      setDownloadingAll(false);
+      console.error('Error deleting photo:', err);
+      setError('Failed to delete photo: ' + (err as Error).message);
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const photoFiles = files.filter(file =>
-    file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-  );
-  const videoFiles = files.filter(file =>
-    file.file_name.match(/\.(mp4|mov|avi|mkv|webm)$/i)
-  );
-  const currentFolderPhotoFiles = currentFolderFiles.filter(file =>
-    file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-  );
-  const currentFolderVideoFiles = currentFolderFiles.filter(file =>
-    file.file_name.match(/\.(mp4|mov|avi|mkv|webm)$/i)
-  );
-
-  return {
-    files,
-    folders,
-    currentFolder,
-    setCurrentFolder,
-    currentFolderFiles,
-    photoFiles,
-    videoFiles,
-    currentFolderPhotoFiles,
-    currentFolderVideoFiles,
-    subscription,
-    extensions,
-    loading,
-    error,
-    downloadingAll,
-    downloadFile,
-    downloadAllFiles,
-    hasSubscription,
-    freeAccessActive,
-    formatFileSize,
-  };
+  return { photos, loading, error, uploadPhoto, deletePhoto };
 };
