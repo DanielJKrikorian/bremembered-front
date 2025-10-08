@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { differenceInDays, addDays } from 'date-fns';
 
 export interface FileUpload {
   id: string;
@@ -13,7 +14,6 @@ export interface FileUpload {
   upload_date: string;
   expiry_date: string;
   created_at: string;
-  // Joined data
   vendors?: {
     id: string;
     name: string;
@@ -61,165 +61,113 @@ export const useWeddingGallery = () => {
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [folders, setFolders] = useState<GalleryFolder[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [currentFolderFiles, setCurrentFolderFiles] = useState<FileUpload[]>([]);
   const [subscription, setSubscription] = useState<CoupleSubscription | null>(null);
   const [extensions, setExtensions] = useState<StorageExtension[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [freeAccessActive, setFreeAccessActive] = useState(false);
 
   useEffect(() => {
     const fetchGalleryData = async () => {
       if (!isAuthenticated || !user) {
         setFiles([]);
+        setFolders([]);
         setSubscription(null);
         setExtensions([]);
+        setHasSubscription(false);
+        setFreeAccessActive(false);
         setLoading(false);
         return;
       }
 
       if (!supabase || !isSupabaseConfigured()) {
-        // Mock data for demo
-        const mockFiles: FileUpload[] = [
-          {
-            id: 'mock-file-1',
-            vendor_id: 'mock-vendor-1',
-            couple_id: 'mock-couple-1',
-            file_path: 'wedding-photos/ceremony-001.jpg',
-            public_url: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-            file_name: 'wedding-ceremony-001.jpg',
-            file_size: 2048576,
-            upload_date: '2024-01-20T10:00:00Z',
-            expiry_date: '2024-02-19T10:00:00Z',
-            created_at: '2024-01-20T10:00:00Z',
-            vendors: {
-              id: 'mock-vendor-1',
-              name: 'Elegant Moments Photography',
-              profile_photo: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=400'
-            }
-          },
-          {
-            id: 'mock-file-2',
-            vendor_id: 'mock-vendor-1',
-            couple_id: 'mock-couple-1',
-            file_path: 'wedding-videos/reception-highlights.mp4',
-            public_url: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-            file_name: 'wedding-reception-highlights.mp4',
-            file_size: 52428800,
-            upload_date: '2024-01-22T14:00:00Z',
-            expiry_date: '2024-02-21T14:00:00Z',
-            created_at: '2024-01-22T14:00:00Z',
-            vendors: {
-              id: 'mock-vendor-2',
-              name: 'Timeless Studios',
-              profile_photo: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400'
-            }
-          }
-        ]
-
-        setFiles(mockFiles);
-        setSubscription(null);
-        setExtensions([]);
-        setHasSubscription(false);
+        setError('Supabase not configured');
         setLoading(false);
         return;
       }
 
       try {
-        // Get couple ID first
+        // Get couple ID
         const { data: coupleData, error: coupleError } = await supabase
           .from('couples')
-          .select('id')
+          .select('id, created_at')
           .eq('user_id', user.id)
           .single();
-
-        if (coupleError) throw coupleError;
+        if (coupleError) throw new Error(`Failed to fetch couple: ${coupleError.message}`);
 
         // Fetch files, subscription, and extensions in parallel
         const [filesResult, subscriptionResult, extensionsResult] = await Promise.all([
           supabase
             .from('file_uploads')
             .select(`
-              *,
-              vendors(
-                id,
-                name,
-                profile_photo
-              )
+              id, vendor_id, couple_id, file_path, file_name, file_size, upload_date, expiry_date, created_at,
+              vendors(id, name, profile_photo)
             `)
             .eq('couple_id', coupleData.id)
             .order('upload_date', { ascending: false }),
-          
           supabase
             .from('couple_subscriptions')
-            .select('*')
+            .select('id, couple_id, subscription_id, payment_status, plan_id, customer_id, free_period_expiry, created_at, updated_at')
             .eq('couple_id', coupleData.id)
             .maybeSingle(),
-          
           supabase
             .from('couple_storage_extensions')
-            .select('*')
-            .eq('couple_id', coupleData.id)
+            .select('id, couple_id, file_upload_id, expiry_date, payment_id, created_at')
+            .eq('couple_id', coupleData.id),
         ]);
 
-        if (filesResult.error) throw filesResult.error;
+        if (filesResult.error) throw new Error(`Failed to fetch files: ${filesResult.error.message}`);
         if (subscriptionResult.error && subscriptionResult.error.code !== 'PGRST116') {
-          throw subscriptionResult.error;
+          throw new Error(`Failed to fetch subscription: ${subscriptionResult.error.message}`);
         }
-        if (extensionsResult.error) throw extensionsResult.error;
+        if (extensionsResult.error) throw new Error(`Failed to fetch extensions: ${extensionsResult.error.message}`);
 
-        // Simple check: if there's a row in couple_subscriptions, they have access
-        const hasValidSubscription = !!subscriptionResult.data;
-        setHasSubscription(hasValidSubscription);
-        
-        console.log('=== SUBSCRIPTION CHECK ===');
-        console.log('Couple ID:', coupleData.id);
-        console.log('Subscription row exists:', hasValidSubscription);
-        console.log('Subscription data:', subscriptionResult.data);
+        // Process subscription and free access
+        const subData = subscriptionResult.data;
+        setSubscription(subData);
+        setHasSubscription(!!subData && subData.payment_status === 'active');
 
-        // Process files to add public URLs
+        // Determine free access (15 days from earliest file upload or couple.created_at)
+        let freePeriodStart: Date;
+        if (filesResult.data && filesResult.data.length > 0) {
+          freePeriodStart = new Date(
+            filesResult.data.reduce((earliest, file) => {
+              const uploadDate = new Date(file.upload_date);
+              return uploadDate < new Date(earliest) ? file.upload_date : earliest;
+            }, filesResult.data[0].upload_date)
+          );
+        } else {
+          freePeriodStart = new Date(coupleData.created_at);
+        }
+        const freePeriodEnd = addDays(freePeriodStart, 15);
+        const isFreeAccessActive = differenceInDays(freePeriodEnd, new Date()) > 0;
+        setFreeAccessActive(isFreeAccessActive);
+
+        // Process files with public URLs
         const processedFiles = (filesResult.data || []).map(file => {
-          // Use file_path as the complete storage path in vendor_media bucket
-          let publicUrl;
-          
-          if (file.file_path && supabase && isSupabaseConfigured()) {
-            // Use file_path as the complete storage path
-            const storagePath = file.file_path;
-            
+          let publicUrl = file.public_url;
+          if (!publicUrl && file.file_path && supabase && isSupabaseConfigured()) {
             try {
-              // Get public URL from vendor_media bucket
-              const { data } = supabase.storage
-                .from('vendor_media')
-                .getPublicUrl(storagePath);
-              
+              const { data } = supabase.storage.from('vendor_media').getPublicUrl(file.file_path);
               publicUrl = data.publicUrl;
-              console.log('Generated public URL:', publicUrl, 'for path:', storagePath);
-            } catch (error) {
-              console.error('Error getting public URL for path:', storagePath, error);
-              publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
+            } catch (err) {
+              console.error('Error getting public URL for file:', file.file_path, err);
             }
-          } else {
-            // Fallback for missing file_path or unconfigured Supabase
-            publicUrl = 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
           }
-          
-          return {
-            ...file,
-            public_url: publicUrl
-          };
+          return { ...file, public_url: publicUrl || '/default-file.jpg' };
         });
-        
         setFiles(processedFiles);
-        
+
         // Process folders from files
         const folderMap = new Map<string, GalleryFolder>();
-        
         processedFiles.forEach(file => {
-          // Extract folder path (everything before the last slash)
           const pathParts = file.file_path.split('/');
           const folderPath = pathParts.slice(0, -1).join('/');
-          const folderName = pathParts[pathParts.length - 2] || 'Root'; // Get the last folder name
-          
+          const folderName = pathParts[pathParts.length - 2] || 'Root';
+
           if (!folderMap.has(folderPath)) {
             folderMap.set(folderPath, {
               name: folderName,
@@ -228,99 +176,47 @@ export const useWeddingGallery = () => {
               totalSize: 0,
               lastModified: file.upload_date,
               vendor: file.vendors,
-              previewImage: file.public_url
+              previewImage: file.public_url,
             });
           }
-          
+
           const folder = folderMap.get(folderPath)!;
-          folder.fileCount++;
+          folder.fileCount += 1;
           folder.totalSize += file.file_size;
-          
-          // Update last modified if this file is newer
           if (new Date(file.upload_date) > new Date(folder.lastModified)) {
             folder.lastModified = file.upload_date;
             folder.previewImage = file.public_url;
           }
         });
-        
         setFolders(Array.from(folderMap.values()));
-        setSubscription(subscriptionResult.data || null);
+
         setExtensions(extensionsResult.data || []);
       } catch (err) {
         console.error('Error fetching gallery data:', err);
-        // Set mock data as fallback
-        setFiles(mockFiles);
-        setFolders([
-          {
-            name: 'Wedding Photos',
-            path: 'wedding-photos',
-            fileCount: 1,
-            totalSize: 2048576,
-            lastModified: '2024-01-20T10:00:00Z',
-            vendor: {
-              id: 'mock-vendor-1',
-              name: 'Elegant Moments Photography'
-            },
-            previewImage: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
-          },
-          {
-            name: 'Wedding Videos',
-            path: 'wedding-videos',
-            fileCount: 1,
-            totalSize: 52428800,
-            lastModified: '2024-01-22T14:00:00Z',
-            vendor: {
-              id: 'mock-vendor-2',
-              name: 'Timeless Studios'
-            },
-            previewImage: 'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800'
-          }
-        ]);
-        setSubscription(mockSubscription);
-        setExtensions([]);
-        setHasSubscription(false);
+        setError(err instanceof Error ? err.message : 'Failed to load gallery data');
       } finally {
         setLoading(false);
       }
     };
-
     fetchGalleryData();
   }, [user, isAuthenticated]);
 
-  const getPublicUrl = (filePath: string): string => {
-    // If it's already a full URL, return as is
-    if (filePath.startsWith('http')) {
-      return filePath;
+  useEffect(() => {
+    if (currentFolder) {
+      const folderFiles = files.filter(file => file.file_path.startsWith(currentFolder));
+      setCurrentFolderFiles(folderFiles);
+    } else {
+      setCurrentFolderFiles([]);
     }
-    
-    // For storage paths, try to get public URL if Supabase is configured
-    if (supabase && isSupabaseConfigured()) {
-      try {
-        const { data } = supabase.storage
-          .from('vendor_media')
-          .getPublicUrl(filePath);
-        return data.publicUrl;
-      } catch (error) {
-        console.warn('Error getting public URL:', error);
-        return 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
-      }
-    }
-    
-    // Fallback for when Supabase is not configured
-    return 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800';
-  };
+  }, [currentFolder, files]);
+
   const downloadFile = async (file: FileUpload) => {
+    if (!freeAccessActive && !hasSubscription) return;
     try {
-      // Fetch the file as a blob and trigger download
       const response = await fetch(file.public_url || file.file_path);
-      if (!response.ok) {
-        throw new Error('Failed to fetch file');
-      }
-      
+      if (!response.ok) throw new Error('Failed to fetch file');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary link to download the file
       const link = document.createElement('a');
       link.href = url;
       link.download = file.file_name;
@@ -328,8 +224,6 @@ export const useWeddingGallery = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Clean up the blob URL
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error downloading file:', err);
@@ -338,17 +232,14 @@ export const useWeddingGallery = () => {
   };
 
   const downloadAllFiles = async () => {
+    if (!freeAccessActive && !hasSubscription) return;
     setDownloadingAll(true);
     try {
-      // Download files from current folder or all files
-      const filesToDownload = currentFolder 
+      const filesToDownload = currentFolder
         ? files.filter(file => file.file_path.startsWith(currentFolder))
         : files;
-        
-      // Download each file sequentially to avoid overwhelming the browser
       for (const file of filesToDownload) {
         await downloadFile(file);
-        // Small delay between downloads
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (err) {
@@ -359,28 +250,6 @@ export const useWeddingGallery = () => {
     }
   };
 
-
-  const getDaysUntilExpiry = () => {
-    if (!subscription?.free_period_expiry) return 0;
-    
-    const expiryDate = new Date(subscription.free_period_expiry);
-    const now = new Date();
-    const diffTime = expiryDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return Math.max(0, diffDays);
-  };
-
-  const getFileType = (fileName: string) => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) {
-      return 'image';
-    } else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(extension || '')) {
-      return 'video';
-    }
-    return 'other';
-  };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -389,16 +258,18 @@ export const useWeddingGallery = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const photoFiles = files.filter(file => getFileType(file.file_name) === 'image');
-  const videoFiles = files.filter(file => getFileType(file.file_name) === 'video');
-
-  // Filter files by current folder if one is selected
-  const currentFolderFiles = currentFolder 
-    ? files.filter(file => file.file_path.startsWith(currentFolder))
-    : files;
-  
-  const currentFolderPhotoFiles = currentFolderFiles.filter(file => getFileType(file.file_name) === 'image');
-  const currentFolderVideoFiles = currentFolderFiles.filter(file => getFileType(file.file_name) === 'video');
+  const photoFiles = files.filter(file =>
+    file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+  );
+  const videoFiles = files.filter(file =>
+    file.file_name.match(/\.(mp4|mov|avi|mkv|webm)$/i)
+  );
+  const currentFolderPhotoFiles = currentFolderFiles.filter(file =>
+    file.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+  );
+  const currentFolderVideoFiles = currentFolderFiles.filter(file =>
+    file.file_name.match(/\.(mp4|mov|avi|mkv|webm)$/i)
+  );
 
   return {
     files,
@@ -406,14 +277,8 @@ export const useWeddingGallery = () => {
     currentFolder,
     setCurrentFolder,
     currentFolderFiles,
-    folders,
-    currentFolder,
-    setCurrentFolder,
-    currentFolderFiles,
     photoFiles,
     videoFiles,
-    currentFolderPhotoFiles,
-    currentFolderVideoFiles,
     currentFolderPhotoFiles,
     currentFolderVideoFiles,
     subscription,
@@ -424,8 +289,7 @@ export const useWeddingGallery = () => {
     downloadFile,
     downloadAllFiles,
     hasSubscription,
-    getDaysUntilExpiry,
-    getFileType,
-    formatFileSize
+    freeAccessActive,
+    formatFileSize,
   };
 };
