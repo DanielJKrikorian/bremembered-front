@@ -1,22 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Lock, Check, Loader, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Lock, Check, Mail } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { stripePromise } from '../../lib/stripe';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import { useAuth } from '../../context/AuthContext';
 
-interface StripePaymentModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  planId?: string;
-  planName?: string;
-  amount?: number;
-}
+// Initialize stripePromise outside the component to avoid re-initialization
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface StoragePlan {
   id: string;
@@ -29,6 +22,15 @@ interface StoragePlan {
   billing_interval: string;
   storage_limit: number;
   plan_type: string;
+}
+
+interface StripePaymentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  planId?: string;
+  planName?: string;
+  amount?: number;
 }
 
 const PaymentForm: React.FC<{
@@ -45,46 +47,13 @@ const PaymentForm: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [cardReady, setCardReady] = useState(false);
-  const [cardError, setCardError] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('=== STRIPE ELEMENTS DEBUG ===');
     console.log('Stripe instance:', !!stripe);
     console.log('Elements instance:', !!elements);
     console.log('User authenticated:', !!user);
-
-    if (stripe && elements) {
-      // Only try to get CardElement if it should be rendered
-      if (cardReady) {
-        const cardElement = elements.getElement(CardElement);
-        if (cardElement) {
-          console.log('✅ CardElement found');
-          cardElement.on('change', (event) => {
-            console.log('CardElement change event:', event);
-            setCardError(event.error ? event.error.message : null);
-          });
-          cardElement.on('focus', () => console.log('CardElement focused'));
-          cardElement.on('blur', () => console.log('CardElement blurred'));
-        } else {
-          console.error('❌ CardElement not found');
-          setCardError('Unable to load card input. Please refresh the page.');
-        }
-      }
-    } else {
-      console.error('❌ Stripe or Elements instance not available');
-    }
-
-    return () => {
-      if (elements && cardReady) {
-        const cardElement = elements.getElement(CardElement);
-        if (cardElement) {
-          cardElement.off('change');
-          cardElement.off('focus');
-          cardElement.off('blur');
-        }
-      }
-    };
-  }, [stripe, elements, user, cardReady]);
+  }, [stripe, elements, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +65,7 @@ const PaymentForm: React.FC<{
     console.log('User:', !!user);
     console.log('Email:', email);
     console.log('Terms agreed:', agreedToTerms);
+    console.log('Card ready:', cardReady);
 
     if (!stripe || !elements || !user) {
       setError('Payment system not ready or user not authenticated');
@@ -108,8 +78,8 @@ const PaymentForm: React.FC<{
       return;
     }
 
-    if (!email || !agreedToTerms) {
-      setError('Please fill in all required fields and agree to terms');
+    if (!email || !agreedToTerms || !cardReady) {
+      setError('Please fill in all required fields, agree to terms, and ensure card details are valid');
       return;
     }
 
@@ -186,11 +156,11 @@ const PaymentForm: React.FC<{
 
       console.log('Payment intent status:', paymentIntent?.status);
       if (paymentIntent?.status === 'succeeded') {
-        const { data: coupleData } = (await supabase
-          ?.from('couples')
+        const { data: coupleData } = await supabase
+          .from('couples')
           .select('id')
           .eq('user_id', user.id)
-          .single()) || { data: null };
+          .single();
 
         if (coupleData) {
           console.log('Confirming subscription...');
@@ -259,43 +229,34 @@ const PaymentForm: React.FC<{
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Card Information
         </label>
-        <div>
-          {!cardReady && (
-            <div className="p-4 border border-gray-300 rounded-lg bg-gray-50 text-center">
-              <div className="text-sm text-gray-500">Loading card input...</div>
-            </div>
-          )}
-          {cardReady && (
-            <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[40px]">
-              <CardElement
-                onReady={() => {
-                  console.log('✅ CardElement is ready for input');
-                  setCardReady(true);
-                }}
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#1f2937',
-                      '::placeholder': {
-                        color: '#6b7280',
-                      },
-                    },
-                    invalid: {
-                      color: '#dc2626',
-                    },
+        <div className="p-4 border border-gray-300 rounded-lg bg-white min-h-[40px]">
+          <CardElement
+            onReady={() => {
+              console.log('✅ CardElement is ready for input');
+              setCardReady(true);
+            }}
+            onChange={(event) => {
+              console.log('CardElement change event:', event);
+              setError(event.error ? event.error.message : null);
+            }}
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#1f2937',
+                  '::placeholder': {
+                    color: '#6b7280',
                   },
-                }}
-              />
-            </div>
-          )}
+                },
+                invalid: {
+                  color: '#dc2626',
+                },
+              },
+            }}
+          />
         </div>
-        {cardError && (
-          <p className="text-sm text-red-600 mt-1">{cardError}</p>
-        )}
-        {cardReady && (
-          <p className="text-xs text-green-600 mt-1">✓ Card input ready</p>
-        )}
+        {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+        {cardReady && <p className="text-xs text-green-600 mt-1">✓ Card input ready</p>}
       </div>
       <div className="border-t pt-4">
         <label className="flex items-start space-x-3">
@@ -317,18 +278,11 @@ const PaymentForm: React.FC<{
         type="submit"
         variant="primary"
         size="lg"
-        className="w-full"
+        className="w-full bg-rose-600 hover:bg-rose-700 text-white"
         loading={loading}
         disabled={!stripe || !elements || !email || !agreedToTerms || !cardReady}
       >
-        {loading ? (
-          <div className="flex items-center">
-            <Loader className="w-4 h-4 mr-2 animate-spin" />
-            Processing Payment...
-          </div>
-        ) : (
-          `Subscribe for $${(plan.amount / 100).toFixed(2)}/month`
-        )}
+        {loading ? 'Processing Payment...' : `Subscribe for $${(plan.amount / 100).toFixed(2)}/month`}
       </Button>
     </form>
   );
@@ -346,10 +300,11 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const [plan, setPlan] = useState<StoragePlan | null>(null);
   const [email, setEmail] = useState(user?.email || '');
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [stripeLoaded, setStripeLoaded] = useState(false);
 
   // Handle stripePromise resolution
   useEffect(() => {
-    if (!isOpen || !stripePromise) return;
+    if (!isOpen) return;
 
     stripePromise.then((stripe) => {
       if (!stripe) {
@@ -357,6 +312,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
         setStripeError('Failed to load payment system. Please refresh and try again.');
       } else {
         console.log('✅ Stripe loaded successfully');
+        setStripeLoaded(true);
         setStripeError(null);
       }
     }).catch((error) => {
@@ -415,7 +371,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   if (!isOpen || !plan) return null;
 
-  if (stripeError) {
+  if (stripeError || !stripeLoaded) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="w-full max-w-md mx-auto my-8">
@@ -424,7 +380,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
               <X className="w-8 h-8 text-red-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment System Error</h3>
-            <p className="text-gray-600 mb-6">{stripeError}</p>
+            <p className="text-gray-600 mb-6">{stripeError || 'Failed to load payment system'}</p>
             <div className="space-y-3">
               <Button variant="primary" onClick={() => window.location.reload()}>
                 Refresh Page
