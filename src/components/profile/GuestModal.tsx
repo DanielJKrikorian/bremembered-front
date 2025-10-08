@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, X, Check, ArrowLeft, ArrowRight, Users, Mail, Phone, StickyNote, Save } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
+import { User, X, Check, ArrowLeft, ArrowRight, Users, Mail, Phone, StickyNote, Save } from 'lucide-react';
 
 interface Guest {
-  id: string;
+  id?: string;
   couple_id: string;
   name: string;
   email?: string;
@@ -19,11 +18,12 @@ interface Guest {
   family_members?: { name: string; age_category: 'adult' | 'child'; meal_option_id?: string; meal_option_name?: string }[];
   notes?: string;
   meal_option_id?: string;
-  meal_option_name?: string;
   guest_type?: string;
   partner_id?: string;
   rsvp_status?: 'pending' | 'accepted' | 'declined';
   rsvp_token?: string;
+  rehearsal_invite: boolean;
+  rehearsal_rsvp: 'pending' | 'accepted' | 'declined';
   created_at: string;
   updated_at: string;
 }
@@ -62,11 +62,32 @@ interface GuestFormData {
   meal_option_id: string;
   guest_type: string;
   partner_id: string;
+  rehearsal_invite: boolean;
+  rehearsal_rsvp: 'pending' | 'accepted' | 'declined';
 }
 
-interface ListPriority {
-  value: '1' | '2' | '3';
+interface Couple {
+  id: string;
+  partner1_name?: string;
+  partner2_name?: string;
+}
+
+interface Option {
+  value: string;
   label: string;
+}
+
+interface GuestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  guest: Guest | null;
+  mealOptions: { id: string; name: string }[];
+  tables: { id: string; name: string }[];
+  couple: Couple | null;
+  onSave: (formData: GuestFormData) => void;
+  isEditing: boolean;
+  listPriorities: Option[];
+  guestTypes: Option[];
 }
 
 const guestTypes = [
@@ -79,20 +100,21 @@ const guestTypes = [
   { value: 'family_friend', label: 'Family Friend' },
   { value: 'friend', label: 'Friend' },
   { value: 'co_worker', label: 'Co-Worker' },
-  { value: 'other', label: 'Other' }
+  { value: 'other', label: 'Other' },
 ];
 
-export const GuestModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  guest?: Guest;
-  mealOptions: MealOption[];
-  tables: TableData[];
-  couple: any;
-  onSave: (guestData: GuestFormData) => void;
-  isEditing: boolean;
-  listPriorities: ListPriority[];
-}> = ({ isOpen, onClose, guest, mealOptions, tables, couple, onSave, isEditing, listPriorities }) => {
+export const GuestModal: React.FC<GuestModalProps> = ({
+  isOpen,
+  onClose,
+  guest,
+  mealOptions,
+  tables,
+  couple,
+  onSave,
+  isEditing,
+  listPriorities,
+  guestTypes,
+}) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<GuestFormData>({
     name: '',
@@ -112,13 +134,15 @@ export const GuestModal: React.FC<{
     notes: '',
     meal_option_id: '',
     guest_type: 'friend',
-    partner_id: ''
+    partner_id: '',
+    rehearsal_invite: false,
+    rehearsal_rsvp: 'pending',
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [newFamilyMember, setNewFamilyMember] = useState({ name: '', age_category: 'adult' as 'adult' | 'child', meal_option_id: '' });
 
   useEffect(() => {
-    if (guest) {
+    if (guest && isEditing) {
       let street = '', apt = '', city = '', state = '', zip = '', country = '';
       if (guest.address) {
         const parts = guest.address.split(', ').map(p => p.trim());
@@ -147,7 +171,9 @@ export const GuestModal: React.FC<{
         notes: guest.notes || '',
         meal_option_id: guest.meal_option_id || '',
         guest_type: guest.guest_type || 'friend',
-        partner_id: guest.partner_id || ''
+        partner_id: guest.partner_id || '',
+        rehearsal_invite: guest.rehearsal_invite || false,
+        rehearsal_rsvp: guest.rehearsal_rsvp || 'pending',
       });
     } else {
       setFormData({
@@ -168,19 +194,25 @@ export const GuestModal: React.FC<{
         notes: '',
         meal_option_id: '',
         guest_type: 'friend',
-        partner_id: ''
+        partner_id: '',
+        rehearsal_invite: false,
+        rehearsal_rsvp: 'pending',
       });
     }
     setCurrentStep(1);
     setFormErrors({});
-  }, [guest, isOpen]);
+  }, [guest, isEditing]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
-      setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).checked }));
+      setFormData(prev => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked,
+        ...(name === 'rehearsal_invite' && !(e.target as HTMLInputElement).checked ? { rehearsal_rsvp: 'pending' } : {}),
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -200,7 +232,7 @@ export const GuestModal: React.FC<{
     }
     setFormData(prev => ({
       ...prev,
-      family_members: [...prev.family_members, { ...newFamilyMember, meal_option_id: newFamilyMember.meal_option_id || '' }]
+      family_members: [...prev.family_members, { ...newFamilyMember, meal_option_id: newFamilyMember.meal_option_id || '' }],
     }));
     setNewFamilyMember({ name: '', age_category: 'adult', meal_option_id: '' });
     setFormErrors(prev => ({ ...prev, family_member_name: '' }));
@@ -209,14 +241,14 @@ export const GuestModal: React.FC<{
   const removeFamilyMember = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      family_members: prev.family_members.filter((_, i) => i !== index)
+      family_members: prev.family_members.filter((_, i) => i !== index),
     }));
   };
 
   const validateCurrentStep = () => {
     const errors: { [key: string]: string } = {};
     if (currentStep === 1) {
-      if (!formData.name.trim()) errors.name = "Guest name is required";
+      if (!formData.name.trim()) errors.name = 'Guest name is required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -244,17 +276,17 @@ export const GuestModal: React.FC<{
   const partnerOptions = [
     { value: '', label: 'Select Partner' },
     ...(couple?.partner1_name ? [{ value: couple.partner1_name, label: couple.partner1_name }] : []),
-    ...(couple?.partner2_name ? [{ value: couple.partner2_name, label: couple.partner2_name }] : [])
+    ...(couple?.partner2_name ? [{ value: couple.partner2_name, label: couple.partner2_name }] : []),
   ];
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">{isEditing ? 'Edit Guest' : 'Add New Guest'}</h3>
+            <h3 className="text-xl font-semibold text-gray-900">{isEditing ? 'Edit Guest' : 'Add Guest'}</h3>
             <p className="text-sm text-gray-600 mt-1">Step {currentStep} of 3: {getStepTitle()}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
@@ -426,6 +458,31 @@ export const GuestModal: React.FC<{
                   placeholder="Enter plus-one name (optional)"
                 />
               )}
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="rehearsal_invite"
+                  checked={formData.rehearsal_invite}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-rose-500"
+                />
+                <span>Invite to Rehearsal Dinner</span>
+              </label>
+              {formData.rehearsal_invite && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rehearsal RSVP</label>
+                  <select
+                    name="rehearsal_rsvp"
+                    value={formData.rehearsal_rsvp}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="declined">Declined</option>
+                  </select>
+                </div>
+              )}
             </div>
           )}
           {currentStep === 3 && (
@@ -436,7 +493,14 @@ export const GuestModal: React.FC<{
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-3">Notes</h2>
               </div>
-              <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows={6} className="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Notes" />
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="Notes"
+              />
             </div>
           )}
         </div>
@@ -455,7 +519,7 @@ export const GuestModal: React.FC<{
             )}
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

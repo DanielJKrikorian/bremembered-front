@@ -9,7 +9,8 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { RsvpModal } from '../../components/profile/RsvpModal';
-import { Heart, Lock, Eye, EyeOff, Calendar, MapPin, Home, Users, Book, Image, Hotel, Megaphone } from 'lucide-react';
+import { AuthModal } from '../../components/auth/AuthModal';
+import { Heart, Lock, Eye, EyeOff, Calendar, MapPin, Home, Users, Book, Image, Hotel, Megaphone, Bus } from 'lucide-react';
 
 interface WebsiteSettings {
   couple_id: string;
@@ -19,6 +20,8 @@ interface WebsiteSettings {
   about_us?: string;
   love_story?: string;
   accommodations?: { name: string; website: string; room_block?: string }[];
+  transportation?: { name: string; description?: string; stops: string[]; frequency: string; start_time: string }[];
+  dress_code?: { title: string; description: string };
   couple: {
     partner1_name: string;
     partner2_name: string;
@@ -42,6 +45,7 @@ export const WeddingWebsite: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRsvpModal, setShowRsvpModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [likedEvents, setLikedEvents] = useState<{ [key: string]: boolean }>({});
 
@@ -116,6 +120,10 @@ export const WeddingWebsite: React.FC = () => {
 
   const handleLikeEvent = (eventId: string) => {
     setLikedEvents(prev => ({ ...prev, [eventId]: !prev[eventId] }));
+  };
+
+  const handleSignup = () => {
+    setShowAuthModal(true);
   };
 
   const formatDateTime = (event: { event_date: string; event_time: string }) => {
@@ -266,6 +274,13 @@ export const WeddingWebsite: React.FC = () => {
               </p>
             )}
           </div>
+          <Button
+            variant="primary"
+            className={`${styles.button} mt-6 py-3 px-8 text-lg font-medium rounded-full transition duration-300 transform hover:scale-105`}
+            onClick={() => setShowRsvpModal(true)}
+          >
+            RSVP
+          </Button>
         </div>
       </header>
       <nav className={`sticky top-0 ${styles.nav} z-10 py-4 px-4 sm:px-6 lg:px-8`}>
@@ -273,32 +288,43 @@ export const WeddingWebsite: React.FC = () => {
           <a href="#home" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Home className="w-5 h-5 inline mr-1" /> Home</a>
           <a href="#about" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Users className="w-5 h-5 inline mr-1" /> About</a>
           <a href="#story" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Book className="w-5 h-5 inline mr-1" /> Story</a>
+          <a href="#accommodations" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Hotel className="w-5 h-5 inline mr-1" /> Accommodations</a>
+          <a href="#transportation" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Bus className="w-5 h-5 inline mr-1" /> Transportation</a>
           <a href="#timeline" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Calendar className="w-5 h-5 inline mr-1" /> Timeline</a>
           <a href="#gallery" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Image className="w-5 h-5 inline mr-1" /> Gallery</a>
-          <a href="#accommodations" className={`text-sm font-medium ${styles.accentColor} hover:underline`}><Hotel className="w-5 h-5 inline mr-1" /> Accommodations</a>
-          <Button
-            variant="primary"
-            className={`${styles.button} text-sm px-4 py-2 rounded-full font-medium transition duration-300 transform hover:scale-105`}
-            onClick={() => setShowRsvpModal(true)}
-          >
-            RSVP
-          </Button>
         </div>
       </nav>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <section id="home" className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 animate-fade-in">Welcome to Our Day</h2>
           <p className="text-gray-600 max-w-2xl mx-auto animate-fade-in">Join us as we celebrate our love and commitment.</p>
-          {memoizedSettings.announcements && memoizedSettings.announcements.length > 0 && (
-            <div className="mt-6 space-y-4 max-w-2xl mx-auto">
-              {memoizedSettings.announcements.map((announcement, index) => (
-                <Card key={index} className={`${styles.card} p-4 flex items-start animate-fade-in`}>
-                  <Megaphone className={`w-5 h-5 mr-3 ${styles.accentColor}`} />
-                  <p className="text-gray-700 text-left">{announcement}</p>
+          <div className="mt-6 space-y-6 max-w-2xl mx-auto">
+            {memoizedSettings.announcements && memoizedSettings.announcements.length > 0 && (
+              <div>
+                <h3 className={`text-lg font-medium ${styles.accentColor} mb-2`}>Announcements</h3>
+                <div className="space-y-4">
+                  {memoizedSettings.announcements.map((announcement, index) => (
+                    <Card key={index} className={`${styles.card} p-4 flex items-start animate-fade-in`}>
+                      <Megaphone className={`w-5 h-5 mr-3 ${styles.accentColor}`} />
+                      <p className="text-gray-700 text-left">{announcement}</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+            {memoizedSettings.dress_code && memoizedSettings.dress_code.title && (
+              <div>
+                <h3 className={`text-lg font-medium ${styles.accentColor} mb-2`}>Dress Code</h3>
+                <Card className={`${styles.card} p-4 flex items-start animate-fade-in`}>
+                  <Bus className={`w-5 h-5 mr-3 ${styles.accentColor}`} />
+                  <div className="text-left">
+                    <p className="text-gray-700 font-medium">{memoizedSettings.dress_code.title}</p>
+                    <p className="text-gray-700 text-sm">{memoizedSettings.dress_code.description}</p>
+                  </div>
                 </Card>
-              ))}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </section>
         {memoizedSettings.about_us && (
           <section id="about" className={`${styles.section} animate-fade-in`}>
@@ -335,6 +361,34 @@ export const WeddingWebsite: React.FC = () => {
                   </a>
                   {hotel.room_block && (
                     <p className="text-sm text-gray-600 mt-2">{hotel.room_block}</p>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+        {memoizedSettings.transportation && memoizedSettings.transportation.length > 0 && (
+          <section id="transportation" className={`${styles.section} animate-fade-in`}>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-center">Transportation</h2>
+            <div className={`grid ${styles.accommodationClass}`}>
+              {memoizedSettings.transportation.map((trans, index) => (
+                <Card key={index} className={`${styles.card} p-6 hover:scale-105 transition duration-300`}>
+                  <h3 className="font-medium text-lg mb-2">{trans.name}</h3>
+                  {trans.description && (
+                    <p className="text-sm text-gray-600 mb-2">{trans.description}</p>
+                  )}
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Stops:</strong> {trans.stops.filter(stop => stop.trim()).join(', ') || 'Not specified'}
+                  </p>
+                  {trans.frequency && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <strong>Frequency:</strong> {trans.frequency}
+                    </p>
+                  )}
+                  {trans.start_time && (
+                    <p className="text-sm text-gray-600">
+                      <strong>Start Time:</strong> {trans.start_time}
+                    </p>
                   )}
                 </Card>
               ))}
@@ -400,10 +454,27 @@ export const WeddingWebsite: React.FC = () => {
           )}
         </section>
       </main>
+      <footer className="bg-gray-100 py-8 px-4 sm:px-6 lg:px-8 text-center">
+        <Button
+          variant="primary"
+          className={`${styles.button} py-3 px-8 text-lg font-medium rounded-full transition duration-300 transform hover:scale-105`}
+          onClick={() => setShowAuthModal(true)}
+        >
+          Build Your Wedding Website
+        </Button>
+        <p className="text-gray-600 text-sm mt-4">
+          Powered by B. Remembered
+        </p>
+      </footer>
       <RsvpModal
         isOpen={showRsvpModal}
         onClose={() => setShowRsvpModal(false)}
         coupleId={memoizedSettings.couple_id}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="signup"
       />
     </div>
   );

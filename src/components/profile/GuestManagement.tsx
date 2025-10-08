@@ -31,6 +31,8 @@ interface Guest {
   partner_id?: string;
   rsvp_status?: 'pending' | 'accepted' | 'declined';
   rsvp_token?: string;
+  rehearsal_invite: boolean;
+  rehearsal_rsvp: 'pending' | 'accepted' | 'declined';
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +89,8 @@ interface GuestFormData {
   meal_option_id: string;
   guest_type: string;
   partner_id: string;
+  rehearsal_invite: boolean;
+  rehearsal_rsvp: 'pending' | 'accepted' | 'declined';
 }
 
 const listPriorities = [
@@ -105,7 +109,7 @@ const guestTypes = [
   { value: 'family_friend', label: 'Family Friend' },
   { value: 'friend', label: 'Friend' },
   { value: 'co_worker', label: 'Co-Worker' },
-  { value: 'other', label: 'Other' }
+  { value: 'other', label: 'Other' },
 ];
 
 const rsvpStatuses = {
@@ -119,7 +123,8 @@ const sortOptions = [
   { value: 'meal_option_name', label: 'Meal' },
   { value: 'rsvp_status', label: 'RSVP Status' },
   { value: 'guest_type', label: 'Type' },
-  { value: 'partner_id', label: 'Invited By' }
+  { value: 'partner_id', label: 'Invited By' },
+  { value: 'rehearsal_rsvp', label: 'Rehearsal RSVP' },
 ];
 
 export const GuestManagement: React.FC = () => {
@@ -143,7 +148,7 @@ export const GuestManagement: React.FC = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'list_priority' | 'meal_option_name' | 'rsvp_status' | 'guest_type' | 'partner_id'>('list_priority');
+  const [sortBy, setSortBy] = useState<'list_priority' | 'meal_option_name' | 'rsvp_status' | 'guest_type' | 'partner_id' | 'rehearsal_rsvp'>('list_priority');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -159,7 +164,7 @@ export const GuestManagement: React.FC = () => {
       fetchGuests(),
       fetchTables(),
       fetchMealOptions(),
-      fetchLayouts()
+      fetchLayouts(),
     ]);
     setLoading(false);
   };
@@ -183,7 +188,7 @@ export const GuestManagement: React.FC = () => {
           family_members: [
             { name: 'John Smith', age_category: 'adult', meal_option_id: mealOptions[0]?.id, meal_option_name: 'Beef' },
             { name: 'Jane Smith', age_category: 'adult', meal_option_id: mealOptions[0]?.id, meal_option_name: 'Beef' },
-            { name: 'Timmy Smith', age_category: 'child', meal_option_id: '', meal_option_name: '' }
+            { name: 'Timmy Smith', age_category: 'child', meal_option_id: '', meal_option_name: '' },
           ],
           notes: 'Family with kids',
           meal_option_id: '',
@@ -191,9 +196,11 @@ export const GuestManagement: React.FC = () => {
           guest_type: 'family',
           partner_id: couple.partner1_name || '',
           rsvp_status: 'accepted',
+          rehearsal_invite: true,
+          rehearsal_rsvp: 'pending',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }
+        },
       ]);
       return;
     }
@@ -208,15 +215,19 @@ export const GuestManagement: React.FC = () => {
         .eq('couple_id', couple.id)
         .order('name');
       if (error) throw error;
-      setGuests((data || []).map(g => ({
-        ...g,
-        table_name: g.table?.name || '',
-        meal_option_name: g.meal_option?.name || '',
-        guest_type: g.guest_type || 'friend',
-        partner_id: g.partner_id || '',
-        plus_one_name: g.plus_one_name || '',
-        family_members: g.family_members || []
-      })));
+      setGuests(
+        (data || []).map(g => ({
+          ...g,
+          table_name: g.table?.name || '',
+          meal_option_name: g.meal_option?.name || '',
+          guest_type: g.guest_type || 'friend',
+          partner_id: g.partner_id || '',
+          plus_one_name: g.plus_one_name || '',
+          family_members: g.family_members || [],
+          rehearsal_invite: g.rehearsal_invite || false,
+          rehearsal_rsvp: g.rehearsal_rsvp || 'pending',
+        }))
+      );
     } catch (err) {
       setError('Failed to fetch guests: ' + (err as Error).message);
     }
@@ -247,7 +258,7 @@ export const GuestManagement: React.FC = () => {
       setMealOptions([
         { id: '1', couple_id: couple.id, name: 'Vegetarian', description: 'Veggie option', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
         { id: '2', couple_id: couple.id, name: 'Chicken', description: 'Chicken entrée', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { id: '3', couple_id: couple.id, name: 'Beef', description: 'Beef option', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+        { id: '3', couple_id: couple.id, name: 'Beef', description: 'Beef option', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
       ]);
       return;
     }
@@ -299,7 +310,9 @@ export const GuestManagement: React.FC = () => {
       meal_option_id: formData.meal_option_id || null,
       guest_type: formData.guest_type,
       partner_id: formData.partner_id || null,
-      couple_id: couple.id
+      couple_id: couple.id,
+      rehearsal_invite: formData.rehearsal_invite,
+      rehearsal_rsvp: formData.rehearsal_invite ? formData.rehearsal_rsvp : 'pending',
     };
     if (!supabase || !isSupabaseConfigured()) {
       const newGuest: Guest = {
@@ -311,8 +324,8 @@ export const GuestManagement: React.FC = () => {
         meal_option_name: mealOptions.find(m => m.id === formData.meal_option_id)?.name || '',
         family_members: formData.family_members.map(member => ({
           ...member,
-          meal_option_name: mealOptions.find(m => m.id === member.meal_option_id)?.name || ''
-        }))
+          meal_option_name: mealOptions.find(m => m.id === member.meal_option_id)?.name || '',
+        })),
       };
       if (editingGuest) {
         setGuests(prev => prev.map(g => g.id === editingGuest.id ? newGuest : g));
@@ -380,7 +393,7 @@ export const GuestManagement: React.FC = () => {
       if (id) {
         await Promise.all([
           supabase.from('tables').update({ name }).eq('id', id).eq('couple_id', couple!.id),
-          supabase.from('table_layouts').update({ table_name: name }).eq('table_id', id).eq('couple_id', couple!.id)
+          supabase.from('table_layouts').update({ table_name: name }).eq('table_id', id).eq('couple_id', couple!.id),
         ]);
       } else {
         const { data } = await supabase.from('tables').insert({ couple_id: couple!.id, name }).select().single();
@@ -416,7 +429,7 @@ export const GuestManagement: React.FC = () => {
       }
       await Promise.all([
         supabase.from('tables').delete().eq('id', id).eq('couple_id', couple!.id),
-        supabase.from('table_layouts').delete().eq('table_id', id).eq('couple_id', couple!.id)
+        supabase.from('table_layouts').delete().eq('table_id', id).eq('couple_id', couple!.id),
       ]);
       await Promise.all([fetchTables(), fetchLayouts()]);
       setSuccessMessage('Table deleted');
@@ -512,28 +525,6 @@ export const GuestManagement: React.FC = () => {
     }
   };
 
-  const handleSaveLayout = async (newLayouts: TableLayout[]) => {
-    if (!supabase || !isSupabaseConfigured()) {
-      setLayouts(newLayouts);
-      setSuccessMessage('Layout saved');
-      setTimeout(() => setSuccessMessage(null), 3000);
-      return;
-    }
-    try {
-      console.log('Saving layouts:', newLayouts);
-      const { error } = await supabase
-        .from('table_layouts')
-        .upsert(newLayouts, { onConflict: 'id', ignoreDuplicates: false });
-      if (error) throw error;
-      await fetchLayouts();
-      setSuccessMessage('Layout saved');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      console.error('Layout save error:', err);
-      setError('Failed to save layout: ' + (err as Error).message);
-    }
-  };
-
   const handleImportCSV = async () => {
     if (!csvFile) return;
     setImportLoading(true);
@@ -541,8 +532,6 @@ export const GuestManagement: React.FC = () => {
     Papa.parse(csvFile, {
       header: true,
       complete: async (results: any) => {
-        console.log('Parsed headers:', results.meta.fields); // Debug header mapping
-        console.log('Parsed data:', results.data); // Debug all rows
         const importErrors: string[] = [];
         const newGuests: any[] = [];
         for (let i = 0; i < results.data.length; i++) {
@@ -560,7 +549,7 @@ export const GuestManagement: React.FC = () => {
               const { data: newMeal } = await supabase.from('meal_options').insert({
                 couple_id: couple!.id,
                 name: row.Meal,
-                is_active: true
+                is_active: true,
               }).select().single();
               if (newMeal) mealOptionId = newMeal.id;
             }
@@ -573,7 +562,7 @@ export const GuestManagement: React.FC = () => {
             } else if (supabase) {
               const { data: newTable } = await supabase.from('tables').insert({
                 couple_id: couple!.id,
-                name: row.Table
+                name: row.Table,
               }).select().single();
               if (newTable) tableId = newTable.id;
             }
@@ -584,6 +573,8 @@ export const GuestManagement: React.FC = () => {
           const validPartners = [couple?.partner1_name, couple?.partner2_name].filter(Boolean) as string[];
           const partnerId = row.Partner ? (validPartners.includes(row.Partner) ? row.Partner : null) : null;
           const listPriority = ['1', '2', '3'].includes(row.Priority) ? row.Priority : '1';
+          const rehearsalInvite = row.Rehearsal_Invite === 'true' || false;
+          const rehearsalRsvp = ['pending', 'accepted', 'declined'].includes(row.Rehearsal_RSVP) ? row.Rehearsal_RSVP : 'pending';
           let familyMembers: { name: string; age_category: 'adult' | 'child'; meal_option_id: string }[] = [];
           if (row['Family Members Names']) {
             const names = row['Family Members Names'].split(';').map((n: string) => n.trim());
@@ -599,7 +590,7 @@ export const GuestManagement: React.FC = () => {
                   const { data: newMeal } = await supabase.from('meal_options').insert({
                     couple_id: couple!.id,
                     name: meals[j],
-                    is_active: true
+                    is_active: true,
                   }).select().single();
                   if (newMeal) mealOptionId = newMeal.id;
                 }
@@ -607,7 +598,7 @@ export const GuestManagement: React.FC = () => {
               familyMembers.push({
                 name: names[j],
                 age_category: ages[j] === 'child' ? 'child' : 'adult',
-                meal_option_id: mealOptionId
+                meal_option_id: mealOptionId,
               });
             }
           }
@@ -625,7 +616,9 @@ export const GuestManagement: React.FC = () => {
             meal_option_id: mealOptionId || null,
             guest_type: finalGuestType,
             partner_id: partnerId,
-            couple_id: couple!.id
+            couple_id: couple!.id,
+            rehearsal_invite,
+            rehearsal_rsvp: rehearsalInvite ? rehearsalRsvp : 'pending',
           });
         }
         if (newGuests.length > 0 && supabase) {
@@ -647,15 +640,16 @@ export const GuestManagement: React.FC = () => {
         console.error('CSV parsing error:', error);
         setImportErrors(['Failed to parse CSV file']);
         setImportLoading(false);
-      }
+      },
     });
   };
 
   const handleExportCSV = () => {
     const headers = [
-      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country', 
-      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names', 
-      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes', 'RSVP Status'
+      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country',
+      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names',
+      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes',
+      'RSVP Status', 'Rehearsal Invite', 'Rehearsal RSVP',
     ];
     const csvContent = [
       headers.join(','),
@@ -685,9 +679,11 @@ export const GuestManagement: React.FC = () => {
           `"${guest.guest_type || ''}"`,
           `"${guest.partner_id || ''}"`,
           `"${(guest.notes || '').replace(/"/g, '""')}"`,
-          guest.rsvp_status || 'pending'
+          guest.rsvp_status || 'pending',
+          guest.rehearsal_invite,
+          guest.rehearsal_rsvp || 'pending',
         ].join(',');
-      })
+      }),
     ].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -702,15 +698,16 @@ export const GuestManagement: React.FC = () => {
 
   const handleExportExampleCSV = () => {
     const headers = [
-      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country', 
-      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names', 
-      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes', 'RSVP Status'
+      'Name', 'Email', 'Phone', 'Street', 'Apt', 'City', 'State', 'Zip', 'Country',
+      'Table', 'Priority', 'Plus One', 'Plus One Name', 'Family Members Names',
+      'Family Members Ages', 'Family Members Meals', 'Meal', 'Guest Type', 'Partner', 'Notes',
+      'RSVP Status', 'Rehearsal Invite', 'Rehearsal RSVP',
     ];
     const exampleData = [
       [
         '"Smith Family"', '"john@example.com"', '"123-456-7890"', '"123 Main St"', '"Apt 4B"', '"New York"', '"NY"', '"10001"', '"USA"',
-        '"Table 1"', '1', 'false', '""', '"John Smith;Jane Smith;Timmy Smith"', '"adult;adult;child"', '"Beef;Beef;"', '""', '"family"', '"Partner 1"', '"Family with kids"', '"accepted"'
-      ]
+        '"Table 1"', '1', 'false', '""', '"John Smith;Jane Smith;Timmy Smith"', '"adult;adult;child"', '"Beef;Beef;"', '""', '"family"', '"Partner 1"', '"Family with kids"', '"accepted"', 'true', '"pending"',
+      ],
     ];
     const csvContent = [headers.join(','), ...exampleData].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -731,7 +728,7 @@ export const GuestManagement: React.FC = () => {
   const sortedGuests = [...guests].sort((a, b) => {
     const direction = sortDirection === 'asc' ? 1 : -1;
     if (sortBy === 'list_priority') {
-      return (a.list_priority.localeCompare(b.list_priority)) * direction;
+      return a.list_priority.localeCompare(b.list_priority) * direction;
     } else if (sortBy === 'meal_option_name') {
       const aName = a.meal_option_name || '';
       const bName = b.meal_option_name || '';
@@ -748,6 +745,10 @@ export const GuestManagement: React.FC = () => {
       const aPartner = a.partner_id || '';
       const bPartner = b.partner_id || '';
       return aPartner.localeCompare(bPartner) * direction;
+    } else if (sortBy === 'rehearsal_rsvp') {
+      const aRehearsal = a.rehearsal_rsvp || 'pending';
+      const bRehearsal = b.rehearsal_rsvp || 'pending';
+      return aRehearsal.localeCompare(bRehearsal) * direction;
     }
     return 0;
   });
@@ -782,6 +783,42 @@ export const GuestManagement: React.FC = () => {
   }, 0);
   const pendingGuests = filteredGuests.reduce((count, guest) => {
     if (guest.rsvp_status === 'pending') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const rehearsalInvites = filteredGuests.reduce((count, guest) => {
+    if (guest.rehearsal_invite) {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const rehearsalRsvpdGuests = filteredGuests.reduce((count, guest) => {
+    if (guest.rehearsal_invite && guest.rehearsal_rsvp === 'accepted') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const rehearsalDeclinedGuests = filteredGuests.reduce((count, guest) => {
+    if (guest.rehearsal_invite && guest.rehearsal_rsvp === 'declined') {
+      let total = 1; // Primary guest
+      if (guest.has_plus_one && guest.plus_one_name) total += 1;
+      if (guest.family_members) total += guest.family_members.length;
+      return count + total;
+    }
+    return count;
+  }, 0);
+  const rehearsalPendingGuests = filteredGuests.reduce((count, guest) => {
+    if (guest.rehearsal_invite && guest.rehearsal_rsvp === 'pending') {
       let total = 1; // Primary guest
       if (guest.has_plus_one && guest.plus_one_name) total += 1;
       if (guest.family_members) total += guest.family_members.length;
@@ -828,43 +865,65 @@ export const GuestManagement: React.FC = () => {
       <Card className="p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Guest Management</h3>
         <p className="text-gray-600 mb-4">Manage guests, tables, meals, and bulk operations</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-blue-800">{totalGuests}</div>
-            <div className="text-sm text-gray-600">Total Guests</div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-blue-800">{totalGuests}</div>
+              <div className="text-sm text-gray-600">Total Guests</div>
+            </div>
+            <div className="bg-indigo-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-indigo-800">{rsvpdGuests}</div>
+              <div className="text-sm text-gray-600">RSVPs</div>
+            </div>
+            <div className="bg-red-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-red-800">{declinedGuests}</div>
+              <div className="text-sm text-gray-600">Declined</div>
+            </div>
+            <div className="bg-yellow-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-yellow-800">{pendingGuests}</div>
+              <div className="text-sm text-gray-600">Pending</div>
+            </div>
           </div>
-          <div className="bg-indigo-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-indigo-800">{rsvpdGuests}</div>
-            <div className="text-sm text-gray-600">RSVPs</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-teal-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-teal-800">{rehearsalInvites}</div>
+              <div className="text-sm text-gray-600">Rehearsal Invites</div>
+            </div>
+            <div className="bg-green-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-green-800">{rehearsalRsvpdGuests}</div>
+              <div className="text-sm text-gray-600">Rehearsal RSVPs</div>
+            </div>
+            <div className="bg-red-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-red-800">{rehearsalDeclinedGuests}</div>
+              <div className="text-sm text-gray-600">Rehearsal Declined</div>
+            </div>
+            <div className="bg-yellow-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-yellow-800">{rehearsalPendingGuests}</div>
+              <div className="text-sm text-gray-600">Rehearsal Pending</div>
+            </div>
           </div>
-          <div className="bg-red-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-red-800">{declinedGuests}</div>
-            <div className="text-sm text-gray-600">Declined</div>
-          </div>
-          <div className="bg-yellow-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-yellow-800">{pendingGuests}</div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </div>
-          <div className="bg-green-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-green-800">{tier1Guests}</div>
-            <div className="text-sm text-gray-600">Tier 1</div>
-          </div>
-          <div className="bg-orange-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-orange-800">{tier2Guests}</div>
-            <div className="text-sm text-gray-600">Tier 2</div>
-          </div>
-          <div className="bg-purple-50 p-3 rounded-lg text-center">
-            <div className="text-lg font-semibold text-purple-800">{tier3Guests}</div>
-            <div className="text-sm text-gray-600">Tier 3</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="bg-green-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-green-800">{tier1Guests}</div>
+              <div className="text-sm text-gray-600">Tier 1</div>
+            </div>
+            <div className="bg-orange-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-orange-800">{tier2Guests}</div>
+              <div className="text-sm text-gray-600">Tier 2</div>
+            </div>
+            <div className="bg-purple-50 p-3 rounded-lg text-center">
+              <div className="text-lg font-semibold text-purple-800">{tier3Guests}</div>
+              <div className="text-sm text-gray-600">Tier 3</div>
+            </div>
           </div>
         </div>
-        <div className="flex space-x-2 border-b">
+        <div className="flex space-x-2 border-b mt-6">
           {[
             { key: 'guests', label: 'Guests', icon: Users },
             { key: 'tables', label: 'Tables', icon: Table2 },
             { key: 'meals', label: 'Meals', icon: Utensils },
             { key: 'layout', label: 'Table Layout', icon: Table2 },
-            { key: 'import-export', label: 'Import/Export', icon: Upload }
+            { key: 'import-export', label: 'Import/Export', icon: Upload },
           ].map(tab => (
             <button
               key={tab.key}
@@ -952,6 +1011,7 @@ export const GuestManagement: React.FC = () => {
                     Type: {guestTypes.find((t) => t.value === guest.guest_type)?.label || 'N/A'} | Invited By: {guest.partner_id || 'N/A'} | Plus One: {guest.has_plus_one ? 'Yes' : 'No'}
                   </p>
                   <p className="text-sm text-gray-600">RSVP: {rsvpStatuses[guest.rsvp_status || 'pending'].label}</p>
+                  <p className="text-sm text-gray-600">Rehearsal Dinner: {guest.rehearsal_invite ? `Invited (${rsvpStatuses[guest.rehearsal_rsvp].label})` : 'Not Invited'}</p>
                   <p className="text-sm text-gray-600">Notes: {guest.notes || 'N/A'}</p>
                 </div>
                 <div className="flex space-x-2">
@@ -1052,7 +1112,7 @@ export const GuestManagement: React.FC = () => {
               <h5 className="font-medium mb-2 flex items-center"><Upload className="w-4 h-4 mr-2" />Import CSV</h5>
               <Input type="file" accept=".csv" onChange={(e) => setCsvFile(e.target.files?.[0] || null)} />
               <p className="text-sm text-gray-600 mt-1">
-                Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (1/2/3), has_plus_one (true/false), plus_one_name, family_members_names, family_members_ages, family_members_meals, meal_name, guest_type, partner_id, notes
+                Expected columns: name (required), email, phone, street, apt, city, state, zip, country, table_name, list_priority (1/2/3), has_plus_one (true/false), plus_one_name, family_members_names, family_members_ages, family_members_meals, meal_name, guest_type, partner_id, notes, rsvp_status, rehearsal_invite (true/false), rehearsal_rsvp (pending/accepted/declined)
               </p>
               <Button onClick={handleImportCSV} loading={importLoading} disabled={!csvFile} className="mt-2">
                 Import

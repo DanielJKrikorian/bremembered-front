@@ -8,7 +8,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin, Megaphone } from 'lucide-react';
+import { Globe, Lock, Image, User, Upload, Trash, Check, Eye, EyeOff, MapPin, Megaphone, Bus, Shirt, Hotel, Calendar, ImageIcon } from 'lucide-react';
 import { debounce } from 'lodash';
 
 interface WebsiteSettings {
@@ -20,6 +20,8 @@ interface WebsiteSettings {
   about_us?: string;
   love_story?: string;
   accommodations?: { name: string; website: string; room_block?: string }[];
+  transportation?: { name: string; description?: string; stops: string[]; frequency: string; start_time: string }[];
+  dress_code?: { title: string; description: string };
   cover_photo?: string;
   announcements?: string[];
 }
@@ -41,6 +43,15 @@ interface TimelineEvent {
   wedding_website: boolean;
 }
 
+const predefinedDressCodes = [
+  { title: 'Black Tie', description: 'Men: Tuxedo or formal dark suit. Women: Floor-length gown, elegant cocktail dress, or dressy evening separates.' },
+  { title: 'Formal', description: 'Men: Suit or tuxedo. Women: Long or short elegant dress or sophisticated suit.' },
+  { title: 'Cocktail', description: 'Men: Dark suit or blazer with dress pants. Women: Knee-length dress, chic jumpsuit, or dressy skirt and top.' },
+  { title: 'Casual', description: 'Men: Dress shirt and slacks, optional jacket. Women: Sundress, skirt and blouse, or nice pants with a top.' },
+  { title: 'Themed', description: 'Follow the specific theme announced for the wedding (details provided in the invitation or website).' },
+  { title: 'Custom', description: '' },
+];
+
 export const WeddingWebsiteSettings: React.FC = () => {
   const { couple, updateCouple } = useCouple();
   const { photos, loading: galleryLoading, uploadPhoto, deletePhoto, error: galleryError } = useWebsiteGallery(couple?.slug);
@@ -56,6 +67,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
       about_us: '',
       love_story: '',
       accommodations: [{ name: '', website: '', room_block: '' }],
+      transportation: [{ name: '', description: '', stops: [''], frequency: '', start_time: '' }],
+      dress_code: { title: '', description: '' },
       cover_photo: memoizedCouple?.cover_photo || '',
       announcements: [],
     };
@@ -67,6 +80,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
   const [coverPhotoUploading, setCoverPhotoUploading] = useState(false);
   const [coverPhotoProgress, setCoverPhotoProgress] = useState<number>(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<'couple' | 'guestinfo' | 'timeline' | 'gallery'>('couple');
 
   useEffect(() => {
     console.log('WeddingWebsiteSettings rendered, couple:', memoizedCouple);
@@ -82,6 +96,8 @@ export const WeddingWebsiteSettings: React.FC = () => {
         layout: 'classic',
         cover_photo: memoizedCouple?.cover_photo || '',
         announcements: [],
+        transportation: [{ name: '', description: '', stops: [''], frequency: '', start_time: '' }],
+        dress_code: { title: '', description: '' },
       }));
       return;
     }
@@ -102,9 +118,11 @@ export const WeddingWebsiteSettings: React.FC = () => {
         about_us: data?.about_us || '',
         love_story: data?.love_story || '',
         accommodations: data?.accommodations || [{ name: '', website: '', room_block: '' }],
+        transportation: data?.transportation || [{ name: '', description: '', stops: [''], frequency: '', start_time: '' }],
+        dress_code: data?.dress_code || { title: '', description: '' },
         cover_photo: memoizedCouple?.cover_photo || data?.cover_photo || '',
         announcements: data?.announcements || [],
-        id: data?.id
+        id: data?.id,
       };
       setSettings(newSettings);
       localStorage.setItem(`wedding_website_settings_${coupleId}`, JSON.stringify(newSettings));
@@ -151,6 +169,15 @@ export const WeddingWebsiteSettings: React.FC = () => {
       if (hotel.name && !hotel.website) errors[`hotel_website_${index}`] = `Website required for ${hotel.name}`;
       if (hotel.website && !/^https?:\/\/.+/.test(hotel.website)) errors[`hotel_website_${index}`] = 'Invalid URL';
     });
+    settings.transportation?.forEach((trans, index) => {
+      if (trans.name && !trans.stops.some(stop => stop.trim())) errors[`trans_stops_${index}`] = `At least one stop required for ${trans.name}`;
+      if (trans.start_time && !/^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(trans.start_time)) {
+        errors[`trans_start_time_${index}`] = 'Invalid time format (e.g., 6:00 PM)';
+      }
+    });
+    if (settings.dress_code?.title && !settings.dress_code.description) {
+      errors.dress_code_description = 'Description is required for the selected dress code';
+    }
     settings.announcements?.forEach((announcement, index) => {
       if (announcement && announcement.length > 280) {
         errors[`announcement_${index}`] = 'Announcement must be 280 characters or less';
@@ -176,6 +203,53 @@ export const WeddingWebsiteSettings: React.FC = () => {
     newAccommodations[index] = { ...newAccommodations[index], [field]: value };
     setSettings(prev => ({ ...prev, accommodations: newAccommodations }));
     setFormErrors(prev => ({ ...prev, [`hotel_${field}_${index}`]: '' }));
+  };
+
+  const handleTransportationChange = (index: number, field: string, value: string | string[]) => {
+    const newTransportation = [...(settings.transportation || [])];
+    newTransportation[index] = { ...newTransportation[index], [field]: value };
+    setSettings(prev => ({ ...prev, transportation: newTransportation }));
+    setFormErrors(prev => ({ ...prev, [`trans_${field}_${index}`]: '' }));
+  };
+
+  const handleTransportationStopChange = (transIndex: number, stopIndex: number, value: string) => {
+    const newTransportation = [...(settings.transportation || [])];
+    const stops = [...newTransportation[transIndex].stops];
+    stops[stopIndex] = value;
+    newTransportation[transIndex] = { ...newTransportation[transIndex], stops };
+    setSettings(prev => ({ ...prev, transportation: newTransportation }));
+    setFormErrors(prev => ({ ...prev, [`trans_stops_${transIndex}`]: '' }));
+  };
+
+  const handleDressCodeChange = (field: string, value: string) => {
+    if (field === 'title') {
+      const predefined = predefinedDressCodes.find(code => code.title === value);
+      setSettings(prev => ({
+        ...prev,
+        dress_code: {
+          title: value,
+          description: predefined ? predefined.description : prev.dress_code?.title === value ? prev.dress_code.description : '',
+        },
+      }));
+    } else {
+      setSettings(prev => ({
+        ...prev,
+        dress_code: { ...prev.dress_code!, [field]: value },
+      }));
+    }
+    setFormErrors(prev => ({ ...prev, [`dress_code_${field}`]: '' }));
+  };
+
+  const addTransportationStop = (transIndex: number) => {
+    const newTransportation = [...(settings.transportation || [])];
+    newTransportation[transIndex] = { ...newTransportation[transIndex], stops: [...newTransportation[transIndex].stops, ''] };
+    setSettings(prev => ({ ...prev, transportation: newTransportation }));
+  };
+
+  const removeTransportationStop = (transIndex: number, stopIndex: number) => {
+    const newTransportation = [...(settings.transportation || [])];
+    newTransportation[transIndex] = { ...newTransportation[transIndex], stops: newTransportation[transIndex].stops.filter((_, i) => i !== stopIndex) };
+    setSettings(prev => ({ ...prev, transportation: newTransportation }));
   };
 
   const handleAnnouncementChange = (index: number, value: string) => {
@@ -216,6 +290,23 @@ export const WeddingWebsiteSettings: React.FC = () => {
       ...prev,
       accommodations: prev.accommodations.filter((_, i) => i !== index)
     }));
+  };
+
+  const addTransportation = () => {
+    if ((settings.transportation?.length || 0) < 3) {
+      setSettings(prev => ({
+        ...prev,
+        transportation: [...(prev.transportation || []), { name: '', description: '', stops: [''], frequency: '', start_time: '' }]
+      }));
+    }
+  };
+
+  const removeTransportation = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      transportation: (prev.transportation || []).filter((_, i) => i !== index)
+    }));
+    setFormErrors(prev => ({ ...prev, [`trans_name_${index}`]: '', [`trans_stops_${index}`]: '', [`trans_start_time_${index}`]: '' }));
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -366,6 +457,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
           if (coupleError) throw coupleError;
         }
       }
+      const dressCodeToSave = settings.dress_code?.title ? settings.dress_code : null;
       const { error } = await supabase
         .from('wedding_websites')
         .upsert({
@@ -377,9 +469,11 @@ export const WeddingWebsiteSettings: React.FC = () => {
           about_us: settings.about_us,
           love_story: settings.love_story,
           accommodations: settings.accommodations.filter(hotel => hotel.name),
+          transportation: settings.transportation?.filter(trans => trans.name && trans.stops.some(stop => stop.trim())) || [],
+          dress_code: dressCodeToSave,
           cover_photo: settings.cover_photo,
           announcements: settings.announcements?.filter(a => a.trim()) || [],
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }, { onConflict: 'couple_id' });
       if (error) throw error;
       setSuccessMessage('Website settings saved successfully');
@@ -409,15 +503,23 @@ export const WeddingWebsiteSettings: React.FC = () => {
   const layoutPreviews = {
     classic: { bg: 'bg-white border-rose-200', header: 'bg-rose-100 text-rose-800', button: 'bg-rose-600 text-white' },
     modern: { bg: 'bg-gray-50 text-gray-900 border-gray-200', header: 'bg-indigo-800 text-white', button: 'bg-indigo-600 text-white' },
-    romantic: { bg: 'bg-pink-50 border-pink-200', header: 'bg-pink-200 text-pink-900', button: 'bg-pink-500 text-white' }
+    romantic: { bg: 'bg-pink-50 border-pink-200', header: 'bg-pink-200 text-pink-900', button: 'bg-pink-500 text-white' },
   };
+
+  const tabs = [
+    { key: 'couple', label: 'Couple', icon: User },
+    { key: 'guestinfo', label: 'Guest Info', icon: Hotel },
+    { key: 'timeline', label: 'Timeline', icon: Calendar },
+    { key: 'gallery', label: 'Gallery', icon: ImageIcon },
+  ];
 
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Wedding Website Settings</h3>
-        <p className="text-gray-600 mb-6">Configure your public wedding website for guests</p>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Wedding Website Settings</h3>
+        <p className="text-gray-600 mb-4">Configure your public wedding website for guests</p>
         <div className="space-y-6">
+          {/* Website Details */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Website Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -455,7 +557,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center h-full text-gray-600 hover:text-gray-800"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -465,6 +567,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
               </div>
             </div>
           </div>
+          {/* Layout Previews */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Layout Previews</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -496,80 +599,7 @@ export const WeddingWebsiteSettings: React.FC = () => {
               ))}
             </div>
           </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                {memoizedCouple?.profile_photo ? (
-                  <img
-                    src={memoizedCouple.profile_photo}
-                    alt="Couple"
-                    className="w-16 h-16 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="w-8 h-8 text-gray-500" />
-                  </div>
-                )}
-                <div>
-                  <p className="text-gray-900 font-medium">
-                    {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
-                  </p>
-                  {memoizedCouple?.venue_name && (
-                    <p className="text-sm text-gray-600 mt-1 flex items-center">
-                      <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <h5 className="text-md font-medium text-gray-900 mb-2">Cover Photo</h5>
-                {settings.cover_photo ? (
-                  <div className="relative">
-                    <img
-                      src={settings.cover_photo}
-                      alt="Cover"
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                    <Button
-                      variant="ghost"
-                      icon={Trash}
-                      className="absolute top-2 right-2 text-red-600"
-                      onClick={handleCoverPhotoDelete}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-gray-600">No cover photo uploaded.</p>
-                )}
-                <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600 mt-2">
-                  <Upload className="w-4 h-4" />
-                  <span>Upload Cover Photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleCoverPhotoUpload}
-                    className="hidden"
-                    disabled={coverPhotoUploading || !memoizedCouple?.id}
-                  />
-                </label>
-                {coverPhotoUploading && (
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-rose-500 h-2 rounded-full"
-                        style={{ width: `${Math.round(coverPhotoProgress)}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-blue-600 mt-1">Uploading: {Math.round(coverPhotoProgress)}%</p>
-                  </div>
-                )}
-                {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
-              </div>
-            </div>
-          </div>
+          {/* Announcements */}
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-2">Announcements</h4>
             <p className="text-gray-600 mb-4">Add up to 3 short announcements (max 280 characters each) to share updates with your guests</p>
@@ -596,159 +626,367 @@ export const WeddingWebsiteSettings: React.FC = () => {
               <Button variant="outline" onClick={addAnnouncement}>Add Announcement</Button>
             )}
           </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">About Us</h4>
-            <textarea
-              name="about_us"
-              value={settings.about_us || ''}
-              onChange={handleInputChange}
-              placeholder="Tell your guests about yourselves..."
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-            />
+          {/* Tabs */}
+          <div className="flex space-x-2 border-b mb-4 flex-wrap">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-t-lg ${
+                  activeTab === tab.key ? 'bg-rose-500 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">How We Met / Our Love Story</h4>
-            <textarea
-              name="love_story"
-              value={settings.love_story || ''}
-              onChange={handleInputChange}
-              placeholder="Share your love story..."
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-            />
-          </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Accommodation Information</h4>
-            {settings.accommodations.map((hotel, index) => (
-              <div key={index} className="border p-4 rounded-lg mb-4 relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Hotel Name"
-                    value={hotel.name}
-                    onChange={(e) => handleAccommodationChange(index, 'name', e.target.value)}
-                    placeholder="Hotel name"
-                    error={formErrors[`hotel_name_${index}`]}
-                  />
-                  <Input
-                    label="Website"
-                    value={hotel.website}
-                    onChange={(e) => handleAccommodationChange(index, 'website', e.target.value)}
-                    placeholder="https://hotelwebsite.com"
-                    error={formErrors[`hotel_website_${index}`]}
-                  />
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Room Block Information"
-                      value={hotel.room_block}
-                      onChange={(e) => handleAccommodationChange(index, 'room_block', e.target.value)}
-                      placeholder="Room block details (optional)"
+          {/* Tabbed Content */}
+          <div className="space-y-6">
+            {activeTab === 'couple' && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Couple Information</h4>
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-4">
+                    {memoizedCouple?.profile_photo ? (
+                      <img
+                        src={memoizedCouple.profile_photo}
+                        alt="Couple"
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                        <User className="w-8 h-8 text-gray-500" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-gray-900 font-medium">
+                        {memoizedCouple?.partner1_name || 'Partner 1'} & {memoizedCouple?.partner2_name || 'Partner 2'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Wedding Date: {memoizedCouple?.wedding_date ? formatInTimeZone(parseISO(memoizedCouple.wedding_date), 'America/New_York', 'MM/dd/yyyy') : 'Not set'}
+                      </p>
+                      {memoizedCouple?.venue_name && (
+                        <p className="text-sm text-gray-600 mt-1 flex items-center">
+                          <MapPin className="w-4 h-4 mr-1" /> Venue: {memoizedCouple.venue_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">Cover Photo</h5>
+                    {settings.cover_photo ? (
+                      <div className="relative">
+                        <img
+                          src={settings.cover_photo}
+                          alt="Cover"
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <Button
+                          variant="ghost"
+                          icon={Trash}
+                          className="absolute top-2 right-2 text-red-600"
+                          onClick={handleCoverPhotoDelete}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">No cover photo uploaded.</p>
+                    )}
+                    <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600 mt-2">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload Cover Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverPhotoUpload}
+                        className="hidden"
+                        disabled={coverPhotoUploading || !memoizedCouple?.id}
+                      />
+                    </label>
+                    {coverPhotoUploading && (
+                      <div className="mt-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-rose-500 h-2 rounded-full"
+                            style={{ width: `${Math.round(coverPhotoProgress)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-sm text-blue-600 mt-1">Uploading: {Math.round(coverPhotoProgress)}%</p>
+                      </div>
+                    )}
+                    {formErrors.cover_photo && <p className="text-red-600 text-sm mt-2">{formErrors.cover_photo}</p>}
+                  </div>
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">About Us</h5>
+                    <textarea
+                      name="about_us"
+                      value={settings.about_us || ''}
+                      onChange={handleInputChange}
+                      placeholder="Tell your guests about yourselves..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                  </div>
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">How We Met / Our Love Story</h5>
+                    <textarea
+                      name="love_story"
+                      value={settings.love_story || ''}
+                      onChange={handleInputChange}
+                      placeholder="Share your love story..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
                   </div>
                 </div>
-                {index > 0 && (
-                  <Button
-                    variant="ghost"
-                    icon={Trash}
-                    className="absolute top-2 right-2 text-red-600"
-                    onClick={() => removeHotel(index)}
-                  />
-                )}
               </div>
-            ))}
-            {settings.accommodations.length < 3 && (
-              <Button variant="outline" onClick={addHotel}>Add Hotel</Button>
             )}
-          </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Timeline</h4>
-            <p className="text-gray-600 mb-4">Events marked to show on your wedding website</p>
-            {timelineLoading ? (
-              <p className="text-gray-600">Loading timeline...</p>
-            ) : events.length === 0 ? (
-              <p className="text-gray-600">No events set to show on the website. Edit your timeline to select events.</p>
-            ) : (
-              <div className="space-y-4">
-                {events.map(event => (
-                  <Card key={event.id} className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium text-gray-900">{event.title}</h5>
-                        <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
-                        {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
-                        {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
-                        {event.photo_shotlist && (
-                          <p className="text-sm text-blue-600 mt-1 flex items-center">
-                            <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
-                          </p>
+            {activeTab === 'guestinfo' && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Guest Information</h4>
+                <p className="text-gray-600 mb-4">Add hotel, transportation, and dress code information for your guests</p>
+                <div className="space-y-6">
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">Hotels</h5>
+                    {settings.accommodations.map((hotel, index) => (
+                      <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Input
+                            label="Hotel Name"
+                            value={hotel.name}
+                            onChange={(e) => handleAccommodationChange(index, 'name', e.target.value)}
+                            placeholder="Hotel name"
+                            error={formErrors[`hotel_name_${index}`]}
+                          />
+                          <Input
+                            label="Website"
+                            value={hotel.website}
+                            onChange={(e) => handleAccommodationChange(index, 'website', e.target.value)}
+                            placeholder="https://hotelwebsite.com"
+                            error={formErrors[`hotel_website_${index}`]}
+                          />
+                          <div className="md:col-span-2">
+                            <Input
+                              label="Room Block Information"
+                              value={hotel.room_block}
+                              onChange={(e) => handleAccommodationChange(index, 'room_block', e.target.value)}
+                              placeholder="Room block details (optional)"
+                            />
+                          </div>
+                        </div>
+                        {index > 0 && (
+                          <Button
+                            variant="ghost"
+                            icon={Trash}
+                            className="absolute top-2 right-2 text-red-600"
+                            onClick={() => removeHotel(index)}
+                          />
                         )}
-                        {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
-                        {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
+                      </div>
+                    ))}
+                    {settings.accommodations.length < 3 && (
+                      <Button variant="outline" onClick={addHotel}>Add Hotel</Button>
+                    )}
+                  </div>
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">Transportation</h5>
+                    {settings.transportation?.map((trans, index) => (
+                      <div key={index} className="border p-4 rounded-lg mb-4 relative">
+                        <div className="space-y-4">
+                          <Input
+                            label="Transportation Name"
+                            value={trans.name}
+                            onChange={(e) => handleTransportationChange(index, 'name', e.target.value)}
+                            placeholder="e.g., Shuttle Service"
+                            error={formErrors[`trans_name_${index}`]}
+                            icon={Bus}
+                          />
+                          <Input
+                            label="Description (optional)"
+                            value={trans.description}
+                            onChange={(e) => handleTransportationChange(index, 'description', e.target.value)}
+                            placeholder="e.g., Shuttle from hotel to venue"
+                          />
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Stops</label>
+                            {trans.stops.map((stop, stopIndex) => (
+                              <div key={stopIndex} className="flex items-center space-x-2 mb-2">
+                                <Input
+                                  value={stop}
+                                  onChange={(e) => handleTransportationStopChange(index, stopIndex, e.target.value)}
+                                  placeholder={`Stop ${stopIndex + 1}`}
+                                  error={formErrors[`trans_stops_${index}`]}
+                                />
+                                {trans.stops.length > 1 && (
+                                  <Button
+                                    variant="ghost"
+                                    icon={Trash}
+                                    onClick={() => removeTransportationStop(index, stopIndex)}
+                                    className="text-red-600"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                            {trans.stops.length < 5 && (
+                              <Button variant="outline" onClick={() => addTransportationStop(index)} className="mt-2">
+                                Add Stop
+                              </Button>
+                            )}
+                          </div>
+                          <Input
+                            label="Frequency (optional)"
+                            value={trans.frequency}
+                            onChange={(e) => handleTransportationChange(index, 'frequency', e.target.value)}
+                            placeholder="e.g., Every 30 minutes"
+                          />
+                          <Input
+                            label="Start Time (optional)"
+                            value={trans.start_time}
+                            onChange={(e) => handleTransportationChange(index, 'start_time', e.target.value)}
+                            placeholder="e.g., 6:00 PM"
+                            error={formErrors[`trans_start_time_${index}`]}
+                          />
+                        </div>
+                        {index > 0 && (
+                          <Button
+                            variant="ghost"
+                            icon={Trash}
+                            className="absolute top-2 right-2 text-red-600"
+                            onClick={() => removeTransportation(index)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    {(settings.transportation?.length || 0) < 3 && (
+                      <Button variant="outline" onClick={addTransportation}>Add Transportation</Button>
+                    )}
+                  </div>
+                  <div>
+                    <h5 className="text-md font-medium text-gray-900 mb-2">Dress Code</h5>
+                    <div className="border p-4 rounded-lg mb-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Dress Code</label>
+                          <select
+                            name="dress_code_title"
+                            value={settings.dress_code?.title || ''}
+                            onChange={(e) => handleDressCodeChange('title', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          >
+                            <option value="">Select a dress code</option>
+                            {predefinedDressCodes.map(code => (
+                              <option key={code.title} value={code.title}>{code.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <Input
+                          label="Description"
+                          value={settings.dress_code?.description || ''}
+                          onChange={(e) => handleDressCodeChange('description', e.target.value)}
+                          placeholder="Enter dress code description"
+                          error={formErrors.dress_code_description}
+                          icon={Shirt}
+                        />
                       </div>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
-            <p className="text-gray-600 mb-4">Upload up to 12 photos for your public website</p>
-            {galleryError && <p className="text-red-600 text-sm mb-2">{galleryError}</p>}
-            <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600">
-              <Upload className="w-4 h-4" />
-              <span>Upload Photo</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                disabled={photoUploading || photos.length >= 12}
-              />
-            </label>
-            {photoUploading && (
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">Uploading...</p>
               </div>
             )}
-            {galleryLoading ? (
-              <p className="text-gray-600 mt-4">Loading gallery...</p>
-            ) : photos.length === 0 ? (
-              <p className="text-gray-600 mt-4">No photos uploaded yet.</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                {photos.map(photo => (
-                  <Card key={photo.id} className="overflow-hidden relative">
-                    <img
-                      src={photo.public_url}
-                      alt={photo.file_name}
-                      className="w-full h-32 object-cover"
-                    />
-                    <Button
-                      variant="ghost"
-                      icon={Trash}
-                      className="absolute top-2 right-2 text-red-600"
-                      onClick={() => deletePhoto(photo.id)}
-                    />
-                    <p className="text-sm text-gray-600 p-2 truncate">{photo.file_name}</p>
-                  </Card>
-                ))}
+            {activeTab === 'timeline' && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Timeline</h4>
+                <p className="text-gray-600 mb-4">Events marked to show on your wedding website</p>
+                {timelineLoading ? (
+                  <p className="text-gray-600">Loading timeline...</p>
+                ) : events.length === 0 ? (
+                  <p className="text-gray-600">No events set to show on the website. Edit your timeline to select events.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {events.map(event => (
+                      <Card key={event.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h5 className="font-medium text-gray-900">{event.title}</h5>
+                            <p className="text-sm text-gray-600">{formatDateTime(event)}</p>
+                            {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
+                            {event.location && <p className="text-sm text-gray-600 mt-1">Location: {event.location}</p>}
+                            {event.photo_shotlist && (
+                              <p className="text-sm text-blue-600 mt-1 flex items-center">
+                                <Image className="w-4 h-4 mr-1" /> {event.photo_shotlist}
+                              </p>
+                            )}
+                            {event.music_notes && <p className="text-sm text-gray-600 mt-1">Music Notes: {event.music_notes}</p>}
+                            {event.playlist_requests && <p className="text-sm text-gray-600 mt-1">Playlist Requests: {event.playlist_requests}</p>}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-          {formErrors.general && <p className="text-red-600 text-sm mt-2">{formErrors.general}</p>}
-          {successMessage && (
-            <p className="text-green-600 text-sm mt-2 flex items-center">
-              <Check className="w-4 h-4 mr-2" /> {successMessage}
-            </p>
-          )}
-          <div className="flex justify-end mt-4">
-            <Button variant="primary" onClick={handleSave} loading={loading} disabled={loading}>
-              Save Settings
-            </Button>
+            {activeTab === 'gallery' && (
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Website Gallery</h4>
+                <p className="text-gray-600 mb-4">Upload up to 12 photos for your public website</p>
+                {galleryError && <p className="text-red-600 text-sm mb-2">{galleryError}</p>}
+                <label className="flex items-center space-x-2 px-4 py-2 bg-rose-500 text-white rounded-lg cursor-pointer hover:bg-rose-600">
+                  <Upload className="w-4 h-4" />
+                  <span>Upload Photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    disabled={photoUploading || photos.length >= 12}
+                  />
+                </label>
+                {photoUploading && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">Uploading...</p>
+                  </div>
+                )}
+                {galleryLoading ? (
+                  <p className="text-gray-600 mt-4">Loading gallery...</p>
+                ) : photos.length === 0 ? (
+                  <p className="text-gray-600 mt-4">No photos uploaded yet.</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                    {photos.map(photo => (
+                      <Card key={photo.id} className="overflow-hidden relative">
+                        <img
+                          src={photo.public_url}
+                          alt={photo.file_name}
+                          className="w-full h-32 object-cover"
+                        />
+                        <Button
+                          variant="ghost"
+                          icon={Trash}
+                          className="absolute top-2 right-2 text-red-600"
+                          onClick={() => deletePhoto(photo.id)}
+                        />
+                        <p className="text-sm text-gray-600 p-2 truncate">{photo.file_name}</p>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {formErrors.general && <p className="text-red-600 text-sm mt-2">{formErrors.general}</p>}
+            {successMessage && (
+              <p className="text-green-600 text-sm mt-2 flex items-center">
+                <Check className="w-4 h-4 mr-2" /> {successMessage}
+              </p>
+            )}
+            <div className="flex justify-end mt-4">
+              <Button variant="primary" onClick={handleSave} loading={loading} disabled={loading}>
+                Save Settings
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
