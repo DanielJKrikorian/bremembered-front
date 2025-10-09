@@ -1,34 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, Check } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, Check, MessageCircle, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { CustomPackageModal } from '../components/common/CustomPackageModal';
 import { BookingModal } from '../components/common/BookingModal';
+import { AuthModal } from '../components/auth/AuthModal';
 import { useLatestReviews, useServicePackages } from '../hooks/useSupabase';
 import { useCart } from '../context/CartContext';
+import { supabase } from '../lib/supabase';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
   const [claimedDeals, setClaimedDeals] = useState<Record<string, { code: string; expiresAt: string }>>({});
   const { addItem, openCart } = useCart();
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
   const { packages, loading: packagesLoading } = useServicePackages();
 
+  // Track page view for analytics
+  useEffect(() => {
+    const trackPageView = async () => {
+      if (!supabase) return;
+      try {
+        await supabase.from('analytics_events').insert({
+          site: window.location.hostname,
+          event_type: 'page_view',
+          session_id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          screen_name: 'home',
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Error tracking page view:', err);
+      }
+    };
+    trackPageView();
+  }, []);
+
   const handleClaimDeal = async (pkg: any) => {
     try {
       console.log('Claiming deal for package:', pkg);
-      
-      // Check if Supabase is configured
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
+
       if (!supabaseUrl || !supabaseAnonKey || 
           supabaseUrl === 'https://placeholder.supabase.co' ||
           supabaseAnonKey === 'placeholder-key') {
         console.log('Supabase not configured - using demo mode');
-        // Generate a demo coupon code
         const servicePrefix = pkg.service_type.substring(0, 3).toUpperCase();
         const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
         const code = `${servicePrefix}${randomSuffix}`;
@@ -79,7 +99,6 @@ export const Home: React.FC = () => {
       }
     } catch (error) {
       console.error('Error claiming deal:', error);
-      // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       alert(`Sorry, there was an error claiming this deal: ${errorMessage}`);
     }
@@ -88,19 +107,16 @@ export const Home: React.FC = () => {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
   };
 
-  // Get deals of the day - rotate through packages based on day of year
   const getDealOfTheWeek = () => {
     if (packages.length === 0) return [];
     
     const weekOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24 * 7));
     
-    // Group packages by service type to avoid duplicates
     const packagesByServiceType = packages.reduce((acc, pkg) => {
       if (!acc[pkg.service_type]) {
         acc[pkg.service_type] = [];
@@ -112,7 +128,6 @@ export const Home: React.FC = () => {
     const serviceTypes = Object.keys(packagesByServiceType);
     if (serviceTypes.length === 0) return [];
     
-    // Select 3 different service types starting from a rotating index
     const startIndex = weekOfYear % serviceTypes.length;
     const selectedServiceTypes = [];
     
@@ -121,7 +136,6 @@ export const Home: React.FC = () => {
       selectedServiceTypes.push(serviceTypes[serviceTypeIndex]);
     }
     
-    // For each selected service type, pick one package (rotate within that service type)
     const dealsOfTheDay = selectedServiceTypes.map(serviceType => {
       const servicePackages = packagesByServiceType[serviceType];
       const packageIndex = weekOfYear % servicePackages.length;
@@ -146,7 +160,6 @@ export const Home: React.FC = () => {
   };
 
   const getServicePhoto = (serviceType: string, packageId: string) => {
-    // Create a hash from package ID to ensure consistent but unique photos
     const hash = packageId.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
@@ -195,97 +208,94 @@ export const Home: React.FC = () => {
   };
 
   const getDiscountedPrice = (price: number) => {
-    return Math.round(price * 0.9); // 10% off
+    return Math.round(price * 0.9);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-amber-50">
-      {/* Hero Section */}
-      <section className="relative py-8 px-4 sm:px-6 lg:px-8">
-        {/* Hero Content with Photo and Search */}
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* Left Side - Beautiful Wedding Photo */}
-            <div className="relative">
-              <div className="relative overflow-hidden rounded-3xl shadow-2xl">
-                <img
-                  src="https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800"
-                  alt="Beautiful wedding ceremony"
-                  className="w-full h-64 sm:h-80 lg:h-[500px] object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 text-white">
-                  <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold mb-2 sm:mb-4 leading-tight">
-                    The Smarter Way to
-                    <br />
-                    <span className="text-rose-300">Book Your Big Day</span>
-                  </h1>
-                  <p className="text-sm sm:text-lg text-white/90 max-w-md">
-                    Connect with verified vendors who will make your wedding day absolutely magical ✨
-                  </p>
-                </div>
-              </div>
-              
-              {/* Floating elements for visual interest */}
-              <div className="hidden lg:block absolute -top-4 -right-4 w-16 h-16 bg-rose-200 rounded-full opacity-60"></div>
-              <div className="hidden lg:block absolute -bottom-6 -left-6 w-20 h-20 bg-amber-200 rounded-full opacity-40"></div>
+      <section 
+        className="relative min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] flex items-center justify-center text-center bg-cover bg-center overflow-hidden"
+        style={{
+          backgroundImage: `url("https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/60ae67d4-5482-4dc6-8a0f-a557848139c3/DSC06549.jpg")`
+        }}
+      >
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white tracking-tight">
+            Plan Your Perfect Wedding
+          </h1>
+          <p className="text-lg sm:text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto">
+            The ultimate all-in-one platform with more tools than any other site to make your dream wedding a reality.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Guest Management & RSVPs</span>
             </div>
-
-            {/* Right Side - Search Bar */}
-            <div className="space-y-6 lg:space-y-8">
-              <div className="text-center lg:text-left">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-3 lg:mb-4">
-                  Ready to find your dream team? 💍
-                </h2>
-                <p className="text-base sm:text-lg text-gray-600 mb-6 lg:mb-8">
-                  Tell us what you need and we'll find the perfect vendors who will make your day unforgettable!
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={() => setShowBookingModal(true)}
-                  className="px-8 py-4 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-200"
-                >
-                  Start Your Booking Journey ✨
-                </Button>
-                <p className="text-sm text-gray-500 mt-3">
-                  Just a few simple questions to help recommend the perfect package
-                </p>
-              </div>
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Custom Wedding Websites</span>
+            </div>
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Table Layouts & Timelines</span>
+            </div>
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Budget Tools & Payments</span>
+            </div>
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Manage Bookings</span>
+            </div>
+            <div className="flex items-center text-white/90">
+              <Check className="w-6 h-6 text-rose-400 mr-3" />
+              <span className="text-sm sm:text-base">Message Vendors</span>
             </div>
           </div>
-
-          {/* Trust Indicators */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center mt-12 sm:mt-16 lg:mt-20">
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-rose-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-rose-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">100%</div>
-              <div className="text-sm sm:text-base text-gray-600">Verified Vendors</div>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">24/7</div>
-              <div className="text-sm sm:text-base text-gray-600">Support Team</div>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <Award className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-rose-500 mb-1 sm:mb-2">4.9</div>
-              <div className="text-sm sm:text-base text-gray-600">Average Rating</div>
-            </div>
-          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => {
+              setAuthMode('signup');
+              setShowAuthModal(true);
+            }}
+            className="px-10 py-5 text-lg font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-full"
+          >
+            Get Started Free <Sparkles className="w-5 h-5 ml-2" />
+          </Button>
+          <p className="text-sm sm:text-base text-white/80">
+            Join thousands of couples—start planning today!
+          </p>
         </div>
       </section>
 
-      {/* Service Categories */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+          <div className="flex flex-col items-center">
+            <div className="w-14 h-14 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+              <BookOpen className="w-8 h-8 text-rose-500" />
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-2">500+</div>
+            <div className="text-base text-gray-600">Book Vendors</div>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mb-4">
+              <Clock className="w-8 h-8 text-amber-500" />
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-2">24/7</div>
+            <div className="text-base text-gray-600">Support Team</div>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
+              <Star className="w-8 h-8 text-emerald-500" />
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-2">5.0</div>
+            <div className="text-base text-gray-600">Rated Vendors</div>
+          </div>
+        </div>
+      </div>
+
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
@@ -373,7 +383,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Bundles */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -405,8 +414,6 @@ export const Home: React.FC = () => {
                 
                 return (
                   <Card key={pkg.id} hover className="overflow-hidden cursor-pointer relative" onClick={() => navigate(`/package/${pkg.id}`)}>
-                    <>
-                    {/* Deal Badge */}
                     <div className="absolute top-4 left-4 z-10">
                       <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                         10% OFF THIS WEEK
@@ -439,7 +446,6 @@ export const Home: React.FC = () => {
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
                       <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
 
-                      {/* Features */}
                       {pkg.features && pkg.features.length > 0 && (
                         <div className="mb-4">
                           <div className="flex flex-wrap gap-1">
@@ -475,7 +481,6 @@ export const Home: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Deal Claiming Section */}
                     <div className="p-6 pt-0">
                       {claimedDeals[pkg.id] ? (
                         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -533,7 +538,6 @@ export const Home: React.FC = () => {
                         </Button>
                       )}
                     </div>
-                    </>
                   </Card>
                 );
               })}
@@ -551,7 +555,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* How It Works */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -601,7 +604,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -621,7 +623,6 @@ export const Home: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {reviews.map((review, index) => {
-                // Use couple's profile photo or fallback to generated images
                 const fallbackImages = [
                   'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=400',
                   'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -657,7 +658,8 @@ export const Home: React.FC = () => {
                           <p className="text-xs text-gray-400">
                             {new Date(review.couple.wedding_date).toLocaleDateString('en-US', { 
                               month: 'long', 
-                              year: 'numeric' 
+                              year: 'numeric',
+                              timeZone: 'UTC'
                             })}
                           </p>
                         )}
@@ -671,7 +673,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -681,7 +682,7 @@ export const Home: React.FC = () => {
             </div>
             <div>
               <div className="text-4xl font-bold text-rose-500 mb-2">500+</div>
-              <div className="text-gray-600">Verified Vendors</div>
+              <div className="text-gray-600">Book Vendors</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-rose-500 mb-2">50+</div>
@@ -695,7 +696,6 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-rose-500 to-amber-500">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -717,6 +717,10 @@ export const Home: React.FC = () => {
               variant="outline" 
               size="lg" 
               className="border-white text-white hover:bg-white hover:text-rose-600"
+              onClick={() => {
+                setAuthMode('signup');
+                setShowAuthModal(true);
+              }}
             >
               Create Account
             </Button>
@@ -724,10 +728,14 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Custom Package Modal */}
       <BookingModal
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode={authMode}
       />
     </div>
   );

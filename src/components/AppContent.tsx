@@ -20,7 +20,7 @@ import { EventDetails } from '../pages/booking/EventDetails';
 import { PackageCongratulations } from '../pages/booking/PackageCongratulations';
 import { VendorRecommendation } from '../pages/booking/VendorRecommendation';
 import { PackageDetails } from '../pages/PackageDetails';
-import { VendorProfile } from '../pages/VendorProfile';
+import VendorProfile from '../pages/VendorProfile'; // Correct default import
 import { VendorOnboarding } from '../pages/VendorOnboarding';
 import { VendorApplication } from '../pages/VendorApplication';
 import { BookingDetails } from '../pages/BookingDetails';
@@ -43,7 +43,6 @@ import { LocationServicePage } from '../pages/LocationServicePage';
 import { WeddingWebsite } from '../components/profile/WeddingWebsite';
 import { supabase } from '../lib/supabase';
 
-// New component for redirecting legacy /package/:id URLs
 const PackageRedirect: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -78,7 +77,6 @@ const PackageRedirect: React.FC = () => {
   return null;
 };
 
-// New component for redirecting legacy /vendor/:id URLs
 const VendorRedirect: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -145,7 +143,6 @@ export const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchResults />} />
-            {/* <Route path="/services/:category" element={<CategorySearchWrapper />} /> */} {/* Commented out until component is defined */}
             <Route path="/bundle/:id" element={<ServiceBundle />} />
             <Route path="/bundle/:bundleId/service/:serviceId" element={<ServiceDetails />} />
             <Route path="/checkout" element={<Checkout />} />
@@ -201,3 +198,5 @@ export const AppContent: React.FC = () => {
     </StoreCartProvider>
   );
 };
+
+export default AppContent;

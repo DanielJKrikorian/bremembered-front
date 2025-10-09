@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe, StickyNote, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
-import { supabase } from '../lib/supabase'; // For direct storage and table updates
+import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { WeddingTimeline } from '../components/profile/WeddingTimeline';
@@ -22,7 +22,6 @@ import { WeddingGallery } from '../components/profile/WeddingGallery';
 import { WeddingBudget } from '../components/profile/WeddingBudget';
 import { NotesSection } from '../components/profile/NotesSection';
 
-// Error Boundary Component
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
@@ -53,6 +52,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+const formatWeddingDate = (dateString?: string) => {
+  if (!dateString) return 'Not set';
+  const date = new Date(dateString);
+  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  return utcDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+};
+
 export const Profile: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { couple, loading: coupleLoading } = useCouple();
@@ -64,7 +75,6 @@ export const Profile: React.FC = () => {
   const [progress, setProgress] = useState<number>(0);
   const [photoUrl, setPhotoUrl] = useState<string | null>(couple?.profile_photo || null);
 
-  // Get active tab from URL params
   useEffect(() => {
     console.log('Profile rendered, activeTab:', activeTab);
     const urlParams = new URLSearchParams(window.location.search);
@@ -88,13 +98,12 @@ export const Profile: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file || !user || !couple) return;
 
-    // Client-side validation
     const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (!validTypes.includes(file.type)) {
       setUploadError('Invalid file type. Please upload an image (JPEG, PNG, GIF).');
       return;
     }
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+    if (file.size > 50 * 1024 * 1024) {
       setUploadError('File size exceeds 50MB limit.');
       return;
     }
@@ -106,7 +115,6 @@ export const Profile: React.FC = () => {
     try {
       console.log('Uploading photo:', { fileName: file.name, fileType: file.type, fileSize: file.size, userId: user.id });
 
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
           const newProgress = Math.min(prev + Math.random() * 15, 90);
@@ -135,14 +143,13 @@ export const Profile: React.FC = () => {
         .from('couple-photos')
         .getPublicUrl(filePath);
 
-      // Update the couples table with the new profile_photo URL
       const { error: updateError } = await supabase
         .from('couples')
         .update({ profile_photo: publicUrl })
         .eq('id', couple.id);
       if (updateError) throw updateError;
 
-      setPhotoUrl(publicUrl); // Update the displayed photo
+      setPhotoUrl(publicUrl);
       setUploading(false);
       setProgress(0);
     } catch (error) {
@@ -196,13 +203,12 @@ export const Profile: React.FC = () => {
     { key: 'wedding-board', label: 'Wedding Board', icon: Heart },
     { key: 'preferences', label: 'Preferences', icon: Heart },
     { key: 'profile', label: 'Profile Information', icon: User },
-    { key: 'settings', label: 'Settings', icon: Settings }
+    { key: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4">
             <div className="relative">
@@ -249,14 +255,13 @@ export const Profile: React.FC = () => {
               </p>
               {couple?.wedding_date && (
                 <p className="text-rose-600 font-medium mt-1">
-                  Wedding: {new Date(couple.wedding_date).toLocaleDateString()}
+                  Wedding: {formatWeddingDate(couple.wedding_date)}
                 </p>
               )}
             </div>
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Sidebar - Navigation */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <div className="mb-6">
@@ -286,7 +291,6 @@ export const Profile: React.FC = () => {
               </nav>
             </Card>
           </div>
-          {/* Main Content */}
           <div className="lg:col-span-3">
             {activeTab === 'overview' && <OverviewDashboard onTabChange={handleTabChange} />}
             {activeTab === 'profile' && <ProfileInformation />}
