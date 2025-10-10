@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Star, Camera, Video, Music, Users, ArrowRight, Shield, Clock, Award, Calendar, Sparkles, Check, MessageCircle, BookOpen } from 'lucide-react';
+import { Heart, Star, Camera, Video, Music, Users, ArrowRight, BookOpen, Clock, Calendar, Sparkles, Check, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -253,17 +253,27 @@ export const Home: React.FC = () => {
               <span className="text-sm sm:text-base">Message Vendors</span>
             </div>
           </div>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              setAuthMode('signup');
-              setShowAuthModal(true);
-            }}
-            className="px-10 py-5 text-lg font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-full"
-          >
-            Get Started Free <Sparkles className="w-5 h-5 ml-2" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => {
+                setAuthMode('signup');
+                setShowAuthModal(true);
+              }}
+              className="px-10 py-5 text-lg font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-full"
+            >
+              Get Started Free <Sparkles className="w-5 h-5 ml-2" />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate('/search')}
+              className="px-10 py-5 text-lg font-semibold border-white text-white hover:bg-white hover:text-rose-600 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-full"
+            >
+              Find Vendors <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
           <p className="text-sm sm:text-base text-white/80">
             Join thousands of couples—start planning today!
           </p>
@@ -410,7 +420,6 @@ export const Home: React.FC = () => {
                 const ServiceIcon = getServiceIcon(pkg.service_type);
                 const originalPrice = pkg.price;
                 const discountedPrice = getDiscountedPrice(originalPrice);
-                const savings = originalPrice - discountedPrice;
                 
                 return (
                   <Card key={pkg.id} hover className="overflow-hidden cursor-pointer relative" onClick={() => navigate(`/package/${pkg.id}`)}>
