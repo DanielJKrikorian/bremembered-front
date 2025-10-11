@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filter, Search, Edit, Save, X, TrendingUp, Check, AlertCircle } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -9,13 +9,14 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
 import { PackageUpgradeModal } from '../components/booking/PackageUpgradeModal';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const BookingDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth(); // Add loading
   const [booking, setBooking] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingBooking, setLoading] = useState(true); // Renamed to avoid conflict
   const [error, setError] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -24,7 +25,6 @@ export const BookingDetails: React.FC = () => {
   const [newEndTime, setNewEndTime] = useState('');
   const [savingTime, setSavingTime] = useState(false);
   const [timeError, setTimeError] = useState<string | null>(null);
-  // New state for venue editing
   const [editingVenue, setEditingVenue] = useState(false);
   const [venueSearch, setVenueSearch] = useState('');
   const [venueResults, setVenueResults] = useState<any[]>([]);
@@ -37,8 +37,17 @@ export const BookingDetails: React.FC = () => {
   });
   const [savingVenue, setSavingVenue] = useState(false);
   const [venueError, setVenueError] = useState<string | null>(null);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
-  // Existing time formatting utilities (unchanged)
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!loading && id && !analyticsTracked.current) {
+      console.log(`Tracking analytics for booking/${id}:`, new Date().toISOString());
+      trackPageView(`booking/${id}`, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [id, loading, user?.id]);
+
   const formatTimeForInput = (dateString: string | null | undefined): string => {
     if (!dateString) return '12:00';
     try {
@@ -95,7 +104,6 @@ export const BookingDetails: React.FC = () => {
     }).format(price / 100);
   };
 
-  // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -104,7 +112,6 @@ export const BookingDetails: React.FC = () => {
     if (id && user) {
       fetchBookingDetails();
 
-      // Existing subscriptions (unchanged)
       const coupleSubscription = supabase
         .channel('couple-channel')
         .on(
@@ -140,7 +147,6 @@ export const BookingDetails: React.FC = () => {
         )
         .subscribe();
 
-      // New subscription for venues
       const venueSubscription = supabase
         .channel('venues-channel')
         .on(
@@ -249,7 +255,6 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
-  // New function to search venues
   const searchVenues = async (query: string) => {
     if (!query.trim()) {
       setVenueResults([]);
@@ -271,7 +276,6 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
-  // New function to handle venue selection
   const handleSelectVenue = async (venueId: string) => {
     try {
       setSavingVenue(true);
@@ -284,7 +288,6 @@ export const BookingDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Fetch the selected venue to update the booking state
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
         .select('id, name, street_address, city, state')
@@ -309,7 +312,6 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
-  // New function to create a new venue
   const handleCreateVenue = async () => {
     if (!newVenue.name.trim()) {
       setVenueError('Venue name is required');
@@ -336,7 +338,6 @@ export const BookingDetails: React.FC = () => {
 
       if (error) throw error;
 
-      // Update booking with new venue
       const { error: updateError } = await supabase
         .from('bookings')
         .update({ venue_id: data.id, updated_at: new Date().toISOString() })
@@ -367,7 +368,6 @@ export const BookingDetails: React.FC = () => {
     }
   };
 
-  // Existing time-related functions (unchanged)
   const calculateEndTime = (startTime: string, hours: number) => {
     if (!startTime.match(/^\d{2}:\d{2}$/)) return '12:00';
     const [hoursStr, minutesStr] = startTime.split(':');
@@ -476,7 +476,6 @@ export const BookingDetails: React.FC = () => {
   };
 
   const handleDownloadContract = async () => {
-    // Unchanged contract download logic
     if (!booking || !booking.contracts || booking.contracts.length === 0) return;
     const contract = booking.contracts[0];
     try {
@@ -504,10 +503,10 @@ export const BookingDetails: React.FC = () => {
       yPos += 7;
       doc.text(`Vendor: ${booking.vendors?.name}`, 20, yPos);
       yPos += 7;
-      doc.text(`Created: ${new Date(contract.created_at).toLocaleDateString()}`, 20, yPos);
+      doc.text(`Created: ${new Date(contract.created_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}`, 20, yPos);
       yPos += 7;
       if (contract.signed_at) {
-        doc.text(`Signed: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        doc.text(`Signed: ${new Date(contract.signed_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}`, 20, yPos);
         yPos += 7;
       }
       yPos += 10;
@@ -550,7 +549,7 @@ export const BookingDetails: React.FC = () => {
         doc.setFontSize(11);
         doc.text(`Signed by: ${contract.signature}`, 20, yPos);
         yPos += 6;
-        doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString()}`, 20, yPos);
+        doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}`, 20, yPos);
       }
       yPos = Math.max(yPos + 20, 260);
       doc.setFont('helvetica', 'normal');
@@ -578,7 +577,7 @@ export const BookingDetails: React.FC = () => {
     );
   }
 
-  if (loading) {
+  if (loadingBooking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -666,7 +665,7 @@ export const BookingDetails: React.FC = () => {
                     {formatPrice(totalAmount)}
                   </div>
                   <div className="text-sm text-gray-500">
-                    Booked {new Date(booking.created_at).toLocaleDateString()}
+                    Booked {new Date(booking.created_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                   </div>
                 </div>
               </div>
@@ -779,7 +778,6 @@ export const BookingDetails: React.FC = () => {
                 )}
               </div>
 
-              {/* New Venue Editing Section */}
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">Wedding Venue</h3>
@@ -915,7 +913,7 @@ export const BookingDetails: React.FC = () => {
                               {booking.venues.city && `${booking.venues.city}, `}
                               {booking.venues.state}
                             </div>
-                        </div>
+                          </div>
                         )}
                       </div>
                     ) : (
@@ -1148,11 +1146,11 @@ export const BookingDetails: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Created:</span>
-                  <span className="font-medium">{new Date(booking.created_at).toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(booking.created_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last Updated:</span>
-                  <span className="font-medium">{new Date(booking.updated_at).toLocaleDateString()}</span>
+                  <span className="font-medium">{new Date(booking.updated_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}</span>
                 </div>
               </div>
             </Card>
@@ -1192,3 +1190,5 @@ export const BookingDetails: React.FC = () => {
     </div>
   );
 };
+
+export default BookingDetails;

@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, DollarSign, Calendar, Star, Camera, Music, MessageCircle, Clock, MapPin, Users, CheckCircle, Heart, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const VendorOnboarding: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for vendor-onboarding:', new Date().toISOString());
+      trackPageView('vendor-onboarding', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
 
   const handleJoinNow = () => {
     window.location.href = 'https://app.bremembered.io';

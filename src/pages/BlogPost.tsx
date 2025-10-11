@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Calendar, Clock, Eye, Heart, User, Tag, Share2, MessageCircle, ChevronRight, BookOpen, TrendingUp } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -8,21 +8,32 @@ import { NewsletterSignup } from '../components/blog/NewsletterSignup';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user, isAuthenticated, loading } = useAuth(); // Add loading
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
-  const { post, loading, error } = useBlogPost(slug || '');
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!loading && slug && !analyticsTracked.current) {
+      console.log(`Tracking analytics for blog/${slug}:`, new Date().toISOString());
+      trackPageView(`blog/${slug}`, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [slug, loading, user?.id]);
+
+  const { post, loading: postLoading, error } = useBlogPost(slug || '');
   const { relatedPosts } = useRelatedPosts(post?.id || '', post?.category || '', 3);
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useBlogPostLike(post?.id || '');
   const { addToFavorites } = useWeddingBoard();
-  const { isAuthenticated } = useAuth();
 
   // Scroll to top when component mounts or slug changes
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [slug]);
 
@@ -30,7 +41,8 @@ export const BlogPost: React.FC = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   };
 
@@ -66,12 +78,10 @@ export const BlogPost: React.FC = () => {
     try {
       await toggleLike(() => setShowAuthModal(true));
       
-      // If user is authenticated and post exists, also add to wedding board
       if (isAuthenticated && post && !isLiked) {
         try {
           await addToFavorites('blog_post', post.id, `Loved this article: ${post.title}`);
         } catch (error) {
-          // Only log error if it's not about duplicate saves
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           if (!errorMessage.includes('already saved')) {
             console.error('Error adding blog post to wedding board:', error);
@@ -82,8 +92,8 @@ export const BlogPost: React.FC = () => {
       console.error('Error toggling like:', error);
     }
   };
+
   const renderContent = (content: string) => {
-    // Simple markdown-like rendering
     return content
       .split('\n\n')
       .map((paragraph, index) => {
@@ -115,7 +125,6 @@ export const BlogPost: React.FC = () => {
             </ul>
           );
         } else if (paragraph.includes('**') && paragraph.includes(':**')) {
-          // Handle bold labels with descriptions
           const parts = paragraph.split('\n').filter(Boolean);
           return (
             <div key={index} className="mb-4">
@@ -147,7 +156,7 @@ export const BlogPost: React.FC = () => {
       });
   };
 
-  if (loading) {
+  if (postLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -182,7 +191,6 @@ export const BlogPost: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -206,7 +214,6 @@ export const BlogPost: React.FC = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
         <div className="mb-6">
           <Button 
             variant="ghost" 
@@ -217,10 +224,8 @@ export const BlogPost: React.FC = () => {
           </Button>
         </div>
 
-        {/* Article Header */}
         <article className="space-y-8">
           <header className="text-center">
-            {/* Category Badge */}
             <div className="flex items-center justify-center mb-6">
               <span 
                 className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium text-white"
@@ -236,17 +241,14 @@ export const BlogPost: React.FC = () => {
               )}
             </div>
 
-            {/* Title */}
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
               {post.title}
             </h1>
 
-            {/* Excerpt */}
             <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-3xl mx-auto">
               {post.excerpt}
             </p>
 
-            {/* Meta Information */}
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500 mb-8">
               <div className="flex items-center">
                 <User className="w-4 h-4 mr-1" />
@@ -266,7 +268,6 @@ export const BlogPost: React.FC = () => {
               </div>
             </div>
 
-            {/* Featured Image */}
             {post.featured_image && (
               <div className="mb-8">
                 <img
@@ -278,7 +279,6 @@ export const BlogPost: React.FC = () => {
             )}
           </header>
 
-          {/* Article Content */}
           <div className="prose prose-lg max-w-none">
             <Card className="p-8 md:p-12">
               <div className="text-lg leading-relaxed">
@@ -287,7 +287,6 @@ export const BlogPost: React.FC = () => {
             </Card>
           </div>
 
-          {/* Tags */}
           {post.tags && post.tags.length > 0 && (
             <Card className="p-6">
               <div className="flex items-center space-x-2 mb-4">
@@ -308,7 +307,6 @@ export const BlogPost: React.FC = () => {
             </Card>
           )}
 
-          {/* Engagement Actions */}
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -376,7 +374,6 @@ export const BlogPost: React.FC = () => {
             </div>
           </Card>
 
-          {/* Author Bio */}
           {post.author && (
             <Card className="p-6">
               <div className="flex items-start space-x-4">
@@ -399,7 +396,6 @@ export const BlogPost: React.FC = () => {
           )}
         </article>
 
-        {/* Related Posts */}
         {relatedPosts.length > 0 && (
           <section className="mt-16">
             <div className="text-center mb-8">
@@ -445,7 +441,6 @@ export const BlogPost: React.FC = () => {
           </section>
         )}
 
-        {/* Newsletter Signup */}
         <section className="mt-16">
           <NewsletterSignup 
             source="inspiration_post"
@@ -455,7 +450,6 @@ export const BlogPost: React.FC = () => {
         </section>
       </div>
 
-      {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -464,3 +458,5 @@ export const BlogPost: React.FC = () => {
     </div>
   );
 };
+
+export default BlogPost;

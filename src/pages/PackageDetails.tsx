@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Star, MapPin, Camera, Video, Music, Users, Calendar, Check, Heart, Share2, MessageCircle, Shield, Award, ChevronRight, Play, DollarSign, Clock } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -7,6 +7,7 @@ import { useServicePackages, useVendorsByPackage } from '../hooks/useSupabase';
 import { useCart } from '../context/CartContext';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface Vendor {
@@ -25,6 +26,7 @@ interface Vendor {
 export const PackageDetails: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add loading
   const [selectedImage, setSelectedImage] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'vendors'>('overview');
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
@@ -37,8 +39,18 @@ export const PackageDetails: React.FC = () => {
   const [regions, setRegions] = useState<string[]>([]);
   const [vendorPremiums, setVendorPremiums] = useState<Record<string, number | null>>({});
   const [vendorTravelFees, setVendorTravelFees] = useState<Record<string, number | null>>({});
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
   const isPackageFavorited = packageData ? isFavorited(packageData.id) : false;
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && slug && !analyticsTracked.current) {
+      console.log(`Tracking analytics for package/${slug}:`, new Date().toISOString());
+      trackPageView(`package/${slug}`, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id, slug]);
 
   // Remove duplicate vendors and merge with premium amounts and travel fees
   const vendors = React.useMemo(() => {
@@ -838,3 +850,5 @@ export const PackageDetails: React.FC = () => {
     </div>
   );
 };
+
+export default PackageDetails;

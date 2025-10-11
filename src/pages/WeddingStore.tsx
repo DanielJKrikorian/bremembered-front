@@ -6,6 +6,8 @@ import { AlertCircle, Trash2, Plus, Minus, X, CreditCard, Mail, MapPin, User } f
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -367,6 +369,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 export const WeddingStore: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -376,6 +379,16 @@ export const WeddingStore: React.FC = () => {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const cartRef = useRef<HTMLDivElement>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for store:', new Date().toISOString());
+      trackPageView('store', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     console.log('WeddingStore: Mounting component');

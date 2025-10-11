@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Filter, Grid, List, SlidersHorizontal, MapPin, Star, Clock, Users, ChevronDown, Search, X, Check, Camera, Video, Music, Calendar, Package, Heart } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -10,6 +10,7 @@ import { ServicePackage } from '../types/booking';
 import { useCart } from '../context/CartContext';
 import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 // Simple debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -32,6 +33,7 @@ export const SearchResults: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { category } = useParams<{ category?: string }>();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
@@ -40,6 +42,7 @@ export const SearchResults: React.FC = () => {
   const { addItem, openCart } = useCart();
   const { addToFavorites, removeFromFavorites, isFavorited, favorites } = useWeddingBoard();
   const { isAuthenticated } = useAuth();
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
@@ -50,6 +53,16 @@ export const SearchResults: React.FC = () => {
     maxPrice: 500000,
     coverage: [] as string[]
   });
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      const screenName = category ? `search/${category}` : 'search';
+      console.log(`Tracking analytics for ${screenName}:`, new Date().toISOString());
+      trackPageView(screenName, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id, category]);
 
   // Debounce price filter inputs to prevent flickering
   const debouncedMinPrice = useDebounce(filters.minPrice, 300);

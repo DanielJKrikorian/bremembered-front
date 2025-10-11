@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 const formatPrice = (amount: number): string => {
   return `$${(amount / 100).toFixed(2)}`;
@@ -61,11 +63,22 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && id && !analyticsTracked.current) {
+      console.log(`Tracking analytics for product/${id}:`, new Date().toISOString());
+      trackPageView(`product/${id}`, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id, id]);
 
   useEffect(() => {
     console.log('ProductDetail: Mounting component');

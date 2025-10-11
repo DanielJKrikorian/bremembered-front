@@ -1,59 +1,122 @@
-import { useEffect, useRef } from 'react';
-import { useFocusEffect } from '@react-navigation/native';  // If using React Navigation
 import { v4 as uuidv4 } from 'uuid';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';  // Your Supabase client
 
-export function useAnalytics(screenName: string, site: 'bremembered.io', userId?: string) {
-  const sessionIdRef = useRef<string | null>(null);
+// Event queue to ensure sequential processing
+const eventQueue: Array<() => Promise<void>> = [];
+let isProcessing = false;
 
-  useEffect(() => {
-    // Generate/load session ID
-    const initSession = async () => {
-      let sessionId = await AsyncStorage.getItem('analytics_session_id');
-      if (!sessionId) {
-        sessionId = uuidv4();
-        await AsyncStorage.setItem('analytics_session_id', sessionId);
-      }
-      sessionIdRef.current = sessionId;
+// Track processed events per session
+const processedEvents: Set<string> = new Set();
 
-      // Log session start
-      await logEvent(site, sessionId, userId, 'session_start', null, {});
+export const useAnalytics = (screenName: string, site: string, userId?: string | null) => {
+  // Debug: Log when useAnalytics is called
+  console.log(`useAnalytics called: screenName=${screenName}, site=${site}, userId=${userId || 'null'}, time=${new Date().toISOString()}`);
+
+  // Initialize session_id
+  let sessionId = sessionStorage.getItem('analytics_session_id');
+  if (!sessionId) {
+    sessionId = uuidv4();
+    sessionStorage.setItem('analytics_session_id', sessionId);
+    // Clear session-related flags
+    sessionStorage.removeItem('analytics_session_started');
+    processedEvents.clear();
+    sessionStorage.setItem('analytics_processed_events', JSON.stringify([...processedEvents]));
+  }
+
+  // Load processed events from sessionStorage
+  const storedEvents = sessionStorage.getItem('analytics_processed_events');
+  if (storedEvents) {
+    processedEvents.clear();
+    JSON.parse(storedEvents).forEach((event: string) => processedEvents.add(event));
+  }
+
+  const logAnalyticsEvent = async (eventType: string, screen: string) => {
+    // Create unique event key
+    const eventKey = `${sessionId}_${screen}_${eventType}`;
+    const currentTime = Date.now();
+
+    // Check if event was already processed
+    if (processedEvents.has(eventKey)) {
+      console.log(`Skipping already processed event for ${screen} (${eventType}) at ${new Date().toISOString()}`);
+      return;
+    }
+
+    const payload = {
+      site,
+      session_id: sessionId,
+      user_id: userId || null,
+      screen_name: screen,
+      event_type: eventType,
+      device_info: {},
+      user_agent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
     };
-    initSession();
-  }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (sessionIdRef.current) {
-        // Log page view on screen focus
-        logEvent(site, sessionIdRef.current, userId, 'page_view', screenName, {});
-      }
-    }, [screenName, site, userId])
-  );
+    console.log('Sending analytics payload:', payload);
 
-  // Optional: Log session end on app background (use AppState)
-}
+    try {
+      const response = await fetch(
+        'https://eecbrvehrhrvdzuutliq.supabase.co/functions/v1/log-analytics-event',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
-async function logEvent(
-  site: string,
-  sessionId: string,
-  userId: string | undefined,
-  eventType: string,
-  screenName: string | null,
-  deviceInfo: object
-) {
-  const payload = {
-    site,
-    session_id: sessionId,
-    user_id: userId || null,
-    screen_name: screenName || null,
-    event_type: eventType,
-    device_info: deviceInfo,
-    user_agent: 'React Native App',  // Enhance with actual UA if needed
+      const result = await response.json();
+      console.log('Analytics event logged:', result);
+
+      // Mark event as processed
+      processedEvents.add(eventKey);
+      sessionStorage.setItem('analytics_processed_events', JSON.stringify([...processedEvents]));
+    } catch (error) {
+      console.error('Error logging analytics event:', error);
+    }
   };
 
-  // Call Edge Function (instead of direct insert for security)
-  const { data, error } = await supabase.functions.invoke('log-analytics-event', { body: payload });
-  if (error) console.error('Analytics log failed:', error);
-}
+  // Process events sequentially
+  const processEvent = async (eventType: string, screen: string) => {
+    const eventKey = `${sessionId}_${screen}_${eventType}`;
+    if (processedEvents.has(eventKey)) {
+      console.log(`Skipping queued event for ${screen} (${eventType}) at ${new Date().toISOString()}`);
+      return;
+    }
+
+    if (isProcessing) {
+      console.log(`Queueing event for ${screen} (${eventType}) at ${new Date().toISOString()}`);
+      eventQueue.push(() => logAnalyticsEvent(eventType, screen));
+      return;
+    }
+
+    isProcessing = true;
+    await logAnalyticsEvent(eventType, screen);
+    isProcessing = false;
+
+    // Process next event in queue
+    while (eventQueue.length > 0) {
+      const nextEvent = eventQueue.shift();
+      if (nextEvent) {
+        isProcessing = true;
+        await nextEvent();
+        isProcessing = false;
+      }
+    }
+  };
+
+  // Log session_start only if not already logged
+  const sessionStarted = sessionStorage.getItem('analytics_session_started');
+  if (!sessionStarted) {
+    console.log(`Logging session_start for ${screenName} at ${new Date().toISOString()}`);
+    processEvent('session_start', screenName);
+    sessionStorage.setItem('analytics_session_started', 'true');
+  } else {
+    console.log(`Skipping session_start for ${screenName} (already logged) at ${new Date().toISOString()}`);
+  }
+
+  // Log page_view
+  console.log(`Logging page_view for ${screenName} at ${new Date().toISOString()}`);
+  processEvent('page_view', screenName);
+};

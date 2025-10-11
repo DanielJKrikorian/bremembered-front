@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Heart, Star, Camera, Video, Music, Users, ArrowRight, BookOpen, Clock, Calendar, Sparkles, Check, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -8,10 +8,12 @@ import { BookingModal } from '../components/common/BookingModal';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useLatestReviews, useServicePackages } from '../hooks/useSupabase';
 import { useCart } from '../context/CartContext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth(); // Add loading
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
@@ -19,25 +21,16 @@ export const Home: React.FC = () => {
   const { addItem, openCart } = useCart();
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
   const { packages, loading: packagesLoading } = useServicePackages();
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
-  // Track page view for analytics
+  // Track analytics only once on mount
   useEffect(() => {
-    const trackPageView = async () => {
-      if (!supabase) return;
-      try {
-        await supabase.from('analytics_events').insert({
-          site: window.location.hostname,
-          event_type: 'page_view',
-          session_id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          screen_name: 'home',
-          timestamp: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error('Error tracking page view:', err);
-      }
-    };
-    trackPageView();
-  }, []);
+    if (!loading && !analyticsTracked.current) {
+      console.log('Tracking analytics for home:', new Date().toISOString());
+      trackPageView('home', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [loading, user?.id]);
 
   const handleClaimDeal = async (pkg: any) => {
     try {
@@ -749,3 +742,5 @@ export const Home: React.FC = () => {
     </div>
   );
 };
+
+export default Home;

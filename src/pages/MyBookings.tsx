@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, MapPin, Clock, Star, MessageCircle, Download, Eye, Plus, Filter, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -8,10 +8,11 @@ import { useBookings } from '../hooks/useBookings';
 import { AuthModal } from '../components/auth/AuthModal';
 import { useCreateConversation } from '../hooks/useMessaging';
 import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const MyBookings: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, loading: authLoading } = useAuth(); // Add authLoading
   const { bookings, loading, error } = useBookings();
   const { createConversation } = useCreateConversation();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
@@ -21,9 +22,19 @@ export const MyBookings: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<any>(null);
   const [expandedPayments, setExpandedPayments] = useState<{ [key: string]: boolean }>({});
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for my-bookings:', new Date().toISOString());
+      trackPageView('my-bookings', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
 
   // Scroll to top when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -697,3 +708,5 @@ export const MyBookings: React.FC = () => {
     </div>
   );
 };
+
+export default MyBookings;

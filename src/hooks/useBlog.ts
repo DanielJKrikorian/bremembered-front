@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,7 +20,6 @@ export interface BlogPost {
   published_at?: string;
   created_at: string;
   updated_at: string;
-  // Joined data
   author?: {
     id: string;
     name: string;
@@ -51,9 +50,11 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
+      console.log('Fetching posts:', { filters, limit });
       if (!supabase || !isSupabaseConfigured()) {
         // Mock blog posts for demo
         const mockPosts: BlogPost[] = [
@@ -191,6 +192,7 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
       }
 
       try {
+        setLoading(true);
         let query = supabase
           .from('blog_posts')
           .select('*')
@@ -248,8 +250,19 @@ export const useBlogPosts = (filters?: BlogFilters, limit?: number) => {
       }
     };
 
-    fetchPosts();
-  }, [filters?.category, filters?.featured, filters?.search, JSON.stringify(filters?.tags), limit]);
+    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    fetchTimeoutRef.current = setTimeout(fetchPosts, 100); // Debounce by 100ms
+
+    return () => {
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
+  }, [
+    filters?.category,
+    filters?.featured,
+    filters?.search,
+    filters?.tags ? filters.tags.join(',') : '',
+    limit
+  ]);
 
   return { posts, loading, error };
 };
@@ -258,8 +271,10 @@ export const useBlogPost = (slug: string) => {
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    console.log('Fetching post:', { slug });
     const fetchPost = async () => {
       if (!slug) {
         setLoading(false);
@@ -345,6 +360,7 @@ Remember that the cheapest option isn't always the best value. Consider the phot
       }
 
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('blog_posts')
           .select('*')
@@ -391,7 +407,12 @@ Remember that the cheapest option isn't always the best value. Consider the phot
       }
     };
 
-    fetchPost();
+    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    fetchTimeoutRef.current = setTimeout(fetchPost, 100); // Debounce by 100ms
+
+    return () => {
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
   }, [slug]);
 
   return { post, loading, error };
@@ -401,8 +422,10 @@ export const useBlogCategories = () => {
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    console.log('Fetching categories');
     const fetchCategories = async () => {
       if (!supabase || !isSupabaseConfigured()) {
         // Mock categories for demo
@@ -459,6 +482,7 @@ export const useBlogCategories = () => {
       }
 
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('blog_categories')
           .select('*')
@@ -474,7 +498,12 @@ export const useBlogCategories = () => {
       }
     };
 
-    fetchCategories();
+    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    fetchTimeoutRef.current = setTimeout(fetchCategories, 100); // Debounce by 100ms
+
+    return () => {
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
   }, []);
 
   return { categories, loading, error };
@@ -485,9 +514,10 @@ export const useBlogPostLike = (postId: string) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch current like status and count when component mounts
   useEffect(() => {
+    console.log('Fetching like status:', { postId, isAuthenticated });
     const fetchLikeStatus = async () => {
       if (!postId || !supabase || !isSupabaseConfigured()) {
         return;
@@ -520,7 +550,12 @@ export const useBlogPostLike = (postId: string) => {
       }
     };
 
-    fetchLikeStatus();
+    if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    fetchTimeoutRef.current = setTimeout(fetchLikeStatus, 100); // Debounce by 100ms
+
+    return () => {
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
   }, [postId, isAuthenticated]);
 
   const toggleLike = async (onAuthRequired?: () => void) => {
@@ -598,8 +633,10 @@ export const useRelatedPosts = (currentPostId: string, category: string, limit: 
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    console.log('Fetching related posts:', { currentPostId, category, limit });
     const fetchRelatedPosts = async () => {
       if (!supabase || !isSupabaseConfigured()) {
         // Mock related posts
@@ -629,6 +666,7 @@ export const useRelatedPosts = (currentPostId: string, category: string, limit: 
       }
 
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('blog_posts')
           .select('id, title, slug, excerpt, featured_image, category, read_time, view_count, published_at')
@@ -649,8 +687,13 @@ export const useRelatedPosts = (currentPostId: string, category: string, limit: 
     };
 
     if (currentPostId && category) {
-      fetchRelatedPosts();
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      fetchTimeoutRef.current = setTimeout(fetchRelatedPosts, 100); // Debounce by 100ms
     }
+
+    return () => {
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+    };
   }, [currentPostId, category, limit]);
 
   return { relatedPosts, loading, error };

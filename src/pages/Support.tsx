@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { MessageCircle, Phone, Mail, Clock, Search, HelpCircle, BookOpen, Users, Shield, Star, Send, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -6,9 +6,10 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const Support: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Add loading
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [submitting, setSubmitting] = useState(false);
@@ -24,12 +25,22 @@ export const Support: React.FC = () => {
     priority: 'normal'
   });
   const [emailError, setEmailError] = useState<string | null>(null);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
   // Load hCaptcha site key from environment variable
   const hCaptchaSiteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'your-site-key-here';
 
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for support:', new Date().toISOString());
+      trackPageView('support', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
+
   // Scroll to top when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 

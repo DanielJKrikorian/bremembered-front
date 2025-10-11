@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle, Package } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 const formatPrice = (amount: number): string => {
   return `$${(amount / 100).toFixed(2)}`;
@@ -54,8 +56,19 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 export const StoreSuccess: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [orderDetails, setOrderDetails] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for store-success:', new Date().toISOString());
+      trackPageView('store-success', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     console.log('StoreSuccess: Rendering component');

@@ -61,7 +61,7 @@ interface BookingSummary {
 }
 
 export const WeddingBudget: React.FC = () => {
-  const { couple } = useCouple();
+  const { couple, loading: coupleLoading } = useCouple();
   const [totalBudget, setTotalBudget] = useState<number>(33000); // Default $33,000
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
@@ -73,13 +73,12 @@ export const WeddingBudget: React.FC = () => {
   // Fetch budget data
   useEffect(() => {
     const fetchBudgetData = async () => {
-      if (!couple?.id) {
-        console.warn('No couple ID available');
-        setError('Please log in to view your budget');
-        setLoading(false);
+      if (coupleLoading || !couple?.id) {
+        console.log('Waiting for couple data to load or no couple ID available');
         return;
       }
       try {
+        setLoading(true);
         // Fetch total budget
         const { data: coupleData, error: coupleError } = await supabase
           .from('couples')
@@ -132,12 +131,12 @@ export const WeddingBudget: React.FC = () => {
       }
     };
     fetchBudgetData();
-  }, [couple?.id]);
+  }, [couple?.id, coupleLoading]);
 
   // Save total budget
   const saveTotalBudget = async () => {
     if (!couple?.id) {
-      setError('No couple ID available');
+      setError('Please log in to save your budget');
       return;
     }
     try {
@@ -155,10 +154,14 @@ export const WeddingBudget: React.FC = () => {
 
   // Add new budget item
   const addBudgetItem = () => {
+    if (!couple?.id) {
+      setError('Please log in to add a budget item');
+      return;
+    }
     setEditingId(null);
     setEditForm({
       id: '',
-      couple_id: couple?.id || '',
+      couple_id: couple.id,
       category: '',
       vendor_name: '',
       total_cost: 0,
@@ -172,7 +175,7 @@ export const WeddingBudget: React.FC = () => {
   // Save/edit budget item
   const saveBudgetItem = async () => {
     if (!editForm || !couple?.id) {
-      setError('No item or couple ID available');
+      setError('Please log in to save a budget item');
       return;
     }
     try {
@@ -207,6 +210,10 @@ export const WeddingBudget: React.FC = () => {
 
   // Delete budget item
   const deleteBudgetItem = async (id: string) => {
+    if (!couple?.id) {
+      setError('Please log in to delete a budget item');
+      return;
+    }
     try {
       const { error } = await supabase
         .from('wedding_budget_items')
@@ -222,6 +229,10 @@ export const WeddingBudget: React.FC = () => {
 
   // Edit budget item
   const editBudgetItem = (item: BudgetItem) => {
+    if (!couple?.id) {
+      setError('Please log in to edit a budget item');
+      return;
+    }
     setEditingId(item.id);
     setEditForm({ ...item, total_cost: item.total_cost / 100, deposit_paid: item.deposit_paid / 100, final_paid: item.final_paid / 100 });
   };
@@ -284,8 +295,34 @@ export const WeddingBudget: React.FC = () => {
     },
   };
 
+  if (coupleLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading your profile...</p>
+      </div>
+    );
+  }
+
+  if (!couple?.id) {
+    return (
+      <Card className="p-8 text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
+        <p className="text-gray-600 mb-6">Please log in to view your wedding budget.</p>
+        <Button variant="primary" onClick={() => window.location.href = '/login'}>
+          Log In
+        </Button>
+      </Card>
+    );
+  }
+
   if (loading) {
-    return <div className="p-8 text-center">Loading budget...</div>;
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading budget...</p>
+      </div>
+    );
   }
 
   return (

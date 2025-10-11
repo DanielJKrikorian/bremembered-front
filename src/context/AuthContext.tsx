@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -18,8 +18,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState<string | null>(null);
+  const initialSessionProcessed = useRef(false);
 
   useEffect(() => {
+    // Debounce auth state changes
+    let timeout: NodeJS.Timeout | null = null;
+
+    const handleAuthStateChange = (event: string, session: Session | null) => {
+      if (event === 'INITIAL_SESSION' && initialSessionProcessed.current) {
+        console.log('Skipping duplicate INITIAL_SESSION:', new Date().toISOString());
+        return;
+      }
+      if (event === 'INITIAL_SESSION') {
+        initialSessionProcessed.current = true;
+      }
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        console.log('Auth state change:', event, !!session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setAuthState(event);
+        setLoading(false);
+      }, 300); // Increased to 300ms
+    };
+
     // Get initial session
     const getInitialSession = async () => {
       if (!supabase || !isSupabaseConfigured()) {
@@ -38,13 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        handleAuthStateChange('INITIAL_SESSION', session);
       } catch (error) {
         console.warn('Error getting session (expected if not configured):', error);
         setSession(null);
         setUser(null);
-      } finally {
         setLoading(false);
       }
     };
@@ -53,36 +74,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     if (supabase && isSupabaseConfigured()) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log('Auth state change:', event, !!session);
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-          // Create user profile if signing up
-          if (event === 'SIGNED_UP' && session?.user) {
-            try {
-              const { error } = await supabase
-                .from('users')
-                .insert([
-                  {
-                    id: session.user.id,
-                    email: session.user.email,
-                    name: session.user.user_metadata?.name || '',
-                    role: 'couple'
-                  }
-                ]);
-              
-              if (error) console.error('Error creating user profile:', error);
-            } catch (error) {
-              console.error('Error in user creation:', error);
-            }
-          }
-        }
-      );
-
-      return () => subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+        if (timeout) clearTimeout(timeout);
+      };
     } else {
       console.warn('Supabase not configured, auth state changes will not be monitored');
     }
@@ -136,20 +133,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      // Clear analytics session
+      sessionStorage.removeItem('analytics_session_id');
+      sessionStorage.removeItem('analytics_session_started');
+      sessionStorage.removeItem('analytics_processed_events');
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  const value = {
-    user,
-    session,
-    loading,
-    signIn,
-    signUp,
-    signOut,
-    isAuthenticated: !!user
-  };
+  // Memoize context value
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      isAuthenticated: !!user
+    }),
+    [user, session, loading]
+  );
 
   return (
     <AuthContext.Provider value={value}>

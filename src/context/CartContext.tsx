@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect, useMemo } from 'react';
 import { ServicePackage, Vendor } from '../types/booking';
 
 export interface CartItem {
@@ -55,7 +55,6 @@ const loadCartFromStorage = (): CartState => {
     const stored = localStorage.getItem(CART_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Validate the structure
       if (parsed && Array.isArray(parsed.items)) {
         const totalAmount = calculateTotalAmount(parsed.items);
         console.log('Loaded cart from storage:', {
@@ -222,36 +221,36 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [state.items, state.totalAmount]);
 
-  const addItem = (item: Omit<CartItem, 'id' | 'addedAt'>) => {
+  const addItem = useMemo(() => (item: Omit<CartItem, 'id' | 'addedAt'>) => {
     dispatch({ type: 'ADD_ITEM', payload: item });
-  };
+  }, []);
 
-  const removeItem = (id: string) => {
+  const removeItem = useMemo(() => (id: string) => {
     dispatch({ type: 'REMOVE_ITEM', payload: id });
-  };
+  }, []);
 
-  const updateItem = (id: string, updates: Partial<CartItem>) => {
+  const updateItem = useMemo(() => (id: string, updates: Partial<CartItem>) => {
     dispatch({ type: 'UPDATE_ITEM', payload: { id, updates } });
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useMemo(() => () => {
     dispatch({ type: 'CLEAR_CART' });
-  };
+  }, []);
 
-  const toggleCart = () => {
+  const toggleCart = useMemo(() => () => {
     dispatch({ type: 'TOGGLE_CART' });
-  };
+  }, []);
 
-  const openCart = () => {
+  const openCart = useMemo(() => () => {
     dispatch({ type: 'OPEN_CART' });
-  };
+  }, []);
 
-  const closeCart = () => {
+  const closeCart = useMemo(() => () => {
     dispatch({ type: 'CLOSE_CART' });
-  };
+  }, []);
 
-  return (
-    <CartContext.Provider value={{
+  const contextValue = useMemo(
+    () => ({
       state,
       addItem,
       removeItem,
@@ -260,10 +259,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       toggleCart,
       openCart,
       closeCart
-    }}>
-      {children}
-    </CartContext.Provider>
+    }),
+    [state]
   );
+
+  return <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>;
 };
 
 export const useCart = () => {

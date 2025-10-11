@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Search, Heart, Calendar, CheckCircle, MessageCircle, Star, Shield, Clock, Award, ArrowRight, Users, Camera, Music } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 import { useLatestReviews } from '../hooks/useSupabase';
 
 export const HowItWorks: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth(); // Add loading
   const { reviews, loading: reviewsLoading } = useLatestReviews(3);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!loading && !analyticsTracked.current) {
+      console.log('Tracking analytics for how-it-works:', new Date().toISOString());
+      trackPageView('how-it-works', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [loading, user?.id]);
 
   // Scroll to top when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -361,7 +374,8 @@ export const HowItWorks: React.FC = () => {
                           <div className="text-xs text-gray-400">
                             {new Date(review.couple.wedding_date).toLocaleDateString('en-US', { 
                               month: 'long', 
-                              year: 'numeric' 
+                              year: 'numeric',
+                              timeZone: 'UTC'
                             })}
                           </div>
                         )}
@@ -431,3 +445,5 @@ export const HowItWorks: React.FC = () => {
     </div>
   );
 };
+
+export default HowItWorks;

@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ArrowLeft, FileText, Shield, Scale, Mail, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 export const TermsOfService: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      console.log('Tracking analytics for terms-of-service:', new Date().toISOString());
+      trackPageView('terms-of-service', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id]);
 
   // Scroll to top when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -257,3 +270,5 @@ export const TermsOfService: React.FC = () => {
     </div>
   );
 };
+
+export default TermsOfService;

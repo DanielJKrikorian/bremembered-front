@@ -1,38 +1,75 @@
-import React, { useState } from 'react';
-import { Search, Calendar, Clock, Eye, Heart, User, Tag, ArrowRight, BookOpen, TrendingUp, Star, Filter, Grid, List } from 'lucide-react';
+// Inspiration.tsx
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Heart, Calendar, Clock, Eye, Tag, ArrowRight, BookOpen, TrendingUp, Star, Filter, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useBlogPosts, useBlogCategories, BlogFilters } from '../hooks/useBlog';
 import { NewsletterSignup } from '../components/blog/NewsletterSignup';
+import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import the new function
 
 export const Inspiration: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const renderCount = useRef(0);
+  const analyticsTracked = useRef(false);
 
-  // Scroll to top when component mounts
-  React.useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Debug: Log renders
+  useEffect(() => {
+    renderCount.current += 1;
+    console.log(`Inspiration component rendered (count: ${renderCount.current}):`, new Date().toISOString());
   }, []);
 
-  // Build filters object
-  const filters: BlogFilters = {
-    ...(selectedCategory && { category: selectedCategory }),
-    ...(selectedTags.length > 0 && { tags: selectedTags }),
-    ...(searchTerm && { search: searchTerm })
-  };
+  // Track analytics once on page load
+  useEffect(() => {
+    if (!loading && !analyticsTracked.current) {
+      console.log('Tracking analytics for inspiration:', new Date().toISOString());
+      trackPageView('inspiration', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [loading, user?.id]);
 
-  const { posts, loading, error } = useBlogPosts(filters);
+  // Memoize filters
+  const filters: BlogFilters = useMemo(
+    () => ({
+      ...(selectedCategory && { category: selectedCategory }),
+      ...(selectedTags.length > 0 && { tags: selectedTags }),
+      ...(searchTerm && { search: searchTerm })
+    }),
+    [selectedCategory, selectedTags, searchTerm]
+  );
+
+  // Fetch posts and categories
+  const { posts, loading: postsLoading, error } = useBlogPosts(filters);
   const { categories, loading: categoriesLoading } = useBlogCategories();
-  const { posts: featuredPosts } = useBlogPosts({ featured: true }, 3);
+  const { posts: featuredPosts, loading: featuredPostsLoading } = useBlogPosts({ featured: true }, 3);
+
+  useEffect(() => {
+    console.log('useBlogPosts called (main posts):', { filters, postsLength: posts.length, postsLoading, error });
+  }, [filters, posts, postsLoading, error]);
+
+  useEffect(() => {
+    console.log('useBlogPosts called (featured posts):', { filters: { featured: true }, postsLength: featuredPosts.length, postsLoading: featuredPostsLoading });
+  }, [featuredPosts, featuredPostsLoading]);
+
+  useEffect(() => {
+    console.log('useBlogCategories called:', { categoriesLength: categories.length, categoriesLoading });
+  }, [categories, categoriesLoading]);
+
+  // Debug: Log NewsletterSignup props
+  useEffect(() => {
+    console.log('NewsletterSignup props:', { source: 'inspiration_main' });
+  }, []);
 
   // Get all unique tags from posts
-  const allTags = Array.from(new Set(posts.flatMap(post => post.tags)));
+  const allTags = useMemo(() => Array.from(new Set(posts.flatMap(post => post.tags))), [posts]);
 
   const handleTagToggle = (tag: string) => {
     setSelectedTags(prev => 
@@ -52,7 +89,8 @@ export const Inspiration: React.FC = () => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC'
     });
   };
 
@@ -84,7 +122,7 @@ export const Inspiration: React.FC = () => {
           <div className="max-w-2xl mx-auto">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search articles, tips, and inspiration..."
                 value={searchTerm}
@@ -98,7 +136,7 @@ export const Inspiration: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Featured Articles */}
-        {!searchTerm && !selectedCategory && !selectedTags.length && (
+        {!searchTerm && !selectedCategory && !selectedTags.length && !featuredPostsLoading && featuredPosts.length > 0 && (
           <section className="mb-16">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold text-gray-900">Featured Articles</h2>
@@ -108,112 +146,111 @@ export const Inspiration: React.FC = () => {
               </div>
             </div>
             
-            {featuredPosts.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Featured Article */}
-                <div className="lg:col-span-2">
-                  <Card 
-                    className="overflow-hidden hover:shadow-xl transition-shadow"
-                  >
-                    <div className="aspect-video relative">
-                      <img
-                        src={featuredPosts[0].featured_image}
-                        alt={featuredPosts[0].title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-900">
-                          <Star className="w-3 h-3 mr-1 text-yellow-500" />
-                          Featured
-                        </span>
-                      </div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <span 
-                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white mb-3"
-                          style={{ backgroundColor: featuredPosts[0].category_info?.color || '#6366f1' }}
-                        >
-                          {featuredPosts[0].category_info?.name || featuredPosts[0].category}
-                        </span>
-                        <h3 className="text-2xl font-bold text-white mb-2">{featuredPosts[0].title}</h3>
-                        <p className="text-white/90 text-sm line-clamp-2">{featuredPosts[0].excerpt}</p>
-                      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Main Featured Article */}
+              <div className="lg:col-span-2">
+                <Card 
+                  className="overflow-hidden hover:shadow-xl transition-shadow"
+                >
+                  <div className="aspect-video relative">
+                    <img
+                      src={featuredPosts[0]?.featured_image || 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'}
+                      alt={featuredPosts[0]?.title || 'Featured Article'}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-900">
+                        <Star className="w-3 h-3 mr-1 text-yellow-500" />
+                        Featured
+                      </span>
                     </div>
-                    <div className="p-6">
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span>{featuredPosts[0].read_time} min read</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Eye className="w-4 h-4 mr-1" />
-                            <span>{formatNumber(featuredPosts[0].view_count)} views</span>
-                          </div>
-                          <div className="flex items-center">
-                            <Heart className="w-4 h-4 mr-1" />
-                            <span>{featuredPosts[0].like_count} likes</span>
-                          </div>
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <span 
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white mb-3"
+                        style={{ backgroundColor: featuredPosts[0]?.category_info?.color || '#6366f1' }}
+                      >
+                        {featuredPosts[0]?.category_info?.name || featuredPosts[0]?.category || 'Category'}
+                      </span>
+                      <h3 className="text-2xl font-bold text-white mb-2">{featuredPosts[0]?.title || 'Untitled'}</h3>
+                      <p className="text-white/90 text-sm line-clamp-2">{featuredPosts[0]?.excerpt || ''}</p>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          <span>{featuredPosts[0]?.read_time || 0} min read</span>
                         </div>
-                        <span>{formatDate(featuredPosts[0].published_at || featuredPosts[0].created_at)}</span>
+                        <div className="flex items-center">
+                          <Eye className="w-4 h-4 mr-1" />
+                          <span>{formatNumber(featuredPosts[0]?.view_count || 0)} views</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Heart className="w-4 h-4 mr-1" />
+                          <span>{featuredPosts[0]?.like_count || 0} likes</span>
+                        </div>
                       </div>
-                      <div className="mt-4">
-                        <Button
-                          variant="primary"
-                          onClick={() => navigate(`/inspiration/${featuredPosts[0].slug}`)}
-                          className="w-full"
+                      <span>{formatDate(featuredPosts[0]?.published_at || featuredPosts[0]?.created_at || new Date().toISOString())}</span>
+                    </div>
+                    <div className="mt-4">
+                      <Button
+                        variant="primary"
+                        onClick={() => featuredPosts[0]?.slug && navigate(`/inspiration/${featuredPosts[0].slug}`)}
+                        className="w-full"
+                        disabled={!featuredPosts[0]?.slug}
+                      >
+                        Read Article
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Side Featured Articles */}
+              <div className="space-y-6">
+                {featuredPosts.slice(1, 3).map((post) => (
+                  <Card 
+                    key={post.id} 
+                    className="overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex">
+                      <img
+                        src={post.featured_image || 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'}
+                        alt={post.title}
+                        className="w-32 h-24 object-cover flex-shrink-0"
+                      />
+                      <div className="p-4 flex-1">
+                        <span 
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white mb-2"
+                          style={{ backgroundColor: post.category_info?.color || '#6366f1' }}
                         >
-                          Read Article
-                        </Button>
+                          {post.category_info?.name || post.category}
+                        </span>
+                        <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h4>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Clock className="w-3 h-3 mr-1" />
+                          <span>{post.read_time} min</span>
+                          <span className="mx-2">•</span>
+                          <Eye className="w-3 h-3 mr-1" />
+                          <span>{formatNumber(post.view_count)}</span>
+                        </div>
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/inspiration/${post.slug}`)}
+                            className="w-full"
+                          >
+                            Read More
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>
-                </div>
-
-                {/* Side Featured Articles */}
-                <div className="space-y-6">
-                  {featuredPosts.slice(1, 3).map((post) => (
-                    <Card 
-                      key={post.id} 
-                      className="overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <div className="flex">
-                        <img
-                          src={post.featured_image}
-                          alt={post.title}
-                          className="w-32 h-24 object-cover flex-shrink-0"
-                        />
-                        <div className="p-4 flex-1">
-                          <span 
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white mb-2"
-                            style={{ backgroundColor: post.category_info?.color || '#6366f1' }}
-                          >
-                            {post.category_info?.name || post.category}
-                          </span>
-                          <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h4>
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Clock className="w-3 h-3 mr-1" />
-                            <span>{post.read_time} min</span>
-                            <span className="mx-2">•</span>
-                            <Eye className="w-3 h-3 mr-1" />
-                            <span>{formatNumber(post.view_count)}</span>
-                          </div>
-                          <div className="mt-3">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/inspiration/${post.slug}`)}
-                              className="w-full"
-                            >
-                              Read More
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
+            </div>
           </section>
         )}
 
@@ -222,31 +259,31 @@ export const Inspiration: React.FC = () => {
           <section className="mb-12">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">Browse by Category</h3>
             <div className="flex flex-wrap gap-3">
-              <button
+              <Button
                 onClick={() => setSelectedCategory('')}
                 className={`px-4 py-2 rounded-full transition-all ${
                   !selectedCategory
                     ? 'bg-gray-900 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                    : 'bg-rose-500 text-white hover:bg-rose-600'
                 }`}
               >
                 All Articles
-              </button>
+              </Button>
               {categories.map((category) => (
-                <button
+                <Button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.slug)}
                   className={`px-4 py-2 rounded-full transition-all ${
                     selectedCategory === category.slug
                       ? 'text-white shadow-lg'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                      : 'bg-rose-500 text-white hover:bg-rose-600'
                   }`}
                   style={{
                     backgroundColor: selectedCategory === category.slug ? category.color : undefined
                   }}
                 >
                   {category.name} ({category.post_count})
-                </button>
+                </Button>
               ))}
             </div>
           </section>
@@ -335,7 +372,7 @@ export const Inspiration: React.FC = () => {
         </div>
 
         {/* Loading State */}
-        {loading && (
+        {postsLoading && (
           <div className="text-center py-12">
             <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-600">Loading articles...</p>
@@ -355,7 +392,7 @@ export const Inspiration: React.FC = () => {
         )}
 
         {/* No Results */}
-        {!loading && !error && posts.length === 0 && (
+        {!postsLoading && !error && posts.length === 0 && (
           <Card className="p-12 text-center">
             <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No articles found</h3>
@@ -374,7 +411,7 @@ export const Inspiration: React.FC = () => {
         )}
 
         {/* Articles Grid/List */}
-        {!loading && !error && posts.length > 0 && (
+        {!postsLoading && !error && posts.length > 0 && (
           <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' : 'space-y-6'}>
             {posts.map((post) => (
               <Card 
@@ -476,3 +513,5 @@ export const Inspiration: React.FC = () => {
     </div>
   );
 };
+
+export default React.memo(Inspiration);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, Star, Award, Camera, Video, Music, Users, Calendar, Clock, Check, Eye, MessageCircle, Shield, Heart, Share2, ChevronRight, DollarSign, Info } from 'lucide-react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
@@ -9,26 +9,19 @@ import { Vendor } from '../types/booking';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 interface VendorWithPremium extends Vendor {
   premium_amount: number;
   service_areas_with_fees: { region: string; travel_fee: number }[];
 }
 
-const generateSessionId = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
-
 const VendorProfile: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem, openCart } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [vendor, setVendor] = useState<VendorWithPremium | null>(location.state?.vendor || null);
   const [loading, setLoading] = useState(!vendor);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +33,7 @@ const VendorProfile: React.FC = () => {
   const [tempCartItem, setTempCartItem] = useState<any>(null);
   const [isVendorBooked, setIsVendorBooked] = useState(false);
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
 
   const vendorId = useMemo(() => vendor?.id || '', [vendor?.id]);
   const { reviews: vendorReviews, loading: reviewsLoading, averageRating } = useVendorReviews(vendorId);
@@ -55,22 +49,12 @@ const VendorProfile: React.FC = () => {
 
   // Track page view for analytics
   useEffect(() => {
-    const trackPageView = async () => {
-      if (!vendor?.id || !supabase) return;
-      try {
-        await supabase.from('analytics_events').insert({
-          site: window.location.hostname,
-          event_type: 'page_view',
-          session_id: generateSessionId(),
-          screen_name: `vendor/${vendor.slug}`,
-          timestamp: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.error('Error tracking page view:', err);
-      }
-    };
-    trackPageView();
-  }, [vendor?.id, vendor?.slug]);
+    if (!authLoading && slug && !analyticsTracked.current) {
+      console.log(`Tracking analytics for vendor/${slug}:`, new Date().toISOString());
+      trackPageView(`vendor/${slug}`, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id, slug]);
 
   // Fetch vendor data
   useEffect(() => {

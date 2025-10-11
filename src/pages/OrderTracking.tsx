@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 const formatPrice = (amount: number | null): string => {
   return amount !== null && !isNaN(amount) ? `$${(amount / 100).toFixed(2)}` : '$0.00';
@@ -60,11 +62,23 @@ export const OrderTracking: React.FC = () => {
   const { orderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth(); // Add useAuth
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string>('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current) {
+      const screenName = orderId ? `order-tracking/${orderId}` : 'order-tracking';
+      console.log(`Tracking analytics for ${screenName}:`, new Date().toISOString());
+      trackPageView(screenName, 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [authLoading, user?.id, orderId]);
 
   useEffect(() => {
     console.log('OrderTracking: Mounting component', { orderId, path: location.pathname });

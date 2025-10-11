@@ -1,20 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, CreditCard, Clock, Shield, Heart, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
 import { AuthModal } from '../components/auth/AuthModal';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { state, removeItem, updateItem, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth(); // Add loading
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!loading && !analyticsTracked.current) {
+      console.log('Tracking analytics for cart:', new Date().toISOString());
+      trackPageView('cart', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [loading, user?.id]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -218,7 +229,7 @@ export const Cart: React.FC = () => {
                                   <span>
                                     {(() => {
                                       const [year, month, day] = item.eventDate.split('-').map(Number);
-                                      return new Date(year, month - 1, day).toLocaleDateString();
+                                      return new Date(year, month - 1, day).toLocaleDateString('en-US', { timeZone: 'UTC' });
                                     })()}
                                     {item.eventTime && (
                                       <>
@@ -226,7 +237,8 @@ export const Cart: React.FC = () => {
                                         {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
                                           hour: 'numeric',
                                           minute: '2-digit',
-                                          hour12: true
+                                          hour12: true,
+                                          timeZone: 'UTC'
                                         })}
                                         {item.endTime && (
                                           <>
@@ -234,7 +246,8 @@ export const Cart: React.FC = () => {
                                             {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
                                               hour: 'numeric',
                                               minute: '2-digit',
-                                              hour12: true
+                                              hour12: true,
+                                              timeZone: 'UTC'
                                             })}
                                           </>
                                         )}
@@ -500,3 +513,5 @@ export const Cart: React.FC = () => {
     </div>
   );
 };
+
+export default Cart;

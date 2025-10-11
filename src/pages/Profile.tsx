@@ -1,4 +1,4 @@
-import React, { Component, ReactNode, useState, useEffect } from 'react';
+import React, { Component, ReactNode, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe, StickyNote, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ import { ProfileInformation } from '../components/profile/ProfileInformation';
 import { WeddingGallery } from '../components/profile/WeddingGallery';
 import { WeddingBudget } from '../components/profile/WeddingBudget';
 import { NotesSection } from '../components/profile/NotesSection';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -65,7 +66,7 @@ const formatWeddingDate = (dateString?: string) => {
 };
 
 export const Profile: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Add loading
   const { couple, loading: coupleLoading } = useCouple();
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,6 +75,17 @@ export const Profile: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [photoUrl, setPhotoUrl] = useState<string | null>(couple?.profile_photo || null);
+  const analyticsTracked = useRef<{ [key: string]: boolean }>({}); // Track per tab
+
+  // Track analytics for active tab
+  useEffect(() => {
+    if (!authLoading && !analyticsTracked.current[activeTab]) {
+      const screenName = `profile/${activeTab}`;
+      console.log(`Tracking analytics for ${screenName}:`, new Date().toISOString());
+      trackPageView(screenName, 'bremembered.io', user?.id);
+      analyticsTracked.current[activeTab] = true;
+    }
+  }, [authLoading, user?.id, activeTab]);
 
   useEffect(() => {
     console.log('Profile rendered, activeTab:', activeTab);

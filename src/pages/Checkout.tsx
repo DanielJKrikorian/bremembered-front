@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, AlertCircle, CheckCircle, PartyPopper } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { trackPageView } from '../utils/analytics'; // Import trackPageView
 import { supabase } from '../lib/supabase';
 import { CheckoutForm } from '../components/payment/CheckoutForm';
 import { OrderSummary } from '../components/checkout/OrderSummary';
@@ -32,7 +33,7 @@ export const Checkout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { state: cartState, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth(); // Add loading
   const [step, setStep] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
@@ -47,6 +48,16 @@ export const Checkout: React.FC = () => {
   const [remainingBalance, setRemainingBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bookingDetails, setBookingDetails] = useState<any[]>([]);
+  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+
+  // Track analytics only once on mount
+  useEffect(() => {
+    if (!loading && !analyticsTracked.current) {
+      console.log('Tracking analytics for checkout:', new Date().toISOString());
+      trackPageView('checkout', 'bremembered.io', user?.id);
+      analyticsTracked.current = true;
+    }
+  }, [loading, user?.id]);
 
   // Memoize cartItems and totalAmount to prevent unnecessary re-renders
   const cartItems = useMemo(() => location.state?.cartItems || cartState.items, [location.state, cartState.items]);
@@ -393,10 +404,10 @@ export const Checkout: React.FC = () => {
                             <span className="font-medium">Vendor:</span> {booking.vendors?.name || 'N/A'}
                           </li>
                           <li>
-                            <span className="font-medium">Date:</span> {new Date(booking.events?.start_time).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            <span className="font-medium">Date:</span> {new Date(booking.events?.start_time).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                           </li>
                           <li>
-                            <span className="font-medium">Time:</span> {formatTime(new Date(booking.events?.start_time).toLocaleTimeString('en-US', { hour12: false }).slice(0, 5))} - {formatTime(new Date(booking.events?.end_time).toLocaleTimeString('en-US', { hour12: false }).slice(0, 5))} EDT
+                            <span className="font-medium">Time:</span> {formatTime(new Date(booking.events?.start_time).toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' }).slice(0, 5))} - {formatTime(new Date(booking.events?.end_time).toLocaleTimeString('en-US', { hour12: false, timeZone: 'UTC' }).slice(0, 5))} EDT
                           </li>
                           <li>
                             <span className="font-medium">Venue:</span> {booking.venues?.name || booking.events?.location || 'N/A'}
@@ -451,3 +462,5 @@ export const Checkout: React.FC = () => {
     </div>
   );
 };
+
+export default Checkout;
