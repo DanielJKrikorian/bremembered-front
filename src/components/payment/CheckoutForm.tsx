@@ -50,7 +50,7 @@ interface CheckoutFormProps {
 
 export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   cartItems,
-  totalAmount,
+  totalAmount: propTotalAmount,
   discountAmount,
   referralDiscount,
   clientSecret,
@@ -138,6 +138,25 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     ]
   );
 
+  // Calculate totals
+  const subtotal = useMemo(
+    () =>
+      cartItems.reduce(
+        (sum, item) =>
+          sum +
+          (item.package.price || 0) +
+          (item.package.premium_amount || 0) +
+          (item.package.travel_fee || 0),
+        0
+      ),
+    [cartItems]
+  );
+  const totalDiscount = discountAmount + referralDiscount;
+  const discountedTotal = Math.max(0, subtotal - totalDiscount);
+  const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
+  const depositAmount = Math.round(discountedTotal * 0.5);
+  const grandTotal = depositAmount + platformFee;
+
   // Debug initialization
   useEffect(() => {
     console.log('=== CHECKOUT FORM INITIALIZATION ===', new Date().toISOString());
@@ -154,6 +173,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Couple:', couple ? { id: couple.id, email: couple.email } : 'No couple');
     console.log('Form data:', memoizedFormData);
     console.log('Payment details complete:', paymentDetailsComplete);
+    console.log('Calculated subtotal:', subtotal);
+    console.log('Prop totalAmount:', propTotalAmount);
     console.log('Cart items:', cartItems.map(item => ({
       id: item.id,
       package_price: item.package?.price,
@@ -162,7 +183,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       service_type: item.package?.service_type,
       event_type: item.package?.event_type,
     })));
-  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, cartItems]);
+  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, cartItems, subtotal, propTotalAmount]);
 
   // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
@@ -397,14 +418,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
-  // Calculate totals
-  const subtotal = totalAmount;
-  const totalDiscount = discountAmount + referralDiscount;
-  const discountedTotal = Math.max(0, subtotal - totalDiscount);
-  const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
-  const depositAmount = Math.round(discountedTotal * 0.5);
-  const grandTotal = depositAmount + platformFee;
-
   const validateReferralCode = async (code: string) => {
     if (!code.trim()) {
       setReferralError(null);
@@ -492,7 +505,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     console.log('Form data:', memoizedFormData);
     console.log('Cart items:', cartItems);
     console.log('Couple ID:', coupleId);
-    console.log('Total amount:', totalAmount);
+    console.log('Total amount:', subtotal);
     const requiredFields = ['partner1Name', 'email', 'phone', 'billingAddress', 'city', 'state', 'zipCode'];
     for (const field of requiredFields) {
       if (!memoizedFormData[field as keyof typeof memoizedFormData]) {
@@ -536,14 +549,21 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setAuthMode('login');
       return false;
     }
-    if (totalAmount <= 0) {
+    if (subtotal <= 0) {
       console.log('Validation failed: Total amount <= 0');
       setError('Total amount must be greater than zero.');
       return false;
     }
+    for (const item of cartItems) {
+      if (item.package.travel_fee === undefined || item.package.travel_fee === null) {
+        console.log('Validation failed: Missing travel_fee for item', item.id);
+        setError('Cart items are missing travel fee information.');
+        return false;
+      }
+    }
     console.log('Validation passed');
     return true;
-  }, [currentStep, memoizedFormData, cartItems, coupleId, totalAmount, paymentMethod]);
+  }, [currentStep, memoizedFormData, cartItems, coupleId, subtotal, paymentMethod]);
 
   const handleLogin = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password) {
@@ -783,7 +803,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         const cartItemsWithVendorAmount = cartItems.map(item => {
           const packagePrice = item.package?.price || 0;
           const premiumAmount = item.package?.premium_amount || 0;
-          const travelFee = item.package?.travel_fee || 25000; // Default to 25000 if not provided
+          const travelFee = item.package?.travel_fee ?? 0;
           const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
           return {
             id: item.id,
@@ -837,7 +857,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           },
           cartItems: cartItemsWithVendorAmount,
           signatures,
-          totalAmount,
+          totalAmount: subtotal,
           discountAmount,
           referralDiscount,
           platformFee: Number(platformFee),
@@ -894,7 +914,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         const cartItemsWithVendorAmount = cartItems.map(item => {
           const packagePrice = item.package?.price || 0;
           const premiumAmount = item.package?.premium_amount || 0;
-          const travelFee = item.package?.travel_fee || 25000; // Default to 25000 if not provided
+          const travelFee = item.package?.travel_fee ?? 0;
           const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
           return {
             id: item.id,
@@ -924,7 +944,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         });
         console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
         const payload = {
-          paymentIntentId: paymentIntent.id,
+          paymentIntentId: paymentIntentId,
           customerInfo: {
             coupleId,
             email: memoizedFormData.email,
@@ -947,7 +967,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           },
           cartItems: cartItemsWithVendorAmount,
           signatures,
-          totalAmount,
+          totalAmount: subtotal,
           discountAmount,
           referralDiscount,
           platformFee: Number(platformFee),
@@ -1003,7 +1023,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
-  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, totalAmount, platformFee, discountAmount, referralDiscount, grandTotal]);
+  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, subtotal, discountAmount, referralDiscount, platformFee, grandTotal, paymentIntentId]);
 
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
