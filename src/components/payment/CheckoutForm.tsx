@@ -138,10 +138,25 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     ]
   );
 
-  // Calculate totals
+  // Normalize cart items to ensure travel_fee is defined
+  const normalizedCartItems = useMemo(
+    () =>
+      cartItems.map(item => ({
+        ...item,
+        package: {
+          ...item.package,
+          price: item.package?.price || 0,
+          premium_amount: item.package?.premium_amount || 0,
+          travel_fee: item.package?.travel_fee ?? 0, // Default to 0 if undefined or null
+        },
+      })),
+    [cartItems]
+  );
+
+  // Calculate totals using normalized cart items
   const subtotal = useMemo(
     () =>
-      cartItems.reduce(
+      normalizedCartItems.reduce(
         (sum, item) =>
           sum +
           (item.package.price || 0) +
@@ -149,11 +164,11 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
           (item.package.travel_fee || 0),
         0
       ),
-    [cartItems]
+    [normalizedCartItems]
   );
   const totalDiscount = discountAmount + referralDiscount;
   const discountedTotal = Math.max(0, subtotal - totalDiscount);
-  const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
+  const platformFee = Number(normalizedCartItems.length > 0 ? 50 * 100 : 0);
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + platformFee;
 
@@ -175,7 +190,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Payment details complete:', paymentDetailsComplete);
     console.log('Calculated subtotal:', subtotal);
     console.log('Prop totalAmount:', propTotalAmount);
-    console.log('Cart items:', cartItems.map(item => ({
+    console.log('Cart items:', normalizedCartItems.map(item => ({
       id: item.id,
       package_price: item.package?.price,
       premium_amount: item.package?.premium_amount,
@@ -183,7 +198,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       service_type: item.package?.service_type,
       event_type: item.package?.event_type,
     })));
-  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, cartItems, subtotal, propTotalAmount]);
+  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, normalizedCartItems, subtotal, propTotalAmount]);
 
   // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
@@ -259,7 +274,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   useEffect(() => {
     const fetchContractTemplates = async () => {
       console.log('=== FETCH CONTRACT TEMPLATES ===', new Date().toISOString());
-      console.log('Cart items:', cartItems.map(item => ({
+      console.log('Cart items:', normalizedCartItems.map(item => ({
         id: item.id,
         service_type: item.package?.service_type,
         package_name: item.package?.name,
@@ -267,13 +282,13 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
         premium_amount: item.package?.premium_amount,
         travel_fee: item.package?.travel_fee,
       })));
-      if (!cartItems.length) {
+      if (!normalizedCartItems.length) {
         console.log('No cart items, skipping contract fetch');
         setContractTemplates([]);
         setContractsLoading(false);
         return;
       }
-      const serviceTypes = [...new Set(cartItems.map((item) => item.package?.service_type).filter(Boolean))];
+      const serviceTypes = [...new Set(normalizedCartItems.map((item) => item.package?.service_type).filter(Boolean))];
       console.log('Service types:', serviceTypes);
       if (!serviceTypes.length) {
         console.warn('No valid service types found in cart items');
@@ -284,8 +299,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       }
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Supabase not configured, generating mock contract templates');
-        const platformFee = Number(cartItems.length > 0 ? 50 * 100 : 0);
-        const mockTemplates: ContractTemplate[] = cartItems.map((item) => {
+        const platformFee = Number(normalizedCartItems.length > 0 ? 50 * 100 : 0);
+        const mockTemplates: ContractTemplate[] = normalizedCartItems.map((item) => {
           const packagePrice = item.package?.price || 0;
           const premiumAmount = item.package?.premium_amount || 0;
           const travelFee = item.package?.travel_fee || 0;
@@ -351,7 +366,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       }
     };
     fetchContractTemplates();
-  }, [cartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name]);
+  }, [normalizedCartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name]);
 
   // Attach CardElement change listener
   useEffect(() => {
@@ -503,7 +518,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     console.log('=== VALIDATE FORM ===', new Date().toISOString());
     console.log('Current step:', currentStep);
     console.log('Form data:', memoizedFormData);
-    console.log('Cart items:', cartItems);
+    console.log('Cart items:', normalizedCartItems);
     console.log('Couple ID:', coupleId);
     console.log('Total amount:', subtotal);
     const requiredFields = ['partner1Name', 'email', 'phone', 'billingAddress', 'city', 'state', 'zipCode'];
@@ -525,18 +540,18 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Please accept the use of Stripe for payment processing');
       return false;
     }
-    if (cartItems.length === 0) {
+    if (normalizedCartItems.length === 0) {
       console.log('Validation failed: Cart is empty');
       setError('Cart is empty. Please add items to proceed.');
       return false;
     }
-    if (!cartItems[0]?.eventDate || !cartItems[0]?.eventTime || !cartItems[0]?.endTime || !cartItems[0]?.venue?.name) {
+    if (!normalizedCartItems[0]?.eventDate || !normalizedCartItems[0]?.eventTime || !normalizedCartItems[0]?.endTime || !normalizedCartItems[0]?.venue?.name) {
       console.log('Validation failed: Missing event details');
       setError('Cart items are missing required event details (date, start time, end time, or location).');
       return false;
     }
     const validEventTypes = ['wedding', 'engagement', 'proposal'];
-    const eventType = cartItems[0]?.package.event_type?.toLowerCase();
+    const eventType = normalizedCartItems[0]?.package.event_type?.toLowerCase();
     if (!eventType || !validEventTypes.includes(eventType)) {
       console.log('Validation failed: Invalid event type', eventType);
       setError('Invalid event type. Must be one of: wedding, engagement, proposal.');
@@ -554,16 +569,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Total amount must be greater than zero.');
       return false;
     }
-    for (const item of cartItems) {
-      if (item.package.travel_fee === undefined || item.package.travel_fee === null) {
-        console.log('Validation failed: Missing travel_fee for item', item.id);
-        setError('Cart items are missing travel fee information.');
-        return false;
-      }
-    }
     console.log('Validation passed');
     return true;
-  }, [currentStep, memoizedFormData, cartItems, coupleId, subtotal, paymentMethod]);
+  }, [currentStep, memoizedFormData, normalizedCartItems, coupleId, subtotal, paymentMethod]);
 
   const handleLogin = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password) {
@@ -787,7 +795,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         }
         console.log('Payment Method created:', paymentMethod.id);
         // Check for existing pending bookings to prevent duplicates
-        const cartItemIds = cartItems.map(item => item.id);
+        const cartItemIds = normalizedCartItems.map(item => item.id);
         const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
           .from('pending_bookings')
           .select('id')
@@ -800,7 +808,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
         // Calculate vendor amounts for the deposit
-        const cartItemsWithVendorAmount = cartItems.map(item => {
+        const cartItemsWithVendorAmount = normalizedCartItems.map(item => {
           const packagePrice = item.package?.price || 0;
           const premiumAmount = item.package?.premium_amount || 0;
           const travelFee = item.package?.travel_fee ?? 0;
@@ -845,11 +853,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             city: memoizedFormData.city || '',
             state: memoizedFormData.state || '',
             zipCode: memoizedFormData.zipCode || '',
-            eventDate: cartItems[0]?.eventDate || '',
-            eventTime: cartItems[0]?.eventTime || '',
-            endTime: cartItems[0]?.endTime || '',
-            eventLocation: cartItems[0]?.venue?.name || '',
-            eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            eventDate: normalizedCartItems[0]?.eventDate || '',
+            eventTime: normalizedCartItems[0]?.eventTime || '',
+            endTime: normalizedCartItems[0]?.endTime || '',
+            eventLocation: normalizedCartItems[0]?.venue?.name || '',
+            eventType: normalizedCartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
             guestCount: memoizedFormData.guestCount || '',
             specialRequests: memoizedFormData.specialRequests || '',
             savePaymentMethod: memoizedFormData.savePaymentMethod || false,
@@ -898,7 +906,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           return { paymentIntentId: null, pendingBookingId: null };
         }
         // Check for existing pending bookings to prevent duplicates
-        const cartItemIds = cartItems.map(item => item.id);
+        const cartItemIds = normalizedCartItems.map(item => item.id);
         const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
           .from('pending_bookings')
           .select('id')
@@ -911,7 +919,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
         // Calculate vendor amounts for the deposit
-        const cartItemsWithVendorAmount = cartItems.map(item => {
+        const cartItemsWithVendorAmount = normalizedCartItems.map(item => {
           const packagePrice = item.package?.price || 0;
           const premiumAmount = item.package?.premium_amount || 0;
           const travelFee = item.package?.travel_fee ?? 0;
@@ -955,11 +963,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             city: memoizedFormData.city || '',
             state: memoizedFormData.state || '',
             zipCode: memoizedFormData.zipCode || '',
-            eventDate: cartItems[0]?.eventDate || '',
-            eventTime: cartItems[0]?.eventTime || '',
-            endTime: cartItems[0]?.endTime || '',
-            eventLocation: cartItems[0]?.venue?.name || '',
-            eventType: cartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            eventDate: normalizedCartItems[0]?.eventDate || '',
+            eventTime: normalizedCartItems[0]?.eventTime || '',
+            endTime: normalizedCartItems[0]?.endTime || '',
+            eventLocation: normalizedCartItems[0]?.venue?.name || '',
+            eventType: normalizedCartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
             guestCount: memoizedFormData.guestCount || '',
             specialRequests: memoizedFormData.specialRequests || '',
             savePaymentMethod: memoizedFormData.savePaymentMethod || false,
@@ -1023,7 +1031,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
-  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, cartItems, signatures, subtotal, discountAmount, referralDiscount, platformFee, grandTotal, paymentIntentId]);
+  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, normalizedCartItems, signatures, subtotal, discountAmount, referralDiscount, platformFee, grandTotal, paymentIntentId]);
 
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
