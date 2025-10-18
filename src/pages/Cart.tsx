@@ -1,22 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, CreditCard, Clock, Shield, Heart, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { trackPageView } from '../utils/analytics'; // Import trackPageView
+import { trackPageView } from '../utils/analytics';
 import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
 import { AuthModal } from '../components/auth/AuthModal';
+import { supabase } from '../lib/supabase';
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { state, removeItem, updateItem, clearCart } = useCart();
-  const { isAuthenticated, user, loading } = useAuth(); // Add loading
+  const { isAuthenticated, user, loading } = useAuth();
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+  const [isFetchingFees, setIsFetchingFees] = useState(false);
+  const analyticsTracked = useRef(false);
+  const fetchedItems = useRef(new Set<string>()); // Track fetched item IDs
 
   // Track analytics only once on mount
   useEffect(() => {
@@ -32,20 +35,110 @@ export const Cart: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Memoize cart items to stabilize dependencies
+  const cartItems = useMemo(() => state.items, [state.items]);
+
+  // Fetch travel_fee and premium_amount for cart items
+  useEffect(() => {
+    const fetchFees = async () => {
+      if (!cartItems.length || isFetchingFees) return;
+      setIsFetchingFees(true);
+      console.log('=== FETCH FEES ===', new Date().toISOString());
+      try {
+        for (const item of cartItems) {
+          // Skip if already fetched or no vendor/venue
+          if (fetchedItems.current.has(item.id) || !item.vendor?.id || !item.venue?.id) {
+            console.log(`Skipping fee fetch for item ${item.id}: ${fetchedItems.current.has(item.id) ? 'already fetched' : 'missing vendor or venue'}`);
+            continue;
+          }
+
+          // Fetch premium_amount from vendor_premiums
+          const { data: premiumData, error: premiumError } = await supabase
+            .from('vendor_premiums')
+            .select('amount')
+            .eq('vendor_id', item.vendor.id)
+            .single();
+          let premiumAmount = 0; // Default to $0.00 if no premium defined
+          if (premiumError) {
+            console.error(`Error fetching premium_amount for vendor ${item.vendor.id}:`, premiumError);
+            console.log(`No premium_amount defined for vendor ${item.vendor.id}, using $0.00`);
+          } else if (premiumData?.amount != null) {
+            premiumAmount = premiumData.amount;
+            console.log(`Fetched premium_amount for vendor ${item.vendor.id}: ${premiumAmount}`);
+          } else {
+            console.log(`No premium_amount defined for vendor ${item.vendor.id}, using $0.00`);
+          }
+
+          // Fetch service_area_id from venues
+          const { data: venueData, error: venueError } = await supabase
+            .from('venues')
+            .select('service_area_id')
+            .eq('id', item.venue.id)
+            .single();
+
+          if (venueError || !venueData?.service_area_id) {
+            console.error(`Error fetching service_area_id for venue ${item.venue.id}:`, venueError);
+            continue;
+          }
+
+          // Fetch travel_fee from vendor_service_areas
+          const { data: travelData, error: travelError } = await supabase
+            .from('vendor_service_areas')
+            .select('travel_fee')
+            .eq('vendor_id', item.vendor.id)
+            .eq('service_area_id', venueData.service_area_id)
+            .single();
+
+          let travelFee = 0; // Default to $0.00 if no travel fee defined
+          if (travelError) {
+            console.error(`Error fetching travel_fee for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}:`, travelError);
+            console.log(`No travel_fee defined for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}, using $0.00`);
+          } else if (travelData?.travel_fee != null) {
+            travelFee = travelData.travel_fee;
+            console.log(`Fetched travel_fee for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}: ${travelFee}`);
+          } else {
+            console.log(`No travel_fee defined for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}, using $0.00`);
+          }
+
+          // Update cart item only if fees differ
+          if (item.package.premium_amount !== premiumAmount || item.package.travel_fee !== travelFee) {
+            console.log(`Updating item ${item.id} with premium_amount: ${premiumAmount}, travel_fee: ${travelFee}`);
+            updateItem(item.id, {
+              ...item,
+              package: {
+                ...item.package,
+                premium_amount: premiumAmount,
+                travel_fee: travelFee,
+              },
+            });
+          }
+
+          // Mark item as fetched
+          fetchedItems.current.add(item.id);
+        }
+      } catch (err) {
+        console.error('Error fetching fees:', err);
+      } finally {
+        setIsFetchingFees(false);
+      }
+    };
+    fetchFees();
+  }, [cartItems, isFetchingFees]);
+
   const formatPrice = (amount: number | null | undefined) => {
     if (amount === undefined || amount === null || amount === 0) return null;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(amount / 100);
   };
 
   const calculateItemTotal = (item: any) => {
     const packagePrice = item.package.price / 100;
-    const premium = item.vendor && item.vendor.premium_amount && item.vendor.premium_amount > 0 ? item.vendor.premium_amount / 100 : 0;
-    const travel = item.vendor && item.vendor.travel_fee && item.vendor.travel_fee > 0 ? item.vendor.travel_fee / 100 : 0;
+    const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount / 100 : 0;
+    const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee / 100 : 0;
     const total = packagePrice + premium + travel;
     console.log(`Cart item ${item.id}: Package=${packagePrice}, Premium=${premium}, Travel=${travel}, Total=${total}`);
     return total;
@@ -53,13 +146,20 @@ export const Cart: React.FC = () => {
 
   const getServiceIcon = (serviceType: string) => {
     switch (serviceType) {
-      case 'Photography': return '📸';
-      case 'Videography': return '🎥';
-      case 'DJ Services': return '🎵';
-      case 'Live Musician': return '🎼';
-      case 'Coordination': return '👰';
-      case 'Planning': return '📅';
-      default: return '💍';
+      case 'Photography':
+        return '📸';
+      case 'Videography':
+        return '🎥';
+      case 'DJ Services':
+        return '🎵';
+      case 'Live Musician':
+        return '🎼';
+      case 'Coordination':
+        return '👰';
+      case 'Planning':
+        return '📅';
+      default:
+        return '💍';
     }
   };
 
@@ -70,12 +170,14 @@ export const Cart: React.FC = () => {
 
   const handleVendorSelected = (vendor: any, eventDetails: any) => {
     if (selectedCartItem) {
+      // Clear fetched status for this item to refetch fees
+      fetchedItems.current.delete(selectedCartItem.id);
       updateItem(selectedCartItem.id, {
         vendor,
         eventDate: eventDetails.eventDate,
         eventTime: eventDetails.eventTime,
         endTime: eventDetails.endTime,
-        venue: eventDetails.venue
+        venue: eventDetails.venue,
       });
     }
     setShowVendorModal(false);
@@ -88,19 +190,29 @@ export const Cart: React.FC = () => {
       return;
     }
 
-    // Check if all items have vendors selected
-    const itemsWithoutVendors = state.items.filter(item => !item.vendor);
-    if (itemsWithoutVendors.length > 0) {
-      alert('Please select vendors for all items before checkout');
+    // Check if all items have vendors and venues selected
+    const itemsWithoutVendorsOrVenues = state.items.filter((item) => !item.vendor?.id || !item.venue?.id);
+    if (itemsWithoutVendorsOrVenues.length > 0) {
+      alert('Please select vendors and venues for all items before checkout');
       return;
     }
+
+    // Calculate total amount excluding service fee to match Checkout.tsx
+    const totalAmount = state.items.reduce((sum, item) => {
+      const packagePrice = item.package.price || 0;
+      const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount : 0;
+      const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee : 0;
+      return sum + packagePrice + premium + travel;
+    }, 0);
+
+    console.log(`Navigating to checkout with totalAmount: ${totalAmount} cents (${formatPrice(totalAmount)})`);
 
     // Navigate to checkout with cart data
     navigate('/checkout', {
       state: {
         cartItems: state.items,
-        totalAmount: state.totalAmount
-      }
+        totalAmount,
+      },
     });
   };
 
@@ -109,22 +221,29 @@ export const Cart: React.FC = () => {
   };
 
   const totalServiceFee = state.items.length > 0 ? 50 : 0; // $50 per booking
-  const grandTotal = state.totalAmount + totalServiceFee * 100; // Convert to cents
+  const subtotal = state.items.reduce((sum, item) => {
+    const packagePrice = item.package.price || 0;
+    const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount : 0;
+    const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee : 0;
+    return sum + packagePrice + premium + travel;
+  }, 0);
+  const grandTotal = subtotal + totalServiceFee * 100; // Include service fee for display only
 
-  // Log totalAmount for debugging
-  console.log(`Rendering Cart with totalAmount: ${state.totalAmount} cents (${formatPrice(state.totalAmount)})`);
+  // Log totals for debugging
+  console.log(`Rendering Cart with subtotal: ${subtotal} cents (${formatPrice(subtotal)}), Service Fee: ${totalServiceFee} dollars, grandTotal: ${grandTotal} cents (${formatPrice(grandTotal)})`);
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {isFetchingFees && (
+        <div className="fixed inset-0 bg-gray-100 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-6">
-            <Button 
-              variant="ghost" 
-              icon={ArrowLeft} 
-              onClick={() => navigate(-1)}
-            >
+            <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate(-1)}>
               Continue Shopping
             </Button>
             <div>
@@ -141,13 +260,8 @@ export const Cart: React.FC = () => {
           <Card className="p-12 text-center">
             <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-6">
-              Add wedding packages to get started with your perfect day
-            </p>
-            <Button
-              variant="primary"
-              onClick={handleContinueShopping}
-            >
+            <p className="text-gray-600 mb-6">Add wedding packages to get started with your perfect day</p>
+            <Button variant="primary" onClick={handleContinueShopping}>
               Browse Wedding Services
             </Button>
           </Card>
@@ -156,8 +270,8 @@ export const Cart: React.FC = () => {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-6">
               {state.items.map((item) => {
-                const premiumPrice = item.vendor ? formatPrice(item.vendor.premium_amount) : null;
-                const travelFee = item.vendor ? formatPrice(item.vendor.travel_fee) : null;
+                const premiumPrice = item.package.premium_amount ? formatPrice(item.package.premium_amount) : null;
+                const travelFee = item.package.travel_fee ? formatPrice(item.package.travel_fee) : null;
                 const itemTotal = calculateItemTotal(item);
 
                 return (
@@ -167,14 +281,12 @@ export const Cart: React.FC = () => {
                       <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
                         {getServiceIcon(item.package.service_type)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         {/* Package Info */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                              {item.package.name}
-                            </h3>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.package.name}</h3>
                             <div className="flex items-center space-x-2 mb-2">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
                                 {item.package.service_type}
@@ -186,29 +298,17 @@ export const Cart: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-600 text-sm line-clamp-2 mb-3">
-                              {item.package.description}
-                            </p>
+                            <p className="text-gray-600 text-sm line-clamp-2 mb-3">{item.package.description}</p>
                           </div>
                           <div className="text-right ml-4">
-                            <div className="text-lg font-bold text-gray-900">
-                              Total: {formatPrice(itemTotal * 100)}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Package: {formatPrice(item.package.price)}
-                            </div>
-                            {item.vendor && (
-                              <>
-                                {premiumPrice && item.vendor.premium_amount !== null && item.vendor.premium_amount > 0 && (
-                                  <div className="text-sm text-gray-500">
-                                    Premium: {premiumPrice}
-                                  </div>
-                                )}
-                                <div className="text-sm text-gray-500">
-                                  Travel: {travelFee || 'Local ($0.00)'}
-                                </div>
-                              </>
+                            <div className="text-lg font-bold text-gray-900">{formatPrice(itemTotal * 100)}</div>
+                            <div className="text-sm text-gray-500">Package: {formatPrice(item.package.price)}</div>
+                            {premiumPrice && item.package.premium_amount > 0 && (
+                              <div className="text-sm text-gray-500">Premium: {premiumPrice}</div>
                             )}
+                            <div className="text-sm text-gray-500">
+                              Travel: {travelFee || 'Local ($0.00)'}
+                            </div>
                             <button
                               onClick={() => removeItem(item.id)}
                               className="text-red-500 hover:text-red-700 transition-colors mt-2"
@@ -229,26 +329,30 @@ export const Cart: React.FC = () => {
                                   <span>
                                     {(() => {
                                       const [year, month, day] = item.eventDate.split('-').map(Number);
-                                      return new Date(year, month - 1, day).toLocaleDateString('en-US', { timeZone: 'UTC' });
+                                      return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+                                        timeZone: 'UTC',
+                                      });
                                     })()}
                                     {item.eventTime && (
                                       <>
                                         {' at '}
-                                        {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                          hour12: true,
-                                          timeZone: 'UTC'
-                                        })}
+                                        {new Date(`2000-01-01T${item.eventTime}`)
+                                          .toLocaleTimeString('en-US', {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true,
+                                            timeZone: 'UTC',
+                                          })}
                                         {item.endTime && (
                                           <>
                                             {' - '}
-                                            {new Date(`2000-01-01T${item.endTime}`).toLocaleTimeString('en-US', {
-                                              hour: 'numeric',
-                                              minute: '2-digit',
-                                              hour12: true,
-                                              timeZone: 'UTC'
-                                            })}
+                                            {new Date(`2000-01-01T${item.endTime}`)
+                                              .toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true,
+                                                timeZone: 'UTC',
+                                              })}
                                           </>
                                         )}
                                       </>
@@ -261,7 +365,9 @@ export const Cart: React.FC = () => {
                                   <MapPin className="w-4 h-4 mr-2" />
                                   <span>{item.venue.name}</span>
                                   {item.venue.city && item.venue.state && (
-                                    <span className="ml-1">({item.venue.city}, {item.venue.state})</span>
+                                    <span className="ml-1">
+                                      ({item.venue.city}, {item.venue.state})
+                                    </span>
                                   )}
                                 </div>
                               )}
@@ -288,11 +394,7 @@ export const Cart: React.FC = () => {
                                   )}
                                 </div>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleChooseVendor(item)}
-                              >
+                              <Button variant="outline" size="sm" onClick={() => handleChooseVendor(item)}>
                                 Change
                               </Button>
                             </div>
@@ -304,11 +406,7 @@ export const Cart: React.FC = () => {
                                 <h4 className="font-medium text-amber-900">Vendor Selection Required</h4>
                                 <p className="text-amber-700 text-sm">Choose your preferred vendor for this service</p>
                               </div>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => handleChooseVendor(item)}
-                              >
+                              <Button variant="primary" size="sm" onClick={() => handleChooseVendor(item)}>
                                 Choose Vendor
                               </Button>
                             </div>
@@ -321,7 +419,10 @@ export const Cart: React.FC = () => {
                             <h4 className="font-medium text-gray-900 mb-2">What's Included</h4>
                             <div className="flex flex-wrap gap-2">
                               {item.package.features.slice(0, 4).map((feature, index) => (
-                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"
+                                >
                                   <Check className="w-3 h-3 mr-1" />
                                   {feature}
                                 </span>
@@ -364,35 +465,29 @@ export const Cart: React.FC = () => {
             <div>
               <Card className="p-6 sticky top-4">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h3>
-                
+
                 <div className="space-y-4 mb-6">
                   {state.items.map((item) => {
                     const itemTotal = calculateItemTotal(item);
                     return (
                       <div key={item.id} className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 text-sm line-clamp-2">
-                            {item.package.name}
-                          </h4>
+                          <h4 className="font-medium text-gray-900 text-sm line-clamp-2">{item.package.name}</h4>
                           <p className="text-xs text-gray-600">{item.package.service_type}</p>
                           {item.vendor && (
                             <>
                               <p className="text-xs text-gray-600">Vendor: {item.vendor.name}</p>
-                              {item.vendor.premium_amount && item.vendor.premium_amount > 0 && (
-                                <p className="text-xs text-gray-600">
-                                  Premium: {formatPrice(item.vendor.premium_amount)}
-                                </p>
+                              {item.package.premium_amount && item.package.premium_amount > 0 && (
+                                <div className="text-sm text-gray-500">Premium: {formatPrice(item.package.premium_amount)}</div>
                               )}
                               <p className="text-xs text-gray-600">
-                                Travel: {item.vendor.travel_fee && item.vendor.travel_fee > 0 ? formatPrice(item.vendor.travel_fee) : 'Local ($0.00)'}
+                                Travel: {item.package.travel_fee && item.package.travel_fee > 0 ? formatPrice(item.package.travel_fee) : 'Local ($0.00)'}
                               </p>
                             </>
                           )}
                         </div>
                         <div className="text-right ml-3">
-                          <div className="font-medium text-gray-900">
-                            {formatPrice(itemTotal * 100)}
-                          </div>
+                          <div className="font-medium text-gray-900">{formatPrice(itemTotal * 100)}</div>
                         </div>
                       </div>
                     );
@@ -402,14 +497,14 @@ export const Cart: React.FC = () => {
                 <div className="border-t pt-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{formatPrice(state.totalAmount)}</span>
+                    <span className="font-medium">{formatPrice(subtotal)}</span>
                   </div>
-                  
+
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service Fee</span>
                     <span className="font-medium">${totalServiceFee}</span>
                   </div>
-                  
+
                   <div className="flex justify-between text-lg font-semibold border-t pt-3">
                     <span>Total</span>
                     <span>{formatPrice(grandTotal)}</span>
@@ -423,16 +518,12 @@ export const Cart: React.FC = () => {
                     className="w-full"
                     onClick={handleCheckout}
                     icon={ArrowRight}
-                    disabled={state.items.length === 0}
+                    disabled={state.items.length === 0 || isFetchingFees}
                   >
                     {isAuthenticated ? 'Proceed to Checkout' : 'Sign In to Checkout'}
                   </Button>
-                  
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleContinueShopping}
-                  >
+
+                  <Button variant="outline" className="w-full" onClick={handleContinueShopping}>
                     Continue Shopping
                   </Button>
                 </div>
@@ -466,23 +557,15 @@ export const Cart: React.FC = () => {
               <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Heart className="w-6 h-6 text-rose-600" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                Complete Your Perfect Day
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Complete Your Perfect Day</h3>
               <p className="text-gray-600 mb-6">
                 Based on your selections, here are some services that would complement your wedding beautifully
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  variant="primary"
-                  onClick={() => navigate('/search')}
-                >
+                <Button variant="primary" onClick={() => navigate('/search')}>
                   Browse More Services
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/inspiration')}
-                >
+                <Button variant="outline" onClick={() => navigate('/inspiration')}>
                   Get Inspiration
                 </Button>
               </div>
@@ -505,11 +588,7 @@ export const Cart: React.FC = () => {
       )}
 
       {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        initialMode="signup"
-      />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode="signup" />
     </div>
   );
 };

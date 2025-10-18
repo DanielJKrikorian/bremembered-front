@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Outlet, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { StoreCartProvider } from '../context/StoreCartContext';
 import { useCart } from '../context/CartContext';
 import { Header } from './common/Header';
@@ -20,7 +20,7 @@ import { EventDetails } from '../pages/booking/EventDetails';
 import { PackageCongratulations } from '../pages/booking/PackageCongratulations';
 import { VendorRecommendation } from '../pages/booking/VendorRecommendation';
 import { PackageDetails } from '../pages/PackageDetails';
-import VendorProfile from '../pages/VendorProfile'; // Correct default import
+import VendorProfile from '../pages/VendorProfile';
 import { VendorOnboarding } from '../pages/VendorOnboarding';
 import { VendorApplication } from '../pages/VendorApplication';
 import { BookingDetails } from '../pages/BookingDetails';
@@ -38,6 +38,7 @@ import { AdvertiseWithUs } from '../pages/AdvertiseWithUs';
 import { WeddingStore } from '../pages/WeddingStore';
 import { ProductDetail } from '../pages/ProductDetail';
 import { OrderTracking } from '../pages/OrderTracking';
+import VendorWebsite from '../pages/VendorWebsite';
 import { StoreSuccess } from '../pages/StoreSuccess';
 import { LocationServicePage } from '../pages/LocationServicePage';
 import { WeddingWebsite } from '../components/profile/WeddingWebsite';
@@ -115,6 +116,7 @@ export const AppContent: React.FC = () => {
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const { updateItem } = useCart();
+  const location = useLocation();
 
   const handleChooseVendor = (cartItem: any) => {
     setSelectedCartItem(cartItem);
@@ -135,10 +137,13 @@ export const AppContent: React.FC = () => {
     setSelectedCartItem(null);
   };
 
+  // Hide header for /website/* routes
+  const hideHeader = location.pathname.startsWith('/v/') || location.pathname.startsWith('/website/');
+
   return (
     <StoreCartProvider>
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        {!hideHeader && <Header />}
         <main>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -170,6 +175,8 @@ export const AppContent: React.FC = () => {
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/cancellation" element={<CancellationPolicy />} />
+            <Route path="/v/:vendorSlug/*" element={<VendorWebsite />} />
+            <Route path="/website/:vendorSlug/*" element={<VendorWebsite />} />
             <Route path="/store" element={<WeddingStore />} />
             <Route path="/store/product/:id" element={<ProductDetail />} />
             <Route path="/orders" element={<OrderTracking />} />

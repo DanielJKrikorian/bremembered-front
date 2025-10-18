@@ -54,10 +54,10 @@ interface BookingSummary {
   id: string;
   service_type: string;
   vendor_id: string;
+  vendor_name: string;
   status: string;
-  deposit: number;
-  final: number;
-  total: number;
+  spent: number; // Sum of payments.amount
+  total: number; // vendor_deposit_share + platform_deposit_share + vendor_final_share + platform_final_share
 }
 
 export const WeddingBudget: React.FC = () => {
@@ -103,25 +103,51 @@ export const WeddingBudget: React.FC = () => {
         }
         setBudgetItems(items || []);
 
-        // Fetch bookings
+        // Fetch bookings with vendor name and payment amounts
         const { data: bookingData, error: bookingError } = await supabase
           .from('bookings')
-          .select('*')
+          .select(`
+            id,
+            service_type,
+            vendor_id,
+            status,
+            vendor_deposit_share,
+            platform_deposit_share,
+            vendor_final_share,
+            platform_final_share,
+            vendors!inner(name)
+          `)
           .eq('couple_id', couple.id)
-          .in('status', ['confirmed', 'completed']); // Use valid enum values
+          .in('status', ['confirmed', 'completed']);
         if (bookingError) {
           console.error('Error fetching bookings:', bookingError);
           throw new Error('Failed to fetch bookings: ' + bookingError.message);
         }
-        const summaries = bookingData?.map((b: any) => ({
-          id: b.id,
-          service_type: b.service_type,
-          vendor_id: b.vendor_id,
-          status: b.status,
-          deposit: (b.vendor_deposit_share || 0) + (b.platform_deposit_share || 0),
-          final: (b.vendor_final_share || 0) + (b.platform_final_share || 0),
-          total: ((b.vendor_deposit_share || 0) + (b.platform_deposit_share || 0) + (b.vendor_final_share || 0) + (b.platform_final_share || 0)),
-        })) || [];
+
+        // Fetch payment amounts for each booking
+        const summaries = await Promise.all(
+          bookingData?.map(async (b: any) => {
+            const { data: paymentData, error: paymentError } = await supabase
+              .from('payments')
+              .select('amount')
+              .eq('vendor_id', b.vendor_id)
+              .eq('couple_id', couple.id);
+            if (paymentError) {
+              console.error(`Error fetching payments for vendor ${b.vendor_id}, couple ${couple.id}:`, paymentError);
+              throw new Error(`Failed to fetch payments: ${paymentError.message}`);
+            }
+            const spent = paymentData?.reduce((sum: number, payment: any) => sum + (payment.amount || 0), 0) || 0;
+            return {
+              id: b.id,
+              service_type: b.service_type,
+              vendor_id: b.vendor_id,
+              vendor_name: b.vendors?.name || 'Unknown Vendor',
+              status: b.status,
+              spent, // Sum of payments.amount
+              total: ((b.vendor_deposit_share || 0) + (b.platform_deposit_share || 0) + (b.vendor_final_share || 0) + (b.platform_final_share || 0)),
+            };
+          }) || [],
+        );
         setBookings(summaries);
       } catch (err: any) {
         console.error('Error fetching budget data:', err);
@@ -250,8 +276,8 @@ export const WeddingBudget: React.FC = () => {
     });
     bookings.forEach(booking => {
       categories[booking.service_type] = categories[booking.service_type] || { spent: 0, owed: 0 };
-      categories[booking.service_type].spent += booking.deposit + booking.final;
-      categories[booking.service_type].owed += booking.status !== 'confirmed' && booking.status !== 'completed' ? booking.final : 0;
+      categories[booking.service_type].spent += booking.spent;
+      categories[booking.service_type].owed += booking.total - booking.spent;
     });
     return Object.entries(categories)
       .filter(([_, { spent, owed }]) => spent > 0 || owed > 0)
@@ -453,10 +479,10 @@ export const WeddingBudget: React.FC = () => {
               {bookings.map((booking) => (
                 <tr key={booking.id} className="bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.service_type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.vendor_id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.vendor_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(booking.total / 100).toLocaleString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${((booking.deposit + booking.final) / 100).toLocaleString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">${(booking.status !== 'confirmed' && booking.status !== 'completed' ? booking.final / 100 : 0).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${(booking.spent / 100).toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">${((booking.total - booking.spent) / 100).toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Booked on platform</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"></td>
                 </tr>

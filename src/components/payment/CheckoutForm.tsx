@@ -85,8 +85,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
   const [coupleId, setCoupleId] = useState<string | null>(null);
   const [processedPaymentIntents, setProcessedPaymentIntents] = useState<string[]>([]);
   const [paymentDetailsComplete, setPaymentDetailsComplete] = useState(false);
-
-  // Initialize formData with values from user and couple
   const [formData, setFormData] = useState<CheckoutFormData>({
     partner1Name: user?.user_metadata?.name || couple?.partner1_name || '',
     partner2Name: couple?.partner2_name || '',
@@ -104,7 +102,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     acceptStripe: false,
   });
 
-  // Memoize formData to reduce re-renders
   const memoizedFormData = useMemo(
     () => ({
       email: formData.email,
@@ -138,22 +135,35 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     ]
   );
 
-  // Normalize cart items to ensure travel_fee is defined
   const normalizedCartItems = useMemo(
     () =>
       cartItems.map(item => ({
         ...item,
         package: {
           ...item.package,
-          price: item.package?.price || 0,
-          premium_amount: item.package?.premium_amount || 0,
-          travel_fee: item.package?.travel_fee ?? 0, // Default to 0 if undefined or null
+          price: Number(item.package?.price) || 0,
+          premium_amount: Number(item.package?.premium_amount) || 0,
+          travel_fee: Number(item.package?.travel_fee) || 0,
+          service_type: item.package?.service_type || 'unknown',
+          event_type: item.package?.event_type || 'wedding',
+          id: item.package?.id || '',
+          name: item.package?.name || 'Unknown Package',
         },
+        vendor: {
+          id: item.vendor?.id || '',
+          name: item.vendor?.name || 'Unknown Vendor',
+          stripe_account_id: item.vendor?.stripe_account_id || null,
+        },
+        venue: item.venue ? { id: item.venue.id, name: item.venue.name } : null,
+        eventDate: item.eventDate || '',
+        eventTime: item.eventTime || '',
+        endTime: item.endTime || '',
+        id: item.id || '',
+        discount: Number(item.discount) || 0,
       })),
     [cartItems]
   );
 
-  // Calculate totals using normalized cart items
   const subtotal = useMemo(
     () =>
       normalizedCartItems.reduce(
@@ -166,13 +176,13 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       ),
     [normalizedCartItems]
   );
+
   const totalDiscount = discountAmount + referralDiscount;
   const discountedTotal = Math.max(0, subtotal - totalDiscount);
-  const platformFee = Number(normalizedCartItems.length > 0 ? 50 * 100 : 0);
+  const platformFee = normalizedCartItems.length > 0 ? 5000 : 0;
   const depositAmount = Math.round(discountedTotal * 0.5);
   const grandTotal = depositAmount + platformFee;
 
-  // Debug initialization
   useEffect(() => {
     console.log('=== CHECKOUT FORM INITIALIZATION ===', new Date().toISOString());
     console.log('Stripe instance:', !!stripe);
@@ -188,19 +198,41 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     console.log('Couple:', couple ? { id: couple.id, email: couple.email } : 'No couple');
     console.log('Form data:', memoizedFormData);
     console.log('Payment details complete:', paymentDetailsComplete);
-    console.log('Calculated subtotal:', subtotal);
-    console.log('Prop totalAmount:', propTotalAmount);
     console.log('Cart items:', normalizedCartItems.map(item => ({
       id: item.id,
-      package_price: item.package?.price,
-      premium_amount: item.package?.premium_amount,
-      travel_fee: item.package?.travel_fee,
-      service_type: item.package?.service_type,
-      event_type: item.package?.event_type,
+      package_price: item.package.price,
+      premium_amount: item.package.premium_amount,
+      travel_fee: item.package.travel_fee,
+      service_type: item.package.service_type,
+      event_type: item.package.event_type,
+      discount: item.discount,
     })));
-  }, [stripe, elements, currentStep, clientSecret, paymentIntentId, isAuthenticated, authToken, coupleId, processedPaymentIntents, user, couple, memoizedFormData, paymentDetailsComplete, normalizedCartItems, subtotal, propTotalAmount]);
+    console.log('Calculated totals:', { subtotal, totalDiscount, discountedTotal, depositAmount, platformFee, grandTotal });
+    console.log('Prop totalAmount:', propTotalAmount);
+  }, [
+    stripe,
+    elements,
+    currentStep,
+    clientSecret,
+    paymentIntentId,
+    isAuthenticated,
+    authToken,
+    coupleId,
+    processedPaymentIntents,
+    user,
+    couple,
+    memoizedFormData,
+    paymentDetailsComplete,
+    normalizedCartItems,
+    subtotal,
+    totalDiscount,
+    discountedTotal,
+    depositAmount,
+    platformFee,
+    grandTotal,
+    propTotalAmount,
+  ]);
 
-  // Fetch and validate session token, and get or create couple ID
   useEffect(() => {
     const fetchSessionAndCouple = async () => {
       console.log('=== FETCH SESSION AND COUPLE ===', new Date().toISOString());
@@ -269,26 +301,50 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
     fetchSessionAndCouple();
   }, [isAuthenticated, user, memoizedFormData]);
+  
+  useEffect(() => {
+  const updateCouplePhone = async () => {
+    if (!coupleId || !formData.phone || formData.phone.trim() === '' || !authToken) return;
 
-  // Fetch contract templates
+    console.log('=== UPDATE COUPLE PHONE ===', new Date().toISOString());
+    console.log('Updating couple phone for ID:', coupleId, 'phone:', formData.phone);
+
+    const { data, error } = await supabase
+      .from('couples')
+      .update({ phone: formData.phone.trim() })
+      .eq('id', coupleId);
+
+    if (error) {
+      console.error('Error updating couple phone:', error);
+      setError('Failed to update profile. Please try again.');
+    } else {
+      console.log('Couple phone updated successfully');
+    }
+  };
+
+  updateCouplePhone();
+}, [formData.phone, coupleId, authToken]); // Run when phone changes or coupleId is set
+
   useEffect(() => {
     const fetchContractTemplates = async () => {
       console.log('=== FETCH CONTRACT TEMPLATES ===', new Date().toISOString());
       console.log('Cart items:', normalizedCartItems.map(item => ({
         id: item.id,
-        service_type: item.package?.service_type,
-        package_name: item.package?.name,
-        price: item.package?.price,
-        premium_amount: item.package?.premium_amount,
-        travel_fee: item.package?.travel_fee,
+        service_type: item.package.service_type,
+        package_name: item.package.name,
+        price: item.package.price,
+        premium_amount: item.package.premium_amount,
+        travel_fee: item.package.travel_fee,
+        discount: item.discount,
       })));
       if (!normalizedCartItems.length) {
         console.log('No cart items, skipping contract fetch');
         setContractTemplates([]);
         setContractsLoading(false);
+        setError('No cart items found. Please add services to proceed.');
         return;
       }
-      const serviceTypes = [...new Set(normalizedCartItems.map((item) => item.package?.service_type).filter(Boolean))];
+      const serviceTypes = [...new Set(normalizedCartItems.map((item) => item.package.service_type).filter(Boolean))];
       console.log('Service types:', serviceTypes);
       if (!serviceTypes.length) {
         console.warn('No valid service types found in cart items');
@@ -299,47 +355,40 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
       }
       if (!supabase || !isSupabaseConfigured()) {
         console.log('Supabase not configured, generating mock contract templates');
-        const platformFee = Number(normalizedCartItems.length > 0 ? 50 * 100 : 0);
-        const mockTemplates: ContractTemplate[] = normalizedCartItems.map((item) => {
-          const packagePrice = item.package?.price || 0;
-          const premiumAmount = item.package?.premium_amount || 0;
-          const travelFee = item.package?.travel_fee || 0;
-          const vendorDeposit = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
-          return {
-            id: `template-${item.package.service_type || 'unknown'}`,
-            service_type: item.package.service_type || 'unknown',
-            content: `${(item.package.service_type || 'Service').toUpperCase()} SERVICE AGREEMENT
+        const mockTemplates: ContractTemplate[] = normalizedCartItems.map((item) => ({
+          id: `template-${item.package.service_type}`,
+          service_type: item.package.service_type,
+          content: `${item.package.service_type.toUpperCase()} SERVICE AGREEMENT
 This agreement is between ${memoizedFormData.partner1Name || 'Client'}${
-              memoizedFormData.partner2Name ? ` & ${memoizedFormData.partner2Name}` : ''
-            } (Client) and ${item.vendor?.name || 'Service Provider'} for ${(item.package.service_type || 'service').toLowerCase()} services.
+            memoizedFormData.partner2Name ? ` & ${memoizedFormData.partner2Name}` : ''
+          } (Client) and ${item.vendor.name} for ${item.package.service_type.toLowerCase()} services.
 EVENT DETAILS:
-- Date: ${item.eventDate || 'N/A'}
-- Time: ${item.eventTime || 'N/A'} to ${item.endTime || 'N/A'}
+- Date: ${item.eventDate}
+- Time: ${item.eventTime} to ${item.endTime}
 - Location: ${item.venue?.name || 'N/A'}
-- Service: ${item.package.name || 'N/A'}
-- Event Type: ${item.package.event_type || 'Wedding'}
+- Service: ${item.package.name}
+- Event Type: ${item.package.event_type}
 SERVICES PROVIDED:
-${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${(item.package.service_type || 'service').toLowerCase()} services`}
+${item.package.features?.map((feature: string) => `- ${feature}`).join('\n') || `- Professional ${item.package.service_type.toLowerCase()} services`}
 PAYMENT TERMS:
-- Package Price: $${(packagePrice / 100).toFixed(2)}
-- Premium Fee: ${premiumAmount > 0 ? `$${premiumAmount / 100}` : 'None'}
-- Travel Fee: ${travelFee > 0 ? `$${travelFee / 100}` : 'None'}
-- Vendor Deposit (25% Package + 50% Premium + 50% Travel): $${(vendorDeposit / 100).toFixed(2)}
-- Platform Fee (Per Order): $${(platformFee / 100).toFixed(2)}
-- Total Deposit Due: $${((vendorDeposit + platformFee) / 100).toFixed(2)}
-- Balance Due: $${((packagePrice * 0.5 + premiumAmount * 0.5 + travelFee * 0.5) / 100).toFixed(2)}
+- Package Price: $${(item.package.price / 100).toFixed(2)}
+- Premium Fee: $${(item.package.premium_amount / 100).toFixed(2)}
+- Travel Fee: $${(item.package.travel_fee / 100).toFixed(2)}
+- Discount: $${(item.discount / 100).toFixed(2)}
+- Deposit (50%): $${((item.package.price * 0.5 + item.package.premium_amount * 0.5 + item.package.travel_fee * 0.5 - item.discount * 0.5) / 100).toFixed(2)}
+- Platform Fee: $${(platformFee / 100).toFixed(2)}
+- Total Due Today: $${(grandTotal / 100).toFixed(2)}
+- Balance Due: $${((item.package.price * 0.5 + item.package.premium_amount * 0.5 + item.package.travel_fee * 0.5 - item.discount * 0.5) / 100).toFixed(2)}
 TERMS AND CONDITIONS:
-1. The Service Provider agrees to provide professional ${(item.package.service_type || 'service').toLowerCase()} services for the specified event.
-2. The Client agrees to pay the total amount as outlined in the payment schedule.
-3. Cancellation policy: 30 days notice required for partial refund of deposit.
-4. The Service Provider retains copyright to all work but grants usage rights to the Client.
+1. The Service Provider agrees to provide professional ${item.package.service_type.toLowerCase()} services.
+2. The Client agrees to pay the total amount as outlined.
+3. Cancellation policy: 30 days notice required for partial refund.
+4. The Service Provider retains copyright but grants usage rights.
 5. Weather contingency plans will be discussed prior to the event.
-6. Any changes to services must be agreed upon in writing by both parties.
-By signing below, both parties agree to the terms outlined in this contract.`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-        });
+6. Changes to services must be agreed upon in writing.`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
         console.log('Mock templates generated:', mockTemplates);
         setContractTemplates(mockTemplates);
         setContractsLoading(false);
@@ -354,82 +403,101 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           .in('service_type', serviceTypes);
         if (error) {
           console.error('Contract templates fetch error:', error);
-          throw error;
+          setError('Failed to load contract templates. Please try again or contact support.');
+          setContractTemplates([]);
+          return;
         }
         console.log('Contract templates fetched:', data || []);
         setContractTemplates(data || []);
+        if (!data || data.length === 0) {
+          setError('No contracts found for the selected services. Please try again or contact support.');
+        }
       } catch (err) {
         console.error('Error fetching contract templates:', err);
-        setError('Failed to load contract templates. Please try again.');
+        setError('Failed to load contract templates. Please try again or contact support.');
+        setContractTemplates([]);
       } finally {
         setContractsLoading(false);
       }
     };
-    fetchContractTemplates();
-  }, [normalizedCartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name]);
-
-  // Attach CardElement change listener
-  useEffect(() => {
-    if (elements) {
-      const cardElement = elements.getElement(CardElement);
-      if (cardElement) {
-        console.log('=== CARD ELEMENT INITIALIZED ===', new Date().toISOString());
-        console.log('CardElement setup:', {
-          elementType: 'CardElement',
-          stripeVersion: stripe ? 'loaded' : 'not loaded',
-          elementsVersion: elements ? 'loaded' : 'not loaded',
-        });
-        const handleChange = (event: any) => {
-          console.log('=== CARD ELEMENT CHANGE ===', new Date().toISOString());
-          console.log('Change event:', {
-            complete: event.complete,
-            error: event.error,
-            value: event.value,
-            elementType: event.elementType,
-            empty: event.empty,
-            brand: event.brand,
-          });
-          setPaymentDetailsComplete(event.complete);
-          if (event.error) {
-            setError(event.error.message);
-          } else {
-            setError(null);
-          }
-        };
-        cardElement.on('change', handleChange);
-        cardElement.on('focus', () => console.log('=== CARD ELEMENT FOCUS ===', new Date().toISOString()));
-        cardElement.on('blur', async () => {
-          console.log('=== CARD ELEMENT BLUR ===', new Date().toISOString());
-          if (!paymentDetailsComplete && stripe) {
-            console.log('=== BLUR VALIDATION CHECK ===', new Date().toISOString());
-            const { error, paymentMethod } = await stripe.createPaymentMethod({
-              type: 'card',
-              card: cardElement,
-            });
-            console.log('Blur validation result:', { error, paymentMethod: paymentMethod ? { id: paymentMethod.id, card: paymentMethod.card } : null });
-            if (!error && paymentMethod) {
-              setPaymentDetailsComplete(true);
-              setError(null);
-            } else {
-              setError(error?.message || 'Card information incomplete');
-            }
-          }
-        });
-        cardElement.on('ready', () => console.log('=== CARD ELEMENT READY ===', new Date().toISOString()));
-        return () => {
-          console.log('=== CARD ELEMENT CLEANUP ===', new Date().toISOString());
-          cardElement.off('change', handleChange);
-          cardElement.off('focus');
-          cardElement.off('blur');
-          cardElement.off('ready');
-        };
-      } else {
-        console.warn('CardElement not found');
-      }
-    } else {
-      console.warn('Elements instance not initialized');
+    if (currentStep === 2) {
+      fetchContractTemplates();
     }
-  }, [elements, stripe, paymentDetailsComplete]);
+  }, [normalizedCartItems, memoizedFormData.partner1Name, memoizedFormData.partner2Name, platformFee, grandTotal, currentStep]);
+
+  useEffect(() => {
+    const setupPaymentElement = () => {
+      if (!elements || !stripe) {
+        console.warn('Stripe Elements or Stripe instance not initialized');
+        setError('Payment system not ready. Please refresh and try again.');
+        return;
+      }
+      if (paymentMethod === 'card') {
+        const cardElement = elements.getElement(CardElement);
+        if (cardElement) {
+          console.log('=== CARD ELEMENT INITIALIZED ===', new Date().toISOString());
+          const handleChange = (event: any) => {
+            console.log('=== CARD ELEMENT CHANGE ===', new Date().toISOString());
+            console.log('Change event:', {
+              complete: event.complete,
+              error: event.error,
+              value: event.value,
+              elementType: event.elementType,
+              empty: event.empty,
+              brand: event.brand,
+            });
+            setPaymentDetailsComplete(event.complete);
+            if (event.error) {
+              setError(event.error.message);
+            } else {
+              setError(null);
+            }
+          };
+          cardElement.on('change', handleChange);
+          return () => {
+            console.log('=== CARD ELEMENT CLEANUP ===', new Date().toISOString());
+            cardElement.off('change', handleChange);
+          };
+        } else {
+          console.warn('CardElement not found');
+          setError('Card input failed to load. Please refresh and try again.');
+        }
+      } else if (paymentMethod === 'affirm') {
+        const paymentElement = elements.getElement(PaymentElement);
+        if (paymentElement) {
+          console.log('=== PAYMENT ELEMENT INITIALIZED ===', new Date().toISOString());
+          const handleChange = (event: any) => {
+            console.log('=== PAYMENT ELEMENT CHANGE ===', new Date().toISOString());
+            console.log('Change event:', {
+              complete: event.complete,
+              error: event.error,
+              value: event.value,
+              elementType: event.elementType,
+              empty: event.empty,
+            });
+            setPaymentDetailsComplete(event.complete);
+            if (event.error) {
+              setError(event.error.message);
+            } else {
+              setError(null);
+            }
+          };
+          paymentElement.on('change', handleChange);
+          return () => {
+            console.log('=== PAYMENT ELEMENT CLEANUP ===', new Date().toISOString());
+            paymentElement.off('change', handleChange);
+          };
+        } else {
+          console.warn('PaymentElement not found');
+          setError('Affirm payment input failed to load. Please refresh and try again.');
+        }
+      }
+    };
+    if (currentStep === 3) {
+      const cleanup = setupPaymentElement();
+      return cleanup;
+    }
+  }, [elements, paymentMethod, currentStep, stripe]);
 
   const states = ['MA', 'RI', 'NH', 'CT', 'ME', 'VT', 'NY', 'NJ', 'PA', 'CA', 'FL', 'TX'];
 
@@ -520,7 +588,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     console.log('Form data:', memoizedFormData);
     console.log('Cart items:', normalizedCartItems);
     console.log('Couple ID:', coupleId);
-    console.log('Total amount:', subtotal);
+    console.log('Totals:', { subtotal, totalDiscount, discountedTotal, depositAmount, platformFee, grandTotal });
+    if (isInitializingPayment) {
+      console.log('Skipping validation while initializing payment');
+      return true;
+    }
     const requiredFields = ['partner1Name', 'email', 'phone', 'billingAddress', 'city', 'state', 'zipCode'];
     for (const field of requiredFields) {
       if (!memoizedFormData[field as keyof typeof memoizedFormData]) {
@@ -545,10 +617,22 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Cart is empty. Please add items to proceed.');
       return false;
     }
-    if (!normalizedCartItems[0]?.eventDate || !normalizedCartItems[0]?.eventTime || !normalizedCartItems[0]?.endTime || !normalizedCartItems[0]?.venue?.name) {
-      console.log('Validation failed: Missing event details');
-      setError('Cart items are missing required event details (date, start time, end time, or location).');
-      return false;
+    for (const item of normalizedCartItems) {
+      if (!item.eventDate || !item.eventTime || !item.endTime || !item.venue?.name) {
+        console.log('Validation failed: Missing event details for item:', item.id);
+        setError('Cart items are missing required event details (date, start time, end time, or location).');
+        return false;
+      }
+      if (!item.package.id || !item.package.service_type || !item.package.event_type) {
+        console.log('Validation failed: Missing package details for item:', item.id);
+        setError('Cart items are missing required package details.');
+        return false;
+      }
+      if (item.package.price <= 0 && item.package.premium_amount <= 0 && item.package.travel_fee <= 0) {
+        console.log('Validation failed: Invalid pricing for item:', item.id);
+        setError('Cart items must have valid pricing.');
+        return false;
+      }
     }
     const validEventTypes = ['wedding', 'engagement', 'proposal'];
     const eventType = normalizedCartItems[0]?.package.event_type?.toLowerCase();
@@ -564,14 +648,24 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setAuthMode('login');
       return false;
     }
-    if (subtotal <= 0) {
-      console.log('Validation failed: Total amount <= 0');
+    if (subtotal <= 0 || grandTotal <= 0) {
+      console.log('Validation failed: Invalid totals', { subtotal, grandTotal });
       setError('Total amount must be greater than zero.');
       return false;
     }
+    if (currentStep === 2) {
+      const allSigned = contractTemplates.every(
+        (template) => signatures[template.service_type] && signatures[template.service_type].trim() !== ''
+      );
+      if (!allSigned) {
+        console.log('Validation failed: Not all contracts are signed');
+        setError('Please sign all contracts before proceeding');
+        return false;
+      }
+    }
     console.log('Validation passed');
     return true;
-  }, [currentStep, memoizedFormData, normalizedCartItems, coupleId, subtotal, paymentMethod]);
+  }, [currentStep, memoizedFormData, normalizedCartItems, coupleId, subtotal, totalDiscount, discountedTotal, depositAmount, platformFee, grandTotal, paymentMethod, isInitializingPayment, contractTemplates, signatures]);
 
   const handleLogin = useCallback(async () => {
     if (!memoizedFormData.email || !memoizedFormData.password) {
@@ -765,14 +859,72 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setError('Payment system not ready. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
+    if (isInitializingPayment) {
+      console.log('Skipping payment validation while initializing payment');
+      return { paymentIntentId: null, pendingBookingId: null };
+    }
     try {
+      const cartItemsWithVendorAmount = normalizedCartItems.map(item => {
+        const packagePrice = item.package.price || 0;
+        const premiumAmount = item.package.premium_amount || 0;
+        const travelFee = item.package.travel_fee || 0;
+        const discount = item.discount || 0;
+        const vendorAmount = Math.round((packagePrice - discount) * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
+        return {
+          id: item.id,
+          package: {
+            id: item.package.id,
+            name: item.package.name,
+            price: packagePrice,
+            premium_amount: premiumAmount,
+            travel_fee: travelFee,
+            service_type: item.package.service_type,
+            event_type: item.package.event_type.toLowerCase(),
+          },
+          vendor: {
+            id: item.vendor.id,
+            name: item.vendor.name,
+            stripe_account_id: item.vendor.stripe_account_id,
+          },
+          vendor_amount: vendorAmount,
+          eventDate: item.eventDate,
+          eventTime: item.eventTime,
+          endTime: item.endTime,
+          venue: item.venue,
+          discount,
+        };
+      });
+      console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
+      const expectedSubtotal = cartItemsWithVendorAmount.reduce(
+        (sum, item) =>
+          sum +
+          (item.package.price || 0) +
+          (item.package.premium_amount || 0) +
+          (item.package.travel_fee || 0),
+        0
+      );
+      const expectedDeposit = Math.round((expectedSubtotal - totalDiscount) * 0.5);
+      const expectedGrandTotal = expectedDeposit + platformFee;
+      console.log('Calculated totals:', {
+        expectedSubtotal,
+        totalDiscount,
+        expectedDeposit,
+        platformFee,
+        expectedGrandTotal,
+        providedSubtotal: subtotal,
+        providedGrandTotal: grandTotal,
+      });
+      if (expectedSubtotal !== subtotal || expectedGrandTotal !== grandTotal) {
+        console.error(`Total amount mismatch: expected ${expectedGrandTotal}, got ${grandTotal}`);
+        setError(`Total amount mismatch: expected $${(expectedGrandTotal / 100).toFixed(2)}, got $${(grandTotal / 100).toFixed(2)}`);
+        return { paymentIntentId: null, pendingBookingId: null };
+      }
       if (paymentMethod === 'card') {
         const cardElement = elements.getElement(CardElement);
         if (!cardElement) {
           setError('Card information not found. Please try again.');
           return { paymentIntentId: null, pendingBookingId: null };
         }
-        // Create Payment Method
         console.log('Creating Payment Method for card payment');
         const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
           type: 'card',
@@ -794,7 +946,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           throw new Error(paymentMethodError.message || 'Failed to create payment method');
         }
         console.log('Payment Method created:', paymentMethod.id);
-        // Check for existing pending bookings to prevent duplicates
         const cartItemIds = normalizedCartItems.map(item => item.id);
         const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
           .from('pending_bookings')
@@ -807,40 +958,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         if (existingPendingBookings?.length > 0) {
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
-        // Calculate vendor amounts for the deposit
-        const cartItemsWithVendorAmount = normalizedCartItems.map(item => {
-          const packagePrice = item.package?.price || 0;
-          const premiumAmount = item.package?.premium_amount || 0;
-          const travelFee = item.package?.travel_fee ?? 0;
-          const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
-          return {
-            id: item.id,
-            package: {
-              id: item.package.id,
-              name: item.package.name,
-              price: packagePrice,
-              premium_amount: premiumAmount,
-              travel_fee: travelFee,
-              service_type: item.package.service_type,
-              event_type: item.package.event_type?.toLowerCase(),
-            },
-            vendor: {
-              id: item.vendor?.id,
-              name: item.vendor?.name,
-              stripe_account_id: item.vendor?.stripe_account_id,
-            },
-            vendor_amount: vendorAmount,
-            eventDate: item.eventDate,
-            eventTime: item.eventTime,
-            endTime: item.endTime,
-            venue: item.venue ? {
-              id: item.venue.id,
-              name: item.venue.name,
-            } : null,
-          };
-        });
-        console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
-        // Send Payment Method to server for Payment Intent creation and booking storage
         const payload = {
           paymentMethodId: paymentMethod.id,
           customerInfo: {
@@ -857,7 +974,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             eventTime: normalizedCartItems[0]?.eventTime || '',
             endTime: normalizedCartItems[0]?.endTime || '',
             eventLocation: normalizedCartItems[0]?.venue?.name || '',
-            eventType: normalizedCartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            eventType: normalizedCartItems[0]?.package.event_type.toLowerCase() || 'wedding',
             guestCount: memoizedFormData.guestCount || '',
             specialRequests: memoizedFormData.specialRequests || '',
             savePaymentMethod: memoizedFormData.savePaymentMethod || false,
@@ -868,7 +985,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           totalAmount: subtotal,
           discountAmount,
           referralDiscount,
-          platformFee: Number(platformFee),
+          platformFee,
           grandTotal,
           paymentType: 'deposit',
         };
@@ -885,7 +1002,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           const errorData = await response.json();
           console.error('Server error response:', errorData);
           if (errorData.requiresAction && errorData.paymentIntentId && errorData.clientSecret) {
-            // Handle 3D Secure authentication
             const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(errorData.clientSecret);
             if (confirmError) {
               throw new Error(confirmError.message || 'Payment authentication failed');
@@ -899,13 +1015,11 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         console.log('Payment Intent processed:', { paymentIntentId, pendingBookingId });
         return { paymentIntentId, pendingBookingId };
       } else {
-        // Affirm payment
         const paymentElement = elements.getElement(PaymentElement);
         if (!paymentElement) {
           setError('Payment information not found. Please try again.');
           return { paymentIntentId: null, pendingBookingId: null };
         }
-        // Check for existing pending bookings to prevent duplicates
         const cartItemIds = normalizedCartItems.map(item => item.id);
         const { data: existingPendingBookings, error: pendingBookingsError } = await supabase
           .from('pending_bookings')
@@ -918,41 +1032,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         if (existingPendingBookings?.length > 0) {
           throw new Error('This booking is already being processed. Please wait or contact support.');
         }
-        // Calculate vendor amounts for the deposit
-        const cartItemsWithVendorAmount = normalizedCartItems.map(item => {
-          const packagePrice = item.package?.price || 0;
-          const premiumAmount = item.package?.premium_amount || 0;
-          const travelFee = item.package?.travel_fee ?? 0;
-          const vendorAmount = Math.round(packagePrice * 0.25) + Math.round(premiumAmount * 0.5) + Math.round(travelFee * 0.5);
-          return {
-            id: item.id,
-            package: {
-              id: item.package.id,
-              name: item.package.name,
-              price: packagePrice,
-              premium_amount: premiumAmount,
-              travel_fee: travelFee,
-              service_type: item.package.service_type,
-              event_type: item.package.event_type?.toLowerCase(),
-            },
-            vendor: {
-              id: item.vendor?.id,
-              name: item.vendor?.name,
-              stripe_account_id: item.vendor?.stripe_account_id,
-            },
-            vendor_amount: vendorAmount,
-            eventDate: item.eventDate,
-            eventTime: item.eventTime,
-            endTime: item.endTime,
-            venue: item.venue ? {
-              id: item.venue.id,
-              name: item.venue.name,
-            } : null,
-          };
-        });
-        console.log('Cart items with vendor amounts:', JSON.stringify(cartItemsWithVendorAmount, null, 2));
         const payload = {
-          paymentIntentId: paymentIntentId,
           customerInfo: {
             coupleId,
             email: memoizedFormData.email,
@@ -967,7 +1047,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             eventTime: normalizedCartItems[0]?.eventTime || '',
             endTime: normalizedCartItems[0]?.endTime || '',
             eventLocation: normalizedCartItems[0]?.venue?.name || '',
-            eventType: normalizedCartItems[0]?.package.event_type?.toLowerCase() || 'wedding',
+            eventType: normalizedCartItems[0]?.package.event_type.toLowerCase() || 'wedding',
             guestCount: memoizedFormData.guestCount || '',
             specialRequests: memoizedFormData.specialRequests || '',
             savePaymentMethod: memoizedFormData.savePaymentMethod || false,
@@ -978,12 +1058,12 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           totalAmount: subtotal,
           discountAmount,
           referralDiscount,
-          platformFee: Number(platformFee),
+          platformFee,
           grandTotal,
           paymentType: 'deposit',
         };
-        console.log('Sending payload to backend:', JSON.stringify(payload, null, 2));
-        const { error, paymentIntent } = await stripe.confirmPayment({
+        console.log('Sending payload to backend for Affirm:', JSON.stringify(payload, null, 2));
+        const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
             return_url: `${window.location.origin}/checkout/success`,
@@ -1004,11 +1084,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
           },
           redirect: 'if_required',
         });
-        if (error) {
-          throw new Error(error.message || 'Payment confirmation failed');
+        if (confirmError) {
+          throw new Error(confirmError.message || 'Payment confirmation failed');
         }
         console.log('Affirm payment confirmed:', { paymentIntentId: paymentIntent.id, status: paymentIntent.status });
-        // Store booking for Affirm payment
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-booking-payment`, {
           method: 'POST',
           headers: {
@@ -1019,19 +1098,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
         });
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('Server error response:', errorData);
-          throw new Error(errorData.error || 'Failed to store booking for Affirm payment');
+          console.error('Server error response for Affirm:', errorData);
+          throw new Error(errorData.error || 'Failed to process Affirm payment');
         }
-        const { paymentIntentId, pendingBookingId } = await response.json();
-        console.log('Affirm booking processed:', { paymentIntentId, pendingBookingId });
-        return { paymentIntentId, pendingBookingId };
+        const { paymentIntentId: newPaymentIntentId, pendingBookingId } = await response.json();
+        console.log('Affirm booking processed:', { paymentIntentId: newPaymentIntentId, pendingBookingId });
+        return { paymentIntentId: newPaymentIntentId, pendingBookingId };
       }
     } catch (err) {
       console.error('Payment error:', err);
       setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
       return { paymentIntentId: null, pendingBookingId: null };
     }
-  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, normalizedCartItems, signatures, subtotal, discountAmount, referralDiscount, platformFee, grandTotal, paymentIntentId]);
+  }, [stripe, elements, paymentMethod, memoizedFormData, authToken, coupleId, normalizedCartItems, signatures, subtotal, discountAmount, referralDiscount, platformFee, grandTotal, isInitializingPayment]);
 
   const pollForBookings = useCallback(async (paymentIntentId: string) => {
     if (processedPaymentIntents.includes(paymentIntentId)) {
@@ -1064,6 +1143,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     console.log('=== HANDLE SUBMIT ===', new Date().toISOString());
     console.log('Current step:', currentStep);
     console.log('Referral code:', referralCode);
+    console.log('Totals:', { subtotal, totalDiscount, discountedTotal, depositAmount, platformFee, grandTotal });
+    console.log('Payment method:', paymentMethod);
+    console.log('Payment details complete:', paymentDetailsComplete);
+    console.log('Accept Stripe:', memoizedFormData.acceptStripe);
     if (!validateForm()) {
       console.log('Form validation failed');
       return;
@@ -1094,14 +1177,19 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     setSubmitting(true);
     setError(null);
     try {
-      if (paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe)) {
-        setError('Please complete card information and accept Stripe payment processing before proceeding.');
+      if (paymentMethod === 'card' && !memoizedFormData.acceptStripe) {
+        setError('Please accept Stripe payment processing before proceeding.');
+        return;
+      }
+      if (paymentMethod === 'affirm' && !paymentDetailsComplete) {
+        setError('Please complete payment information before proceeding.');
         return;
       }
       const { paymentIntentId, pendingBookingId } = await handleStripePayment();
       if (paymentIntentId && pendingBookingId) {
         const bookingIds = await pollForBookings(paymentIntentId);
         if (bookingIds.length > 0) {
+          setError(null);
           onSuccess(bookingIds);
         } else {
           setError('No bookings created. Please try again.');
@@ -1118,7 +1206,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
       setLoading(false);
       setSubmitting(false);
     }
-  }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete, referralCode, appliedReferral]);
+  }, [validateForm, currentStep, isAuthenticated, authToken, coupleId, loading, submitting, handleStripePayment, pollForBookings, onSuccess, paymentMethod, paymentDetailsComplete, referralCode, appliedReferral, memoizedFormData.acceptStripe]);
 
   return (
     <>
@@ -1195,10 +1283,9 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             ].map(({ step, label, icon: Icon }) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`
-                    w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all
-                    ${currentStep >= step ? 'bg-rose-500 text-white shadow-lg' : 'bg-gray-200 text-gray-600'}
-                  `}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                    currentStep >= step ? 'bg-rose-500 text-white shadow-lg' : 'bg-gray-200 text-gray-600'
+                  }`}
                 >
                   {currentStep > step ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                 </div>
@@ -1218,7 +1305,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
             ))}
           </div>
           <form onSubmit={handleSubmit}>
-            {/* Step 1: Personal and Billing Information */}
             {currentStep === 1 && (
               <Card className="p-6 mb-8">
                 <div className="flex items-center space-x-3 mb-6">
@@ -1317,7 +1403,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </div>
               </Card>
             )}
-            {/* Step 2: Contract Signing */}
             {currentStep === 2 && (
               <div className="space-y-6">
                 <Card className="p-6">
@@ -1338,7 +1423,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   ) : contractTemplates.length === 0 ? (
                     <div className="text-center py-8">
                       <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-                      <p className="text-red-600">No contracts available for the selected services.</p>
+                      <p className="text-red-600">No contracts available for the selected services. Please try again or contact support.</p>
                       <Button
                         type="button"
                         variant="outline"
@@ -1432,7 +1517,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </Card>
               </div>
             )}
-            {/* Step 3: Payment Method */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <Card className="p-6">
@@ -1445,7 +1529,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <div className="flex space-x-4 mb-6">
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('card')}
+                      onClick={() => {
+                        setPaymentMethod('card');
+                        setPaymentDetailsComplete(false);
+                      }}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         paymentMethod === 'card'
                           ? 'border-blue-500 bg-blue-50'
@@ -1460,7 +1547,10 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod('affirm')}
+                      onClick={() => {
+                        setPaymentMethod('affirm');
+                        setPaymentDetailsComplete(false);
+                      }}
                       className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                         paymentMethod === 'affirm'
                           ? 'border-blue-500 bg-blue-50'
@@ -1506,27 +1596,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               hidePostalCode: true,
                             }}
                             onReady={() => console.log('=== CARD ELEMENT READY ===', new Date().toISOString())}
-                            onFocus={() => console.log('=== CARD ELEMENT FOCUS ===', new Date().toISOString())}
-                            onBlur={async () => {
-                              console.log('=== CARD ELEMENT BLUR ===', new Date().toISOString());
-                              if (!paymentDetailsComplete && stripe) {
-                                console.log('=== BLUR VALIDATION CHECK ===', new Date().toISOString());
-                                const cardElement = elements!.getElement(CardElement);
-                                if (cardElement) {
-                                  const { error, paymentMethod } = await stripe.createPaymentMethod({
-                                    type: 'card',
-                                    card: cardElement,
-                                  });
-                                  console.log('Blur validation result:', { error, paymentMethod: paymentMethod ? { id: paymentMethod.id, card: paymentMethod.card } : null });
-                                  if (!error && paymentMethod) {
-                                    setPaymentDetailsComplete(true);
-                                    setError(null);
-                                  } else {
-                                    setError(error?.message || 'Card information incomplete');
-                                  }
-                                }
-                              }
-                            }}
                           />
                         ) : (
                           <PaymentElement
@@ -1534,6 +1603,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                               paymentMethodTypes: ['affirm'],
                               layout: 'tabs',
                             }}
+                            onReady={() => console.log('=== PAYMENT ELEMENT READY ===', new Date().toISOString())}
                           />
                         )}
                       </div>
@@ -1605,7 +1675,7 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   {referralError && <p className="text-sm text-red-600 mt-2">{referralError}</p>}
                 </Card>
                 <Card className="p-6">
-                  <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center space-x-2 p-4 bg-green-50 rounded-lg border border-green-200">
                     <Lock className="w-5 h-5 text-green-600" />
                     <div>
                       <p className="text-sm font-medium text-green-800">Secure Payment with Stripe</p>
@@ -1617,7 +1687,6 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                 </Card>
               </div>
             )}
-            {/* Navigation Buttons */}
             {currentStep !== 0 && (
               <div className="flex justify-between mt-8 px-6">
                 {currentStep > 1 && (
@@ -1629,18 +1698,16 @@ By signing below, both parties agree to the terms outlined in this contract.`,
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={loading || submitting || (currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe))}
-                    className={(loading || submitting || (currentStep === 3 && paymentMethod === 'card' && (!paymentDetailsComplete || !memoizedFormData.acceptStripe))) ? 'opacity-50 cursor-not-allowed' : ''}
-                    loading={loading}
+                    disabled={loading || submitting || isInitializingPayment || (currentStep === 3 && (paymentMethod === 'card' ? !memoizedFormData.acceptStripe : !paymentDetailsComplete))}
+                    className={(loading || submitting || isInitializingPayment || (currentStep === 3 && (paymentMethod === 'card' ? !memoizedFormData.acceptStripe : !paymentDetailsComplete))) ? 'opacity-50 cursor-not-allowed' : 'bg-rose-500 hover:bg-rose-600'}
+                    loading={loading || isInitializingPayment}
                     icon={currentStep === 3 ? CreditCard : ArrowRight}
                   >
                     {currentStep === 1
                       ? 'Continue to Contracts'
                       : currentStep === 2
                       ? 'Continue to Payment'
-                      : loading
-                      ? 'Processing Payment...'
-                      : `Pay $${(grandTotal / 100).toFixed(0)} Deposit`}
+                      : `Pay $${(grandTotal / 100).toFixed(2)} Deposit`}
                   </Button>
                 </div>
               </div>
@@ -1651,3 +1718,5 @@ By signing below, both parties agree to the terms outlined in this contract.`,
     </>
   );
 };
+
+export default CheckoutForm;
