@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, User, Clock, Check, CheckCheck, MessageCircle } from 'lucide-react'; // Ensure MessageCircle is imported
+import { ArrowLeft, Send, User, Clock, Check, CheckCheck, MessageCircle, Image } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useMessages, Conversation, Message } from '../../hooks/useMessaging';
@@ -42,6 +42,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const { user } = useAuth();
   const { messages, loading, sendMessage, markAsRead } = useMessages(conversation.id);
   const [newMessage, setNewMessage] = useState('');
+  const [newMessageImage, setNewMessageImage] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -60,12 +61,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() && !newMessageImage || sending) return;
 
     setSending(true);
     try {
-      await sendMessage(newMessage);
+      await sendMessage(newMessage, newMessageImage);
       setNewMessage('');
+      setNewMessageImage(null);
     } catch (error) {
       console.error('Error sending message:', error);
     } finally {
@@ -183,7 +185,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         ? 'bg-rose-500 text-white'
                         : 'bg-white text-gray-900 border border-gray-200'
                     }`}>
-                      <p className="text-sm leading-relaxed">{message.message_text}</p>
+                      {message.message_text && (
+                        <p className="text-sm leading-relaxed">{message.message_text}</p>
+                      )}
+                      {message.image_url && (
+                        <img
+                          src={message.image_url}
+                          alt="Message attachment"
+                          className="mt-2 max-w-[200px] rounded-md"
+                        />
+                      )}
                       <div className={`flex items-center justify-end space-x-1 mt-1 ${
                         isOwnMessage
                           ? 'text-rose-100' 
@@ -220,16 +231,37 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
               disabled={sending}
             />
+            <label className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-full text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+              <Image className="w-5 h-5 mr-2" />
+              <span>Attach Image</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/gif"
+                onChange={(e) => setNewMessageImage(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+            </label>
             <Button
               type="submit"
               variant="primary"
               icon={Send}
-              disabled={!newMessage.trim() || sending}
+              disabled={(!newMessage.trim() && !newMessageImage) || sending}
               loading={sending}
               className="rounded-full px-4 flex-shrink-0"
             >
             </Button>
           </div>
+          {newMessageImage && (
+            <div className="mt-2 text-sm text-gray-600">
+              Selected: {newMessageImage.name}
+              <button
+                onClick={() => setNewMessageImage(null)}
+                className="ml-2 text-rose-500 hover:text-rose-600"
+              >
+                Remove
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </ErrorBoundary>

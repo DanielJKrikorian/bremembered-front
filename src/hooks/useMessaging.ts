@@ -9,6 +9,7 @@ export interface Message {
   timestamp: string;
   conversation_id: string;
   read_by: string[];
+  image_url?: string | null;
 }
 
 export interface Conversation {
@@ -69,7 +70,8 @@ export const useConversations = () => {
               message_text: 'Hi! I\'m excited to work with you on your wedding photography. When would be a good time to discuss your vision?',
               timestamp: '2024-01-15T14:30:00Z',
               conversation_id: 'mock-conv-1',
-              read_by: ['mock-vendor-1']
+              read_by: ['mock-vendor-1'],
+              image_url: null
             },
             unread_count: 1,
             other_participant: {
@@ -95,7 +97,8 @@ export const useConversations = () => {
               message_text: 'Thank you for the timeline! Everything looks perfect.',
               timestamp: '2024-01-12T16:45:00Z',
               conversation_id: 'mock-conv-2',
-              read_by: [user.id, 'mock-vendor-2']
+              read_by: [user.id, 'mock-vendor-2'],
+              image_url: null
             },
             unread_count: 0,
             other_participant: {
@@ -127,7 +130,7 @@ export const useConversations = () => {
           (data || []).map(async (conv) => {
             const { data: lastMessageData } = await supabase
               .from('messages')
-              .select('*')
+              .select('id, sender_id, message_text, timestamp, read_by, image_url')
               .eq('conversation_id', conv.id)
               .order('timestamp', { ascending: false })
               .limit(1)
@@ -198,7 +201,7 @@ export const useConversations = () => {
 
     fetchConversations();
 
-    // Subscribe to conversation changes (mirroring vendor)
+    // Subscribe to conversation changes
     if (supabase && isSupabaseConfigured()) {
       const conversationSubscription = supabase
         .channel('public:conversations')
@@ -456,7 +459,8 @@ export const useMessages = (conversationId: string) => {
             message_text: 'Hi! I\'m excited to work with you on your wedding photography. When would be a good time to discuss your vision?',
             timestamp: '2024-01-15T14:30:00Z',
             conversation_id: conversationId,
-            read_by: ['mock-vendor-1']
+            read_by: ['mock-vendor-1'],
+            image_url: null
           },
           {
             id: 'mock-msg-2',
@@ -464,7 +468,8 @@ export const useMessages = (conversationId: string) => {
             message_text: 'Hi! We\'re so excited to work with you too! We\'re available this weekend to chat if that works for you.',
             timestamp: '2024-01-15T15:15:00Z',
             conversation_id: conversationId,
-            read_by: [user.id, 'mock-vendor-1']
+            read_by: [user.id, 'mock-vendor-1'],
+            image_url: null
           }
         ];
         setMessages(mockMessages);
@@ -476,7 +481,7 @@ export const useMessages = (conversationId: string) => {
         console.log('Fetching messages for:', conversationId);
         const { data, error } = await supabase
           .from('messages')
-          .select('*')
+          .select('id, sender_id, message_text, timestamp, conversation_id, read_by, image_url')
           .eq('conversation_id', conversationId)
           .order('timestamp', { ascending: true });
 
@@ -492,7 +497,7 @@ export const useMessages = (conversationId: string) => {
 
     fetchMessages();
 
-    // Real-time subscriptions (aligned with vendor)
+    // Real-time subscriptions
     if (supabase && isSupabaseConfigured()) {
       const messageSubscription = supabase
         .channel(`messages:${conversationId}`)
@@ -510,7 +515,7 @@ export const useMessages = (conversationId: string) => {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'conversation_participants', filter: `conversation_id=eq.${conversationId}` },
-          () => fetchMessages()  // Refresh if participants change
+          () => fetchMessages()
         )
         .subscribe();
 
@@ -521,8 +526,8 @@ export const useMessages = (conversationId: string) => {
     }
   }, [conversationId, user, isAuthenticated]);
 
-  const sendMessage = async (messageText: string) => {
-    if (!user || !conversationId || !messageText.trim()) return;
+  const sendMessage = async (messageText: string, imageFile?: File | null) => {
+    if (!user || !conversationId || (!messageText.trim() && !imageFile)) return;
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(conversationId)) {
@@ -540,29 +545,42 @@ export const useMessages = (conversationId: string) => {
         message_text: messageText,
         timestamp: new Date().toISOString(),
         conversation_id: conversationId,
-        read_by: [user.id]
+        read_by: [user.id],
+        image_url: imageFile ? `mock-image-${Date.now()}.jpg` : null
       };
       setMessages((prev) => [...prev, newMessage]);
       return;
     }
 
     try {
-      console.log('Sending message:', { conversation_id: conversationId, sender_id: user.id });
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('message-images')
+          .upload(fileName, imageFile);
+
+        if (uploadError) throw new Error(`Image upload failed: ${uploadError.message}`);
+
+        const { data: publicUrlData } = supabase.storage
+          .from('message-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+      }
+
+      console.log('Sending message:', { conversation_id: conversationId, sender_id: user.id, image_url: imageUrl });
       const { data, error } = await supabase
         .from('messages')
         .insert({
           sender_id: user.id,
-          message_text: messageText,
+          message_text: messageText.trim() || null,
           conversation_id: conversationId,
-          read_by: [user.id]
+          read_by: [user.id],
+          image_url: imageUrl
         })
-        .select(`
-          id,
-          sender_id,
-          conversation_id,
-          message_text,
-          timestamp
-        `)
+        .select('id, sender_id, message_text, timestamp, conversation_id, read_by, image_url')
         .single();
 
       if (error) {
@@ -580,7 +598,30 @@ export const useMessages = (conversationId: string) => {
   };
 
   const markAsRead = async () => {
-    // Placeholder for future
+    if (!user) return;
+
+    try {
+      const unreadMessages = messages.filter((msg) => !msg.read_by?.includes(user.id));
+      if (unreadMessages.length === 0) return;
+
+      const updates = unreadMessages.map((msg) =>
+        supabase
+          .from('messages')
+          .update({ read_by: [...(msg.read_by || []), user.id] })
+          .eq('id', msg.id)
+      );
+      await Promise.all(updates);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          unreadMessages.some((um) => um.id === msg.id)
+            ? { ...msg, read_by: [...(msg.read_by || []), user.id] }
+            : msg
+        )
+      );
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      setError(error instanceof Error ? error.message : 'Failed to mark messages as read');
+    }
   };
 
   return { messages, loading, error, sendMessage, markAsRead };
