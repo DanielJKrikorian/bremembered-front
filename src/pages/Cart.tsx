@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, CreditCard, Clock, Shield, Heart, Star } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, CreditCard, Clock, Shield, Heart, Star, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -18,6 +18,7 @@ export const Cart: React.FC = () => {
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isFetchingFees, setIsFetchingFees] = useState(false);
+  const [error, setError] = useState<string | null>(null); // For user-facing errors
   const analyticsTracked = useRef(false);
   const fetchedItems = useRef(new Set<string>()); // Track fetched item IDs
 
@@ -38,17 +39,22 @@ export const Cart: React.FC = () => {
   // Memoize cart items to stabilize dependencies
   const cartItems = useMemo(() => state.items, [state.items]);
 
-  // Fetch travel_fee and premium_amount for cart items
+  // Fetch premium_amount for cart items
   useEffect(() => {
     const fetchFees = async () => {
       if (!cartItems.length || isFetchingFees) return;
       setIsFetchingFees(true);
       console.log('=== FETCH FEES ===', new Date().toISOString());
       try {
+        let hasError = false;
         for (const item of cartItems) {
-          // Skip if already fetched or no vendor/venue
-          if (fetchedItems.current.has(item.id) || !item.vendor?.id || !item.venue?.id) {
-            console.log(`Skipping fee fetch for item ${item.id}: ${fetchedItems.current.has(item.id) ? 'already fetched' : 'missing vendor or venue'}`);
+          // Skip if already fetched or no vendor
+          if (fetchedItems.current.has(item.id) || !item.vendor?.id) {
+            console.log(`Skipping fee fetch for item ${item.id}: ${fetchedItems.current.has(item.id) ? 'already fetched' : 'missing vendor'}`);
+            if (!item.vendor?.id) {
+              setError(`Invalid vendor for item ${item.package.name}. Please select a valid vendor.`);
+              hasError = true;
+            }
             continue;
           }
 
@@ -69,36 +75,8 @@ export const Cart: React.FC = () => {
             console.log(`No premium_amount defined for vendor ${item.vendor.id}, using $0.00`);
           }
 
-          // Fetch service_area_id from venues
-          const { data: venueData, error: venueError } = await supabase
-            .from('venues')
-            .select('service_area_id')
-            .eq('id', item.venue.id)
-            .single();
-
-          if (venueError || !venueData?.service_area_id) {
-            console.error(`Error fetching service_area_id for venue ${item.venue.id}:`, venueError);
-            continue;
-          }
-
-          // Fetch travel_fee from vendor_service_areas
-          const { data: travelData, error: travelError } = await supabase
-            .from('vendor_service_areas')
-            .select('travel_fee')
-            .eq('vendor_id', item.vendor.id)
-            .eq('service_area_id', venueData.service_area_id)
-            .single();
-
-          let travelFee = 0; // Default to $0.00 if no travel fee defined
-          if (travelError) {
-            console.error(`Error fetching travel_fee for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}:`, travelError);
-            console.log(`No travel_fee defined for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}, using $0.00`);
-          } else if (travelData?.travel_fee != null) {
-            travelFee = travelData.travel_fee;
-            console.log(`Fetched travel_fee for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}: ${travelFee}`);
-          } else {
-            console.log(`No travel_fee defined for vendor ${item.vendor.id}, service_area ${venueData.service_area_id}, using $0.00`);
-          }
+          // Set travel_fee to 0 (no fetch needed in Cart.tsx)
+          const travelFee = 0;
 
           // Update cart item only if fees differ
           if (item.package.premium_amount !== premiumAmount || item.package.travel_fee !== travelFee) {
@@ -116,8 +94,12 @@ export const Cart: React.FC = () => {
           // Mark item as fetched
           fetchedItems.current.add(item.id);
         }
+        if (!hasError) {
+          setError(null); // Clear error if no issues
+        }
       } catch (err) {
         console.error('Error fetching fees:', err);
+        setError('Failed to load cart pricing details. Please try again.');
       } finally {
         setIsFetchingFees(false);
       }
@@ -172,6 +154,7 @@ export const Cart: React.FC = () => {
     if (selectedCartItem) {
       // Clear fetched status for this item to refetch fees
       fetchedItems.current.delete(selectedCartItem.id);
+      console.log(`Vendor selected for item ${selectedCartItem.id}:`, { vendor, eventDetails, initialPremium: selectedCartItem.package.premium_amount });
       updateItem(selectedCartItem.id, {
         vendor,
         eventDate: eventDetails.eventDate,
@@ -190,10 +173,10 @@ export const Cart: React.FC = () => {
       return;
     }
 
-    // Check if all items have vendors and venues selected
-    const itemsWithoutVendorsOrVenues = state.items.filter((item) => !item.vendor?.id || !item.venue?.id);
-    if (itemsWithoutVendorsOrVenues.length > 0) {
-      alert('Please select vendors and venues for all items before checkout');
+    // Check if all items have vendors
+    const itemsWithoutVendors = state.items.filter((item) => !item.vendor?.id);
+    if (itemsWithoutVendors.length > 0) {
+      alert('Please select vendors for all items before checkout');
       return;
     }
 
@@ -217,7 +200,7 @@ export const Cart: React.FC = () => {
   };
 
   const handleContinueShopping = () => {
-    navigate('/search');
+    navigate('//search');
   };
 
   const totalServiceFee = state.items.length > 0 ? 50 : 0; // $50 per booking
@@ -237,6 +220,16 @@ export const Cart: React.FC = () => {
       {isFetchingFees && (
         <div className="fixed inset-0 bg-gray-100 bg-opacity-50 flex items-center justify-center z-50">
           <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
+        </div>
+      )}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              <p className="text-red-600">{error}</p>
+            </div>
+          </div>
         </div>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -518,7 +511,7 @@ export const Cart: React.FC = () => {
                     className="w-full"
                     onClick={handleCheckout}
                     icon={ArrowRight}
-                    disabled={state.items.length === 0 || isFetchingFees}
+                    disabled={state.items.length === 0 || isFetchingFees || !!error}
                   >
                     {isAuthenticated ? 'Proceed to Checkout' : 'Sign In to Checkout'}
                   </Button>
