@@ -8,15 +8,17 @@ import { useAuth } from '../context/AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import { VendorReviewModal } from '../components/reviews/VendorReviewModal';
+import { useCreateConversation } from '../hooks/useMessaging';
 import { PackageUpgradeModal } from '../components/booking/PackageUpgradeModal';
-import { trackPageView } from '../utils/analytics'; // Import trackPageView
+import { trackPageView } from '../utils/analytics';
 
 export const BookingDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, user, loading } = useAuth(); // Add loading
+  const { isAuthenticated, user, loading } = useAuth();
+  const { createConversation } = useCreateConversation();
   const [booking, setBooking] = useState<any>(null);
-  const [loadingBooking, setLoading] = useState(true); // Renamed to avoid conflict
+  const [loadingBooking, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -37,7 +39,7 @@ export const BookingDetails: React.FC = () => {
   });
   const [savingVenue, setSavingVenue] = useState(false);
   const [venueError, setVenueError] = useState<string | null>(null);
-  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+  const analyticsTracked = useRef(false);
 
   // Track analytics only once on mount
   useEffect(() => {
@@ -470,7 +472,7 @@ export const BookingDetails: React.FC = () => {
       case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-200 border-red-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -552,7 +554,7 @@ export const BookingDetails: React.FC = () => {
         doc.text(`Date: ${new Date(contract.signed_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}`, 20, yPos);
       }
       yPos = Math.max(yPos + 20, 260);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'normal zehn');
       doc.setFontSize(10);
       doc.text('Thank you for choosing B. Remembered for your special day!', 105, yPos, { align: 'center' });
       doc.text('For questions about this contract, contact hello@bremembered.io', 105, yPos + 7, { align: 'center' });
@@ -560,6 +562,31 @@ export const BookingDetails: React.FC = () => {
       doc.save(fileName);
     } catch (error) {
       console.error('Error generating contract PDF:', error);
+    }
+  };
+
+  const handleMessageVendor = async () => {
+    if (!booking.vendors?.user_id) {
+      alert('Unable to message vendor - missing vendor information');
+      return;
+    }
+
+    try {
+      const conversation = await createConversation(booking.vendors.user_id);
+      if (!conversation) {
+        alert('Failed to create conversation with vendor');
+        return;
+      }
+      navigate('/profile?tab=messages', {
+        state: {
+          selectedConversationId: conversation.id,
+          vendor: booking.vendors
+        }
+      });
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      alert('Error creating conversation: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      navigate('/profile?tab=messages');
     }
   };
 
@@ -602,10 +629,13 @@ export const BookingDetails: React.FC = () => {
     );
   }
 
-  const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+  // --- FINAL FIXED TOTALS: Package Price = Vendor Package Only ---
+  const packagePrice = booking.amount || 0;
+  const platformFee = booking.platform_fee || 0;
+  const totalAmount = packagePrice + platformFee;
   const successfulPayments = booking.payments?.filter((p: any) => p.status === 'succeeded') || [];
   const paidAmount = successfulPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-  const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
+  const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -665,7 +695,7 @@ export const BookingDetails: React.FC = () => {
                     {formatPrice(totalAmount)}
                   </div>
                   <div className="text-sm text-gray-500">
-                    Booked {new Date(booking.created_at).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                    Total (incl. {formatPrice(platformFee)} fee)
                   </div>
                 </div>
               </div>
@@ -942,7 +972,7 @@ export const BookingDetails: React.FC = () => {
                     <span className="font-medium text-purple-900">Current Package</span>
                   </div>
                   <p className="text-purple-800 text-sm mb-3">
-                    {booking.service_packages?.name} - {formatPrice(booking.service_packages?.price || booking.amount)}
+                    {booking.service_packages?.name} - {formatPrice(packagePrice)}
                   </p>
                   <p className="text-purple-700 text-sm">
                     Want more coverage or additional features? Upgrade your package anytime before your wedding.
@@ -977,7 +1007,7 @@ export const BookingDetails: React.FC = () => {
                     <Button
                       variant="primary"
                       icon={MessageCircle}
-                      onClick={() => navigate('/profile?tab=messages')}
+                      onClick={handleMessageVendor}
                     >
                       Message Vendor
                     </Button>
@@ -1057,7 +1087,7 @@ export const BookingDetails: React.FC = () => {
                   variant="primary"
                   icon={MessageCircle}
                   className="w-full"
-                  onClick={() => navigate('/profile?tab=messages')}
+                  onClick={handleMessageVendor}
                 >
                   Message Vendor
                 </Button>
@@ -1095,13 +1125,13 @@ export const BookingDetails: React.FC = () => {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Package Price:</span>
-                  <span className="font-medium">{formatPrice((booking.initial_payment || 0) + (booking.final_payment || 0))}</span>
+                  <span className="font-medium">{formatPrice(packagePrice)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Fee:</span>
-                  <span className="font-medium">{formatPrice(booking.platform_fee || 0)}</span>
+                  <span className="font-medium">{formatPrice(platformFee)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between font-semibold">
                   <span className="text-gray-600">Total Amount:</span>
                   <span className="font-medium">{formatPrice(totalAmount)}</span>
                 </div>

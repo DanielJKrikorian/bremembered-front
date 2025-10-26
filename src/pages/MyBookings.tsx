@@ -330,7 +330,7 @@ export const MyBookings: React.FC = () => {
             </Card>
           ) : (
             filteredBookings.map((booking) => {
-              const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0) + (booking.platform_fee || 0);
+              const totalAmount = (booking.initial_payment || 0) + (booking.final_payment || 0);
               const successfulPayments = booking.payments?.filter((p: any) => p.status === 'succeeded') || [];
               const paidAmount = successfulPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
               const remainingBalance = booking.final_payment_status === 'paid' ? 0 : (booking.vendor_final_share || 0) + (booking.platform_final_share || 0);
