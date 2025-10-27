@@ -9,7 +9,7 @@ import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 
 // Initialize stripePromise outside the component
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY);
 
 interface StoragePlan {
   id: string;

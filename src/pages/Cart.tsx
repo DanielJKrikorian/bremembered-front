@@ -1,169 +1,131 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, ShoppingCart, Calendar, MapPin, User, ArrowRight, Trash2, Edit, Plus, Check, CreditCard, Clock, Shield, Heart, Star, AlertCircle } from 'lucide-react';
+// src/pages/Cart.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  ArrowLeft, ShoppingCart, Calendar, MapPin, ArrowRight, Trash2,
+  Clock, Check, Camera, Video, Music, Users, Shield, Heart, Package, Flower, 
+  Cake, Home, Scissors, Gem, Church, Car, Palette, Lightbulb, 
+  Sparkles, Wine, Gift, Shirt
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { trackPageView } from '../utils/analytics';
-import { VendorSelectionModal } from '../components/cart/VendorSelectionModal';
 import { AuthModal } from '../components/auth/AuthModal';
-import { supabase } from '../lib/supabase';
+import { DateVenueModal } from '../components/cart/DateVenueModal';
+import { supabase } from '../lib/supabase'; // ← NEW
 
 export const Cart: React.FC = () => {
   const navigate = useNavigate();
   const { state, removeItem, updateItem, clearCart } = useCart();
   const { isAuthenticated, user, loading } = useAuth();
-  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [showDateVenueModal, setShowDateVenueModal] = useState(false);
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isFetchingFees, setIsFetchingFees] = useState(false);
-  const [error, setError] = useState<string | null>(null); // For user-facing errors
   const analyticsTracked = useRef(false);
-  const fetchedItems = useRef(new Set<string>()); // Track fetched item IDs
 
-  // Track analytics only once on mount
+  // LOOKUP: vendorId → photo URL
+  const [vendorPhotos, setVendorPhotos] = useState<Record<string, string | null>>({});
+
   useEffect(() => {
     if (!loading && !analyticsTracked.current) {
-      console.log('Tracking analytics for cart:', new Date().toISOString());
       trackPageView('cart', 'bremembered.io', user?.id);
       analyticsTracked.current = true;
     }
   }, [loading, user?.id]);
 
-  // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Memoize cart items to stabilize dependencies
-  const cartItems = useMemo(() => state.items, [state.items]);
-
-  // Fetch premium_amount for cart items
+  // LOOKUP: Get photo from Supabase Storage using vendor.id
   useEffect(() => {
-    const fetchFees = async () => {
-      if (!cartItems.length || isFetchingFees) return;
-      setIsFetchingFees(true);
-      console.log('=== FETCH FEES ===', new Date().toISOString());
-      try {
-        let hasError = false;
-        for (const item of cartItems) {
-          // Skip if already fetched or no vendor
-          if (fetchedItems.current.has(item.id) || !item.vendor?.id) {
-            console.log(`Skipping fee fetch for item ${item.id}: ${fetchedItems.current.has(item.id) ? 'already fetched' : 'missing vendor'}`);
-            if (!item.vendor?.id) {
-              setError(`Invalid vendor for item ${item.package.name}. Please select a valid vendor.`);
-              hasError = true;
-            }
-            continue;
-          }
+    const vendorIds = [...new Set(state.items.map(i => i.vendor?.id).filter(Boolean))];
+    if (vendorIds.length === 0) return;
 
-          // Fetch premium_amount from vendor_premiums
-          const { data: premiumData, error: premiumError } = await supabase
-            .from('vendor_premiums')
-            .select('amount')
-            .eq('vendor_id', item.vendor.id)
-            .single();
-          let premiumAmount = 0; // Default to $0.00 if no premium defined
-          if (premiumError) {
-            console.error(`Error fetching premium_amount for vendor ${item.vendor.id}:`, premiumError);
-            console.log(`No premium_amount defined for vendor ${item.vendor.id}, using $0.00`);
-          } else if (premiumData?.amount != null) {
-            premiumAmount = premiumData.amount;
-            console.log(`Fetched premium_amount for vendor ${item.vendor.id}: ${premiumAmount}`);
-          } else {
-            console.log(`No premium_amount defined for vendor ${item.vendor.id}, using $0.00`);
-          }
+    const fetchPhotos = async () => {
+      const photos: Record<string, string | null> = {};
 
-          // Set travel_fee to 0 (no fetch needed in Cart.tsx)
-          const travelFee = 0;
-
-          // Update cart item only if fees differ
-          if (item.package.premium_amount !== premiumAmount || item.package.travel_fee !== travelFee) {
-            console.log(`Updating item ${item.id} with premium_amount: ${premiumAmount}, travel_fee: ${travelFee}`);
-            updateItem(item.id, {
-              ...item,
-              package: {
-                ...item.package,
-                premium_amount: premiumAmount,
-                travel_fee: travelFee,
-              },
+      for (const id of vendorIds) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('vendor_media')
+            .list(`${id}/photo`, {
+              limit: 1,
+              offset: 0,
+              sortBy: { column: 'name', order: 'asc' }
             });
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            const file = data[0];
+            const { data: urlData } = supabase.storage
+              .from('vendor_media')
+              .getPublicUrl(`${id}/photo/${file.name}`);
+            photos[id] = urlData.publicUrl;
+          } else {
+            photos[id] = null;
           }
-
-          // Mark item as fetched
-          fetchedItems.current.add(item.id);
+        } catch (err) {
+          console.error('Photo lookup failed for vendor:', id, err);
+          photos[id] = null;
         }
-        if (!hasError) {
-          setError(null); // Clear error if no issues
-        }
-      } catch (err) {
-        console.error('Error fetching fees:', err);
-        setError('Failed to load cart pricing details. Please try again.');
-      } finally {
-        setIsFetchingFees(false);
       }
-    };
-    fetchFees();
-  }, [cartItems, isFetchingFees]);
 
-  const formatPrice = (amount: number | null | undefined) => {
-    if (amount === undefined || amount === null || amount === 0) return null;
+      setVendorPhotos(photos);
+    };
+
+    fetchPhotos();
+  }, [state.items]);
+
+  const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
     }).format(amount / 100);
   };
 
-  const calculateItemTotal = (item: any) => {
-    const packagePrice = item.package.price / 100;
-    const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount / 100 : 0;
-    const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee / 100 : 0;
-    const total = packagePrice + premium + travel;
-    console.log(`Cart item ${item.id}: Package=${packagePrice}, Premium=${premium}, Travel=${travel}, Total=${total}`);
-    return total;
-  };
-
   const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography':
-        return '📸';
-      case 'Videography':
-        return '🎥';
-      case 'DJ Services':
-        return '🎵';
-      case 'Live Musician':
-        return '🎼';
-      case 'Coordination':
-        return '👰';
-      case 'Planning':
-        return '📅';
-      default:
-        return '💍';
+    const iconClass = "w-10 h-10";
+    const type = serviceType.toLowerCase();
+
+    switch (true) {
+      case type.includes('photo'): return <Camera className={iconClass} />;
+      case type.includes('video'): return <Video className={iconClass} />;
+      case type.includes('dj'): return <Music className={iconClass} />;
+      case type.includes('musician') || type.includes('band'): return <Guitar className={iconClass} />;
+      case type.includes('coordination'): return <Users className={iconClass} />;
+      case type.includes('planning'): return <Calendar className={iconClass} />;
+      case type.includes('florist'): return <Flower className={iconClass} />;
+      case type.includes('catering'): return <ChefHat className={iconClass} />;
+      case type.includes('cake'): return <Cake className={iconClass} />;
+      case type.includes('venue'): return <Home className={iconClass} />;
+      case type.includes('hair') || type.includes('makeup'): return <Scissors className={iconClass} />;
+      case type.includes('jewelry'): return <Gem className={iconClass} />;
+      case type.includes('officiant'): return <Church className={iconClass} />;
+      case type.includes('transport'): return <Car className={iconClass} />;
+      case type.includes('decor'): return <Palette className={iconClass} />;
+      case type.includes('lighting'): return <Lightbulb className={iconClass} />;
+      case type.includes('entertainment'): return <Sparkles className={iconClass} />;
+      case type.includes('bar'): return <Wine className={iconClass} />;
+      case type.includes('rental'): return <Package className={iconClass} />;
+      case type.includes('gift'): return <Gift className={iconClass} />;
+      case type.includes('dress') || type.includes('suit'): return <Shirt className={iconClass} />;
+      default: return <Package className={iconClass} />;
     }
   };
 
-  const handleChooseVendor = (item: any) => {
+  const handleOpenDateVenue = (item: any) => {
     setSelectedCartItem(item);
-    setShowVendorModal(true);
+    setShowDateVenueModal(true);
   };
 
-  const handleVendorSelected = (vendor: any, eventDetails: any) => {
-    if (selectedCartItem) {
-      // Clear fetched status for this item to refetch fees
-      fetchedItems.current.delete(selectedCartItem.id);
-      console.log(`Vendor selected for item ${selectedCartItem.id}:`, { vendor, eventDetails, initialPremium: selectedCartItem.package.premium_amount });
-      updateItem(selectedCartItem.id, {
-        vendor,
-        eventDate: eventDetails.eventDate,
-        eventTime: eventDetails.eventTime,
-        endTime: eventDetails.endTime,
-        venue: eventDetails.venue,
-      });
-    }
-    setShowVendorModal(false);
+  const handleSaveDateVenue = (details: any) => {
+    updateItem(selectedCartItem.id, details);
+    setShowDateVenueModal(false);
     setSelectedCartItem(null);
   };
 
@@ -172,68 +134,24 @@ export const Cart: React.FC = () => {
       setShowAuthModal(true);
       return;
     }
-
-    // Check if all items have vendors
-    const itemsWithoutVendors = state.items.filter((item) => !item.vendor?.id);
-    if (itemsWithoutVendors.length > 0) {
-      alert('Please select vendors for all items before checkout');
+    if (state.items.some(i => !i.eventDate || !i.venue)) {
+      alert('Please set date and venue for all items');
       return;
     }
 
-    // Calculate total amount excluding service fee to match Checkout.tsx
-    const totalAmount = state.items.reduce((sum, item) => {
-      const packagePrice = item.package.price || 0;
-      const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount : 0;
-      const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee : 0;
-      return sum + packagePrice + premium + travel;
-    }, 0);
+    const totalAmount = state.items.reduce((sum, i) => sum + (i.package.price || 0), 0);
 
-    console.log(`Navigating to checkout with totalAmount: ${totalAmount} cents (${formatPrice(totalAmount)})`);
-
-    // Navigate to checkout with cart data
-    navigate('/checkout', {
-      state: {
-        cartItems: state.items,
-        totalAmount,
-      },
+    navigate('/checkout', { 
+      state: { cartItems: state.items, totalAmount } 
     });
   };
 
-  const handleContinueShopping = () => {
-    navigate('//search');
-  };
-
-  const totalServiceFee = state.items.length > 0 ? 50 : 0; // $50 per booking
-  const subtotal = state.items.reduce((sum, item) => {
-    const packagePrice = item.package.price || 0;
-    const premium = item.package.premium_amount && item.package.premium_amount > 0 ? item.package.premium_amount : 0;
-    const travel = item.package.travel_fee && item.package.travel_fee > 0 ? item.package.travel_fee : 0;
-    return sum + packagePrice + premium + travel;
-  }, 0);
-  const grandTotal = subtotal + totalServiceFee * 100; // Include service fee for display only
-
-  // Log totals for debugging
-  console.log(`Rendering Cart with subtotal: ${subtotal} cents (${formatPrice(subtotal)}), Service Fee: ${totalServiceFee} dollars, grandTotal: ${grandTotal} cents (${formatPrice(grandTotal)})`);
+  const handleContinueShopping = () => navigate('/search');
+  const subtotal = state.items.reduce((sum, i) => sum + (i.package.price || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {isFetchingFees && (
-        <div className="fixed inset-0 bg-gray-100 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="animate-spin w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full"></div>
-        </div>
-      )}
-      {error && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <p className="text-red-600">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-6">
             <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate(-1)}>
@@ -249,34 +167,29 @@ export const Cart: React.FC = () => {
         </div>
 
         {state.items.length === 0 ? (
-          /* Empty Cart */
           <Card className="p-12 text-center">
             <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-6">Add wedding packages to get started with your perfect day</p>
+            <p className="text-gray-600 mb-6">Add wedding packages to get started</p>
             <Button variant="primary" onClick={handleContinueShopping}>
               Browse Wedding Services
             </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
             <div className="lg:col-span-2 space-y-6">
               {state.items.map((item) => {
-                const premiumPrice = item.package.premium_amount ? formatPrice(item.package.premium_amount) : null;
-                const travelFee = item.package.travel_fee ? formatPrice(item.package.travel_fee) : null;
-                const itemTotal = calculateItemTotal(item);
+                const vendorId = item.vendor?.id;
+                const photoUrl = vendorId ? vendorPhotos[vendorId] : null;
 
                 return (
                   <Card key={item.id} className="p-6">
                     <div className="flex items-start space-x-6">
-                      {/* Service Icon */}
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         {getServiceIcon(item.package.service_type)}
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        {/* Package Info */}
+                      <div className="flex-1">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.package.name}</h3>
@@ -294,14 +207,7 @@ export const Cart: React.FC = () => {
                             <p className="text-gray-600 text-sm line-clamp-2 mb-3">{item.package.description}</p>
                           </div>
                           <div className="text-right ml-4">
-                            <div className="text-lg font-bold text-gray-900">{formatPrice(itemTotal * 100)}</div>
-                            <div className="text-sm text-gray-500">Package: {formatPrice(item.package.price)}</div>
-                            {premiumPrice && item.package.premium_amount > 0 && (
-                              <div className="text-sm text-gray-500">Premium: {premiumPrice}</div>
-                            )}
-                            <div className="text-sm text-gray-500">
-                              Travel: {travelFee || 'Local ($0.00)'}
-                            </div>
+                            <div className="text-lg font-bold text-gray-900">{formatPrice(item.package.price)}</div>
                             <button
                               onClick={() => removeItem(item.id)}
                               className="text-red-500 hover:text-red-700 transition-colors mt-2"
@@ -311,113 +217,87 @@ export const Cart: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Event Details */}
-                        {(item.eventDate || item.venue) && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                            <h4 className="font-medium text-green-900 mb-2">Event Details</h4>
-                            <div className="space-y-1 text-sm">
-                              {item.eventDate && (
-                                <div className="flex items-center text-green-700">
-                                  <Calendar className="w-4 h-4 mr-2" />
-                                  <span>
-                                    {(() => {
-                                      const [year, month, day] = item.eventDate.split('-').map(Number);
-                                      return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-                                        timeZone: 'UTC',
-                                      });
-                                    })()}
-                                    {item.eventTime && (
-                                      <>
-                                        {' at '}
-                                        {new Date(`2000-01-01T${item.eventTime}`)
-                                          .toLocaleTimeString('en-US', {
-                                            hour: 'numeric',
-                                            minute: '2-digit',
-                                            hour12: true,
-                                            timeZone: 'UTC',
-                                          })}
-                                        {item.endTime && (
-                                          <>
-                                            {' - '}
-                                            {new Date(`2000-01-01T${item.endTime}`)
-                                              .toLocaleTimeString('en-US', {
-                                                hour: 'numeric',
-                                                minute: '2-digit',
-                                                hour12: true,
-                                                timeZone: 'UTC',
-                                              })}
-                                          </>
-                                        )}
-                                      </>
-                                    )}
+                        {/* LOOKUP PHOTO BY vendor.id */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 relative">
+                              {photoUrl ? (
+                                <img
+                                  src={photoUrl}
+                                  alt={item.vendor.name}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = 40; canvas.height = 40;
+                                    const ctx = canvas.getContext('2d');
+                                    if (ctx) {
+                                      ctx.fillStyle = '#f43f5e'; ctx.fillRect(0, 0, 40, 40);
+                                      ctx.font = 'bold 16px system-ui'; ctx.fillStyle = '#ffffff';
+                                      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                                      const initials = item.vendor.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+                                      ctx.fillText(initials, 20, 20);
+                                      e.currentTarget.src = canvas.toDataURL();
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-rose-500">
+                                  <span className="text-white font-bold text-sm">
+                                    {item.vendor?.name ? item.vendor.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'V'}
                                   </span>
                                 </div>
                               )}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-blue-900">Vendor</h4>
+                              <p className="text-blue-700 text-sm">{item.vendor?.name || 'Unknown Vendor'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* DATE & VENUE */}
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-green-900">Event Details</h4>
+                            <Button variant="outline" size="sm" onClick={() => handleOpenDateVenue(item)}>
+                              Change Details
+                            </Button>
+                          </div>
+                          {item.eventDate ? (
+                            <div className="space-y-1 text-sm">
+                              <div className="flex items-center text-green-700">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                <span>
+                                  {new Date(item.eventDate).toLocaleDateString()}
+                                  {item.eventTime && (
+                                    <> at {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</>
+                                  )}
+                                </span>
+                              </div>
                               {item.venue && (
                                 <div className="flex items-center text-green-700">
                                   <MapPin className="w-4 h-4 mr-2" />
                                   <span>{item.venue.name}</span>
-                                  {item.venue.city && item.venue.state && (
-                                    <span className="ml-1">
-                                      ({item.venue.city}, {item.venue.state})
-                                    </span>
-                                  )}
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => handleOpenDateVenue(item)}>
+                              Set Date & Venue
+                            </Button>
+                          )}
+                        </div>
 
-                        {/* Vendor Selection */}
-                        {item.vendor ? (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <User className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-blue-900">Selected Vendor</h4>
-                                  <p className="text-blue-700 text-sm">{item.vendor.name}</p>
-                                  {item.vendor.rating && (
-                                    <div className="flex items-center text-blue-700 text-sm">
-                                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400 mr-1" />
-                                      <span>{item.vendor.rating} rating</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <Button variant="outline" size="sm" onClick={() => handleChooseVendor(item)}>
-                                Change
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium text-amber-900">Vendor Selection Required</h4>
-                                <p className="text-amber-700 text-sm">Choose your preferred vendor for this service</p>
-                              </div>
-                              <Button variant="primary" size="sm" onClick={() => handleChooseVendor(item)}>
-                                Choose Vendor
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Package Features */}
-                        {item.package.features && item.package.features.length > 0 && (
+                        {/* FEATURES */}
+                        {item.package.features?.length > 0 && (
                           <div className="mb-4">
                             <h4 className="font-medium text-gray-900 mb-2">What's Included</h4>
                             <div className="flex flex-wrap gap-2">
-                              {item.package.features.slice(0, 4).map((feature, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"
-                                >
+                              {item.package.features.slice(0, 4).map((f: string, i: number) => (
+                                <span key={i} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
                                   <Check className="w-3 h-3 mr-1" />
-                                  {feature}
+                                  {f}
                                 </span>
                               ))}
                               {item.package.features.length > 4 && (
@@ -428,79 +308,65 @@ export const Cart: React.FC = () => {
                             </div>
                           </div>
                         )}
-
-                        {/* Notes */}
-                        {item.notes && (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                            <h5 className="font-medium text-gray-900 text-sm mb-1">Notes</h5>
-                            <p className="text-gray-700 text-sm">{item.notes}</p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </Card>
                 );
               })}
 
-              {/* Clear Cart */}
               <div className="text-center">
-                <Button
-                  variant="outline"
-                  onClick={clearCart}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
+                <Button variant="outline" onClick={clearCart} className="text-red-600 border-red-200 hover:bg-red-50">
                   Clear Cart
                 </Button>
               </div>
             </div>
 
-            {/* Order Summary */}
+            {/* ORDER SUMMARY */}
             <div>
               <Card className="p-6 sticky top-4">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h3>
-
-                <div className="space-y-4 mb-6">
-                  {state.items.map((item) => {
-                    const itemTotal = calculateItemTotal(item);
-                    return (
-                      <div key={item.id} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 text-sm line-clamp-2">{item.package.name}</h4>
-                          <p className="text-xs text-gray-600">{item.package.service_type}</p>
-                          {item.vendor && (
-                            <>
-                              <p className="text-xs text-gray-600">Vendor: {item.vendor.name}</p>
-                              {item.package.premium_amount && item.package.premium_amount > 0 && (
-                                <div className="text-sm text-gray-500">Premium: {formatPrice(item.package.premium_amount)}</div>
-                              )}
-                              <p className="text-xs text-gray-600">
-                                Travel: {item.package.travel_fee && item.package.travel_fee > 0 ? formatPrice(item.package.travel_fee) : 'Local ($0.00)'}
-                              </p>
-                            </>
-                          )}
+                <div className="space-y-6 mb-6">
+                  {state.items.map((item) => (
+                    <div key={item.id} className="border-b pb-4 last:border-0">
+                      <div className="flex items-start space-x-3 mb-2">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                          {getServiceIcon(item.package.service_type)}
                         </div>
-                        <div className="text-right ml-3">
-                          <div className="font-medium text-gray-900">{formatPrice(itemTotal * 100)}</div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 text-sm">{item.package.name}</h4>
+                          <p className="text-xs text-gray-600">{item.vendor?.name || 'Unknown Vendor'}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium text-gray-900">{formatPrice(item.package.price)}</div>
                         </div>
                       </div>
-                    );
-                  })}
+                      {item.eventDate && (
+                        <div className="mt-2 text-xs text-gray-600 space-y-1">
+                          <div className="flex items-center">
+                            <Calendar className="w-3 h-3 mr-1" />
+                            <span>
+                              {new Date(item.eventDate).toLocaleDateString()}
+                              {item.eventTime && (
+                                <> at {new Date(`2000-01-01T${item.eventTime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</>
+                              )}
+                            </span>
+                          </div>
+                          {item.venue && (
+                            <div className="flex items-center">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              <span>{item.venue.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{formatPrice(subtotal)}</span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Service Fee</span>
-                    <span className="font-medium">${totalServiceFee}</span>
-                  </div>
-
-                  <div className="flex justify-between text-lg font-semibold border-t pt-3">
+                <div className="border-t pt-4">
+                  <div className="flex justify-between text-lg font-semibold">
                     <span>Total</span>
-                    <span>{formatPrice(grandTotal)}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
                 </div>
 
@@ -511,17 +377,15 @@ export const Cart: React.FC = () => {
                     className="w-full"
                     onClick={handleCheckout}
                     icon={ArrowRight}
-                    disabled={state.items.length === 0 || isFetchingFees || !!error}
+                    disabled={state.items.some(i => !i.eventDate || !i.venue)}
                   >
                     {isAuthenticated ? 'Proceed to Checkout' : 'Sign In to Checkout'}
                   </Button>
-
                   <Button variant="outline" className="w-full" onClick={handleContinueShopping}>
                     Continue Shopping
                   </Button>
                 </div>
 
-                {/* Trust Indicators */}
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center space-x-2">
@@ -543,7 +407,6 @@ export const Cart: React.FC = () => {
           </div>
         )}
 
-        {/* Recommended Add-ons */}
         {state.items.length > 0 && (
           <Card className="p-8 mt-12 bg-gradient-to-r from-rose-50 to-amber-50 border-rose-200">
             <div className="text-center">
@@ -551,9 +414,7 @@ export const Cart: React.FC = () => {
                 <Heart className="w-6 h-6 text-rose-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Complete Your Perfect Day</h3>
-              <p className="text-gray-600 mb-6">
-                Based on your selections, here are some services that would complement your wedding beautifully
-              </p>
+              <p className="text-gray-600 mb-6">Add more services to make your wedding unforgettable</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button variant="primary" onClick={() => navigate('/search')}>
                   Browse More Services
@@ -567,20 +428,15 @@ export const Cart: React.FC = () => {
         )}
       </div>
 
-      {/* Vendor Selection Modal */}
-      {selectedCartItem && (
-        <VendorSelectionModal
-          isOpen={showVendorModal}
-          onClose={() => {
-            setShowVendorModal(false);
-            setSelectedCartItem(null);
-          }}
+      {showDateVenueModal && selectedCartItem && (
+        <DateVenueModal
+          isOpen={showDateVenueModal}
+          onClose={() => { setShowDateVenueModal(false); setSelectedCartItem(null); }}
           cartItem={selectedCartItem}
-          onVendorSelected={handleVendorSelected}
+          onSave={handleSaveDateVenue}
         />
       )}
 
-      {/* Auth Modal */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialMode="signup" />
     </div>
   );

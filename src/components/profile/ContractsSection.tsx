@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { FileText, Eye, Download, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { parse, format, isValid } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface ContractModalProps {
   isOpen: boolean;
@@ -16,19 +16,17 @@ interface ContractModalProps {
 }
 
 const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose, contract, onDownload }) => {
-  const safeFormatDate = (dateString: string | null | undefined, formatString: string = 'PPPP'): string => {
+  const safeFormatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Not set';
     try {
-      const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
-      if (!isValid(parsedDate)) return 'Invalid date';
-      return format(parsedDate, formatString);
-    } catch (error) {
-      console.error('Error formatting date:', dateString, error);
+      return formatInTimeZone(dateString, 'America/New_York', 'PPPP');
+    } catch {
       return 'Invalid date';
     }
   };
 
   if (!isOpen || !contract) return null;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 relative">
@@ -139,14 +137,11 @@ export const ContractsSection: React.FC = () => {
     if (couple?.id) fetchContracts();
   }, [couple]);
 
-  const safeFormatDate = (dateString: string | null | undefined, formatString: string = 'PPPP'): string => {
+  const safeFormatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Not set';
     try {
-      const parsedDate = parse(dateString, 'yyyy-MM-dd', new Date());
-      if (!isValid(parsedDate)) return 'Invalid date';
-      return format(parsedDate, formatString);
-    } catch (error) {
-      console.error('Error formatting date:', dateString, error);
+      return formatInTimeZone(dateString, 'America/New_York', 'PPPP');
+    } catch {
       return 'Invalid date';
     }
   };

@@ -1,6 +1,6 @@
 import React, { Component, ReactNode, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, Calendar, Heart, Camera, Settings, MessageCircle, CreditCard, Star, FileText, Users, Globe, StickyNote, DollarSign } from 'lucide-react';
+import { User, Calendar, Heart, Camera, Settings, MessageCircle, Search, CreditCard, Star, FileText, Users, Globe, StickyNote, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCouple } from '../hooks/useCouple';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,7 @@ import { MessagesSection } from '../components/profile/MessagesSection';
 import { PreferencesSection } from '../components/profile/PreferencesSection';
 import { SettingsSection } from '../components/profile/SettingsSection';
 import { ProfileInformation } from '../components/profile/ProfileInformation';
+import { MyInquiriesAndQuotes } from '../components/profile/MyInquiriesAndQuotes';
 import { WeddingGallery } from '../components/profile/WeddingGallery';
 import { WeddingBudget } from '../components/profile/WeddingBudget';
 import { NotesSection } from '../components/profile/NotesSection';
@@ -203,6 +204,7 @@ export const Profile: React.FC = () => {
   const tabs = [
     { key: 'overview', label: 'Overview', icon: Calendar },
     { key: 'budget', label: 'Budget Planning', icon: DollarSign },
+    { key: 'quotes', label: 'Inquiries & Quotes', icon: Search },
     { key: 'wedding-website', label: 'Wedding Website', icon: Globe },
     { key: 'notes', label: 'Wedding Notes', icon: StickyNote },
     { key: 'timeline', label: 'Wedding Timeline', icon: Calendar },
@@ -307,6 +309,7 @@ export const Profile: React.FC = () => {
             {activeTab === 'overview' && <OverviewDashboard onTabChange={handleTabChange} />}
             {activeTab === 'profile' && <ProfileInformation />}
             {activeTab === 'timeline' && <WeddingTimeline />}
+            {activeTab === 'quotes' && <MyInquiriesAndQuotes />}
             {activeTab === 'guests' && <GuestManagement />}
             {activeTab === 'wedding-board' && <WeddingBoard />}
             {activeTab === 'gallery' && (

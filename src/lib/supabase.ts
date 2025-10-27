@@ -24,3 +24,11 @@ export const supabase = isSupabaseConfigured()
       }
     })
   : null;
+
+  export const getPublicImageUrl = (path: string | null) => {
+  if (!path) return null;
+  const { data } = supabase.storage
+    .from('service_packages_images') // ← BUCKET NAME
+    .getPublicUrl(path);
+  return data.publicUrl;
+};

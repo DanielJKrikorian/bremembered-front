@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useMessages, Conversation, Message } from '../../hooks/useMessaging';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface ChatWindowProps {
   conversation: Conversation;
@@ -44,6 +45,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [newMessageImage, setNewMessageImage] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const [vendorSlug, setVendorSlug] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +60,44 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       sendMessage(initialMsg);
     }
   }, [conversation, messages.length, sendMessage]);
+
+  useEffect(() => {
+    const fetchVendorSlug = async () => {
+      if (!conversation.other_participant?.id) {
+        console.warn("No participant ID provided for vendor slug fetch");
+        setVendorSlug(null);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from("vendors")
+          .select("slug")
+          .eq("id", conversation.other_participant.id)
+          .single();
+        if (error) {
+          console.error("Error fetching vendor slug by id:", error);
+          // Fallback to user_id if id query fails
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("vendors")
+            .select("slug")
+            .eq("user_id", conversation.other_participant.id)
+            .single();
+          if (fallbackError) {
+            console.error("Error fetching vendor slug by user_id:", fallbackError);
+            setVendorSlug(null);
+            return;
+          }
+          setVendorSlug(fallbackData.slug || null);
+        } else {
+          setVendorSlug(data.slug || null);
+        }
+      } catch (error) {
+        console.error("Error fetching vendor slug:", error);
+        setVendorSlug(null);
+      }
+    };
+    fetchVendorSlug();
+  }, [conversation.other_participant?.id]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +190,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-sm text-gray-600">Online</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => vendorSlug ? window.open(`https://bremembered.io/vendor/${vendorSlug}`, '_blank') : null}
+              className={`text-rose-500 border-rose-500 hover:bg-rose-50 ${!vendorSlug ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!vendorSlug}
+            >
+              Profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => vendorSlug ? window.open(`https://bremembered.io/v/${vendorSlug}`, '_blank') : null}
+              className={`text-rose-500 border-rose-500 hover:bg-rose-50 ${!vendorSlug ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!vendorSlug}
+            >
+              Website
+            </Button>
           </div>
         </div>
 
