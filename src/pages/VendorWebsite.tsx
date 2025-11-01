@@ -33,7 +33,7 @@ const ThemeProvider = ({ children, websiteData }) => {
 
     document.documentElement.style.setProperty('--primary-color', theme.primary_color);
     document.documentElement.style.setProperty('--font-family', theme.font_family);
-    document.documentElement.style.setProperty('--primary-light', `${theme.primary_color}1A`); // Light variant for backgrounds
+    document.documentElement.style.setProperty('--primary-light', `${theme.primary_color}1A`);
   }, [theme]);
 
   return <ThemeContext.Provider value={{ theme }}>{children}</ThemeContext.Provider>;
@@ -75,7 +75,7 @@ const CustomVideoPlayer = ({ src, poster }) => {
             onClick={togglePlay}
             className='absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-lg hover:bg-opacity-20 transition-opacity'
           >
-            <span className='text-white text-4xl'>{isPlaying ? '❚❚' : '▶'}</span>
+            <span className='text-white text-4xl'>{isPlaying ? 'Pause' : 'Play'}</span>
           </button>
         </>
       )}
@@ -88,14 +88,12 @@ const MediaModal = ({ isOpen, onClose, media }) => {
   const { theme } = useTheme();
   if (!isOpen) return null;
 
-  console.log('MediaModal opened with:', media);
-
   return (
-    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]'>
+    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4'>
       <div className='bg-white rounded-lg p-6 max-w-4xl w-full'>
         <div className='flex justify-between items-center mb-4'>
           <h3 className='text-xl font-semibold text-gray-900'>{media.type === 'image' ? 'View Image' : 'View Video'}</h3>
-          <button onClick={onClose} className='text-gray-900' style={{ ':hover': { color: 'var(--primary-color)' } }}>
+          <button onClick={onClose} className='text-gray-900 hover:text-rose-600 transition-colors'>
             <X className='w-6 h-6' />
           </button>
         </div>
@@ -115,22 +113,22 @@ const ServiceAreasModal = ({ isOpen, onClose, serviceAreas }) => {
   if (!isOpen) return null;
 
   return (
-    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]'>
+    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4'>
       <div className='bg-white rounded-lg p-6 max-w-md w-full'>
         <div className='flex justify-between items-center mb-4'>
           <h3 className='text-xl font-semibold text-gray-900'>Our Service Areas</h3>
-          <button onClick={onClose} className='text-gray-900' style={{ ':hover': { color: 'var(--primary-color)' } }}>
+          <button onClick={onClose} className='text-gray-900 hover:text-rose-600 transition-colors'>
             <X className='w-6 h-6' />
           </button>
         </div>
         <div className='flex flex-wrap gap-4'>
-          {serviceAreas && serviceAreas.map((area, index) => (
+          {Array.isArray(serviceAreas) && serviceAreas.map((area, index) => (
             <span
               key={index}
               className='px-4 py-2 rounded-full text-sm font-medium'
               style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)' }}
             >
-              {area.region}
+              {area.region || 'Unknown'}
             </span>
           ))}
         </div>
@@ -139,48 +137,70 @@ const ServiceAreasModal = ({ isOpen, onClose, serviceAreas }) => {
   );
 };
 
-// Package details modal component
+// Package details modal component — FULLY RESPONSIVE
 const PackageDetailsModal = ({ isOpen, onClose, pkg }) => {
   const { theme } = useTheme();
   if (!isOpen || !pkg) return null;
-
-  console.log('PackageDetailsModal opened with:', pkg);
 
   const formatPrice = (amount) => {
     if (amount === 0) return 'Contact for pricing';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(amount / 100);
   };
 
+  const getCoverageText = () => {
+    if (!pkg.coverage) return 'No coverage details provided';
+    if (typeof pkg.coverage === 'string') return pkg.coverage;
+    if (typeof pkg.coverage === 'object') {
+      const { events = [], duration } = pkg.coverage;
+      const eventList = Array.isArray(events) && events.length > 0 ? events.join(', ') : 'Custom events';
+      return `${duration || 'Full day'} • ${eventList}`;
+    }
+    return 'Coverage details unavailable';
+  };
+
   return (
-    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]'>
-      <div className='bg-white rounded-lg p-6 max-w-2xl w-full'>
-        <div className='flex justify-between items-center mb-4'>
+    <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4 overflow-y-auto'>
+      <div className='bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6'>
+        <div className='flex justify-between items-center mb-4 sticky top-0 bg-white z-10 pb-3 border-b border-gray-200'>
           <h3 className='text-xl font-semibold text-gray-900'>{pkg.name || 'Unnamed Package'}</h3>
-          <button onClick={onClose} className='text-gray-900' style={{ ':hover': { color: 'var(--primary-color)' } }}>
+          <button 
+            onClick={onClose} 
+            className='text-gray-900 hover:text-rose-600 transition-colors'
+          >
             <X className='w-6 h-6' />
           </button>
         </div>
+
+        {/* Primary Image */}
         {pkg.primary_image ? (
           <img
             src={pkg.primary_image}
             alt={`${pkg.name} primary image`}
-            className='w-full h-64 object-cover rounded-lg mb-4'
+            className='w-full h-48 sm:h-64 object-cover rounded-lg mb-4'
             loading='lazy'
           />
         ) : (
-          <div className='w-full h-64 bg-gray-200 rounded-lg mb-4 flex items-center justify-center'>
+          <div className='w-full h-48 sm:h-64 bg-gray-200 rounded-lg mb-4 flex items-center justify-center'>
             <p className='text-gray-500'>No primary image available</p>
           </div>
         )}
-        <p className='text-gray-600 mb-4'>{pkg.description || 'No description provided'}</p>
+
+        {/* Description */}
+        <p className='text-gray-600 mb-4 text-sm sm:text-base'>{pkg.description || 'No description provided'}</p>
+
+        {/* Price */}
         <div className='mb-4'>
           <h4 className='text-lg font-semibold text-gray-900'>Price</h4>
-          <p className='text-2xl' style={{ color: 'var(--primary-color)' }}>{formatPrice(pkg.price || 0)}</p>
+          <p className='text-2xl sm:text-3xl' style={{ color: 'var(--primary-color)' }}>
+            {formatPrice(pkg.price || 0)}
+          </p>
         </div>
-        {pkg.features?.length > 0 ? (
+
+        {/* Features */}
+        {Array.isArray(pkg.features) && pkg.features.length > 0 ? (
           <div className='mb-4'>
             <h4 className='text-lg font-semibold text-gray-900'>What’s Included</h4>
-            <ul className='list-disc list-inside text-gray-600'>
+            <ul className='list-disc list-inside text-gray-600 space-y-1 text-sm sm:text-base'>
               {pkg.features.map((feature, index) => (
                 <li key={index}>{feature}</li>
               ))}
@@ -189,51 +209,59 @@ const PackageDetailsModal = ({ isOpen, onClose, pkg }) => {
         ) : (
           <div className='mb-4'>
             <h4 className='text-lg font-semibold text-gray-900'>What’s Included</h4>
-            <p className='text-gray-600'>No features listed</p>
+            <p className='text-gray-600 text-sm sm:text-base'>No features listed</p>
           </div>
         )}
-        {pkg.coverage ? (
-          <div className='mb-4'>
-            <h4 className='text-lg font-semibold text-gray-900'>Coverage</h4>
-            <p className='text-gray-600'>{pkg.coverage}</p>
-          </div>
-        ) : (
-          <div className='mb-4'>
-            <h4 className='text-lg font-semibold text-gray-900'>Coverage</h4>
-            <p className='text-gray-600'>No coverage details provided</p>
-          </div>
-        )}
-        {pkg.gallery_images?.length > 0 ? (
-          <div className='mb-4'>
+
+        {/* Coverage */}
+        <div className='mb-4'>
+          <h4 className='text-lg font-semibold text-gray-900'>Coverage</h4>
+          <p className='text-gray-600 text-sm sm:text-base'>{getCoverageText()}</p>
+        </div>
+
+        {/* Gallery */}
+        {Array.isArray(pkg.gallery_images) && pkg.gallery_images.length > 0 ? (
+          <div className='mb-6'>
             <h4 className='text-lg font-semibold text-gray-900'>Gallery</h4>
-            <div className='grid grid-cols-2 gap-4'>
+            <div className='grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3'>
               {pkg.gallery_images.map((image, index) => (
                 <img
                   key={index}
                   src={image}
                   alt={`Gallery image ${index + 1}`}
-                  className='w-full h-32 object-cover rounded-lg'
+                  className='w-full h-24 sm:h-32 object-cover rounded-lg'
                   loading='lazy'
                 />
               ))}
             </div>
           </div>
         ) : (
-          <div className='mb-4'>
+          <div className='mb-6'>
             <h4 className='text-lg font-semibold text-gray-900'>Gallery</h4>
-            <p className='text-gray-600'>No gallery images available</p>
+            <p className='text-gray-600 text-sm sm:text-base'>No gallery images available</p>
           </div>
         )}
-        <div className='flex gap-4'>
+
+        {/* Actions */}
+        <div className='flex gap-3 mt-6'>
           <Button
-            variant='primary'
-            className='w-full py-3'
-            style={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}
-            onClick={() => onClose()}
+            variant='outline'
+            className='flex-1 py-3 text-sm sm:text-base'
+            style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+            onClick={onClose}
           >
             Close
           </Button>
-          {/* TODO: Add to Cart button to be implemented later */}
+          <Button
+            variant='primary'
+            className='flex-1 py-3 text-sm sm:text-base'
+            style={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}
+            onClick={() => {
+              alert("Add to cart coming soon!");
+            }}
+          >
+            Add to Cart
+          </Button>
         </div>
       </div>
     </div>
@@ -246,9 +274,9 @@ const TeamMemberPage = ({ vendor }) => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [showMediaModal, setShowMediaModal] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState({ url: '', type: '' });
+  const [selectedMedia, setSelectedMedia] = useState({ url: '', type: '', poster: '' });
 
-  const member = vendor.team_members.find((m) => m.slug === memberSlug);
+  const member = vendor.team_members?.find((m) => m.slug === memberSlug);
 
   if (!member) {
     return <div className='text-center py-12' style={{ color: 'var(--primary-color)' }}>Team member not found</div>;
@@ -256,7 +284,6 @@ const TeamMemberPage = ({ vendor }) => {
 
   const handleMediaClick = (e, url, type) => {
     e.stopPropagation();
-    console.log('TeamMemberPage media clicked:', { url, type, poster: member.photo_gallery?.[0] });
     setSelectedMedia({ url, type, poster: member.photo_gallery?.[0] });
     setShowMediaModal(true);
   };
@@ -295,7 +322,7 @@ const TeamMemberPage = ({ vendor }) => {
           <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>About {member.full_name}</h2>
           <p className='text-xl text-gray-600 max-w-2xl mx-auto'>{member.bio}</p>
         </section>
-        {member.photo_gallery?.length > 0 && (
+        {Array.isArray(member.photo_gallery) && member.photo_gallery.length > 0 && (
           <section className='py-12'>
             <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>Photo Gallery</h2>
             <p className='text-xl text-gray-600 text-center mb-12'>Explore {member.full_name}'s photography work</p>
@@ -308,7 +335,7 @@ const TeamMemberPage = ({ vendor }) => {
             </div>
           </section>
         )}
-        {member.video_gallery?.length > 0 && (
+        {Array.isArray(member.video_gallery) && member.video_gallery.length > 0 && (
           <section className='py-12'>
             <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>Video Gallery</h2>
             <p className='text-xl text-gray-600 text-center mb-12'>Watch {member.full_name}'s video highlights</p>
@@ -355,7 +382,7 @@ const TeamMemberPage = ({ vendor }) => {
   );
 };
 
-// Main content component to use theme
+// Main content component
 const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, teamMembers, showIntroVideo, setShowIntroVideo, showMediaModal, setShowMediaModal, selectedMedia, setSelectedMedia, showAuthModal, setShowAuthModal, showInquiryModal, setShowInquiryModal, showServiceAreasModal, setShowServiceAreasModal, inquiryForm, setInquiryForm, isMobileMenuOpen, setIsMobileMenuOpen, isAuthenticated, signOut, cartState, toggleCart }) => {
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -365,7 +392,7 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
   const handleShare = () => {
     const shareUrl = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: `Check out ${vendor?.name}`, url: shareUrl }).catch((err) => console.error('Share failed:', err));
+      navigator.share({ title: `Check out ${vendor?.name}`, url: shareUrl }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl);
       alert('Link copied to clipboard!');
@@ -374,26 +401,17 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
 
   const handleMediaClick = (e, url, type) => {
     e.stopPropagation();
-    console.log('Gallery media clicked:', { url, type, poster: vendor?.portfolio_photos?.[0], showMediaModal });
     setSelectedMedia({ url, type, poster: vendor?.portfolio_photos?.[0] || 'https://via.placeholder.com/150' });
     setShowMediaModal(true);
-    console.log('Set showMediaModal to true, selectedMedia:', { url, type, poster: vendor?.portfolio_photos?.[0] });
   };
 
   const handlePackageClick = (pkg) => {
-    console.log('Package clicked:', pkg);
     setSelectedPackage(pkg);
     setShowPackageModal(true);
   };
 
-  const handleLogin = () => {
-    setShowAuthModal({ isOpen: true, initialMode: 'login' });
-  };
-
-  const handleSignup = () => {
-    setShowAuthModal({ isOpen: true, initialMode: 'signup' });
-  };
-
+  const handleLogin = () => setShowAuthModal({ isOpen: true, initialMode: 'login' });
+  const handleSignup = () => setShowAuthModal({ isOpen: true, initialMode: 'signup' });
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
@@ -783,7 +801,7 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
         </section>
 
         {/* Meet the Team Section */}
-        {vendor.studio_subscription?.pro_studio && teamMembers?.length > 0 && (
+        {vendor.studio_subscription?.pro_studio && Array.isArray(teamMembers) && teamMembers.length > 0 && (
           <section id='team' className='py-16 px-4 sm:px-6 lg:px-8 bg-white'>
             <div className='max-w-7xl mx-auto'>
               <h2 className='text-3xl font-bold text-center text-gray-900 mb-12'>Meet Our Team</h2>
@@ -813,14 +831,14 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
             <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>Our Gallery</h2>
             <p className='text-xl text-gray-600 text-center mb-12'>Explore our stunning photography and videography</p>
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8'>
-              {vendor.portfolio_photos?.length > 0 ? vendor.portfolio_photos.map((photo, index) => (
+              {Array.isArray(vendor.portfolio_photos) && vendor.portfolio_photos.length > 0 ? vendor.portfolio_photos.map((photo, index) => (
                 <Card key={index} className='overflow-hidden hover:scale-105 transition-transform cursor-pointer' onClick={(e) => handleMediaClick(e, photo, 'image')}>
                   <img src={photo} alt={`Portfolio ${index + 1}`} className='w-full h-64 object-cover' loading='lazy' />
                 </Card>
               )) : (
                 <p className='text-gray-600 text-center col-span-full'>No photos available</p>
               )}
-              {vendor.portfolio_videos?.length > 0 ? vendor.portfolio_videos.map((video, index) => (
+              {Array.isArray(vendor.portfolio_videos) && vendor.portfolio_videos.length > 0 ? vendor.portfolio_videos.map((video, index) => (
                 <Card key={`video-${index}`} className='overflow-hidden cursor-pointer' onClick={(e) => handleMediaClick(e, video, 'video')}>
                   <CustomVideoPlayer src={video} poster={vendor.portfolio_photos?.[0] || 'https://via.placeholder.com/150'} />
                 </Card>
@@ -872,7 +890,7 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
             <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>Our Packages</h2>
             <p className='text-xl text-gray-600 text-center mb-12'>Choose the perfect package for your special day</p>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-              {servicePackages.length > 0 ? servicePackages.map((pkg) => (
+              {Array.isArray(servicePackages) && servicePackages.length > 0 ? servicePackages.map((pkg) => (
                 <Card key={pkg.id} className='p-6 hover:scale-105 transition-transform cursor-pointer' onClick={() => handlePackageClick(pkg)}>
                   <h3 className='text-xl font-semibold text-gray-900 mb-2'>{pkg.name}</h3>
                   <p className='text-gray-600 mb-4 text-sm'>{pkg.description}</p>
@@ -904,7 +922,7 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
             <h2 className='text-3xl font-bold text-center text-gray-900 mb-4'>What Our Couples Say</h2>
             <p className='text-xl text-gray-600 text-center mb-12'>Hear from those who trusted us with their special day</p>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'>
-              {reviews.length > 0 ? reviews.map((review) => (
+              {Array.isArray(reviews) && reviews.length > 0 ? reviews.map((review) => (
                 <Card key={review.id} className='p-6'>
                   <div className='flex items-center mb-4'>{renderStars(review.overall_rating)}</div>
                   <p className='text-gray-600 mb-4 italic'>"{review.feedback}"</p>
@@ -1009,11 +1027,11 @@ const MainContent = ({ vendor, websiteData, stats, reviews, servicePackages, tea
           pkg={selectedPackage}
         />
         {showIntroVideo && vendor.intro_video && (
-          <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000]'>
+          <div className='fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4'>
             <div className='bg-white rounded-lg p-6 max-w-4xl w-full'>
               <div className='flex justify-between items-center mb-4'>
                 <h3 className='text-xl font-semibold text-gray-900'>Introduction Video</h3>
-                <button onClick={() => setShowIntroVideo(false)} className='text-gray-900' style={{ ':hover': { color: 'var(--primary-color)' } }}>
+                <button onClick={() => setShowIntroVideo(false)} className='text-gray-900 hover:text-rose-600 transition-colors'>
                   <X className='w-6 h-6' />
                 </button>
               </div>

@@ -1,226 +1,248 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Filter, Grid, List, SlidersHorizontal, MapPin, Star, Clock, Users, ChevronDown, Search, X, Check, Camera, Video, Music, Calendar, Package, Heart } from 'lucide-react';
+/*  src/pages/SearchResults.tsx  */
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Grid, List, SlidersHorizontal, MapPin, Star, Users,
+  ChevronDown, Search, X, Camera, Video, Music, Calendar,
+  Package, Building2, CheckCircle
+} from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
-import { CustomPackageModal } from '../components/common/CustomPackageModal';
-import { useServicePackages } from '../hooks/useSupabase';
-import { ServicePackage } from '../types/booking';
-import { useCart } from '../context/CartContext';
-import { useWeddingBoard } from '../hooks/useWeddingBoard';
 import { useAuth } from '../context/AuthContext';
-import { trackPageView } from '../utils/analytics'; // Import trackPageView
+import { trackPageView } from '../utils/analytics';
+import { supabase } from '../lib/supabase';
 
-// Simple debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+interface Vendor {
+  id: string;
+  name: string;
+  slug: string;
+  profile?: string;
+  profile_photo?: string;
+  rating?: number;
+  years_experience?: number;
+  package_count: number;
+  package_service_types: string[];
+}
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+interface ServiceArea {
+  id: string;
+  state: string;
+  region: string | null;
+}
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
+interface VendorServiceArea {
+  vendor_id: string;
+  service_area_id: string;
 }
 
 export const SearchResults: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { category } = useParams<{ category?: string }>();
-  const { user, loading: authLoading } = useAuth(); // Add useAuth
+  const { user, loading: authLoading } = useAuth();
+
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
+  const [vendorServiceAreas, setVendorServiceAreas] = useState<VendorServiceArea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('recommended');
+  const [sortBy, setSortBy] = useState<'name' | 'rating' | 'packages'>('rating');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCustomPackageModal, setShowCustomPackageModal] = useState(false);
-  const { addItem, openCart } = useCart();
-  const { addToFavorites, removeFromFavorites, isFavorited, favorites } = useWeddingBoard();
-  const { isAuthenticated } = useAuth();
-  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+  const analyticsTracked = useRef(false);
 
   const [filters, setFilters] = useState({
     serviceTypes: [] as string[],
-    eventTypes: [] as string[],
-    minHours: 1,
-    maxHours: 12,
-    minPrice: 0,
-    maxPrice: 500000,
-    coverage: [] as string[]
+    state: '',
+    areaId: '',
   });
 
-  // Track analytics only once on mount
+  const EXCLUDED_SERVICE = 'Editing';
+
+  /* ------------------- ANALYTICS ------------------- */
   useEffect(() => {
     if (!authLoading && !analyticsTracked.current) {
-      const screenName = category ? `search/${category}` : 'search';
-      console.log(`Tracking analytics for ${screenName}:`, new Date().toISOString());
-      trackPageView(screenName, 'bremembered.io', user?.id);
+      const screen = category ? `search/vendors/${category}` : 'search/vendors';
+      trackPageView(screen, 'bremembered.io', user?.id);
       analyticsTracked.current = true;
     }
   }, [authLoading, user?.id, category]);
 
-  // Debounce price filter inputs to prevent flickering
-  const debouncedMinPrice = useDebounce(filters.minPrice, 300);
-  const debouncedMaxPrice = useDebounce(filters.maxPrice, 300);
-
-  // Service fee constant (in cents, to match formatPrice)
-  const SERVICE_FEE = 5000; // $50
-
-  // Inject JSON-LD structured data when category is active
+  /* ------------------- FETCH ALL DATA ------------------- */
   useEffect(() => {
-    if (!category) return;
-    const formattedCategory = category
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    const schema = {
-      "@context": "https://schema.org",
-      "@type": "Service",
-      "serviceType": formattedCategory,
-      "provider": {
-        "@type": "Organization",
-        "name": "B. Remembered",
-        "url": "https://bremembered.io",
-        "logo": "https://eecbrvehrhrvdzuutliq.supabase.co/storage/v1/object/public/public-1/B_Logo.png"
-      },
-      "areaServed": {
-        "@type": "Country",
-        "name": "United States"
-      },
-      "availableChannel": {
-        "@type": "ServiceChannel",
-        "serviceUrl": `https://bremembered.io/services/${category}`
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: vendorData, error: vendorError } = await supabase
+          .from('vendors')
+          .select(`
+            id, name, slug, profile, profile_photo, rating,
+            years_experience,
+            packages:service_packages!vendor_id(id, service_type)
+          `);
+
+        if (vendorError) throw vendorError;
+
+        const { data: areaData, error: areaError } = await supabase
+          .from('service_areas')
+          .select('id, state, region');
+
+        if (areaError) throw areaError;
+
+        const { data: vsaData, error: vsaError } = await supabase
+          .from('vendor_service_areas')
+          .select('vendor_id, service_area_id');
+
+        if (vsaError) throw vsaError;
+
+        setServiceAreas(areaData || []);
+        setVendorServiceAreas(vsaData || []);
+
+        const vendorMap = new Map<string, Vendor>();
+
+        vendorData.forEach(v => {
+          const rawTypes = v.packages
+            ?.map((p: any) => p.service_type)
+            .filter(Boolean)
+            .flatMap((type: string) => type.split(','))
+            .map((t: string) => t.trim())
+            .filter(Boolean) || [];
+
+          const normalizedTypes = new Set(
+            rawTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase())
+          );
+
+          const visibleTypes = Array.from(normalizedTypes).filter(t => t !== EXCLUDED_SERVICE);
+          const hasNonEditingPackage = visibleTypes.length > 0;
+
+          if (!hasNonEditingPackage) return;
+
+          vendorMap.set(v.id, {
+            id: v.id,
+            name: v.name,
+            slug: v.slug,
+            profile: v.profile,
+            profile_photo: v.profile_photo,
+            rating: v.rating,
+            years_experience: v.years_experience,
+            package_count: v.packages?.length || 0,
+            package_service_types: visibleTypes,
+          });
+        });
+
+        setVendors(Array.from(vendorMap.values()));
+      } catch (err: any) {
+        setError(err.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
       }
     };
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-    return () => {
-      document.head.removeChild(script);
+
+    fetchData();
+  }, []);
+
+  /* ------------------- BUILD STATE → AREA MAP (UPPERCASE ABBREVIATIONS) ------------------- */
+  const { states, areasByState } = useMemo(() => {
+    const stateSet = new Set<string>();
+    const areaMap = new Map<string, Map<string, string>>();
+
+    serviceAreas.forEach(sa => {
+      const rawState = sa.state?.trim();
+      const rawRegion = sa.region?.trim();
+
+      if (!rawState) return;
+
+      // Force uppercase 2-letter abbreviation
+      const stateAbbrev = rawState.toUpperCase().slice(0, 2);
+      if (stateAbbrev.length !== 2) return; // Skip if not 2 letters
+
+      stateSet.add(stateAbbrev);
+
+      if (!areaMap.has(stateAbbrev)) {
+        areaMap.set(stateAbbrev, new Map());
+      }
+
+      const regionPart = rawRegion ? rawRegion.trim() : '';
+      const display = regionPart ? `${regionPart}, ${stateAbbrev}` : stateAbbrev;
+      areaMap.get(stateAbbrev)!.set(display, sa.id);
+    });
+
+    return {
+      states: Array.from(stateSet).sort(),
+      areasByState: Object.fromEntries(
+        Array.from(areaMap.entries()).map(([state, map]) => [
+          state,
+          Array.from(map.entries())
+            .map(([display, id]) => ({ display, id }))
+            .sort((a, b) => a.display.localeCompare(b.display)),
+        ])
+      ),
     };
-  }, [category]);
+  }, [serviceAreas]);
 
-  // Scroll to top when component mounts or location changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [location.pathname]);
+  /* ------------------- GET VENDOR IDS FOR AREA ------------------- */
+  const allowedVendorIds = useMemo(() => {
+    if (!filters.areaId) return null;
 
-  // Memoize filter object for useServicePackages
-  const filterConfig = useMemo(() => ({
-    selectedServices: filters.serviceTypes.length > 0 ? filters.serviceTypes : undefined,
-    minHours: filters.minHours,
-    maxHours: filters.maxHours,
-    coverage: filters.coverage.length > 0 ? filters.coverage : undefined,
-    minPrice: debouncedMinPrice,
-    maxPrice: debouncedMaxPrice
-  }), [filters.serviceTypes, filters.minHours, filters.maxHours, filters.coverage, debouncedMinPrice, debouncedMaxPrice]);
+    const vsa = vendorServiceAreas.filter(vsa => vsa.service_area_id === filters.areaId);
+    return new Set(vsa.map(vsa => vsa.vendor_id));
+  }, [filters.areaId, vendorServiceAreas]);
 
-  // Get all service packages with current filters
-  const { packages, loading, error } = useServicePackages(
-    undefined,
-    undefined,
-    filterConfig
-  );
+  /* ------------------- FILTER VENDORS ------------------- */
+  const filteredVendors = useMemo(() => {
+    return vendors.filter(v => {
+      if (searchTerm) {
+        const low = searchTerm.toLowerCase();
+        const matches =
+          v.name.toLowerCase().includes(low) ||
+          v.profile?.toLowerCase().includes(low) ||
+          v.package_service_types.some(t => t.toLowerCase().includes(low));
+        if (!matches) return false;
+      }
 
-  // Initialize filters from navigation state or category param
-  useEffect(() => {
-    if (location.state?.filters) {
-      setFilters(prev => ({ ...prev, ...location.state.filters }));
-    }
-    if (category) {
-      // Capitalize and map to match service types
-      const formattedCategory = category
-        .split('-')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      setFilters(prev => ({
-        ...prev,
-        serviceTypes: prev.serviceTypes.includes(formattedCategory)
-          ? prev.serviceTypes
-          : [...prev.serviceTypes, formattedCategory]
-      }));
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [location.state, category]);
+      if (filters.serviceTypes.length > 0) {
+        if (!v.package_service_types.some(t => filters.serviceTypes.includes(t))) return false;
+      }
 
-  // Filter packages by search term and additional filters
-  const filteredPackages = useMemo(() => packages.filter(pkg => {
-    // Search term filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch =
-        pkg.name.toLowerCase().includes(searchLower) ||
-        pkg.description?.toLowerCase().includes(searchLower) ||
-        pkg.service_type.toLowerCase().includes(searchLower) ||
-        pkg.features?.some(feature => feature.toLowerCase().includes(searchLower));
-      
-      if (!matchesSearch) return false;
-    }
+      if (filters.areaId) {
+        if (!allowedVendorIds?.has(v.id)) return false;
+      } else if (filters.state) {
+        const stateUpper = filters.state.toUpperCase();
+        const vendorVSAs = vendorServiceAreas.filter(vsa => vsa.vendor_id === v.id);
+        const hasState = vendorVSAs.some(vsa => {
+          const sa = serviceAreas.find(a => a.id === vsa.service_area_id);
+          return sa?.state && sa.state.toUpperCase().includes(stateUpper);
+        });
+        if (!hasState) return false;
+      }
 
-    // Service type filter
-    if (filters.serviceTypes.length > 0) {
-      const serviceLookupMap: Record<string, string> = {
-        'Photography': 'photography',
-        'DJ Services': 'dj',
-        'Day-of Coordination': 'coordination',
-        'Coordination': 'coordination',
-        'Videography': 'videography',
-        'Live Musician': 'live_musician',
-        'Planning': 'planning',
-        'Photo Booth': 'photo_booth',
-        'Venues': 'venues',
-        'Catering': 'catering',
-        'Florist': 'florist',
-        'Rentals': 'rentals',
-        'Officiant': 'officiant',
-        'Transportation': 'transportation',
-        'Hair & Makeup': 'hair_makeup',
-        'Cake & Desserts': 'cake_desserts'
-      };
-      
-      const hasMatchingService = filters.serviceTypes.some(serviceType => {
-        const lookupKey = serviceLookupMap[serviceType];
-        return pkg.lookup_key === lookupKey || pkg.service_type === serviceType;
-      });
-      
-      if (!hasMatchingService) return false;
-    }
+      return true;
+    });
+  }, [vendors, searchTerm, filters, allowedVendorIds, vendorServiceAreas, serviceAreas]);
 
-    // Event type filter
-    if (filters.eventTypes.length > 0 && pkg.event_type) {
-      if (!filters.eventTypes.includes(pkg.event_type)) return false;
-    }
-
-    return true;
-  }), [packages, searchTerm, filters.serviceTypes, filters.eventTypes]);
-
-  // Sort packages
-  const sortedPackages = useMemo(() => [...filteredPackages].sort((a, b) => {
+  /* ------------------- SORT ------------------- */
+  const sortedVendors = useMemo(() => {
+    const list = [...filteredVendors];
     switch (sortBy) {
-      case 'price-low': return a.price - b.price;
-      case 'price-high': return b.price - a.price;
-      case 'hours-low': return (a.hour_amount || 0) - (b.hour_amount || 0);
-      case 'hours-high': return (b.hour_amount || 0) - (a.hour_amount || 0);
-      case 'name': return a.name.localeCompare(b.name);
-      default: return 0; // recommended
+      case 'name': return list.sort((a, b) => a.name.localeCompare(b.name));
+      case 'rating': return list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      case 'packages': return list.sort((a, b) => b.package_count - a.package_count);
+      default: return list;
     }
-  }), [filteredPackages, sortBy]);
+  }, [filteredVendors, sortBy]);
 
-  // Service type options (expanded for global coverage)
+  /* ------------------- SERVICE TYPE OPTIONS ------------------- */
   const serviceTypeOptions = [
     { value: 'Photography', label: 'Photography', icon: Camera },
     { value: 'Videography', label: 'Videography', icon: Video },
-    { value: 'DJ Services', label: 'DJ Services', icon: Music },
+    { value: 'Dj Services', label: 'DJ Services', icon: Music },
     { value: 'Live Musician', label: 'Live Musician', icon: Music },
     { value: 'Coordination', label: 'Day-of Coordination', icon: Users },
     { value: 'Planning', label: 'Planning', icon: Calendar },
-    { value: 'Venues', label: 'Venues', icon: Package },
+    { value: 'Venues', label: 'Venues', icon: Building2 },
     { value: 'Catering', label: 'Catering', icon: Package },
     { value: 'Florist', label: 'Florist', icon: Package },
     { value: 'Photo Booth', label: 'Photo Booth', icon: Camera },
@@ -231,406 +253,284 @@ export const SearchResults: React.FC = () => {
     { value: 'Cake & Desserts', label: 'Cake & Desserts', icon: Package },
   ];
 
-  const eventTypeOptions = [
-    { value: 'Wedding', label: 'Wedding' },
-    { value: 'Proposal', label: 'Proposal' }
-  ];
-
-  const coverageOptions = [
-    'Ceremony',
-    'First Look',
-    'Cocktail Hour',
-    'Reception',
-    'Getting Ready',
-    'Bridal Party',
-    'Family Photos',
-    'Sunset Photos',
-    'Dancing',
-    'Cake Cutting',
-    'Bouquet Toss',
-    'Send Off'
-  ];
-
-  const handleFilterChange = useCallback((key: string, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
-
-  const handleServiceTypeToggle = useCallback((serviceType: string) => {
-    setFilters(prev => ({
-      ...prev,
-      serviceTypes: prev.serviceTypes.includes(serviceType)
-        ? prev.serviceTypes.filter(s => s !== serviceType)
-        : [...prev.serviceTypes, serviceType]
+  const handleServiceToggle = (val: string) => {
+    setFilters(p => ({
+      ...p,
+      serviceTypes: p.serviceTypes.includes(val)
+        ? p.serviceTypes.filter(v => v !== val)
+        : [...p.serviceTypes, val]
     }));
-  }, []);
+  };
 
-  const handleEventTypeToggle = useCallback((eventType: string) => {
-    setFilters(prev => ({
-      ...prev,
-      eventTypes: prev.eventTypes.includes(eventType)
-        ? prev.eventTypes.filter(e => e !== eventType)
-        : [...prev.eventTypes, eventType]
-    }));
-  }, []);
+  const handleStateChange = (state: string) => {
+    setFilters(p => ({ ...p, state, areaId: '' }));
+  };
 
-  const handleCoverageToggle = useCallback((coverage: string) => {
-    setFilters(prev => ({
-      ...prev,
-      coverage: prev.coverage.includes(coverage)
-        ? prev.coverage.filter(c => c !== coverage)
-        : [...prev.coverage, coverage]
-    }));
-  }, []);
+  const handleAreaChange = (areaId: string) => {
+    setFilters(p => ({ ...p, areaId }));
+  };
 
-  const clearFilters = useCallback(() => {
-    setFilters({
-      serviceTypes: [],
-      eventTypes: [],
-      minHours: 1,
-      maxHours: 12,
-      minPrice: 0,
-      maxPrice: 500000,
-      coverage: []
-    });
+  const clearFilters = () => {
+    setFilters({ serviceTypes: [], state: '', areaId: '' });
     setSearchTerm('');
-  }, []);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price / 100);
   };
 
-  const getPackageCoverage = (coverage: Record<string, any>) => {
-    if (!coverage || typeof coverage !== 'object') return [];
-    
-    const events = [];
-    if (coverage.events && Array.isArray(coverage.events)) {
-      events.push(...coverage.events);
-    }
-    
-    Object.keys(coverage).forEach(key => {
-      if (key !== 'events' && coverage[key] === true) {
-        events.push(key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()));
-      }
-    });
-    
-    return events;
-  };
+  const getVendorPhoto = (v: Vendor) =>
+    v.profile_photo ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(v.name)}&background=f3f4f6&color=374151&size=256`;
 
-  const handleToggleFavorite = useCallback(async (e: React.MouseEvent, pkg: ServicePackage) => {
-    e.stopPropagation();
-    
-    if (!isAuthenticated) {
-      alert('Please sign in to save favorites');
-      return;
-    }
+  const activeFiltersCount = filters.serviceTypes.length + (filters.state ? 1 : 0) + (filters.areaId ? 1 : 0);
 
-    try {
-      if (isFavorited(pkg.id)) {
-        const favorite = favorites.find(fav => fav.package_id === pkg.id);
-        if (favorite) {
-          await removeFromFavorites(favorite.id);
-        }
-      } else {
-        await addToFavorites(pkg.id);
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
-  }, [isAuthenticated, favorites, addToFavorites, removeFromFavorites, isFavorited]);
-
-  const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': return Camera;
-      case 'Videography': return Video;
-      case 'DJ Services': return Music;
-      case 'Live Musician': return Music;
-      case 'Coordination': return Users;
-      case 'Planning': return Calendar;
-      default: return Package;
-    }
-  };
-
-  const getServicePhoto = (serviceType: string, pkg: ServicePackage) => {
-    const hash = pkg.id.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    
-    const photoIndex = Math.abs(hash) % getServicePhotos(serviceType).length;
-    return getServicePhotos(serviceType)[photoIndex];
-  };
-
-  const getServicePhotos = (serviceType: string) => {
-    switch (serviceType) {
-      case 'Photography': 
-        return [
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'Videography': 
-        return [
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'DJ Services': 
-        return [
-          'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'Live Musician': 
-        return [
-          'https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/164821/pexels-photo-164821.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1407322/pexels-photo-1407322.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1751731/pexels-photo-1751731.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1407354/pexels-photo-1407354.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'Coordination': 
-        return [
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      case 'Planning': 
-        return [
-          'https://images.pexels.com/photos/1024992/pexels-photo-1024992.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1043474/pexels-photo-1043474.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-      default: 
-        return [
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1444442/pexels-photo-1444442.jpeg?auto=compress&cs=tinysrgb&w=800',
-          'https://images.pexels.com/photos/1024994/pexels-photo-1024994.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ];
-    }
-  };
-
-  const activeFiltersCount = 
-    filters.serviceTypes.length + 
-    filters.eventTypes.length + 
-    filters.coverage.length + 
-    (filters.minPrice > 0 || filters.maxPrice < 500000 ? 1 : 0) +
-    (filters.minHours > 1 || filters.maxHours < 12 ? 1 : 0);
-
+  /* ------------------- LOADING ------------------- */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading packages...</p>
+          <div className="animate-spin w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full mx-auto mb-4"/>
+          <p className="text-gray-600">Loading vendors…</p>
         </div>
       </div>
     );
   }
 
+  /* ------------------- ERROR ------------------- */
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
-          <p className="text-red-600 mb-4">Error loading packages: {error}</p>
+          <p className="text-red-600 mb-4">Error: {error}</p>
           <Button variant="primary" onClick={() => window.location.reload()}>
-            Try Again
+            Retry
           </Button>
         </Card>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Wedding Services</h1>
-              <p className="text-gray-600">Find the perfect vendors for your special day</p>
-            </div>
-            <Button
-              variant="primary"
-              onClick={() => setShowCustomPackageModal(true)}
-              className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg"
+  /* ------------------- GRID CARD (ROSE OUTLINE ON CARD + PHOTO) ------------------- */
+const VendorGridCard = ({ v }: { v: Vendor }) => (
+  <Card
+    className="group overflow-hidden rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer bg-white border-2 border-transparent hover:border-rose-500"
+    onClick={() => navigate(`/vendor/${v.slug}`)}
+  >
+    <div className="p-6 flex justify-center">
+      <div className="relative">
+        <img
+          src={getVendorPhoto(v)}
+          alt={v.name}
+          className="w-32 h-32 object-cover rounded-full ring-4 ring-rose-200 ring-offset-4 ring-offset-white shadow-lg group-hover:scale-105 transition-transform duration-300"
+        />
+        <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1.5 rounded-full shadow-md">
+          <CheckCircle className="w-4 h-4" />
+        </div>
+      </div>
+    </div>
+
+    <div className="px-6 pb-6">
+      <h3 className="text-xl font-bold text-gray-900 text-center mb-1 group-hover:text-rose-600 transition-colors">
+        {v.name}
+      </h3>
+
+      {v.rating && (
+        <div className="flex items-center justify-center gap-1 mb-3">
+          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-900">{v.rating}</span>
+        </div>
+      )}
+
+      <p className="text-gray-600 text-sm text-center line-clamp-3 mb-4 min-h-[3.5rem]">
+        {v.profile || 'Professional wedding vendor'}
+      </p>
+
+      <div className="flex flex-wrap gap-3 justify-center mb-4">
+        {(v.package_service_types || []).map(t => {
+          const option = serviceTypeOptions.find(o => o.value.toLowerCase() === t.toLowerCase());
+          const Icon = option?.icon || Package;
+          return (
+            <div
+              key={`${v.id}-${t}`}
+              className="p-2 rounded-full bg-rose-50 text-rose-700 shadow-sm hover:bg-rose-100 transition-colors"
+              title={t}
             >
-              Create Custom Package
-            </Button>
+              <Icon className="w-5 h-5" />
+            </div>
+          );
+        })}
+      </div>
+
+      <Button
+        variant="primary"
+        className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all"
+        onClick={e => { e.stopPropagation(); navigate(`/vendor/${v.slug}`); }}
+      >
+        View Profile
+      </Button>
+    </div>
+  </Card>
+);
+
+/* ------------------- LIST CARD (ROSE OUTLINE ON CARD + PHOTO) ------------------- */
+const VendorListItem = ({ v }: { v: Vendor }) => (
+  <Card
+    className="group flex gap-8 p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer bg-white relative border-2 border-transparent hover:border-rose-500"
+    onClick={() => navigate(`/vendor/${v.slug}`)}
+  >
+    <div className="relative flex-shrink-0">
+      <img
+        src={getVendorPhoto(v)}
+        alt={v.name}
+        className="w-40 h-40 object-cover rounded-full ring-4 ring-rose-200 ring-offset-4 ring-offset-white shadow-lg group-hover:scale-105 transition-transform"
+      />
+      <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1.5 rounded-full shadow-md">
+        <CheckCircle className="w-5 h-5" />
+      </div>
+    </div>
+
+    <div className="flex-1 flex flex-col justify-between">
+      <div>
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 group-hover:text-rose-600 transition-colors">
+              {v.name}
+            </h3>
           </div>
+          {v.rating && (
+            <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span className="text-sm font-semibold text-amber-900">{v.rating}</span>
+            </div>
+          )}
         </div>
 
-        {/* Search Bar */}
-        <Card className="p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search packages by name, service, or features..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
+        <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+          {v.profile || 'Professional wedding vendor'}
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          {(v.package_service_types || []).map(t => {
+            const option = serviceTypeOptions.find(o => o.value.toLowerCase() === t.toLowerCase());
+            const Icon = option?.icon || Package;
+            return (
+              <div
+                key={`${v.id}-${t}`}
+                className="p-2.5 rounded-full bg-rose-50 text-rose-700 shadow-sm hover:bg-rose-100 transition-colors"
+                title={t}
+              >
+                <Icon className="w-5 h-5" />
               </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="absolute bottom-6 right-6">
+        <Button
+          variant="primary"
+          className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-medium px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all"
+          onClick={e => { e.stopPropagation(); navigate(`/vendor/${v.slug}`); }}
+        >
+          View Profile
+        </Button>
+      </div>
+    </div>
+  </Card>
+);
+
+  /* ------------------- MAIN UI ------------------- */
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* HEADER */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Find Your Perfect Wedding Team
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Discover top-rated vendors with real packages and verified reviews
+          </p>
+        </div>
+
+        {/* SEARCH BAR */}
+        <Card className="p-6 mb-10 shadow-lg rounded-2xl bg-white/80 backdrop-blur">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"/>
+              <Input
+                placeholder="Search by name, service, or location..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-12 pr-4 py-3 text-lg border-gray-200 focus:border-rose-400 focus:ring-rose-400"
+              />
             </div>
             <div className="md:hidden">
-              <Button
-                variant="outline"
-                icon={SlidersHorizontal}
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+              <Button variant="outline" icon={SlidersHorizontal} onClick={() => setShowFilters(!showFilters)}>
+                Filters {activeFiltersCount ? `(${activeFiltersCount})` : ''}
               </Button>
             </div>
           </div>
 
-          {/* Mobile Filters Panel */}
+          {/* MOBILE FILTERS */}
           {showFilters && (
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Service Types */}
+              <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Service Types</label>
-                  <div className="space-y-2">
-                    {serviceTypeOptions.map((option) => (
-                      <label key={option.value} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.serviceTypes.includes(option.value)}
-                          onChange={() => handleServiceTypeToggle(option.value)}
-                          className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{option.label}</span>
-                      </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">State</label>
+                  <select
+                    value={filters.state}
+                    onChange={e => handleStateChange(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    <option value="">All States</option>
+                    {states.map(s => (
+                      <option key={s} value={s}>{s}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
-
-                {/* Event Types */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Event Types</label>
-                  <div className="space-y-2">
-                    {eventTypeOptions.map((option) => (
-                      <label key={option.value} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.eventTypes.includes(option.value)}
-                          onChange={() => handleEventTypeToggle(option.value)}
-                          className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{option.label}</span>
-                      </label>
-                    ))}
+                {filters.state && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Area</label>
+                    <select
+                      value={filters.areaId}
+                      onChange={e => handleAreaChange(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    >
+                      <option value="">All Areas in {filters.state}</option>
+                      {areasByState[filters.state]?.map(({ display, id }) => (
+                        <option key={id} value={id}>{display}</option>
+                      ))}
+                    </select>
                   </div>
-                </div>
-
-                {/* Moments (Coverage) */}
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Moments</label>
-                  <div className="space-y-2">
-                    {coverageOptions.map((coverage) => (
-                      <label key={coverage} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.coverage.includes(coverage)}
-                          onChange={() => handleCoverageToggle(coverage)}
-                          className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                        />
-                        <span className="text-sm text-gray-700">{coverage}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Price Range</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Service Types</label>
                   <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-gray-600">Min: {formatPrice(filters.minPrice)}</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="500000"
-                        step="5000"
-                        value={filters.minPrice}
-                        onChange={(e) => handleFilterChange('minPrice', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600">Max: {formatPrice(filters.maxPrice)}</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="500000"
-                        step="5000"
-                        value={filters.maxPrice}
-                        onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hours */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Coverage Hours</label>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-gray-600">Min: {filters.minHours}h</label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="12"
-                        value={filters.minHours}
-                        onChange={(e) => handleFilterChange('minHours', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-600">Max: {filters.maxHours}h</label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="12"
-                        value={filters.maxHours}
-                        onChange={(e) => handleFilterChange('maxHours', parseInt(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
+                    {serviceTypeOptions.map(o => (
+                      <label key={o.value} className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.serviceTypes.includes(o.value)}
+                          onChange={() => handleServiceToggle(o.value)}
+                          className="sr-only"
+                        />
+                        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all w-full ${
+                          filters.serviceTypes.includes(o.value)
+                            ? 'bg-rose-100 text-rose-700 ring-2 ring-rose-500'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        }`}>
+                          <o.icon className="w-5 h-5" />
+                          <span className="text-sm font-medium">{o.label}</span>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
-
               <div className="flex justify-between items-center mt-6">
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-rose-600 hover:text-rose-700"
-                >
-                  Clear all filters
+                <button onClick={clearFilters} className="text-sm font-medium text-rose-600 hover:text-rose-700">
+                  Clear all
                 </button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFilters(false)}
-                >
+                <Button variant="outline" onClick={() => setShowFilters(false)}>
                   Apply Filters
                 </Button>
               </div>
@@ -638,441 +538,167 @@ export const SearchResults: React.FC = () => {
           )}
         </Card>
 
-        {/* Results Header */}
-        <div className="flex items-center justify-between mb-6">
+        {/* RESULTS HEADER */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {sortedPackages.length} Package{sortedPackages.length !== 1 ? 's' : ''} Found
+            <h2 className="text-2xl font-bold text-gray-900">
+              {sortedVendors.length} {sortedVendors.length === 1 ? 'Vendor' : 'Vendors'} Found
             </h2>
-            <p className="text-gray-600">
-              {searchTerm && `Results for "${searchTerm}"`}
-              {category && !searchTerm && `Results for "${category.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}"`}
-            </p>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-rose-500"
-              >
-                <option value="recommended">Recommended</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="hours-low">Hours: Low to High</option>
-                <option value="hours-high">Hours: High to Low</option>
-                <option value="name">Name: A to Z</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as 'name' | 'rating' | 'packages')}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500"
+            >
+              <option value="rating">Highest Rated</option>
+              <option value="name">Name: A to Z</option>
+              <option value="packages">Most Packages</option>
+            </select>
 
-            {/* View Mode Toggle */}
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            {/* State Dropdown (UPPERCASE) */}
+            <select
+              value={filters.state}
+              onChange={e => handleStateChange(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500"
+            >
+              <option value="">All States</option>
+              {states.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            {/* Area Dropdown */}
+            {filters.state && (
+              <select
+                value={filters.areaId}
+                onChange={e => handleAreaChange(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="">All Areas</option>
+                {areasByState[filters.state]?.map(({ display, id }) => (
+                  <option key={id} value={id}>{display}</option>
+                ))}
+              </select>
+            )}
+
+            {/* View Toggle */}
+            <div className="flex border border-gray-300 rounded-xl overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 ${viewMode === 'grid' ? 'bg-rose-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`p-2.5 ${viewMode === 'grid' ? 'bg-rose-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
-                <Grid className="w-4 h-4" />
+                <Grid className="w-4 h-4"/>
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 ${viewMode === 'list' ? 'bg-rose-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`p-2.5 ${viewMode === 'list' ? 'bg-rose-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
-                <List className="w-4 h-4" />
+                <List className="w-4 h-4"/>
               </button>
             </div>
           </div>
         </div>
 
+        {/* LAYOUT */}
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Sidebar - Filters */}
-          <div className="lg:w-1/4">
-            <div className="hidden lg:block">
-              <Card className="p-6 sticky top-4">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                  <button
-                    onClick={clearFilters}
-                    className="text-sm text-rose-600 hover:text-rose-700"
+          {/* DESKTOP FILTERS */}
+          <div className="lg:w-80 hidden lg:block">
+            <Card className="p-6 sticky top-6 rounded-2xl shadow-md bg-white/90 backdrop-blur">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Filters</h3>
+                <button onClick={clearFilters} className="text-sm font-medium text-rose-600 hover:text-rose-700">
+                  Clear all
+                </button>
+              </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">State</label>
+                  <select
+                    value={filters.state}
+                    onChange={e => handleStateChange(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
                   >
-                    Clear all
-                  </button>
+                    <option value="">All States</option>
+                    {states.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
-                
-                <div className="space-y-6">
-                  {/* Service Types */}
+                {filters.state && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Service Types</label>
-                    <div className="space-y-2">
-                      {serviceTypeOptions.map((option) => (
-                        <label key={option.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={filters.serviceTypes.includes(option.value)}
-                            onChange={() => handleServiceTypeToggle(option.value)}
-                            className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{option.label}</span>
-                        </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Area</label>
+                    <select
+                      value={filters.areaId}
+                      onChange={e => handleAreaChange(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    >
+                      <option value="">All Areas in {filters.state}</option>
+                      {areasByState[filters.state]?.map(({ display, id }) => (
+                        <option key={id} value={id}>{display}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
-
-                  {/* Event Types */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Event Types</label>
-                    <div className="space-y-2">
-                      {eventTypeOptions.map((option) => (
-                        <label key={option.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={filters.eventTypes.includes(option.value)}
-                            onChange={() => handleEventTypeToggle(option.value)}
-                            className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{option.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Moments (Coverage) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Moments</label>
-                    <div className="space-y-2">
-                      {coverageOptions.map((coverage) => (
-                        <label key={coverage} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={filters.coverage.includes(coverage)}
-                            onChange={() => handleCoverageToggle(coverage)}
-                            className="mr-2 text-rose-500 focus:ring-rose-500 rounded"
-                          />
-                          <span className="text-sm text-gray-700">{coverage}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Price Range */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Price Range</label>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-gray-600">Min: {formatPrice(filters.minPrice)}</label>
+                )}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Service Types</label>
+                  <div className="space-y-3">
+                    {serviceTypeOptions.map(o => (
+                      <label key={o.value} className="flex items-center cursor-pointer">
                         <input
-                          type="range"
-                          min="0"
-                          max="500000"
-                          step="5000"
-                          value={filters.minPrice}
-                          onChange={(e) => handleFilterChange('minPrice', parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                          type="checkbox"
+                          checked={filters.serviceTypes.includes(o.value)}
+                          onChange={() => handleServiceToggle(o.value)}
+                          className="sr-only"
                         />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600">Max: {formatPrice(filters.maxPrice)}</label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="500000"
-                          step="5000"
-                          value={filters.maxPrice}
-                          onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hours */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Coverage Hours</label>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-gray-600">Min: {filters.minHours}h</label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="12"
-                          value={filters.minHours}
-                          onChange={(e) => handleFilterChange('minHours', parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-600">Max: {filters.maxHours}h</label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="12"
-                          value={filters.maxHours}
-                          onChange={(e) => handleFilterChange('maxHours', parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-                    </div>
+                        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all w-full ${
+                          filters.serviceTypes.includes(o.value)
+                            ? 'bg-rose-100 text-rose-700 ring-2 ring-rose-500'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        }`}>
+                          <o.icon className="w-5 h-5" />
+                          <span className="text-sm font-medium">{o.label}</span>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
-              </Card>
-            </div>
+              </div>
+            </Card>
           </div>
 
-          {/* Main Content */}
+          {/* RESULTS */}
           <div className="flex-1">
-            {/* Results */}
-            {sortedPackages.length === 0 ? (
-              <Card className="p-12 text-center">
-                <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No packages found</h3>
-                <p className="text-gray-600 mb-6">
-                  {searchTerm || activeFiltersCount > 0 || category
-                    ? 'Try adjusting your search or filters to find more options.'
-                    : 'No wedding packages are currently available.'
-                  }
+            {sortedVendors.length === 0 ? (
+              <Card className="p-16 text-center rounded-2xl bg-white/80 backdrop-blur">
+                <Users className="w-20 h-20 text-gray-300 mx-auto mb-6"/>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">No vendors found</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  {searchTerm || activeFiltersCount 
+                    ? 'Try adjusting your search or filters to see more results.' 
+                    : 'No vendors match your criteria yet.'}
                 </p>
-                {(searchTerm || activeFiltersCount > 0 || category) && (
-                  <Button variant="primary" onClick={clearFilters}>
-                    Clear Search & Filters
+                {(searchTerm || activeFiltersCount) && (
+                  <Button variant="primary" onClick={clearFilters} className="bg-rose-500 hover:bg-rose-600">
+                    Clear Filters
                   </Button>
                 )}
               </Card>
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {sortedPackages.map((pkg) => {
-                  const ServiceIcon = getServiceIcon(pkg.service_type);
-                  const packageCoverage = getPackageCoverage(pkg.coverage || {});
-                  const isPackageFavorited = isFavorited(pkg.id);
-                  
-                  return (
-                    <Card key={pkg.id} hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/package/${pkg.id}`)}>
-                      <div className="aspect-video overflow-hidden relative">
-                        <img
-                          src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
-                          alt={pkg.name}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        />
-                        <button
-                          onClick={(e) => handleToggleFavorite(e, pkg)}
-                          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg ${
-                            isPackageFavorited 
-                              ? 'bg-red-500 hover:bg-red-600' 
-                              : 'bg-white/80 hover:bg-white'
-                          }`}
-                        >
-                          <Heart className={`w-4 h-4 ${
-                            isPackageFavorited 
-                              ? 'text-white fill-current' 
-                              : 'text-gray-600'
-                          }`} />
-                        </button>
-                      </div>
-                      
-                      <div className="p-6">
-                        <div className="flex items-center space-x-2 mb-3">
-                          <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center">
-                            <ServiceIcon className="w-4 h-4 text-rose-600" />
-                          </div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                            {pkg.service_type}
-                          </span>
-                          {pkg.event_type && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {pkg.event_type}
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
-                        <p className="text-gray-600 text-sm line-clamp-2 mb-4">{pkg.description}</p>
-
-                        {pkg.features && pkg.features.length > 0 && (
-                          <div className="mb-4">
-                            <div className="flex flex-wrap gap-1">
-                              {pkg.features.slice(0, 2).map((feature, index) => (
-                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                  <Check className="w-3 h-3 mr-1" />
-                                  {feature}
-                                </span>
-                              ))}
-                              {pkg.features.length > 2 && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                  +{pkg.features.length - 2} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            {pkg.hour_amount && (
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                <span>{pkg.hour_amount}h</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-gray-900">
-                              {formatPrice(pkg.price + SERVICE_FEE)}
-                            </div>
-                            <div className="text-xs text-gray-500">Includes service fee</div>
-                          </div>
-                        </div>
-
-                        <Button 
-                          size="sm" 
-                          variant="primary" 
-                          className="w-full mt-4"
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            addItem({ package: pkg });
-                            openCart();
-                          }}
-                        >
-                          Add to Cart
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="w-full mt-2"
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            navigate(`/package/${pkg.slug}`);
-                          }}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })}
+                {sortedVendors.map(v => <VendorGridCard key={v.id} v={v} />)}
               </div>
             ) : (
-              <div className="space-y-4">
-                {sortedPackages.map((pkg) => {
-                  const ServiceIcon = getServiceIcon(pkg.service_type);
-                  const packageCoverage = getPackageCoverage(pkg.coverage || {});
-                  const isPackageFavorited = isFavorited(pkg.id);
-                  
-                  return (
-                    <Card key={pkg.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                      <div className="p-6">
-                        <div className="flex items-center space-x-6">
-                          <div className="relative">
-                            <img
-                              src={pkg.primary_image || getServicePhoto(pkg.service_type, pkg)}
-                              alt={pkg.name}
-                              className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-                            />
-                            <button
-                              onClick={(e) => handleToggleFavorite(e, pkg)}
-                              className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-lg ${
-                                isPackageFavorited 
-                                  ? 'bg-red-500 hover:bg-red-600' 
-                                  : 'bg-white hover:bg-gray-50 border border-gray-200'
-                              }`}
-                            >
-                              <Heart className={`w-3 h-3 ${
-                                isPackageFavorited 
-                                  ? 'text-white fill-current' 
-                                  : 'text-gray-600'
-                              }`} />
-                            </button>
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <div className="w-6 h-6 bg-rose-100 rounded-full flex items-center justify-center">
-                                <ServiceIcon className="w-3 h-3 text-rose-600" />
-                              </div>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">
-                                {pkg.service_type}
-                              </span>
-                              {pkg.event_type && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {pkg.event_type}
-                                </span>
-                              )}
-                            </div>
-
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">{pkg.name}</h3>
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{pkg.description}</p>
-
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                              {pkg.hour_amount && (
-                                <div className="flex items-center">
-                                  <Clock className="w-4 h-4 mr-1" />
-                                  <span>{pkg.hour_amount} hours</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-wrap gap-1">
-                              {pkg.features?.slice(0, 3).map((feature, index) => (
-                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                                  {feature}
-                                </span>
-                              ))}
-                              {packageCoverage.slice(0, 2).map((coverage, index) => (
-                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                  {coverage}
-                                </span>
-                              ))}
-                              {((pkg.features?.length || 0) + packageCoverage.length) > 5 && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600">
-                                  +{((pkg.features?.length || 0) + packageCoverage.length) - 5} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-4">
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-gray-900">
-                                {formatPrice(pkg.price + SERVICE_FEE)}
-                              </div>
-                              <div className="text-sm text-gray-500">Includes service fee</div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                addItem({ package: pkg });
-                                openCart();
-                              }}
-                              className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium"
-                            >
-                              Add to Cart
-                            </button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/package/${pkg.id}`)}
-                            >
-                              View Details
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
+              <div className="space-y-8">
+                {sortedVendors.map(v => <VendorListItem key={v.id} v={v} />)}
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Custom Package Modal */}
-      <CustomPackageModal
-        isOpen={showCustomPackageModal}
-        onClose={() => setShowCustomPackageModal(false)}
-      />
     </div>
   );
 };
 
-// Memoize the component to prevent unnecessary rerenders
 export default React.memo(SearchResults);

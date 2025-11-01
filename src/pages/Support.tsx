@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
-import { MessageCircle, Phone, Mail, Clock, Search, HelpCircle, BookOpen, Users, Shield, Star, Send, CheckCircle } from 'lucide-react';
+import { MessageCircle, Mail, Clock, Search, HelpCircle, BookOpen, Users, Shield, Star, Send, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { trackPageView } from '../utils/analytics'; // Import trackPageView
+import { trackPageView } from '../utils/analytics';
 
 export const Support: React.FC = () => {
-  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Add loading
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [submitting, setSubmitting] = useState(false);
@@ -25,12 +25,10 @@ export const Support: React.FC = () => {
     priority: 'normal'
   });
   const [emailError, setEmailError] = useState<string | null>(null);
-  const analyticsTracked = useRef(false); // Add ref to prevent duplicate calls
+  const analyticsTracked = useRef(false);
 
-  // Load hCaptcha site key from environment variable
   const hCaptchaSiteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'your-site-key-here';
 
-  // Track analytics only once on mount
   useEffect(() => {
     if (!authLoading && !analyticsTracked.current) {
       console.log('Tracking analytics for support:', new Date().toISOString());
@@ -39,7 +37,6 @@ export const Support: React.FC = () => {
     }
   }, [authLoading, user?.id]);
 
-  // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -130,7 +127,6 @@ export const Support: React.FC = () => {
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
    
-    // Validate hCaptcha
     if (!captchaToken) {
       setSubmitError('Please complete the CAPTCHA verification.');
       return;
@@ -141,7 +137,6 @@ export const Support: React.FC = () => {
    
     try {
       if (!supabase || !isSupabaseConfigured()) {
-        // Mock submission for demo
         await new Promise(resolve => setTimeout(resolve, 1000));
         setSubmitSuccess(true);
         setContactForm({
@@ -162,19 +157,8 @@ export const Support: React.FC = () => {
         message: contactForm.message,
         priority: contactForm.priority,
         user_id: isAuthenticated ? user?.id : null,
-        captcha_token: captchaToken // Include token for server-side validation
+        captcha_token: captchaToken
       };
-      // TODO: Server-side hCaptcha validation
-      // Send captchaToken to your server and verify it with hCaptcha's API
-      // Example: POST to https://hcaptcha.com/siteverify with your secret key
-      // const response = await fetch('https://hcaptcha.com/siteverify', {
-      // method: 'POST',
-      // body: JSON.stringify({
-      // response: captchaToken,
-      // secret: 'your-hcaptcha-secret-key'
-      // })
-      // });
-      // if (!response.success) throw new Error('CAPTCHA validation failed');
       const { error } = await supabase
         .from('support_inquiries')
         .insert([inquiryData]);
@@ -188,8 +172,6 @@ export const Support: React.FC = () => {
         priority: 'normal'
       });
       setCaptchaToken(null);
-     
-      // Clear success message after 5 seconds
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err) {
       console.error('Error submitting inquiry:', err);
@@ -204,14 +186,12 @@ export const Support: React.FC = () => {
   };
 
   const handleStartChat = () => {
-    // Trigger the chat bot to open
     const chatBotEvent = new CustomEvent('openChatBot');
     window.dispatchEvent(chatBotEvent);
   };
 
   const handleEmailClick = () => {
     console.log('Attempting to open mailto link for hello@bremembered.io');
-    // Show UI error if email client doesn't open
     setTimeout(() => {
       if (!document.hidden) {
         setEmailError('Could not open your email client. Please email us at ');
@@ -231,7 +211,6 @@ export const Support: React.FC = () => {
             Get the support you need to plan your perfect wedding. Our team is here to help every step of the way.
           </p>
          
-          {/* Search Bar */}
           <div className="max-w-2xl mx-auto">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -246,84 +225,77 @@ export const Support: React.FC = () => {
           </div>
         </div>
       </section>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Contact Options */}
+        {/* Contact Options – Centered with Flex */}
         <section className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Get in Touch</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <MessageCircle className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Live Chat</h3>
-              <p className="text-gray-600 mb-6">Get instant help from our support team</p>
-              <div className="text-sm text-gray-600 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Available 24/7</span>
+          <div className="flex justify-center gap-8 flex-wrap">
+            {/* Live Chat */}
+            <div className="w-full sm:w-80">
+              <Card className="p-8 text-center hover:shadow-lg transition-shadow h-full">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <MessageCircle className="w-8 h-8 text-blue-600" />
                 </div>
-              </div>
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={handleStartChat}
-              >
-                Start Chat
-              </Button>
-            </Card>
-            <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Phone className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Phone Support</h3>
-              <p className="text-gray-600 mb-6">Speak directly with our wedding experts</p>
-              <div className="text-sm text-gray-600 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Mon-Fri 8AM-8PM PST</span>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Live Chat</h3>
+                <p className="text-gray-600 mb-6">Get instant help from our support team</p>
+                <div className="text-sm text-gray-600 mb-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Available 24/7</span>
+                  </div>
                 </div>
-              </div>
-              <Button variant="primary" className="w-full">
-                Call (978) 945-3WED
-              </Button>
-            </Card>
-            <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail className="w-8 h-8 text-red-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Email Support</h3>
-              <p className="text-gray-600 mb-6">Send us a detailed message</p>
-              <div className="text-sm text-gray-600 mb-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <Clock className="w-4 h-4" />
-                  <span>Response within 2 hours</span>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={handleStartChat}
+                >
+                  Start Chat
+                </Button>
+              </Card>
+            </div>
+
+            {/* Email Support */}
+            <div className="w-full sm:w-80">
+              <Card className="p-8 text-center hover:shadow-lg transition-shadow h-full">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Mail className="w-8 h-8 text-red-500" />
                 </div>
-              </div>
-              {emailError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">
-                    {emailError}
-                    <a
-                      href="mailto:hello@bremembered.io"
-                      className="underline text-red-700 hover:text-red-800"
-                    >
-                      hello@bremembered.io
-                    </a>
-                  </p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4">Email Support</h3>
+                <p className="text-gray-600 mb-6">Send us a detailed message</p>
+                <div className="text-sm text-gray-600 mb-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Response within 2 hours</span>
+                  </div>
                 </div>
-              )}
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={handleEmailClick}
-                as="a"
-                href="mailto:hello@bremembered.io?subject=Support%20Inquiry"
-              >
-                Send Email
-              </Button>
-            </Card>
+                {emailError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">
+                      {emailError}
+                      <a
+                        href="mailto:hello@bremembered.io"
+                        className="underline text-red-700 hover:text-red-800"
+                      >
+                        hello@bremembered.io
+                      </a>
+                    </p>
+                  </div>
+                )}
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={handleEmailClick}
+                  as="a"
+                  href="mailto:hello@bremembered.io?subject=Support%20Inquiry"
+                >
+                  Send Email
+                </Button>
+              </Card>
+            </div>
           </div>
         </section>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* FAQ Section */}
           <div className="lg:col-span-2">
@@ -333,7 +305,7 @@ export const Support: React.FC = () => {
                 {filteredFaqs.length} result{filteredFaqs.length !== 1 ? 's' : ''}
               </div>
             </div>
-            {/* Category Filter */}
+
             <div className="flex flex-wrap gap-2 mb-8">
               {supportCategories.map((category) => {
                 const Icon = category.icon;
@@ -353,7 +325,7 @@ export const Support: React.FC = () => {
                 );
               })}
             </div>
-            {/* FAQ List */}
+
             <div className="space-y-4">
               {filteredFaqs.length === 0 ? (
                 <Card className="p-8 text-center">
@@ -377,6 +349,7 @@ export const Support: React.FC = () => {
               )}
             </div>
           </div>
+
           {/* Contact Form */}
           <div>
             <Card className="p-6 sticky top-4">
@@ -491,7 +464,7 @@ export const Support: React.FC = () => {
                 </p>
               </div>
             </Card>
-            {/* Help Resources */}
+
             <Card className="p-6 mt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Helpful Resources</h3>
               <div className="space-y-3">
@@ -515,6 +488,7 @@ export const Support: React.FC = () => {
             </Card>
           </div>
         </div>
+
         {/* Status Page */}
         <section className="mt-16">
           <Card className="p-8">

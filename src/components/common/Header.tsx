@@ -81,7 +81,7 @@ export const Header: React.FC = () => {
                     : 'text-gray-700 hover:text-rose-600'
                 }`}
               >
-                Browse Services
+                Browse Vendors
               </button>
               <button
                 onClick={() => navigate('/inspiration')}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, Plus, Edit2, MapPin, Trash2, AlertCircle, Check, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2, Users } from 'lucide-react';
+import { Calendar, Clock, Plus, Edit2, MapPin, Trash2, Music, Camera, AlertCircle, Check, Download, FileDown, FileText, ChevronDown, ChevronUp, Share2, Users } from 'lucide-react';
 import { format, parseISO, addMinutes, subDays, addDays } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { jsPDF } from 'jspdf';

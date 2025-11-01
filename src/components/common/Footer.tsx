@@ -134,28 +134,22 @@ export const Footer: React.FC = () => {
                   icon={Users}
                   className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white hover:border-gray-500"
                   onClick={() => {
-                    navigate('/vendor-onboarding');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.open('https://brememberedstudio.com', '_blank', 'noopener,noreferrer');
                   }}
                 >
                   Join the Team
                 </Button>
               </li>
               <li>
-                <button 
-                  onClick={() => {
-                    navigate('/vendor-onboarding');
-                    setTimeout(() => {
-                      const element = document.querySelector('h2');
-                      if (element && element.textContent?.includes('What is B. Remembered')) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }, 100);
-                  }}
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  Vendor Resources
-                </button>
+                  <a 
+                    href="https://brememberedstudio.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center text-gray-300 hover:text-white transition-colors"
+                  >
+                    Vendor Resources
+                    <ExternalLink className="w-4 h-4 ml-1" />
+                  </a>
               </li>
               <li>
                 <button 
